@@ -168,7 +168,11 @@ fn generate_hoists(ctx: &CodegenContext, root: &RootNode<'_>) -> String {
 
     for (i, hoist) in root.hoists.iter().enumerate() {
         if let Some(node) = hoist {
-            hoists_code.push_str(&format!("const _hoisted_{} = /*#__PURE__*/ ", i + 1));
+            hoists_code.push_str(&format!("const _hoisted_{} = ", i + 1));
+            // Only add /*#__PURE__*/ for VNodeCall (createElementVNode calls)
+            if matches!(node, JsChildNode::VNodeCall(_)) {
+                hoists_code.push_str("/*#__PURE__*/ ");
+            }
             generate_js_child_node_to_string(ctx, node, &mut hoists_code);
             hoists_code.push('\n');
         }
@@ -194,6 +198,25 @@ fn generate_js_child_node_to_string(
                 // Expression should already be processed by transform
                 out.push_str(&exp.content);
             }
+        }
+        JsChildNode::Object(obj) => {
+            out.push_str("{ ");
+            for (i, prop) in obj.properties.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                // Key
+                match &prop.key {
+                    ExpressionNode::Simple(exp) => {
+                        out.push_str(&exp.content);
+                        out.push_str(": ");
+                    }
+                    ExpressionNode::Compound(_) => out.push_str("null: "),
+                }
+                // Value
+                generate_js_child_node_to_string(ctx, &prop.value, out);
+            }
+            out.push_str(" }");
         }
         _ => out.push_str("null /* unsupported */"),
     }
@@ -434,8 +457,10 @@ mod tests {
     #[test]
     fn test_codegen_preamble_module() {
         use crate::options::CodegenMode;
-        let mut options = super::CodegenOptions::default();
-        options.mode = CodegenMode::Module;
+        let options = super::CodegenOptions {
+            mode: CodegenMode::Module,
+            ..Default::default()
+        };
         let result = compile!("<div>hello</div>", options);
         assert!(result.preamble.contains("import {"));
         assert!(result.preamble.contains("from \"vue\""));

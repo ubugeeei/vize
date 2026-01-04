@@ -126,7 +126,7 @@ pub fn compile_sfc(
 
     // Case 3: Script setup with inline template
     let script_setup = descriptor.script_setup.as_ref().unwrap();
-    let template_content = descriptor.template.as_ref().map(|t| t.content.as_ref());
+    let _template_content = descriptor.template.as_ref().map(|t| t.content.as_ref());
 
     // Analyze script first to get bindings
     let mut ctx = ScriptCompileContext::new(&script_setup.content);
@@ -154,24 +154,25 @@ pub fn compile_sfc(
     };
 
     // Extract render function code from template result
-    let (template_imports, render_body) = match &template_result {
+    let (template_imports, template_hoisted, render_body) = match &template_result {
         Some(Ok(template_code)) => extract_template_parts(template_code),
         Some(Err(e)) => {
             errors.push(e.clone());
-            (String::new(), String::new())
+            (String::new(), String::new(), String::new())
         }
-        None => (String::new(), String::new()),
+        None => (String::new(), String::new(), String::new()),
     };
 
     // Compile script setup with inline template
     let script_result = compile_script_setup_inline(
         &script_setup.content,
         &component_name,
-        is_vapor,
         is_ts,
-        template_content,
-        &template_imports,
-        &render_body,
+        TemplateParts {
+            imports: &template_imports,
+            hoisted: &template_hoisted,
+            render_body: &render_body,
+        },
     )?;
     code = script_result.code;
 
@@ -224,9 +225,10 @@ pub struct ScriptCompileResult {
     pub bindings: Option<BindingMetadata>,
 }
 
-/// Extract imports and render body from compiled template code
-fn extract_template_parts(template_code: &str) -> (String, String) {
+/// Extract imports, hoisted consts, and render body from compiled template code
+fn extract_template_parts(template_code: &str) -> (String, String, String) {
     let mut imports = String::new();
+    let mut hoisted = String::new();
     let mut render_body = String::new();
     let mut in_render = false;
     let mut brace_depth = 0;
@@ -237,6 +239,10 @@ fn extract_template_parts(template_code: &str) -> (String, String) {
         if trimmed.starts_with("import ") {
             imports.push_str(line);
             imports.push('\n');
+        } else if trimmed.starts_with("const _hoisted_") {
+            // Hoisted template variables
+            hoisted.push_str(line);
+            hoisted.push('\n');
         } else if trimmed.starts_with("export function render(")
             || trimmed.starts_with("function render(")
         {
@@ -264,18 +270,22 @@ fn extract_template_parts(template_code: &str) -> (String, String) {
         }
     }
 
-    (imports, render_body)
+    (imports, hoisted, render_body)
+}
+
+/// Template parts for inline compilation
+struct TemplateParts<'a> {
+    imports: &'a str,
+    hoisted: &'a str,
+    render_body: &'a str,
 }
 
 /// Compile script setup with inline template (Vue's inline template mode)
 fn compile_script_setup_inline(
     content: &str,
     component_name: &str,
-    _is_vapor: bool,
     is_ts: bool,
-    _template_content: Option<&str>,
-    template_imports: &str,
-    render_body: &str,
+    template: TemplateParts<'_>,
 ) -> Result<ScriptCompileResult, SfcError> {
     let mut ctx = ScriptCompileContext::new(content);
     ctx.analyze();
@@ -283,8 +293,8 @@ fn compile_script_setup_inline(
     let mut output = String::new();
 
     // Template imports first (Vue helpers)
-    if !template_imports.is_empty() {
-        output.push_str(template_imports);
+    if !template.imports.is_empty() {
+        output.push_str(template.imports);
         // Blank line after template imports
         output.push('\n');
     }
@@ -426,7 +436,13 @@ fn compile_script_setup_inline(
         }
     }
 
-    // Hoisted const declarations (outside export default)
+    // Template hoisted consts (e.g., const _hoisted_1 = { class: "..." })
+    if !template.hoisted.is_empty() {
+        output.push('\n');
+        output.push_str(template.hoisted);
+    }
+
+    // User hoisted const declarations (outside export default)
     if !hoisted_lines.is_empty() {
         output.push('\n');
         for line in &hoisted_lines {
@@ -510,10 +526,10 @@ fn compile_script_setup_inline(
 
     // Inline render function as return (blank line before)
     output.push('\n');
-    if !render_body.is_empty() {
+    if !template.render_body.is_empty() {
         output.push_str("return (_ctx, _cache) => {\n");
         output.push_str("  return ");
-        output.push_str(render_body);
+        output.push_str(template.render_body);
         output.push('\n');
         output.push_str("}\n");
     }
@@ -1643,6 +1659,7 @@ fn compile_template_block(
     // For script setup, use inline mode (render function inside setup return)
     if bindings.is_some() {
         dom_opts.inline = true;
+        dom_opts.hoist_static = true;
     }
 
     // Pass binding metadata from script setup to template compiler

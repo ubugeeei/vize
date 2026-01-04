@@ -370,6 +370,8 @@ pub struct ElementNode<'a> {
     pub loc: SourceLocation,
     pub inner_loc: Option<SourceLocation>,
     pub codegen_node: Option<ElementCodegenNode<'a>>,
+    /// If props are hoisted, this is the index into the hoists array (1-based for _hoisted_N)
+    pub hoisted_props_index: Option<usize>,
 }
 
 impl<'a> ElementNode<'a> {
@@ -384,6 +386,7 @@ impl<'a> ElementNode<'a> {
             loc,
             inner_loc: None,
             codegen_node: None,
+            hoisted_props_index: None,
         }
     }
 

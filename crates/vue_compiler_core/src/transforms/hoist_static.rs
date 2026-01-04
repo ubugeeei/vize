@@ -149,8 +149,12 @@ pub fn hoist_static<'a>(
                 }
             }
             StaticType::HasDynamicText => {
-                // Only the structure can be hoisted, not the text
-                // For now, skip - we'd need more complex handling
+                // Element has static props but dynamic text - hoist the props only
+                if let TemplateChildNode::Element(el) = &mut children[i] {
+                    if has_static_props(el) {
+                        hoist_element_props(ctx, el, allocator);
+                    }
+                }
             }
             StaticType::NotStatic => {
                 // Cannot hoist, but check children recursively
@@ -297,6 +301,68 @@ fn create_children_expression<'a>(
     // For complex children with nested elements, return as Simple expression for now
     // A full implementation would recursively create VNodeCalls
     None
+}
+
+/// Check if an element has static props (all attributes, no dynamic bindings)
+fn has_static_props(el: &ElementNode<'_>) -> bool {
+    if el.props.is_empty() {
+        return false;
+    }
+
+    for prop in el.props.iter() {
+        if let PropNode::Directive(_) = prop {
+            return false;
+        }
+    }
+
+    true
+}
+
+/// Hoist the props of an element with static props
+fn hoist_element_props<'a>(
+    ctx: &mut TransformContext<'a>,
+    el: &mut ElementNode<'a>,
+    allocator: &'a Bump,
+) {
+    // Build props object from element attributes
+    let mut obj_props = Vec::new_in(allocator);
+
+    for prop in el.props.iter() {
+        if let PropNode::Attribute(attr) = prop {
+            let key = ExpressionNode::Simple(Box::new_in(
+                SimpleExpressionNode::new(attr.name.clone(), true, attr.loc.clone()),
+                allocator,
+            ));
+            let value_exp = if let Some(v) = &attr.value {
+                SimpleExpressionNode::new(v.content.clone(), true, v.loc.clone())
+            } else {
+                SimpleExpressionNode::new("true", true, attr.loc.clone())
+            };
+            let value = JsChildNode::SimpleExpression(Box::new_in(value_exp, allocator));
+
+            obj_props.push(Property {
+                key,
+                value,
+                loc: attr.loc.clone(),
+            });
+        }
+    }
+
+    if obj_props.is_empty() {
+        return;
+    }
+
+    // Create the object expression to hoist
+    let obj_expr = ObjectExpression {
+        properties: obj_props,
+        loc: SourceLocation::STUB,
+    };
+
+    let js_node = JsChildNode::Object(Box::new_in(obj_expr, allocator));
+    let hoist_index = ctx.hoist(js_node);
+
+    // Mark the element as having hoisted props (1-based index for _hoisted_N)
+    el.hoisted_props_index = Some(hoist_index + 1);
 }
 
 /// Check if children should use a block

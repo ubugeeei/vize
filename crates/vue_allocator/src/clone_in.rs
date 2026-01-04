@@ -113,8 +113,8 @@ mod tests {
         let allocator = Allocator::default();
 
         assert_eq!(42i32.clone_in(&allocator), 42);
-        assert_eq!(true.clone_in(&allocator), true);
-        assert_eq!(3.14f64.clone_in(&allocator), 3.14);
+        assert!(true.clone_in(&allocator));
+        assert_eq!(2.5f64.clone_in(&allocator), 2.5);
     }
 
     #[test]

@@ -575,7 +575,11 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             let has_patch_info = patch_flag.is_some() || dynamic_props.is_some();
 
             // Generate props (only if there are renderable props, not just v-show)
-            if has_renderable_props(el) {
+            // If props are hoisted, use the hoisted reference
+            if let Some(hoisted_index) = el.hoisted_props_index {
+                ctx.push(", _hoisted_");
+                ctx.push(&hoisted_index.to_string());
+            } else if has_renderable_props(el) {
                 ctx.push(", ");
                 generate_props(ctx, &el.props);
             } else if !el.children.is_empty() || has_patch_info {
@@ -583,17 +587,27 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             }
 
             // Generate children
+            // When props are hoisted and only TEXT flag is set, omit the patch flag
+            // (Vue optimizes block elements with hoisted static props)
+            let should_emit_patch_flag = if let Some(flag) = patch_flag {
+                !(el.hoisted_props_index.is_some() && flag == 1)
+            } else {
+                false
+            };
+            let effective_has_patch_info = has_patch_info && should_emit_patch_flag;
             if !el.children.is_empty() {
                 ctx.push(", ");
                 generate_children(ctx, &el.children);
-            } else if has_patch_info {
+            } else if effective_has_patch_info {
                 ctx.push(", null");
             }
 
             // Generate patch flag
-            if let Some(flag) = patch_flag {
-                ctx.push(", ");
-                ctx.push(&format!("{} /* {} */", flag, patch_flag_name(flag)));
+            if should_emit_patch_flag {
+                if let Some(flag) = patch_flag {
+                    ctx.push(", ");
+                    ctx.push(&format!("{} /* {} */", flag, patch_flag_name(flag)));
+                }
             }
 
             // Generate dynamic props
@@ -776,7 +790,11 @@ pub fn generate_element(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             let has_patch_info = patch_flag.is_some();
 
             // Generate props (only if there are renderable props, not just v-show)
-            if has_renderable_props(el) {
+            // If props are hoisted, use the hoisted reference
+            if let Some(hoisted_index) = el.hoisted_props_index {
+                ctx.push(", _hoisted_");
+                ctx.push(&hoisted_index.to_string());
+            } else if has_renderable_props(el) {
                 ctx.push(", ");
                 generate_props(ctx, &el.props);
             } else if !el.children.is_empty() || has_patch_info {
