@@ -40,6 +40,8 @@ fn main() {
         ("vapor/v-model", CompilerMode::Vapor),
         ("vapor/v-slot", CompilerMode::Vapor),
         ("vapor/v-show", CompilerMode::Vapor),
+        ("sfc/basic", CompilerMode::Sfc),
+        ("sfc/script-setup", CompilerMode::Sfc),
     ];
 
     println!("Vue Compiler Coverage Report");
@@ -53,6 +55,8 @@ fn main() {
     let mut vdom_total = 0;
     let mut vapor_passed = 0;
     let mut vapor_total = 0;
+    let mut sfc_passed = 0;
+    let mut sfc_total = 0;
 
     for (path, mode) in &test_files {
         let fixture = fixtures_dir.join(format!("{}.toml", path));
@@ -84,7 +88,10 @@ fn main() {
                 vapor_passed += passed;
                 vapor_total += total;
             }
-            _ => {}
+            CompilerMode::Sfc => {
+                sfc_passed += passed;
+                sfc_total += total;
+            }
         }
 
         let pct = if total > 0 {
@@ -137,6 +144,11 @@ fn main() {
     } else {
         0.0
     };
+    let sfc_pct = if sfc_total > 0 {
+        (sfc_passed as f64 / sfc_total as f64) * 100.0
+    } else {
+        0.0
+    };
 
     println!(
         "VDOM:   {:3}/{:3} ({:5.1}%)",
@@ -145,6 +157,10 @@ fn main() {
     println!(
         "Vapor:  {:3}/{:3} ({:5.1}%)",
         vapor_passed, vapor_total, vapor_pct
+    );
+    println!(
+        "SFC:    {:3}/{:3} ({:5.1}%)",
+        sfc_passed, sfc_total, sfc_pct
     );
 
     println!("\n============================");

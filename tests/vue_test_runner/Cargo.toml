@@ -11,6 +11,7 @@ path = "src/coverage.rs"
 [dependencies]
 vue_compiler_core.workspace = true
 vue_compiler_vapor.workspace = true
+vue_compiler_sfc.workspace = true
 vue_allocator.workspace = true
 vue_shared.workspace = true
 serde = { version = "1.0", features = ["derive"] }

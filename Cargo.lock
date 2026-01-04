@@ -2351,6 +2351,7 @@ dependencies = [
  "toml",
  "vue_allocator",
  "vue_compiler_core",
+ "vue_compiler_sfc",
  "vue_compiler_vapor",
  "vue_shared",
 ]

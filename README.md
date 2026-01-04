@@ -10,8 +10,8 @@ Compiling **15,000 SFC files** (36.9 MB):
 
 |  | @vue/compiler-sfc | vue-compiler-rs | Speedup |
 |--|-------------------|-----------------|---------|
-| **Single Thread** | 10.47s | 2.67s | **3.9x** |
-| **Multi Thread** | 3.75s | 248ms | **15.1x** |
+| **Single Thread** | 11.26s | 2.82s | **4.0x** |
+| **Multi Thread** | 3.19s | 223ms | **14.3x** |
 
 ## Compatibility
 
@@ -21,7 +21,8 @@ Snapshot tests against `@vue/compiler-sfc` (v3.6.0-beta):
 |----------|--------|-------|----------|
 | **VDom** | 226 | 338 | 66.9% |
 | **Vapor** | 29 | 98 | 29.6% |
-| **Total** | 255 | 436 | 58.5% |
+| **SFC** | 11 | 40 | 27.5% |
+| **Total** | 266 | 476 | 55.9% |
 
 ## Quick Start
 

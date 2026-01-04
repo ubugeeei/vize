@@ -63,71 +63,120 @@ pub fn compile_sfc(
     // Extract component name from filename
     let component_name = extract_component_name(filename);
 
-    // Compile script
-    let script_result = compile_script(
-        descriptor,
-        &options.script,
-        &component_name,
-        is_vapor,
-        is_ts,
-    )?;
-    code.push_str(&script_result.code);
+    // Determine output mode based on script type
+    let has_script_setup = descriptor.script_setup.is_some();
+    let has_script = descriptor.script.is_some();
+    let has_template = descriptor.template.is_some();
 
-    // Compile template and attach to __sfc__
-    if let Some(template) = &descriptor.template {
-        let template_result = if is_vapor {
-            compile_template_block_vapor(template, &scope_id, has_scoped)
+    // Case 1: Template only - just output render function
+    if !has_script && !has_script_setup && has_template {
+        let template = descriptor.template.as_ref().unwrap();
+        // Disable hoisting for template-only SFCs (no setup scope to hoist into)
+        let mut template_opts = options.template.clone();
+        let mut dom_opts = template_opts.compiler_options.take().unwrap_or_default();
+        dom_opts.hoist_static = false;
+        template_opts.compiler_options = Some(dom_opts);
+        let template_result =
+            compile_template_block(template, &template_opts, &scope_id, has_scoped, is_ts, None);
+
+        match template_result {
+            Ok(template_code) => {
+                code = template_code;
+            }
+            Err(e) => errors.push(e),
+        }
+
+        // Compile styles
+        let all_css = compile_styles(&descriptor.styles, &scope_id, &options.style, &mut warnings);
+        if !all_css.is_empty() {
+            css = Some(all_css);
+        }
+
+        return Ok(SfcCompileResult {
+            code,
+            css,
+            map: None,
+            errors,
+            warnings,
+            bindings: None,
+        });
+    }
+
+    // Case 2: Script (non-setup) + Template - output script unchanged (template attached by bundler)
+    if has_script && !has_script_setup {
+        let script = descriptor.script.as_ref().unwrap();
+        code = script.content.to_string();
+        code.push('\n');
+
+        // Compile styles
+        let all_css = compile_styles(&descriptor.styles, &scope_id, &options.style, &mut warnings);
+        if !all_css.is_empty() {
+            css = Some(all_css);
+        }
+
+        return Ok(SfcCompileResult {
+            code,
+            css,
+            map: None,
+            errors,
+            warnings,
+            bindings: None,
+        });
+    }
+
+    // Case 3: Script setup with inline template
+    let script_setup = descriptor.script_setup.as_ref().unwrap();
+    let template_content = descriptor.template.as_ref().map(|t| t.content.as_ref());
+
+    // Analyze script first to get bindings
+    let mut ctx = ScriptCompileContext::new(&script_setup.content);
+    ctx.analyze();
+    let script_bindings = ctx.bindings.clone();
+
+    // Compile template with bindings (if present) to get the render function
+    let template_result = if let Some(template) = &descriptor.template {
+        if is_vapor {
+            Some(compile_template_block_vapor(
+                template, &scope_id, has_scoped,
+            ))
         } else {
-            compile_template_block(
+            Some(compile_template_block(
                 template,
                 &options.template,
                 &scope_id,
                 has_scoped,
                 is_ts,
-                script_result.bindings.as_ref(),
-            )
-        };
-
-        match template_result {
-            Ok(template_code) => {
-                code.push('\n');
-                code.push_str(&template_code);
-                code.push_str("__sfc__.render = render\n");
-            }
-            Err(e) => errors.push(e),
+                Some(&script_bindings), // Pass bindings for proper ref handling
+            ))
         }
-    }
+    } else {
+        None
+    };
 
-    // Add scope ID if scoped styles
-    if has_scoped {
-        code.push_str(&format!("__sfc__.__scopeId = \"data-v-{}\"\n", scope_id));
-    }
+    // Extract render function code from template result
+    let (template_imports, render_body) = match &template_result {
+        Some(Ok(template_code)) => extract_template_parts(template_code),
+        Some(Err(e)) => {
+            errors.push(e.clone());
+            (String::new(), String::new())
+        }
+        None => (String::new(), String::new()),
+    };
 
-    // Add file path
-    code.push_str(&format!("__sfc__.__file = \"{}\"\n", filename));
-
-    // Final export
-    code.push_str("export default __sfc__\n");
+    // Compile script setup with inline template
+    let script_result = compile_script_setup_inline(
+        &script_setup.content,
+        &component_name,
+        is_vapor,
+        is_ts,
+        template_content,
+        &template_imports,
+        &render_body,
+    )?;
+    code = script_result.code;
 
     // Compile styles
-    let mut all_css = String::new();
-    for style in &descriptor.styles {
-        let style_opts = StyleCompileOptions {
-            id: format!("data-v-{}", scope_id),
-            scoped: style.scoped,
-            ..options.style.clone()
-        };
-        match crate::style::compile_style(style, &style_opts) {
-            Ok(style_css) => {
-                if !all_css.is_empty() {
-                    all_css.push('\n');
-                }
-                all_css.push_str(&style_css);
-            }
-            Err(e) => warnings.push(e),
-        }
-    }
-
+    let all_css = compile_styles(&descriptor.styles, &scope_id, &options.style, &mut warnings);
     if !all_css.is_empty() {
         css = Some(all_css);
     }
@@ -142,13 +191,310 @@ pub fn compile_sfc(
     })
 }
 
+/// Helper to compile all style blocks
+fn compile_styles(
+    styles: &[SfcStyleBlock],
+    scope_id: &str,
+    base_opts: &StyleCompileOptions,
+    warnings: &mut Vec<SfcError>,
+) -> String {
+    let mut all_css = String::new();
+    for style in styles {
+        let style_opts = StyleCompileOptions {
+            id: format!("data-v-{}", scope_id),
+            scoped: style.scoped,
+            ..base_opts.clone()
+        };
+        match crate::style::compile_style(style, &style_opts) {
+            Ok(style_css) => {
+                if !all_css.is_empty() {
+                    all_css.push('\n');
+                }
+                all_css.push_str(&style_css);
+            }
+            Err(e) => warnings.push(e),
+        }
+    }
+    all_css
+}
+
 /// Script compilation result
 pub struct ScriptCompileResult {
     pub code: String,
     pub bindings: Option<BindingMetadata>,
 }
 
+/// Extract imports and render body from compiled template code
+fn extract_template_parts(template_code: &str) -> (String, String) {
+    let mut imports = String::new();
+    let mut render_body = String::new();
+    let mut in_render = false;
+    let mut brace_depth = 0;
+
+    for line in template_code.lines() {
+        let trimmed = line.trim();
+
+        if trimmed.starts_with("import ") {
+            imports.push_str(line);
+            imports.push('\n');
+        } else if trimmed.starts_with("export function render(")
+            || trimmed.starts_with("function render(")
+        {
+            in_render = true;
+            brace_depth = 0;
+            // Count opening braces
+            brace_depth += line.matches('{').count() as i32;
+            brace_depth -= line.matches('}').count() as i32;
+        } else if in_render {
+            brace_depth += line.matches('{').count() as i32;
+            brace_depth -= line.matches('}').count() as i32;
+
+            // Extract the return statement inside the render function
+            if let Some(stripped) = trimmed.strip_prefix("return ") {
+                render_body = stripped.to_string();
+                // Remove trailing semicolon if present
+                if render_body.ends_with(';') {
+                    render_body.pop();
+                }
+            }
+
+            if brace_depth == 0 {
+                in_render = false;
+            }
+        }
+    }
+
+    (imports, render_body)
+}
+
+/// Compile script setup with inline template (Vue's inline template mode)
+fn compile_script_setup_inline(
+    content: &str,
+    component_name: &str,
+    _is_vapor: bool,
+    is_ts: bool,
+    _template_content: Option<&str>,
+    template_imports: &str,
+    render_body: &str,
+) -> Result<ScriptCompileResult, SfcError> {
+    let mut ctx = ScriptCompileContext::new(content);
+    ctx.analyze();
+
+    let mut output = String::new();
+
+    // Template imports first (Vue helpers)
+    if !template_imports.is_empty() {
+        output.push_str(template_imports);
+        // Blank line after template imports
+        output.push('\n');
+    }
+
+    // Extract user imports
+    let mut user_imports = Vec::new();
+    let mut setup_lines = Vec::new();
+
+    // Parse script content - extract imports and setup code
+    let mut in_import = false;
+    let mut import_buffer = String::new();
+    let mut in_destructure = false;
+    let mut destructure_buffer = String::new();
+    let mut brace_depth: i32 = 0;
+    let mut in_macro_call = false;
+    let mut macro_angle_depth: i32 = 0;
+    let mut in_paren_macro_call = false;
+    let mut paren_macro_depth: i32 = 0;
+    let mut waiting_for_macro_close = false;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        // Handle multi-line macro calls
+        if in_macro_call {
+            macro_angle_depth += trimmed.matches('<').count() as i32;
+            macro_angle_depth -= trimmed.matches('>').count() as i32;
+            if macro_angle_depth <= 0 && (trimmed.contains("()") || trimmed.ends_with(')')) {
+                in_macro_call = false;
+            }
+            continue;
+        }
+
+        if in_paren_macro_call {
+            paren_macro_depth += trimmed.matches('(').count() as i32;
+            paren_macro_depth -= trimmed.matches(')').count() as i32;
+            if paren_macro_depth <= 0 {
+                in_paren_macro_call = false;
+            }
+            continue;
+        }
+
+        if waiting_for_macro_close {
+            destructure_buffer.push_str(line);
+            destructure_buffer.push('\n');
+            if trimmed.ends_with("()") || trimmed.ends_with(')') {
+                waiting_for_macro_close = false;
+                destructure_buffer.clear();
+            }
+            continue;
+        }
+
+        if in_destructure {
+            destructure_buffer.push_str(line);
+            destructure_buffer.push('\n');
+            brace_depth += trimmed.matches('{').count() as i32;
+            brace_depth -= trimmed.matches('}').count() as i32;
+            if brace_depth <= 0 {
+                let is_props_macro = destructure_buffer.contains("defineProps")
+                    || destructure_buffer.contains("withDefaults");
+                if is_props_macro && !trimmed.ends_with("()") && !trimmed.ends_with(')') {
+                    waiting_for_macro_close = true;
+                    continue;
+                }
+                in_destructure = false;
+                destructure_buffer.clear();
+            }
+            continue;
+        }
+
+        // Detect macro call starts
+        if is_paren_macro_start(trimmed)
+            && !trimmed.starts_with("const {")
+            && !trimmed.starts_with("let {")
+        {
+            in_paren_macro_call = true;
+            paren_macro_depth =
+                trimmed.matches('(').count() as i32 - trimmed.matches(')').count() as i32;
+            continue;
+        }
+
+        if is_multiline_macro_start(trimmed)
+            && !trimmed.starts_with("const {")
+            && !trimmed.starts_with("let {")
+        {
+            in_macro_call = true;
+            macro_angle_depth =
+                trimmed.matches('<').count() as i32 - trimmed.matches('>').count() as i32;
+            continue;
+        }
+
+        // Detect destructure start
+        if (trimmed.starts_with("const {")
+            || trimmed.starts_with("let {")
+            || trimmed.starts_with("var {"))
+            && !trimmed.contains('}')
+        {
+            in_destructure = true;
+            destructure_buffer = line.to_string() + "\n";
+            brace_depth = trimmed.matches('{').count() as i32 - trimmed.matches('}').count() as i32;
+            continue;
+        }
+
+        // Skip single-line props destructure
+        if is_props_destructure_line(trimmed) {
+            continue;
+        }
+
+        // Handle imports
+        if trimmed.starts_with("import ") {
+            in_import = true;
+            import_buffer.clear();
+        }
+
+        if in_import {
+            import_buffer.push_str(line);
+            import_buffer.push('\n');
+            if trimmed.ends_with(';') || (trimmed.contains(" from ") && !trimmed.ends_with(',')) {
+                user_imports.push(import_buffer.clone());
+                in_import = false;
+            }
+        } else if !trimmed.is_empty() && !is_macro_call_line(trimmed) {
+            setup_lines.push(line.to_string());
+        }
+    }
+
+    // User imports (with blank line after template imports)
+    for import in &user_imports {
+        if let Some(processed) = process_import_for_types(import) {
+            if !processed.is_empty() {
+                output.push_str(&processed);
+            }
+        }
+    }
+
+    // Start export default (blank line before)
+    output.push('\n');
+    output.push_str("export default {\n");
+    output.push_str("  __name: '");
+    output.push_str(component_name);
+    output.push_str("',\n");
+
+    // Props definition
+    if let Some(ref props_macro) = ctx.macros.define_props {
+        if !props_macro.args.is_empty() {
+            output.push_str("  props: ");
+            output.push_str(&props_macro.args);
+            output.push_str(",\n");
+        }
+    }
+
+    // Emits definition
+    if let Some(ref emits_macro) = ctx.macros.define_emits {
+        if !emits_macro.args.is_empty() {
+            output.push_str("  emits: ");
+            output.push_str(&emits_macro.args);
+            output.push_str(",\n");
+        }
+    }
+
+    // Setup function
+    output.push_str("  setup(__props) {\n");
+
+    // Emit binding: const emit = __emit
+    if let Some(ref emits_macro) = ctx.macros.define_emits {
+        if let Some(ref binding_name) = emits_macro.binding_name {
+            output.push_str("const ");
+            output.push_str(binding_name);
+            output.push_str(" = __emit\n");
+        }
+    }
+
+    // Setup code body
+    if !setup_lines.is_empty() {
+        output.push('\n');
+        for line in &setup_lines {
+            output.push_str(line);
+            output.push('\n');
+        }
+    }
+
+    // Inline render function as return
+    output.push('\n');
+    if !render_body.is_empty() {
+        output.push_str("return (_ctx, _cache) => {\n");
+        output.push_str("  return ");
+        output.push_str(render_body);
+        output.push('\n');
+        output.push_str("}\n");
+    }
+
+    output.push_str("}\n");
+    output.push('\n');
+    output.push_str("}\n");
+
+    // Transform TypeScript if needed
+    let final_code = if is_ts {
+        transform_typescript_to_js(&output)
+    } else {
+        output
+    };
+
+    Ok(ScriptCompileResult {
+        code: final_code,
+        bindings: Some(ctx.bindings),
+    })
+}
+
 /// Compile script block(s)
+#[allow(dead_code)]
 fn compile_script(
     descriptor: &SfcDescriptor,
     _options: &ScriptCompileOptions,
@@ -202,6 +548,7 @@ fn compile_script(
 }
 
 /// Compile script setup content following Vue.js core format
+#[allow(dead_code)]
 fn compile_script_setup(
     content: &str,
     component_name: &str,
@@ -828,6 +1175,7 @@ fn process_import_for_types(import: &str) -> Option<String> {
 }
 
 /// Extract all identifiers from an import statement (including default imports)
+#[allow(dead_code)]
 fn extract_import_identifiers(import: &str) -> Vec<String> {
     let import = import.trim();
     let mut identifiers = Vec::new();
@@ -1013,6 +1361,7 @@ fn is_props_destructure_line(line: &str) -> bool {
 }
 
 /// Prop type information
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct PropTypeInfo {
     /// JavaScript type constructor name (String, Number, Boolean, Array, Object, Function)
@@ -1022,6 +1371,7 @@ struct PropTypeInfo {
 }
 
 /// Extract prop types from TypeScript type definition
+#[allow(dead_code)]
 fn extract_prop_types_from_type(
     type_args: &str,
 ) -> std::collections::HashMap<String, PropTypeInfo> {
@@ -1060,6 +1410,7 @@ fn extract_prop_types_from_type(
     props
 }
 
+#[allow(dead_code)]
 fn extract_prop_type_info(
     segment: &str,
     props: &mut std::collections::HashMap<String, PropTypeInfo>,
@@ -1085,6 +1436,7 @@ fn extract_prop_type_info(
 }
 
 /// Convert TypeScript type to JavaScript type constructor
+#[allow(dead_code)]
 fn ts_type_to_js_type(ts_type: &str) -> String {
     let ts_type = ts_type.trim();
 
@@ -1130,6 +1482,7 @@ fn ts_type_to_js_type(ts_type: &str) -> String {
 }
 
 /// Extract emit names from TypeScript type definition
+#[allow(dead_code)]
 fn extract_emit_names_from_type(type_args: &str) -> Vec<String> {
     let mut emits = Vec::new();
 
@@ -1157,6 +1510,7 @@ fn extract_emit_names_from_type(type_args: &str) -> Vec<String> {
 }
 
 /// Check if a string is a valid JS identifier
+#[allow(dead_code)]
 fn is_valid_identifier(s: &str) -> bool {
     if s.is_empty() {
         return false;
@@ -1210,6 +1564,11 @@ fn compile_template_block(
     };
     dom_opts.ssr = options.ssr;
     dom_opts.is_ts = is_ts;
+
+    // For script setup, use inline mode (render function inside setup return)
+    if bindings.is_some() {
+        dom_opts.inline = true;
+    }
 
     // Pass binding metadata from script setup to template compiler
     if let Some(script_bindings) = bindings {

@@ -286,6 +286,13 @@ impl ScriptCompileContext {
                         .insert(id.name.to_string(), BindingType::SetupConst);
                 }
             }
+            Statement::ClassDeclaration(class) => {
+                if let Some(id) = &class.id {
+                    self.bindings
+                        .bindings
+                        .insert(id.name.to_string(), BindingType::SetupConst);
+                }
+            }
             Statement::ExpressionStatement(expr_stmt) => {
                 // Handle standalone macro calls like defineExpose({...})
                 if let Some(macro_call) = extract_macro_from_expr(&expr_stmt.expression, source) {

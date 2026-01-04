@@ -12,6 +12,7 @@ use vue_compiler_core::{
     parser::parse_with_options,
     transform::transform,
 };
+use vue_compiler_sfc::{compile_sfc, parse_sfc, SfcCompileOptions, SfcParseOptions};
 use vue_compiler_vapor::{compile_vapor, VaporCompilerOptions};
 
 /// Test fixture file
@@ -196,13 +197,30 @@ pub fn compile_vapor_template(input: &str, _options: &TestOptions) -> String {
     result.code
 }
 
+/// Compile SFC
+pub fn compile_sfc_template(input: &str, _options: &TestOptions) -> String {
+    let parse_opts = SfcParseOptions::default();
+    let descriptor = match parse_sfc(input, parse_opts) {
+        Ok(d) => d,
+        Err(_) => return String::new(),
+    };
+
+    // Use "test.vue" as the filename to match Vue's expected output
+    let mut compile_opts = SfcCompileOptions::default();
+    compile_opts.script.id = Some("test.vue".to_string());
+    match compile_sfc(&descriptor, compile_opts) {
+        Ok(result) => result.code,
+        Err(_) => String::new(),
+    }
+}
+
 /// Compile a template based on mode
 pub fn compile(input: &str, mode: CompilerMode, options: &TestOptions) -> String {
     let effective_mode = options.mode.unwrap_or(mode);
     match effective_mode {
         CompilerMode::Vdom => compile_vdom(input, options),
         CompilerMode::Vapor => compile_vapor_template(input, options),
-        CompilerMode::Sfc => String::new(), // SFC not supported in this runner
+        CompilerMode::Sfc => compile_sfc_template(input, options),
     }
 }
 

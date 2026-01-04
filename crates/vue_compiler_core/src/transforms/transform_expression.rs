@@ -175,17 +175,36 @@ fn rewrite_expression(
             let mut collector = IdentifierCollector::new(ctx);
             collector.visit_expression(&expr);
 
+            // Combine prefix rewrites (from HashSet) with suffix rewrites
+            // Each rewrite is (position, prefix, suffix)
+            let mut all_rewrites: Vec<(usize, &str, &str)> = collector
+                .rewrites
+                .into_iter()
+                .map(|(pos, prefix)| (pos, prefix, ""))
+                .collect();
+
+            // Add suffix rewrites (suffixes come after the identifier)
+            for (pos, suffix) in collector.suffix_rewrites {
+                all_rewrites.push((pos, "", suffix));
+            }
+
             // Sort by position descending so we can replace from end to start
-            let mut rewrites: Vec<_> = collector.rewrites.into_iter().collect();
-            rewrites.sort_by(|a, b| b.0.cmp(&a.0));
+            all_rewrites.sort_by(|a, b| b.0.cmp(&a.0));
 
             // Apply rewrites
             let mut result = js_content.clone();
-            for (pos, prefix) in rewrites {
+            for (pos, prefix, suffix) in all_rewrites {
                 // Adjust position for the wrapping parenthesis we added
                 let adjusted_pos = pos.saturating_sub(1);
                 if adjusted_pos <= result.len() {
-                    result.insert_str(adjusted_pos, prefix);
+                    if !suffix.is_empty() {
+                        // Insert suffix at the end of identifier
+                        result.insert_str(adjusted_pos, suffix);
+                    }
+                    if !prefix.is_empty() {
+                        // Insert prefix at the start of identifier
+                        result.insert_str(adjusted_pos, prefix);
+                    }
                 }
             }
 
@@ -193,8 +212,15 @@ fn rewrite_expression(
         }
         Err(_) => {
             // Parse failed - fallback to simple identifier check
-            if is_simple_identifier(&js_content) && should_prefix_identifier(&js_content, ctx) {
-                ["_ctx.", &js_content].concat()
+            if is_simple_identifier(&js_content) {
+                if should_prefix_identifier(&js_content, ctx) {
+                    ["_ctx.", &js_content].concat()
+                } else if is_ref_binding_simple(&js_content, ctx) {
+                    // Add .value for refs in inline mode
+                    [&js_content, ".value"].concat()
+                } else {
+                    js_content
+                }
             } else {
                 js_content
             }
@@ -477,6 +503,8 @@ struct IdentifierCollector<'a, 'ctx> {
     local_scope: FxHashSet<String>,
     /// (position, prefix) pairs for rewrites
     rewrites: FxHashSet<(usize, &'static str)>,
+    /// (position, suffix) pairs for suffix rewrites (e.g., .value for refs)
+    suffix_rewrites: Vec<(usize, &'static str)>,
 }
 
 impl<'a, 'ctx> IdentifierCollector<'a, 'ctx> {
@@ -485,6 +513,7 @@ impl<'a, 'ctx> IdentifierCollector<'a, 'ctx> {
             ctx,
             local_scope: FxHashSet::default(),
             rewrites: FxHashSet::default(),
+            suffix_rewrites: Vec::new(),
         }
     }
 
@@ -496,6 +525,25 @@ impl<'a, 'ctx> IdentifierCollector<'a, 'ctx> {
 
         should_prefix_identifier(name, self.ctx)
     }
+
+    /// Check if an identifier is a ref that needs .value suffix
+    fn is_ref_binding(&self, name: &str) -> bool {
+        // Skip if in local scope
+        if self.local_scope.contains(name) {
+            return false;
+        }
+
+        // Check if this is an inline mode ref binding
+        if self.ctx.options.inline {
+            if let Some(bindings) = &self.ctx.options.binding_metadata {
+                if let Some(binding_type) = bindings.bindings.get(name) {
+                    // SetupRef needs .value access
+                    return matches!(binding_type, crate::options::BindingType::SetupRef);
+                }
+            }
+        }
+        false
+    }
 }
 
 impl<'a, 'ctx> Visit<'_> for IdentifierCollector<'a, 'ctx> {
@@ -504,6 +552,10 @@ impl<'a, 'ctx> Visit<'_> for IdentifierCollector<'a, 'ctx> {
         if self.should_prefix(name) {
             let prefix = get_identifier_prefix(self.ctx, name);
             self.rewrites.insert((ident.span.start as usize, prefix));
+        } else if self.is_ref_binding(name) {
+            // Add .value suffix for refs in inline mode
+            self.suffix_rewrites
+                .push((ident.span.end as usize, ".value"));
         }
     }
 
@@ -601,6 +653,18 @@ fn should_prefix_identifier(name: &str, ctx: &TransformContext<'_>) -> bool {
 fn get_identifier_prefix(_ctx: &TransformContext<'_>, _id: &str) -> &'static str {
     // In module mode with prefix_identifiers, use _ctx. prefix
     "_ctx."
+}
+
+/// Check if a simple identifier is a ref binding in inline mode
+fn is_ref_binding_simple(name: &str, ctx: &TransformContext<'_>) -> bool {
+    if ctx.options.inline {
+        if let Some(bindings) = &ctx.options.binding_metadata {
+            if let Some(binding_type) = bindings.bindings.get(name) {
+                return matches!(binding_type, crate::options::BindingType::SetupRef);
+            }
+        }
+    }
+    false
 }
 
 /// Check if string is a simple identifier

@@ -97,6 +97,7 @@ pub fn compile_template_with_options<'a>(
         scope_id: options.scope_id.clone(),
         ssr: options.ssr,
         is_ts: options.is_ts,
+        inline: options.inline,
         binding_metadata,
         ..Default::default()
     };
@@ -130,6 +131,7 @@ pub fn compile_template_with_options<'a>(
         source_map: options.source_map,
         ssr: options.ssr,
         is_ts: options.is_ts,
+        inline: options.inline,
         binding_metadata: codegen_binding_metadata,
         ..Default::default()
     };
