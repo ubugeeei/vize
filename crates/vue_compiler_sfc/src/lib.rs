@@ -1,10 +1,34 @@
 //! Vue Single File Component (.vue) compiler.
 //!
-//! This module provides parsing and compilation of Vue SFCs, including:
-//! - Template block parsing and compilation
-//! - Script/script setup processing
-//! - Style block processing with scoped CSS support
-//! - CSS compilation with LightningCSS
+//! This module provides parsing and compilation of Vue SFCs, following the
+//! Vue.js core structure:
+//!
+//! - `parse` - SFC parsing into descriptor blocks
+//! - `compile_script` - Script/script setup compilation
+//! - `compile_template` - Template block compilation (DOM and Vapor)
+//! - `compile` - Main SFC compilation orchestration
+//! - `style` - Style block compilation with scoped CSS
+//! - `css` - Low-level CSS compilation with LightningCSS
+//!
+//! # Example
+//!
+//! ```ignore
+//! use vue_compiler_sfc::{parse_sfc, compile_sfc, SfcParseOptions, SfcCompileOptions};
+//!
+//! let source = r#"
+//! <script setup>
+//! import { ref } from 'vue'
+//! const count = ref(0)
+//! </script>
+//! <template>
+//!   <button @click="count++">{{ count }}</button>
+//! </template>
+//! "#;
+//!
+//! let descriptor = parse_sfc(source, SfcParseOptions::default()).unwrap();
+//! let result = compile_sfc(&descriptor, SfcCompileOptions::default()).unwrap();
+//! println!("{}", result.code);
+//! ```
 
 #![allow(clippy::collapsible_match)]
 #![allow(clippy::type_complexity)]
@@ -13,13 +37,17 @@
 #![allow(clippy::field_reassign_with_default)]
 #![allow(clippy::only_used_in_recursion)]
 
+// Core modules - following Vue.js compiler-sfc structure
 pub mod compile;
+pub mod compile_script;
+pub mod compile_template;
 pub mod css;
 pub mod parse;
 pub mod script;
 pub mod style;
 pub mod types;
 
+// Re-exports for public API
 pub use compile::*;
 pub use css::{compile_css, compile_style_block, CssCompileOptions, CssCompileResult, CssTargets};
 pub use parse::*;
