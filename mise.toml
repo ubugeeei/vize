@@ -72,12 +72,20 @@ description = "Show vuec CLI help"
 run = "vuec --help"
 
 [tasks."cli:example"]
-description = "Example: Compile all .vue files in src/ to output/ directory"
-run = "vuec 'src/**/*.vue' -o output/"
+description = "Example: Compile all .vue files in current directory to . with stats summary"
+run = "vuec '**/*.vue' -o . -v"
+
+[tasks."cli:example-json"]
+description = "Example: Compile .vue files to JSON with summary stats"
+run = "vuec '**/*.vue' -o . -f json -v"
 
 [tasks."cli:example-ssr"]
-description = "Example: Compile .vue files in SSR mode as JSON"
-run = "vuec 'src/**/*.vue' -f json --ssr -v"
+description = "Example: Compile .vue files in SSR mode as JSON with stats"
+run = "vuec '**/*.vue' -o . -f json --ssr -v"
+
+[tasks."cli:example-stats"]
+description = "Example: Show only compilation stats (no output files)"
+run = "vuec '**/*.vue' -f stats -v"
 
 # =============================================================================
 # Test
