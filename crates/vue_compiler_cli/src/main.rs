@@ -6,7 +6,6 @@ use clap::{Parser, ValueEnum};
 use glob::glob;
 use rayon::prelude::*;
 use std::fs;
-use std::io::{self, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
@@ -29,13 +28,13 @@ enum OutputFormat {
 #[command(name = "vue-compiler")]
 #[command(about = "High-performance Vue SFC compiler", long_about = None)]
 struct Cli {
-    /// Glob pattern(s) to match .vue files
-    #[arg(required = true)]
+    /// Glob pattern(s) to match .vue files (default: ./**/*.vue)
+    #[arg(default_value = "./**/*.vue")]
     patterns: Vec<String>,
 
-    /// Output directory (if not specified, outputs to stdout)
-    #[arg(short, long)]
-    output: Option<PathBuf>,
+    /// Output directory (default: ./dist)
+    #[arg(short, long, default_value = "./dist")]
+    output: PathBuf,
 
     /// Output format
     #[arg(short, long, value_enum, default_value = "js")]
@@ -60,10 +59,13 @@ struct Cli {
 
 #[derive(Debug)]
 struct CompileStats {
+    #[allow(dead_code)]
     total_files: usize,
     success: AtomicUsize,
     failed: AtomicUsize,
+    #[allow(dead_code)]
     total_bytes: AtomicUsize,
+    #[allow(dead_code)]
     output_bytes: AtomicUsize,
 }
 
@@ -235,49 +237,33 @@ fn main() {
             // Just show stats, handled below
         }
         OutputFormat::Js | OutputFormat::Json => {
-            if let Some(ref output_dir) = cli.output {
-                // Write to output directory
-                fs::create_dir_all(output_dir).expect("Failed to create output directory");
+            // Create output directory
+            fs::create_dir_all(&cli.output).expect("Failed to create output directory");
 
-                for (path, output) in results.into_iter().flatten() {
-                    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("out");
-                    let ext = match cli.format {
-                        OutputFormat::Js => "js",
-                        OutputFormat::Json => "json",
-                        OutputFormat::Stats => unreachable!(),
-                    };
-                    let out_path = output_dir.join(format!("{}.{}", stem, ext));
+            for (path, output) in results.into_iter().flatten() {
+                let ext = match cli.format {
+                    OutputFormat::Js => "js",
+                    OutputFormat::Json => "json",
+                    OutputFormat::Stats => unreachable!(),
+                };
 
-                    let content = match cli.format {
-                        OutputFormat::Js => output.code,
-                        OutputFormat::Json => {
-                            serde_json::to_string_pretty(&output).unwrap_or_default()
-                        }
-                        OutputFormat::Stats => unreachable!(),
-                    };
+                // Preserve directory structure
+                let out_path = cli.output.join(path.with_extension(ext));
 
-                    fs::write(&out_path, content).unwrap_or_else(|e| {
-                        eprintln!("Failed to write {}: {}", out_path.display(), e);
-                    });
+                // Create parent directories if needed
+                if let Some(parent) = out_path.parent() {
+                    fs::create_dir_all(parent).expect("Failed to create output subdirectory");
                 }
-            } else {
-                // Write to stdout
-                let stdout = io::stdout();
-                let mut handle = stdout.lock();
 
-                for (path, output) in results.into_iter().flatten() {
-                    match cli.format {
-                        OutputFormat::Js => {
-                            writeln!(handle, "// {}", path.display()).ok();
-                            writeln!(handle, "{}", output.code).ok();
-                        }
-                        OutputFormat::Json => {
-                            serde_json::to_writer_pretty(&mut handle, &output).ok();
-                            writeln!(handle).ok();
-                        }
-                        OutputFormat::Stats => unreachable!(),
-                    }
-                }
+                let content = match cli.format {
+                    OutputFormat::Js => output.code,
+                    OutputFormat::Json => serde_json::to_string_pretty(&output).unwrap_or_default(),
+                    OutputFormat::Stats => unreachable!(),
+                };
+
+                fs::write(&out_path, content).unwrap_or_else(|e| {
+                    eprintln!("Failed to write {}: {}", out_path.display(), e);
+                });
             }
         }
     }
@@ -285,36 +271,23 @@ fn main() {
     // Print stats
     let success = stats.success.load(Ordering::Relaxed);
     let failed = stats.failed.load(Ordering::Relaxed);
-    let total_bytes = stats.total_bytes.load(Ordering::Relaxed);
-    let output_bytes = stats.output_bytes.load(Ordering::Relaxed);
 
-    eprintln!();
-    eprintln!("{}", "=".repeat(50));
-    eprintln!(" Compilation Complete");
-    eprintln!("{}", "=".repeat(50));
-    eprintln!();
-    eprintln!("  Files     : {} / {}", success, stats.total_files);
     if failed > 0 {
-        eprintln!("  Failed    : {}", failed);
+        eprintln!(
+            "✗ {} file(s) failed, {} compiled in {:.2}s",
+            failed,
+            success,
+            elapsed.as_secs_f64()
+        );
+    } else {
+        let file_word = if success == 1 { "file" } else { "files" };
+        eprintln!(
+            "✓ {} {} compiled in {:.2}s",
+            success,
+            file_word,
+            elapsed.as_secs_f64()
+        );
     }
-    eprintln!(
-        "  Input     : {:.2} MB",
-        total_bytes as f64 / 1024.0 / 1024.0
-    );
-    eprintln!(
-        "  Output    : {:.2} MB",
-        output_bytes as f64 / 1024.0 / 1024.0
-    );
-    eprintln!("  Time      : {:.2}s", elapsed.as_secs_f64());
-    eprintln!(
-        "  Throughput: {:.0} files/s",
-        success as f64 / elapsed.as_secs_f64()
-    );
-    eprintln!(
-        "            : {:.2} MB/s",
-        total_bytes as f64 / 1024.0 / 1024.0 / elapsed.as_secs_f64()
-    );
-    eprintln!();
 
     if failed > 0 {
         std::process::exit(1);
