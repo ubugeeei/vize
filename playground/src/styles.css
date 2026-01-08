@@ -304,7 +304,7 @@
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1;
-  background: var(--bg-tertiary) !important;
+  background: var(--bg-secondary) !important;
   border-radius: var(--radius-lg);
   padding: 16px !important;
   overflow: auto;
@@ -467,7 +467,7 @@
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1;
-  background: var(--bg-tertiary) !important;
+  background: var(--bg-secondary) !important;
   border-radius: var(--radius-lg);
   padding: 12px !important;
   overflow: auto;
@@ -517,7 +517,7 @@
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1;
-  background: var(--bg-tertiary) !important;
+  background: var(--bg-secondary) !important;
   border-radius: var(--radius-lg);
   padding: 16px !important;
   overflow: auto;
