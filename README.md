@@ -97,6 +97,7 @@ Some Vue 3.3+ features are not yet fully supported:
 ```bash
 mise install && mise run setup
 mise run build    # Build bindings
+mise run cli      # Enable to use `vize` cli command
 mise run test     # Run tests
 mise run cov      # Coverage report
 mise run dev      # Playground
