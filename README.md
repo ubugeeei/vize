@@ -76,6 +76,13 @@ Some Vue 3.3+ features are not yet fully supported:
 
 ### Recent Improvements
 
+- **TypeScript Type Stripping**: Full TypeScript syntax is now correctly stripped when transpiling to JavaScript, including:
+  - Function parameter type annotations: `(x: number) => ...` → `(x) => ...`
+  - Return type annotations: `(): string => ...` → `() => ...`
+  - Variable type annotations: `const foo: string = ...` → `const foo = ...`
+  - Generic type parameters: `ref<T>(...)` → `ref(...)`
+  - Interface and type alias declarations
+  - Complex types: `Record<string, unknown>`, union types, etc.
 - **TypeScript Interface Resolution**: `defineProps<Props>()` now correctly resolves interface and type alias references defined in the same file
 - **Props Destructure Defaults**: Default values in props destructure patterns are properly handled
 - **withDefaults Support**: `withDefaults(defineProps<Props>(), { ... })` works correctly with interface references

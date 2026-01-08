@@ -334,7 +334,7 @@ fn extract_normal_script_content(content: &str, source_is_ts: bool, output_is_ts
     use oxc_parser::Parser;
     use oxc_semantic::SemanticBuilder;
     use oxc_span::{GetSpan, SourceType};
-    use oxc_transformer::{TransformOptions, Transformer};
+    use oxc_transformer::{TransformOptions, Transformer, TypeScriptOptions};
 
     // Always parse as TypeScript if source is TypeScript
     let source_type = if source_is_ts {
@@ -407,7 +407,10 @@ fn extract_normal_script_content(content: &str, source_is_ts: bool, output_is_ts
                 let (symbols, scopes) = semantic_ret.semantic.into_symbol_table_and_scope_tree();
 
                 // Transform TypeScript to JavaScript
-                let transform_options = TransformOptions::default();
+                let transform_options = TransformOptions {
+                    typescript: TypeScriptOptions::default(),
+                    ..Default::default()
+                };
                 let transform_ret =
                     Transformer::new(&allocator2, std::path::Path::new(""), &transform_options)
                         .build_with_symbols_and_scopes(symbols, scopes, &mut program2);
@@ -611,6 +614,93 @@ function handlePresetChange(key: PresetKey) {}
         assert!(
             !result.code.contains(" as PresetKey"),
             "Should strip TypeScript 'as' from event handler. Got:\n{}",
+            result.code
+        );
+        // Should NOT contain function parameter type annotations
+        assert!(
+            !result.code.contains("key: PresetKey"),
+            "Should strip function parameter type annotation. Got:\n{}",
+            result.code
+        );
+        // Should NOT contain type alias
+        assert!(
+            !result.code.contains("type PresetKey"),
+            "Should strip type alias. Got:\n{}",
+            result.code
+        );
+    }
+
+    #[test]
+    fn test_typescript_function_types_stripped() {
+        let source = r#"<script setup lang="ts">
+interface Item {
+  id: number;
+  name: string;
+}
+
+const getNumberOfItems = (
+  items: Item[]
+): string => {
+  return items.length.toString();
+};
+
+const foo: string = "bar";
+const count: number = 42;
+
+function processData(data: Record<string, unknown>): void {
+  console.log(data);
+}
+</script>
+
+<template>
+  <div>{{ foo }}</div>
+</template>"#;
+
+        let descriptor =
+            parse_sfc(source, SfcParseOptions::default()).expect("Failed to parse SFC");
+        let opts = SfcCompileOptions::default();
+        let result = compile_sfc(&descriptor, opts).expect("Failed to compile SFC");
+
+        eprintln!("TypeScript function types output:\n{}", result.code);
+
+        // Should NOT contain interface
+        assert!(
+            !result.code.contains("interface Item"),
+            "Should strip interface. Got:\n{}",
+            result.code
+        );
+        // Should NOT contain parameter type annotations
+        assert!(
+            !result.code.contains(": Item[]"),
+            "Should strip array type annotation. Got:\n{}",
+            result.code
+        );
+        assert!(
+            !result.code.contains("): string"),
+            "Should strip return type annotation. Got:\n{}",
+            result.code
+        );
+        // Should NOT contain variable type annotations
+        assert!(
+            !result.code.contains("foo: string"),
+            "Should strip variable type annotation. Got:\n{}",
+            result.code
+        );
+        assert!(
+            !result.code.contains("count: number"),
+            "Should strip variable type annotation. Got:\n{}",
+            result.code
+        );
+        // Should NOT contain Record type
+        assert!(
+            !result.code.contains("Record<string, unknown>"),
+            "Should strip Record type. Got:\n{}",
+            result.code
+        );
+        // Should NOT contain void return type
+        assert!(
+            !result.code.contains("): void"),
+            "Should strip void return type. Got:\n{}",
             result.code
         );
     }

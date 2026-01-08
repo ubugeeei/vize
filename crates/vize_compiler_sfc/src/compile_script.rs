@@ -9,7 +9,7 @@ use oxc_codegen::Codegen;
 use oxc_parser::Parser;
 use oxc_semantic::SemanticBuilder;
 use oxc_span::SourceType;
-use oxc_transformer::{TransformOptions, Transformer};
+use oxc_transformer::{TransformOptions, Transformer, TypeScriptOptions};
 use vize_allocator::Bump;
 
 use crate::script::{
@@ -786,20 +786,27 @@ pub(crate) fn compile_script_setup_inline(
     // Convert arena Vec<u8> to String - SAFETY: we only push valid UTF-8
     let output_str = unsafe { String::from_utf8_unchecked(output.into_iter().collect()) };
 
-    // Transform TypeScript to JavaScript only for non-TypeScript output
-    // For TypeScript output, keep the code as-is
+    // Transform TypeScript to JavaScript
+    // is_ts here indicates whether to preserve TypeScript output (true) or transpile to JS (false)
+    // When is_ts = false, we always run the transform to strip any TypeScript syntax
+    // When is_ts = true, we keep the code as-is (preserve TypeScript)
     let transformed_code = if is_ts {
-        // Keep TypeScript as-is (no transformation)
+        // Preserve TypeScript output - no transformation
         output_str
     } else {
-        // Transform TypeScript syntax to JavaScript
+        // Transpile to JavaScript - always run transform to strip TypeScript syntax
         transform_typescript_to_js(&output_str)
     };
 
-    // Prepend preserved normal script content (type definitions, interfaces, etc.)
-    // This is added AFTER transformation to preserve TypeScript-only constructs
+    // Prepend preserved normal script content
+    // If transpiling to JS (is_ts = false), also transform the normal script content
     let final_code = if let Some(normal_script) = preserved_normal_script {
-        format!("{}\n\n{}", normal_script, transformed_code)
+        let transformed_normal = if is_ts {
+            normal_script
+        } else {
+            transform_typescript_to_js(&normal_script)
+        };
+        format!("{}\n\n{}", transformed_normal, transformed_code)
     } else {
         transformed_code
     };
@@ -838,7 +845,7 @@ pub(crate) fn compile_script(
         } else {
             code.push_str("\nconst __sfc__ = __default__\n");
         }
-        // Transform TypeScript to JavaScript using OXC if lang="ts"
+        // Transform TypeScript to JavaScript using OXC if source is TypeScript
         let final_code = if is_ts {
             transform_typescript_to_js(&code)
         } else {
@@ -1570,7 +1577,10 @@ pub(crate) fn transform_typescript_to_js(code: &str) -> String {
     let (symbols, scopes) = semantic_ret.semantic.into_symbol_table_and_scope_tree();
 
     // Transform TypeScript to JavaScript
-    let transform_options = TransformOptions::default();
+    let transform_options = TransformOptions {
+        typescript: TypeScriptOptions::default(),
+        ..Default::default()
+    };
     let ret = Transformer::new(&allocator, std::path::Path::new(""), &transform_options)
         .build_with_symbols_and_scopes(symbols, scopes, &mut program);
 
@@ -2512,6 +2522,53 @@ const count = ref(0)
         assert!(
             !result.code.contains("__expose("),
             "Should not have __expose call without defineExpose"
+        );
+    }
+
+    #[test]
+    fn test_transform_typescript_to_js_strips_types() {
+        let ts_code = r#"const getNumber = (x: number): string => {
+    return x.toString();
+}
+const foo: string = "bar";"#;
+        let result = transform_typescript_to_js(ts_code);
+        eprintln!("TypeScript transform result:\n{}", result);
+
+        // Should NOT contain type annotations
+        assert!(
+            !result.contains(": number"),
+            "Should strip parameter type annotation. Got:\n{}",
+            result
+        );
+        assert!(
+            !result.contains(": string"),
+            "Should strip return type and variable type annotations. Got:\n{}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_compile_script_setup_strips_typescript() {
+        let content = r#"
+const getNumberOfTeachers = (
+  items: Item[]
+): string => {
+  return items.length.toString();
+};
+"#;
+        let result = compile_script_setup(content, "Test", false, true, None).unwrap();
+        eprintln!("Compiled TypeScript output:\n{}", result.code);
+
+        // Should NOT contain type annotations
+        assert!(
+            !result.code.contains(": Item[]"),
+            "Should strip parameter type annotation. Got:\n{}",
+            result.code
+        );
+        assert!(
+            !result.code.contains("): string"),
+            "Should strip return type annotation. Got:\n{}",
+            result.code
         );
     }
 }

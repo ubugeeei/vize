@@ -11,6 +11,7 @@ use lightningcss::stylesheet::{ParserOptions, StyleSheet};
 #[cfg(feature = "native")]
 use lightningcss::targets::{Browsers, Targets};
 use serde::{Deserialize, Serialize};
+use vize_allocator::{Bump, BumpVec};
 
 use crate::types::SfcStyleBlock;
 
@@ -122,18 +123,16 @@ pub struct CssCompileResult {
 /// Compile CSS using LightningCSS (native feature enabled)
 #[cfg(feature = "native")]
 pub fn compile_css(css: &str, options: &CssCompileOptions) -> CssCompileResult {
-    let filename = options
-        .filename
-        .clone()
-        .unwrap_or_else(|| "style.css".to_string());
+    let bump = Bump::new();
+    let filename = options.filename.as_deref().unwrap_or("style.css");
 
     // Extract v-bind() expressions before parsing
-    let (processed_css, css_vars) = extract_and_transform_v_bind(css);
+    let (processed_css, css_vars) = extract_and_transform_v_bind(&bump, css);
 
     // Apply scoped transformation if needed
     let scoped_css = if options.scoped {
         if let Some(ref scope_id) = options.scope_id {
-            apply_scoped_css_lightningcss(&processed_css, scope_id)
+            apply_scoped_css(&bump, processed_css, scope_id)
         } else {
             processed_css
         }
@@ -149,13 +148,13 @@ pub fn compile_css(css: &str, options: &CssCompileOptions) -> CssCompileResult {
         .unwrap_or_default();
 
     // Parse and process CSS
-    let result = compile_css_internal(&scoped_css, &filename, options.minify, targets);
+    let (code, errors) = compile_css_internal(scoped_css, filename, options.minify, targets);
 
     CssCompileResult {
-        code: result.0,
+        code,
         map: None,
         css_vars,
-        errors: result.1,
+        errors,
         warnings: vec![],
     }
 }
@@ -163,13 +162,15 @@ pub fn compile_css(css: &str, options: &CssCompileOptions) -> CssCompileResult {
 /// Compile CSS (wasm fallback - no LightningCSS)
 #[cfg(not(feature = "native"))]
 pub fn compile_css(css: &str, options: &CssCompileOptions) -> CssCompileResult {
+    let bump = Bump::new();
+
     // Extract v-bind() expressions before parsing
-    let (processed_css, css_vars) = extract_and_transform_v_bind(css);
+    let (processed_css, css_vars) = extract_and_transform_v_bind(&bump, css);
 
     // Apply scoped transformation if needed
     let scoped_css = if options.scoped {
         if let Some(ref scope_id) = options.scope_id {
-            apply_scoped_css_lightningcss(&processed_css, scope_id)
+            apply_scoped_css(&bump, processed_css, scope_id)
         } else {
             processed_css
         }
@@ -178,7 +179,7 @@ pub fn compile_css(css: &str, options: &CssCompileOptions) -> CssCompileResult {
     };
 
     CssCompileResult {
-        code: scoped_css,
+        code: scoped_css.to_string(),
         map: None,
         css_vars,
         errors: vec![],
@@ -202,17 +203,21 @@ fn compile_css_internal(
     let mut stylesheet = match StyleSheet::parse(css, parser_options) {
         Ok(ss) => ss,
         Err(e) => {
-            return (css.to_string(), vec![format!("CSS parse error: {}", e)]);
+            let mut errors = Vec::with_capacity(1);
+            errors.push(format!("CSS parse error: {}", e));
+            return (css.to_string(), errors);
         }
     };
 
     // Minify if requested
     if minify {
         if let Err(e) = stylesheet.minify(lightningcss::stylesheet::MinifyOptions {
-            targets: targets,
+            targets,
             ..Default::default()
         }) {
-            return (css.to_string(), vec![format!("CSS minify error: {:?}", e)]);
+            let mut errors = Vec::with_capacity(1);
+            errors.push(format!("CSS minify error: {:?}", e));
+            return (css.to_string(), errors);
         }
     }
 
@@ -225,7 +230,11 @@ fn compile_css_internal(
 
     match stylesheet.to_css(printer_options) {
         Ok(result) => (result.code, vec![]),
-        Err(e) => (css.to_string(), vec![format!("CSS print error: {:?}", e)]),
+        Err(e) => {
+            let mut errors = Vec::with_capacity(1);
+            errors.push(format!("CSS print error: {:?}", e));
+            (css.to_string(), errors)
+        }
     }
 }
 
@@ -237,86 +246,123 @@ pub fn compile_style_block(style: &SfcStyleBlock, options: &CssCompileOptions) -
 }
 
 /// Extract v-bind() expressions and transform them to CSS variables
-fn extract_and_transform_v_bind(css: &str) -> (String, Vec<String>) {
+fn extract_and_transform_v_bind<'a>(bump: &'a Bump, css: &str) -> (&'a str, Vec<String>) {
+    let css_bytes = css.as_bytes();
     let mut vars = Vec::new();
-    let mut result = css.to_string();
-    let mut search_from = 0;
+    let mut result = BumpVec::with_capacity_in(css_bytes.len() * 2, bump);
+    let mut pos = 0;
 
-    while let Some(pos) = result[search_from..].find("v-bind(") {
-        let actual_pos = search_from + pos;
-        let start = actual_pos + 7;
+    while pos < css_bytes.len() {
+        if let Some(rel_pos) = find_bytes(&css_bytes[pos..], b"v-bind(") {
+            let actual_pos = pos + rel_pos;
+            let start = actual_pos + 7;
 
-        if let Some(end) = result[start..].find(')') {
-            let expr = result[start..start + end].trim();
-            // Remove quotes if present
-            let expr = expr.trim_matches(|c| c == '"' || c == '\'');
-            vars.push(expr.to_string());
+            if let Some(end) = find_byte(&css_bytes[start..], b')') {
+                // Copy everything before v-bind(
+                result.extend_from_slice(&css_bytes[pos..actual_pos]);
 
-            // Transform v-bind(expr) to var(--hash-expr)
-            let var_name = format!("--{}", hash_v_bind_var(expr));
-            let replacement = format!("var({})", var_name);
-            result = format!(
-                "{}{}{}",
-                &result[..actual_pos],
-                replacement,
-                &result[start + end + 1..]
-            );
+                // Extract expression
+                let expr_bytes = &css_bytes[start..start + end];
+                let expr_str = unsafe { std::str::from_utf8_unchecked(expr_bytes) }.trim();
+                let expr_str = expr_str.trim_matches(|c| c == '"' || c == '\'');
+                vars.push(expr_str.to_string());
 
-            search_from = actual_pos + replacement.len();
+                // Generate hash and write var(--hash-expr)
+                result.extend_from_slice(b"var(--");
+                write_v_bind_hash(&mut result, expr_str);
+                result.push(b')');
+
+                pos = start + end + 1;
+            } else {
+                result.extend_from_slice(&css_bytes[pos..]);
+                break;
+            }
         } else {
+            result.extend_from_slice(&css_bytes[pos..]);
             break;
         }
     }
 
-    (result, vars)
+    // SAFETY: input is valid UTF-8, we only add ASCII bytes
+    let result_str = unsafe { std::str::from_utf8_unchecked(bump.alloc_slice_copy(&result)) };
+    (result_str, vars)
 }
 
-/// Hash a v-bind variable name for CSS variable
-fn hash_v_bind_var(expr: &str) -> String {
-    // Simple hash - in production, this should match Vue's hashing
+/// Write v-bind variable hash to output
+fn write_v_bind_hash(out: &mut BumpVec<u8>, expr: &str) {
     let hash: u32 = expr
         .bytes()
         .fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u32));
-    format!(
-        "{:08x}-{}",
-        hash,
-        expr.replace(['.', '[', ']', '(', ')'], "_")
-    )
+
+    // Write hash as hex
+    write_hex_u32(out, hash);
+    out.push(b'-');
+
+    // Write sanitized expression
+    for b in expr.bytes() {
+        match b {
+            b'.' | b'[' | b']' | b'(' | b')' => out.push(b'_'),
+            _ => out.push(b),
+        }
+    }
 }
 
-/// Apply scoped CSS transformation using string manipulation
-/// (LightningCSS doesn't have built-in scoping, so we do it manually)
-fn apply_scoped_css_lightningcss(css: &str, scope_id: &str) -> String {
-    let attr_selector = format!("[{}]", scope_id);
-    let mut output = String::with_capacity(css.len() * 2);
-    let mut chars = css.chars().peekable();
+/// Write u32 as 8-digit hex
+fn write_hex_u32(out: &mut BumpVec<u8>, val: u32) {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    out.push(HEX[((val >> 28) & 0xF) as usize]);
+    out.push(HEX[((val >> 24) & 0xF) as usize]);
+    out.push(HEX[((val >> 20) & 0xF) as usize]);
+    out.push(HEX[((val >> 16) & 0xF) as usize]);
+    out.push(HEX[((val >> 12) & 0xF) as usize]);
+    out.push(HEX[((val >> 8) & 0xF) as usize]);
+    out.push(HEX[((val >> 4) & 0xF) as usize]);
+    out.push(HEX[(val & 0xF) as usize]);
+}
+
+/// Apply scoped CSS transformation
+fn apply_scoped_css<'a>(bump: &'a Bump, css: &str, scope_id: &str) -> &'a str {
+    let css_bytes = css.as_bytes();
+
+    // Build attr_selector: [scope_id]
+    let mut attr_selector = BumpVec::with_capacity_in(scope_id.len() + 2, bump);
+    attr_selector.push(b'[');
+    attr_selector.extend_from_slice(scope_id.as_bytes());
+    attr_selector.push(b']');
+    let attr_selector = bump.alloc_slice_copy(&attr_selector);
+
+    let mut output = BumpVec::with_capacity_in(css_bytes.len() * 2, bump);
+    let mut chars = css.char_indices().peekable();
     let mut in_selector = true;
     let mut in_string = false;
-    let mut string_char = '"';
+    let mut string_char = b'"';
     let mut in_comment = false;
-    let mut brace_depth = 0;
-    let mut last_selector_end = 0;
-    let mut current = String::new();
+    let mut brace_depth = 0u32;
+    let mut last_selector_end = 0usize;
     let mut in_at_rule = false;
-    let mut at_rule_depth = 0;
+    let mut at_rule_depth = 0u32;
 
-    while let Some(c) = chars.next() {
-        current.push(c);
-
+    while let Some((i, c)) = chars.next() {
         if in_comment {
-            if c == '*' && chars.peek() == Some(&'/') {
-                current.push(chars.next().unwrap());
-                in_comment = false;
+            if c == '*' {
+                if let Some(&(_, '/')) = chars.peek() {
+                    chars.next();
+                    in_comment = false;
+                }
             }
             continue;
         }
 
         if in_string {
-            if c == string_char && !current.ends_with("\\\"") && !current.ends_with("\\'") {
-                in_string = false;
+            if c as u8 == string_char {
+                // Check for escape
+                let prev_byte = if i > 0 { css_bytes[i - 1] } else { 0 };
+                if prev_byte != b'\\' {
+                    in_string = false;
+                }
             }
             if !in_selector {
-                output.push(c);
+                output.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes());
             }
             continue;
         }
@@ -324,212 +370,230 @@ fn apply_scoped_css_lightningcss(css: &str, scope_id: &str) -> String {
         match c {
             '"' | '\'' => {
                 in_string = true;
-                string_char = c;
+                string_char = c as u8;
                 if !in_selector {
-                    output.push(c);
+                    output.push(c as u8);
                 }
             }
-            '/' if chars.peek() == Some(&'*') => {
-                current.push(chars.next().unwrap());
-                in_comment = true;
+            '/' => {
+                if let Some(&(_, '*')) = chars.peek() {
+                    chars.next();
+                    in_comment = true;
+                } else if !in_selector {
+                    output.push(b'/');
+                }
             }
             '@' => {
                 in_at_rule = true;
-                output.push(c);
+                output.push(b'@');
             }
             '{' => {
                 brace_depth += 1;
                 if in_at_rule {
                     at_rule_depth = brace_depth;
                     in_at_rule = false;
-                    output.push(c);
-                } else if in_selector && brace_depth == 1 {
+                    output.push(b'{');
+                } else if in_selector && (brace_depth == 1 || brace_depth > at_rule_depth) {
                     // End of selector, apply scope
-                    let selector_part = &current[last_selector_end..current.len() - 1];
-                    output.push_str(&scope_selector(selector_part.trim(), &attr_selector));
-                    output.push('{');
+                    let selector_bytes = &css_bytes[last_selector_end..i];
+                    let selector_str =
+                        unsafe { std::str::from_utf8_unchecked(selector_bytes) }.trim();
+                    scope_selector(&mut output, selector_str, attr_selector);
+                    output.push(b'{');
                     in_selector = false;
-                    last_selector_end = current.len();
-                } else if in_selector && brace_depth > at_rule_depth {
-                    // Nested rule selector
-                    let selector_part = &current[last_selector_end..current.len() - 1];
-                    output.push_str(&scope_selector(selector_part.trim(), &attr_selector));
-                    output.push('{');
-                    in_selector = false;
-                    last_selector_end = current.len();
+                    last_selector_end = i + 1;
                 } else {
-                    output.push(c);
+                    output.push(b'{');
                 }
             }
             '}' => {
-                brace_depth -= 1;
-                output.push(c);
+                brace_depth = brace_depth.saturating_sub(1);
+                output.push(b'}');
                 if brace_depth == 0 || (at_rule_depth > 0 && brace_depth == at_rule_depth - 1) {
                     in_selector = true;
-                    last_selector_end = current.len();
+                    last_selector_end = i + 1;
                     if brace_depth < at_rule_depth {
                         at_rule_depth = 0;
                     }
                 }
             }
             _ if in_selector => {
-                // Still building selector
+                // Still building selector, don't output yet
             }
             _ => {
-                output.push(c);
+                output.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes());
             }
         }
     }
 
     // Handle any remaining content
-    if !current[last_selector_end..].is_empty() && in_selector {
-        output.push_str(&current[last_selector_end..]);
+    if in_selector && last_selector_end < css_bytes.len() {
+        output.extend_from_slice(&css_bytes[last_selector_end..]);
     }
 
-    output
+    // SAFETY: input is valid UTF-8, we only add ASCII bytes
+    unsafe { std::str::from_utf8_unchecked(bump.alloc_slice_copy(&output)) }
 }
 
 /// Add scope attribute to a selector
-fn scope_selector(selector: &str, attr_selector: &str) -> String {
+fn scope_selector(out: &mut BumpVec<u8>, selector: &str, attr_selector: &[u8]) {
     if selector.is_empty() {
-        return selector.to_string();
+        return;
     }
 
     // Handle at-rules that don't have selectors
     if selector.starts_with('@') {
-        return selector.to_string();
+        out.extend_from_slice(selector.as_bytes());
+        return;
     }
 
     // Handle multiple selectors separated by comma
-    selector
-        .split(',')
-        .map(|s| scope_single_selector(s.trim(), attr_selector))
-        .collect::<Vec<_>>()
-        .join(", ")
+    let mut first = true;
+    for part in selector.split(',') {
+        if !first {
+            out.extend_from_slice(b", ");
+        }
+        first = false;
+        scope_single_selector(out, part.trim(), attr_selector);
+    }
 }
 
 /// Add scope attribute to a single selector
-fn scope_single_selector(selector: &str, attr_selector: &str) -> String {
+fn scope_single_selector(out: &mut BumpVec<u8>, selector: &str, attr_selector: &[u8]) {
     if selector.is_empty() {
-        return selector.to_string();
+        return;
     }
 
     // Handle :deep(), :slotted(), :global()
-    if selector.contains(":deep(") {
-        return transform_deep(selector, attr_selector);
+    if let Some(pos) = selector.find(":deep(") {
+        transform_deep(out, selector, pos, attr_selector);
+        return;
     }
 
-    if selector.contains(":slotted(") {
-        return transform_slotted(selector, attr_selector);
+    if let Some(pos) = selector.find(":slotted(") {
+        transform_slotted(out, selector, pos, attr_selector);
+        return;
     }
 
-    if selector.contains(":global(") {
-        return transform_global(selector);
+    if let Some(pos) = selector.find(":global(") {
+        transform_global(out, selector, pos);
+        return;
     }
 
     // Find the last simple selector to append the attribute
     let parts: Vec<&str> = selector.split_whitespace().collect();
     if parts.is_empty() {
-        return selector.to_string();
+        out.extend_from_slice(selector.as_bytes());
+        return;
     }
 
     // Add scope to the last part
-    let mut result = String::new();
     for (i, part) in parts.iter().enumerate() {
         if i > 0 {
-            result.push(' ');
+            out.push(b' ');
         }
 
         if i == parts.len() - 1 {
             // Last part - add scope
-            result.push_str(&add_scope_to_element(part, attr_selector));
+            add_scope_to_element(out, part, attr_selector);
         } else {
-            result.push_str(part);
+            out.extend_from_slice(part.as_bytes());
         }
     }
-
-    result
 }
 
 /// Add scope attribute to an element selector
-fn add_scope_to_element(selector: &str, attr_selector: &str) -> String {
+fn add_scope_to_element(out: &mut BumpVec<u8>, selector: &str, attr_selector: &[u8]) {
+    let bytes = selector.as_bytes();
+
     // Handle pseudo-elements (::before, ::after, etc.)
-    if let Some(pseudo_pos) = selector.find("::") {
-        let (before, after) = selector.split_at(pseudo_pos);
-        return format!("{}{}{}", before, attr_selector, after);
+    if let Some(pseudo_pos) = find_bytes(bytes, b"::") {
+        out.extend_from_slice(&bytes[..pseudo_pos]);
+        out.extend_from_slice(attr_selector);
+        out.extend_from_slice(&bytes[pseudo_pos..]);
+        return;
     }
 
     // Handle pseudo-classes (:hover, :focus, etc.)
-    if let Some(pseudo_pos) = selector.rfind(':') {
-        let before = &selector[..pseudo_pos];
-        if !before.is_empty() && !before.ends_with('\\') {
-            let after = &selector[pseudo_pos..];
-            return format!("{}{}{}", before, attr_selector, after);
+    if let Some(pseudo_pos) = rfind_byte(bytes, b':') {
+        if pseudo_pos > 0 && bytes[pseudo_pos - 1] != b'\\' {
+            out.extend_from_slice(&bytes[..pseudo_pos]);
+            out.extend_from_slice(attr_selector);
+            out.extend_from_slice(&bytes[pseudo_pos..]);
+            return;
         }
     }
 
-    format!("{}{}", selector, attr_selector)
+    out.extend_from_slice(bytes);
+    out.extend_from_slice(attr_selector);
 }
 
 /// Transform :deep() to descendant selector
-fn transform_deep(selector: &str, attr_selector: &str) -> String {
-    if let Some(start) = selector.find(":deep(") {
-        let before = &selector[..start];
-        let after = &selector[start + 6..];
+fn transform_deep(out: &mut BumpVec<u8>, selector: &str, start: usize, attr_selector: &[u8]) {
+    let before = &selector[..start];
+    let after = &selector[start + 6..];
 
-        if let Some(end) = find_matching_paren(after) {
-            let inner = &after[..end];
-            let rest = &after[end + 1..];
+    if let Some(end) = find_matching_paren(after) {
+        let inner = &after[..end];
+        let rest = &after[end + 1..];
 
-            let scoped_before = if before.is_empty() {
-                attr_selector.to_string()
-            } else {
-                format!("{}{}", before.trim(), attr_selector)
-            };
-
-            return format!("{} {}{}", scoped_before, inner, rest);
+        if before.is_empty() {
+            out.extend_from_slice(attr_selector);
+        } else {
+            out.extend_from_slice(before.trim().as_bytes());
+            out.extend_from_slice(attr_selector);
         }
+        out.push(b' ');
+        out.extend_from_slice(inner.as_bytes());
+        out.extend_from_slice(rest.as_bytes());
+    } else {
+        out.extend_from_slice(selector.as_bytes());
     }
-
-    selector.to_string()
 }
 
 /// Transform :slotted() for slot content
-fn transform_slotted(selector: &str, attr_selector: &str) -> String {
-    if let Some(start) = selector.find(":slotted(") {
-        let after = &selector[start + 9..];
+fn transform_slotted(out: &mut BumpVec<u8>, selector: &str, start: usize, attr_selector: &[u8]) {
+    let after = &selector[start + 9..];
 
-        if let Some(end) = find_matching_paren(after) {
-            let inner = &after[..end];
-            let rest = &after[end + 1..];
+    if let Some(end) = find_matching_paren(after) {
+        let inner = &after.as_bytes()[..end];
+        let rest = &after.as_bytes()[end + 1..];
 
-            return format!("{}{}-s{}", inner, attr_selector, rest);
+        out.extend_from_slice(inner);
+        // Convert [data-v-xxx] to [data-v-xxx-s] for slotted styles
+        if attr_selector.last() == Some(&b']') {
+            out.extend_from_slice(&attr_selector[..attr_selector.len() - 1]);
+            out.extend_from_slice(b"-s]");
+        } else {
+            out.extend_from_slice(attr_selector);
+            out.extend_from_slice(b"-s");
         }
+        out.extend_from_slice(rest);
+    } else {
+        out.extend_from_slice(selector.as_bytes());
     }
-
-    selector.to_string()
 }
 
 /// Transform :global() to unscoped
-fn transform_global(selector: &str) -> String {
-    if let Some(start) = selector.find(":global(") {
-        let before = &selector[..start];
-        let after = &selector[start + 8..];
+fn transform_global(out: &mut BumpVec<u8>, selector: &str, start: usize) {
+    let before = &selector[..start];
+    let after = &selector[start + 8..];
 
-        if let Some(end) = find_matching_paren(after) {
-            let inner = &after[..end];
-            let rest = &after[end + 1..];
+    if let Some(end) = find_matching_paren(after) {
+        let inner = &after[..end];
+        let rest = &after[end + 1..];
 
-            return format!("{}{}{}", before, inner, rest);
-        }
+        out.extend_from_slice(before.as_bytes());
+        out.extend_from_slice(inner.as_bytes());
+        out.extend_from_slice(rest.as_bytes());
+    } else {
+        out.extend_from_slice(selector.as_bytes());
     }
-
-    selector.to_string()
 }
 
 /// Find the matching closing parenthesis
 fn find_matching_paren(s: &str) -> Option<usize> {
-    let mut depth = 1;
+    let mut depth = 1u32;
     for (i, c) in s.char_indices() {
         match c {
             '(' => depth += 1,
@@ -543,6 +607,24 @@ fn find_matching_paren(s: &str) -> Option<usize> {
         }
     }
     None
+}
+
+/// Find byte sequence in slice
+#[inline]
+fn find_bytes(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    haystack.windows(needle.len()).position(|w| w == needle)
+}
+
+/// Find single byte in slice
+#[inline]
+fn find_byte(haystack: &[u8], needle: u8) -> Option<usize> {
+    haystack.iter().position(|&b| b == needle)
+}
+
+/// Reverse find single byte in slice
+#[inline]
+fn rfind_byte(haystack: &[u8], needle: u8) -> Option<usize> {
+    haystack.iter().rposition(|&b| b == needle)
 }
 
 #[cfg(test)]
@@ -591,8 +673,9 @@ mod tests {
 
     #[test]
     fn test_v_bind_extraction() {
+        let bump = Bump::new();
         let css = ".foo { color: v-bind(color); background: v-bind('bgColor'); }";
-        let (transformed, vars) = extract_and_transform_v_bind(css);
+        let (transformed, vars) = extract_and_transform_v_bind(&bump, css);
         assert_eq!(vars.len(), 2);
         assert!(vars.contains(&"color".to_string()));
         assert!(vars.contains(&"bgColor".to_string()));
@@ -601,31 +684,64 @@ mod tests {
 
     #[test]
     fn test_scope_deep() {
-        let result = transform_deep(":deep(.child)", "[data-v-123]");
+        let bump = Bump::new();
+        let mut out = BumpVec::new_in(&bump);
+        transform_deep(&mut out, ":deep(.child)", 0, b"[data-v-123]");
+        let result = unsafe { std::str::from_utf8_unchecked(&out) };
         assert_eq!(result, "[data-v-123] .child");
     }
 
     #[test]
     fn test_scope_global() {
-        let result = transform_global(":global(.foo)");
+        let bump = Bump::new();
+        let mut out = BumpVec::new_in(&bump);
+        transform_global(&mut out, ":global(.foo)", 0);
+        let result = unsafe { std::str::from_utf8_unchecked(&out) };
         assert_eq!(result, ".foo");
     }
 
     #[test]
     fn test_scope_slotted() {
-        let result = transform_slotted(":slotted(.child)", "[data-v-123]");
-        assert_eq!(result, ".child[data-v-123]-s");
+        let bump = Bump::new();
+        let mut out = BumpVec::new_in(&bump);
+        transform_slotted(&mut out, ":slotted(.child)", 0, b"[data-v-123]");
+        let result = unsafe { std::str::from_utf8_unchecked(&out) };
+        assert_eq!(result, ".child[data-v-123-s]");
+    }
+
+    #[test]
+    fn test_scope_slotted_with_pseudo() {
+        let bump = Bump::new();
+        let mut out = BumpVec::new_in(&bump);
+        transform_slotted(&mut out, ":slotted(.child):hover", 0, b"[data-v-abc]");
+        let result = unsafe { std::str::from_utf8_unchecked(&out) };
+        assert_eq!(result, ".child[data-v-abc-s]:hover");
+    }
+
+    #[test]
+    fn test_scope_slotted_complex() {
+        let bump = Bump::new();
+        let mut out = BumpVec::new_in(&bump);
+        transform_slotted(&mut out, ":slotted(div.foo)", 0, b"[data-v-12345678]");
+        let result = unsafe { std::str::from_utf8_unchecked(&out) };
+        assert_eq!(result, "div.foo[data-v-12345678-s]");
     }
 
     #[test]
     fn test_scope_with_pseudo_element() {
-        let result = add_scope_to_element(".foo::before", "[data-v-123]");
+        let bump = Bump::new();
+        let mut out = BumpVec::new_in(&bump);
+        add_scope_to_element(&mut out, ".foo::before", b"[data-v-123]");
+        let result = unsafe { std::str::from_utf8_unchecked(&out) };
         assert_eq!(result, ".foo[data-v-123]::before");
     }
 
     #[test]
     fn test_scope_with_pseudo_class() {
-        let result = add_scope_to_element(".foo:hover", "[data-v-123]");
+        let bump = Bump::new();
+        let mut out = BumpVec::new_in(&bump);
+        add_scope_to_element(&mut out, ".foo:hover", b"[data-v-123]");
+        let result = unsafe { std::str::from_utf8_unchecked(&out) };
         assert_eq!(result, ".foo[data-v-123]:hover");
     }
 
@@ -671,9 +787,10 @@ mod tests {
 
     #[test]
     fn test_apply_scoped_css_with_quoted_string() {
+        let bump = Bump::new();
         // Test the raw scoping function without LightningCSS
         let css = ".foo { font-family: 'JetBrains Mono', monospace; }";
-        let result = apply_scoped_css_lightningcss(css, "data-v-123");
+        let result = apply_scoped_css(&bump, css, "data-v-123");
         println!("Scoped result: {}", result);
         assert!(
             result.contains("'JetBrains Mono'"),
