@@ -16,8 +16,6 @@ export default defineComponent({
   },
   setup(__props) {
 
-  }
-}>()
 
 return (_ctx, _cache) => {
   return (_openBlock(), _createElementBlock("div", null, _toDisplayString(__props.config.state), 1 /* TEXT */))

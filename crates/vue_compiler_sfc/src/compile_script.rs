@@ -142,8 +142,10 @@ pub(crate) fn compile_script_setup_inline(
 
         // Handle multi-line macro calls
         if in_macro_call {
-            macro_angle_depth += trimmed.matches('<').count() as i32;
-            macro_angle_depth -= trimmed.matches('>').count() as i32;
+            // Count angle brackets but ignore => (arrow functions)
+            let line_no_arrow = trimmed.replace("=>", "");
+            macro_angle_depth += line_no_arrow.matches('<').count() as i32;
+            macro_angle_depth -= line_no_arrow.matches('>').count() as i32;
             if macro_angle_depth <= 0 && (trimmed.contains("()") || trimmed.ends_with(')')) {
                 in_macro_call = false;
             }
@@ -162,9 +164,10 @@ pub(crate) fn compile_script_setup_inline(
         if waiting_for_macro_close {
             destructure_buffer.push_str(line);
             destructure_buffer.push('\n');
-            // Track angle brackets for type args
-            macro_angle_depth += trimmed.matches('<').count() as i32;
-            macro_angle_depth -= trimmed.matches('>').count() as i32;
+            // Track angle brackets for type args (ignore => arrow functions)
+            let line_no_arrow = trimmed.replace("=>", "");
+            macro_angle_depth += line_no_arrow.matches('<').count() as i32;
+            macro_angle_depth -= line_no_arrow.matches('>').count() as i32;
             if macro_angle_depth <= 0 && (trimmed.ends_with("()") || trimmed.ends_with(')')) {
                 waiting_for_macro_close = false;
                 destructure_buffer.clear();
@@ -175,11 +178,12 @@ pub(crate) fn compile_script_setup_inline(
         if in_destructure {
             destructure_buffer.push_str(line);
             destructure_buffer.push('\n');
-            // Track both braces and angle brackets for type args
+            // Track both braces and angle brackets for type args (ignore => arrow functions)
+            let line_no_arrow = trimmed.replace("=>", "");
             brace_depth += trimmed.matches('{').count() as i32;
             brace_depth -= trimmed.matches('}').count() as i32;
-            macro_angle_depth += trimmed.matches('<').count() as i32;
-            macro_angle_depth -= trimmed.matches('>').count() as i32;
+            macro_angle_depth += line_no_arrow.matches('<').count() as i32;
+            macro_angle_depth -= line_no_arrow.matches('>').count() as i32;
             // Only consider closed when BOTH braces and angle brackets are balanced
             // and we have the closing parentheses
             if brace_depth <= 0 && macro_angle_depth <= 0 {
@@ -362,12 +366,16 @@ pub(crate) fn compile_script_setup_inline(
                     + trimmed.matches('(').count() as i32
                     - trimmed.matches(')').count() as i32;
                 // Check if complete on one line
+                // A type is NOT complete if:
+                // - brackets/parens aren't balanced (depth > 0)
+                // - line ends with continuation characters (|, &, ,, {, =)
                 if ts_type_depth <= 0
                     && (trimmed.ends_with(';')
                         || (!trimmed.ends_with('|')
                             && !trimmed.ends_with('&')
                             && !trimmed.ends_with(',')
-                            && !trimmed.ends_with('{')))
+                            && !trimmed.ends_with('{')
+                            && !trimmed.ends_with('=')))
                 {
                     // Single line type, just skip
                     continue;
@@ -892,8 +900,10 @@ pub(crate) fn compile_script_setup(
         if in_macro_call {
             macro_buffer.push_str(line);
             macro_buffer.push('\n');
-            macro_angle_depth += trimmed.matches('<').count() as i32;
-            macro_angle_depth -= trimmed.matches('>').count() as i32;
+            // Track angle brackets but ignore => (arrow functions)
+            let line_no_arrow = trimmed.replace("=>", "");
+            macro_angle_depth += line_no_arrow.matches('<').count() as i32;
+            macro_angle_depth -= line_no_arrow.matches('>').count() as i32;
 
             // Check if macro call is complete (angle brackets closed and has ())
             if macro_angle_depth <= 0 && (trimmed.contains("()") || trimmed.ends_with(')')) {
@@ -1838,11 +1848,19 @@ fn ts_type_to_js_type(ts_type: &str) -> String {
                 // Function type
                 "Function".to_string()
             } else {
-                // Default to the type name with first letter capitalized
-                let mut chars = ts_type.chars();
-                match chars.next() {
-                    Some(first) => first.to_uppercase().chain(chars).collect(),
-                    None => "Object".to_string(),
+                // Check if this is a built-in JavaScript constructor type
+                let type_name = ts_type.split('<').next().unwrap_or(ts_type).trim();
+                match type_name {
+                    // Built-in JavaScript types that exist at runtime
+                    "Date" | "RegExp" | "Error" | "Map" | "Set" | "WeakMap" | "WeakSet"
+                    | "Promise" | "ArrayBuffer" | "DataView" | "Int8Array" | "Uint8Array"
+                    | "Int16Array" | "Uint16Array" | "Int32Array" | "Uint32Array"
+                    | "Float32Array" | "Float64Array" | "BigInt64Array" | "BigUint64Array"
+                    | "URL" | "URLSearchParams" | "FormData" | "Blob" | "File" => {
+                        type_name.to_string()
+                    }
+                    // User-defined interface/type - use Object (types don't exist at runtime)
+                    _ => "Object".to_string(),
                 }
             }
         }

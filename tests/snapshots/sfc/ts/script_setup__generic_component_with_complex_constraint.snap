@@ -10,7 +10,7 @@ import { ref } from 'vue'
 export default defineComponent({
   name: 'test',
   props: {
-    initialState: { type: FormShape as PropType<FormShape>, required: true },
+    initialState: { type: Object as PropType<FormShape>, required: true },
     onSubmit: { type: Object as PropType<(data: FormShape) => void>, required: true },
   },
   setup(__props) {

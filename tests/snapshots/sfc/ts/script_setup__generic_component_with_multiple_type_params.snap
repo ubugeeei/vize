@@ -10,7 +10,7 @@ export default defineComponent({
   name: 'test',
   props: {
     items: { type: Array as PropType<T[]>, required: true },
-    keyField: { type: K as PropType<K>, required: true },
+    keyField: { type: Object as PropType<K>, required: true },
   },
   setup(__props) {
 

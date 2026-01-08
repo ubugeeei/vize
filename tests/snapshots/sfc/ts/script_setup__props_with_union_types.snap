@@ -9,11 +9,10 @@ import { openBlock as _openBlock, createElementBlock as _createElementBlock, toD
 export default defineComponent({
   name: 'test',
   props: {
-    variant: { type: ButtonVariant as PropType<ButtonVariant>, required: true },
+    variant: { type: Object as PropType<ButtonVariant>, required: true },
   },
   setup(__props) {
 
-  | { type: "link"; href: string }
   | { type: "button"; onClick: () => void }
 
 return (_ctx, _cache) => {

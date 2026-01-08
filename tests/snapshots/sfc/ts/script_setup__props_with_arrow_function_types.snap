@@ -15,9 +15,6 @@ export default defineComponent({
   },
   setup(__props) {
 
-  onError: (error: Error) => void
-  transform: (value: string) => number
-}>()
 
 return (_ctx, _cache) => {
   return (_openBlock(), _createElementBlock("div", null, "Component"))

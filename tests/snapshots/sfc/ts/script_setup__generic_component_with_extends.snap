@@ -10,7 +10,7 @@ export default defineComponent({
   name: 'test',
   props: {
     options: { type: Array as PropType<T[]>, required: true },
-    value: { type: T as PropType<T>, required: true },
+    value: { type: Object as PropType<T>, required: true },
   },
   setup(__props) {
 

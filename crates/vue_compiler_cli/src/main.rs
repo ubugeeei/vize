@@ -133,23 +133,40 @@ fn collect_files(patterns: &[String]) -> Vec<PathBuf> {
 
 /// Parse a glob pattern to extract the root directory and glob component
 fn parse_pattern(pattern: &str) -> (String, String) {
-    // Handle patterns like "./**/*.vue", "src/**/*.vue", etc.
-    if let Some(rest) = pattern.strip_prefix("./") {
-        // Find the first occurrence of * or ?
-        if let Some(pos) = rest.find(['*', '?']) {
-            // Everything before the first glob char is the root
-            let root_part = &rest[..pos];
-            // Find the last / before the glob char
-            if let Some(last_slash) = root_part.rfind('/') {
-                let root = format!("./{}", &root_part[..last_slash]);
-                return (root, pattern.to_string());
-            }
+    // Find the first occurrence of * or ?
+    if let Some(pos) = pattern.find(['*', '?']) {
+        // Everything before the first glob char is the root
+        let root_part = &pattern[..pos];
+        // Find the last / before the glob char
+        if let Some(last_slash) = root_part.rfind('/') {
+            let root = &pattern[..last_slash];
+            // Return empty string as "." if root is empty
+            let root = if root.is_empty() { "." } else { root };
+            return (root.to_string(), pattern.to_string());
         }
-
-        return (".".to_string(), pattern.to_string());
     }
 
-    // Default case
+    // No glob chars found - treat as a file or directory path
+    let path = std::path::Path::new(pattern);
+    if path.is_dir() {
+        return (pattern.to_string(), format!("{}/**/*.vue", pattern));
+    }
+
+    // Check if it's a single file
+    if path.is_file() && pattern.ends_with(".vue") {
+        // For single files, use the parent directory as root
+        if let Some(parent) = path.parent() {
+            let parent_str = parent.to_string_lossy();
+            let parent_str = if parent_str.is_empty() {
+                "."
+            } else {
+                &parent_str
+            };
+            return (parent_str.to_string(), pattern.to_string());
+        }
+    }
+
+    // Default case - use current directory
     (".".to_string(), pattern.to_string())
 }
 
@@ -172,9 +189,13 @@ fn pattern_matches(path: &std::path::Path, pattern: &str) -> bool {
         }
     }
 
-    // Exact pattern matching
+    // Exact pattern matching for single files
     if pattern.ends_with(".vue") {
-        return path_str.ends_with(pattern);
+        // Normalize the pattern for comparison
+        let pattern_normalized = pattern.replace("\\", "/");
+        // Check exact match or if path ends with pattern
+        return path_str == pattern_normalized
+            || path_str.ends_with(&format!("/{}", pattern_normalized));
     }
 
     // Default: match if ends with .vue
