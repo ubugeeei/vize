@@ -1,6 +1,6 @@
 {
   "name": "@vizejs/native",
-  "version": "0.0.1-alpha.4",
+  "version": "0.0.1-alpha.5",
   "description": "High-performance Vue.js compiler - Native bindings",
   "publishConfig": {
     "provenance": false,
@@ -47,13 +47,13 @@
     "@napi-rs/cli": "^2.18.0"
   },
   "optionalDependencies": {
-    "@vizejs/native-win32-x64-msvc": "0.0.1-alpha.4",
-    "@vizejs/native-darwin-x64": "0.0.1-alpha.4",
-    "@vizejs/native-darwin-arm64": "0.0.1-alpha.4",
-    "@vizejs/native-linux-x64-gnu": "0.0.1-alpha.4",
-    "@vizejs/native-linux-x64-musl": "0.0.1-alpha.4",
-    "@vizejs/native-linux-arm64-gnu": "0.0.1-alpha.4",
-    "@vizejs/native-linux-arm64-musl": "0.0.1-alpha.4",
-    "@vizejs/native-win32-arm64-msvc": "0.0.1-alpha.4"
+    "@vizejs/native-win32-x64-msvc": "0.0.1-alpha.5",
+    "@vizejs/native-darwin-x64": "0.0.1-alpha.5",
+    "@vizejs/native-darwin-arm64": "0.0.1-alpha.5",
+    "@vizejs/native-linux-x64-gnu": "0.0.1-alpha.5",
+    "@vizejs/native-linux-x64-musl": "0.0.1-alpha.5",
+    "@vizejs/native-linux-arm64-gnu": "0.0.1-alpha.5",
+    "@vizejs/native-linux-arm64-musl": "0.0.1-alpha.5",
+    "@vizejs/native-win32-arm64-msvc": "0.0.1-alpha.5"
   }
 }
