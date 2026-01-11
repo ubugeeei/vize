@@ -2,7 +2,7 @@
   "name": "vizejs",
   "private": true,
   "publishConfig": {
-    "provenance": false,
+    "provenance": true,
     "access": "public"
   },
   "type": "module",

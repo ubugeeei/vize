@@ -2241,7 +2241,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vize"
-version = "0.0.1-alpha.7"
+version = "0.0.1-alpha.9"
 dependencies = [
  "clap",
  "ignore",
@@ -2265,7 +2265,7 @@ dependencies = [
 
 [[package]]
 name = "vize_armature"
-version = "0.0.1-alpha.7"
+version = "0.0.1-alpha.9"
 dependencies = [
  "compact_str",
  "serde",
@@ -2276,7 +2276,7 @@ dependencies = [
 
 [[package]]
 name = "vize_atelier_core"
-version = "0.0.1-alpha.7"
+version = "0.0.1-alpha.9"
 dependencies = [
  "bumpalo",
  "compact_str",
@@ -2303,7 +2303,7 @@ dependencies = [
 
 [[package]]
 name = "vize_atelier_dom"
-version = "0.0.1-alpha.7"
+version = "0.0.1-alpha.9"
 dependencies = [
  "insta",
  "phf",
@@ -2316,7 +2316,7 @@ dependencies = [
 
 [[package]]
 name = "vize_atelier_sfc"
-version = "0.0.1-alpha.7"
+version = "0.0.1-alpha.9"
 dependencies = [
  "criterion",
  "insta",
@@ -2343,7 +2343,7 @@ dependencies = [
 
 [[package]]
 name = "vize_atelier_vapor"
-version = "0.0.1-alpha.7"
+version = "0.0.1-alpha.9"
 dependencies = [
  "insta",
  "rustc-hash",
@@ -2355,11 +2355,11 @@ dependencies = [
 
 [[package]]
 name = "vize_canon"
-version = "0.0.1-alpha.7"
+version = "0.0.1-alpha.9"
 
 [[package]]
 name = "vize_carton"
-version = "0.0.1-alpha.7"
+version = "0.0.1-alpha.9"
 dependencies = [
  "bitflags",
  "bumpalo",
@@ -2373,23 +2373,23 @@ dependencies = [
 
 [[package]]
 name = "vize_glyph"
-version = "0.0.1-alpha.7"
+version = "0.0.1-alpha.9"
 
 [[package]]
 name = "vize_maestro"
-version = "0.0.1-alpha.7"
+version = "0.0.1-alpha.9"
 
 [[package]]
 name = "vize_musea"
-version = "0.0.1-alpha.7"
+version = "0.0.1-alpha.9"
 
 [[package]]
 name = "vize_patina"
-version = "0.0.1-alpha.7"
+version = "0.0.1-alpha.9"
 
 [[package]]
 name = "vize_relief"
-version = "0.0.1-alpha.7"
+version = "0.0.1-alpha.9"
 dependencies = [
  "rustc-hash",
  "serde",
@@ -2399,7 +2399,7 @@ dependencies = [
 
 [[package]]
 name = "vize_test_runner"
-version = "0.0.1-alpha.7"
+version = "0.0.1-alpha.9"
 dependencies = [
  "serde",
  "toml",
@@ -2411,7 +2411,7 @@ dependencies = [
 
 [[package]]
 name = "vize_vitrine"
-version = "0.0.1-alpha.7"
+version = "0.0.1-alpha.9"
 dependencies = [
  "getrandom 0.3.4",
  "glob",
