@@ -187,7 +187,7 @@ jobs:
 
       - name: Publish @vizejs/vite-plugin
         working-directory: npm/vite-plugin-vize
-        run: npm publish --access public
+        run: pnpm publish --access public --no-git-checks
 
   # Publish crates to crates.io
   release-crates:
