@@ -56,9 +56,9 @@ impl Rule for IframeHasTitle {
 
         if !has_title {
             ctx.warn_with_help(
-                "<iframe> elements must have a title attribute",
+                ctx.t("a11y/iframe-has-title.message"),
                 &element.loc,
-                "Add title=\"...\" to describe the iframe content for screen readers",
+                ctx.t("a11y/iframe-has-title.help"),
             );
         }
     }

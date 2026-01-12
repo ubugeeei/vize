@@ -252,6 +252,7 @@ export async function loadWasm(): Promise<WasmModule> {
         lintTemplate: wasm.lintTemplate || mock.lintTemplate,
         lintSfc: wasm.lintSfc || mock.lintSfc,
         getLintRules: wasm.getLintRules || mock.getLintRules,
+        getLocales: wasm.getLocales || mock.getLocales,
         // Glyph (Formatter) functions - may not be in WASM yet
         formatSfc: wasm.formatSfc || mock.formatSfc,
         formatTemplate: wasm.formatTemplate || mock.formatTemplate,
@@ -1176,6 +1177,64 @@ function createMockModule(): WasmModule {
         fixable: false,
         defaultSeverity: 'error',
       },
+
+      // Accessibility rules
+      {
+        name: 'a11y/img-alt',
+        description: 'Require alt attribute on images. Alt text is essential for screen reader users.',
+        category: 'Accessibility',
+        fixable: false,
+        defaultSeverity: 'warning',
+      },
+      {
+        name: 'a11y/anchor-has-content',
+        description: 'Require anchor elements to have accessible content. Empty links are not accessible.',
+        category: 'Accessibility',
+        fixable: false,
+        defaultSeverity: 'warning',
+      },
+      {
+        name: 'a11y/heading-has-content',
+        description: 'Require heading elements (h1-h6) to have accessible content.',
+        category: 'Accessibility',
+        fixable: false,
+        defaultSeverity: 'warning',
+      },
+      {
+        name: 'a11y/iframe-has-title',
+        description: 'Require iframe elements to have a title attribute for screen readers.',
+        category: 'Accessibility',
+        fixable: false,
+        defaultSeverity: 'warning',
+      },
+      {
+        name: 'a11y/no-distracting-elements',
+        description: 'Disallow distracting elements like <marquee> and <blink>.',
+        category: 'Accessibility',
+        fixable: false,
+        defaultSeverity: 'warning',
+      },
+      {
+        name: 'a11y/tabindex-no-positive',
+        description: 'Disallow positive tabindex values. Positive values disrupt natural tab order.',
+        category: 'Accessibility',
+        fixable: false,
+        defaultSeverity: 'warning',
+      },
+      {
+        name: 'a11y/click-events-have-key-events',
+        description: 'Require keyboard event handlers with click events on non-interactive elements.',
+        category: 'Accessibility',
+        fixable: false,
+        defaultSeverity: 'warning',
+      },
+      {
+        name: 'a11y/form-control-has-label',
+        description: 'Require form controls to have associated labels for accessibility.',
+        category: 'Accessibility',
+        fixable: false,
+        defaultSeverity: 'warning',
+      },
     ];
   };
 
@@ -1445,6 +1504,14 @@ function createMockModule(): WasmModule {
     };
   };
 
+  const mockGetLocales = (): LocaleInfo[] => {
+    return [
+      { code: 'en', name: 'English' },
+      { code: 'ja', name: '日本語' },
+      { code: 'zh', name: '中文' },
+    ];
+  };
+
   return {
     compile: mockCompile,
     compileVapor: (template: string, options: CompilerOptions) =>
@@ -1458,6 +1525,7 @@ function createMockModule(): WasmModule {
     lintTemplate: mockLintTemplate,
     lintSfc: mockLintSfc,
     getLintRules: mockGetLintRules,
+    getLocales: mockGetLocales,
     formatSfc: mockFormatSfc,
     formatTemplate: mockFormatTemplate,
     formatScript: mockFormatScript,

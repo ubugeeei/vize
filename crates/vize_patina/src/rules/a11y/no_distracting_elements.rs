@@ -38,12 +38,12 @@ impl Rule for NoDistractingElements {
     fn enter_element<'a>(&self, ctx: &mut LintContext<'a>, element: &ElementNode<'a>) {
         if Self::is_distracting(&element.tag) {
             ctx.warn_with_help(
-                format!(
-                    "<{}> elements are distracting and should not be used",
-                    element.tag
+                ctx.t_fmt(
+                    "a11y/no-distracting-elements.message",
+                    &[("tag", element.tag.as_str())],
                 ),
                 &element.loc,
-                "Remove this element or use CSS animations with reduced motion support",
+                ctx.t("a11y/no-distracting-elements.help"),
             );
         }
     }

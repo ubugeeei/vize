@@ -87,9 +87,12 @@ impl Rule for HeadingHasContent {
 
         if !Self::has_accessible_content(element) {
             ctx.warn_with_help(
-                format!("<{}> elements must have accessible content", element.tag),
+                ctx.t_fmt(
+                    "a11y/heading-has-content.message",
+                    &[("tag", element.tag.as_str())],
+                ),
                 &element.loc,
-                "Add text content or aria-label attribute",
+                ctx.t("a11y/heading-has-content.help"),
             );
         }
     }

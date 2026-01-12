@@ -157,6 +157,39 @@
   "musea/require-title.message": "Art组件需要title属性",
   "musea/require-title.help": "添加title属性来描述组件",
 
+  "a11y/img-alt.description": "要求图片有alt属性",
+  "a11y/img-alt.message": "<img>元素需要alt属性以确保无障碍",
+  "a11y/img-alt.help": "为信息性图片添加alt=\"描述\"，为装饰性图片添加alt=\"\"",
+
+  "a11y/anchor-has-content.description": "要求锚点元素有无障碍内容",
+  "a11y/anchor-has-content.message": "<a>元素必须有无障碍内容",
+  "a11y/anchor-has-content.help": "添加文本内容、带alt属性的图片或aria-label属性",
+
+  "a11y/heading-has-content.description": "要求标题元素有无障碍内容",
+  "a11y/heading-has-content.message": "<{tag}>元素必须有无障碍内容",
+  "a11y/heading-has-content.help": "添加文本内容或aria-label属性",
+
+  "a11y/iframe-has-title.description": "要求iframe元素有title属性",
+  "a11y/iframe-has-title.message": "<iframe>元素必须有title属性",
+  "a11y/iframe-has-title.help": "添加title=\"...\"为屏幕阅读器描述iframe内容",
+
+  "a11y/no-distracting-elements.description": "禁止分散注意力的元素如<marquee>和<blink>",
+  "a11y/no-distracting-elements.message": "<{tag}>元素会分散注意力，不应使用",
+  "a11y/no-distracting-elements.help": "删除此元素或使用支持减少动画的CSS动画",
+
+  "a11y/tabindex-no-positive.description": "禁止正数tabindex值",
+  "a11y/tabindex-no-positive.message": "避免使用正数tabindex值",
+  "a11y/tabindex-no-positive.help": "可聚焦元素使用tabindex=\"0\"，仅程序化聚焦使用tabindex=\"-1\"",
+
+  "a11y/click-events-have-key-events.description": "要求点击事件配合键盘事件处理程序",
+  "a11y/click-events-have-key-events.message": "带@click的非交互元素必须同时有键盘事件处理程序",
+  "a11y/click-events-have-key-events.help": "添加@keydown或@keyup处理程序，或使用<button>等交互元素",
+
+  "a11y/form-control-has-label.description": "要求表单控件有关联的标签",
+  "a11y/form-control-has-label.message": "<{tag}>元素必须有关联的标签",
+  "a11y/form-control-has-label.help": "添加aria-label、aria-labelledby或for/id匹配的<label>元素",
+  "a11y/form-control-has-label.help_placeholder": "添加aria-label、aria-labelledby或<label>元素。仅占位符不具有无障碍性",
+
   "compiler.parse_error": "解析错误: {message}",
   "compiler.unexpected_token": "意外的标记'{token}'",
   "compiler.unclosed_tag": "未关闭的标签<{tag}>",

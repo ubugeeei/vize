@@ -37,12 +37,9 @@ impl Rule for TabindexNoPositive {
                         if let Ok(num) = value.content.parse::<i32>() {
                             if num > 0 {
                                 ctx.warn_with_help(
-                                    format!(
-                                        "Avoid positive tabindex values (found tabindex=\"{}\")",
-                                        num
-                                    ),
+                                    ctx.t("a11y/tabindex-no-positive.message"),
                                     &attr.loc,
-                                    "Use tabindex=\"0\" for focusable elements or tabindex=\"-1\" for programmatic focus",
+                                    ctx.t("a11y/tabindex-no-positive.help"),
                                 );
                             }
                         }

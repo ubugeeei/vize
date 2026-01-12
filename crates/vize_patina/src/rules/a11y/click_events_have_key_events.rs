@@ -122,9 +122,9 @@ impl Rule for ClickEventsHaveKeyEvents {
         // Check if has click but no keyboard handler
         if Self::has_click_handler(element) && !Self::has_keyboard_handler(element) {
             ctx.warn_with_help(
-                "Non-interactive elements with @click must also have keyboard event handlers",
+                ctx.t("a11y/click-events-have-key-events.message"),
                 &element.loc,
-                "Add @keydown or @keyup handler, or use an interactive element like <button>",
+                ctx.t("a11y/click-events-have-key-events.help"),
             );
         }
     }

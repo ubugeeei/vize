@@ -164,13 +164,16 @@ impl Rule for FormControlHasLabel {
 
         if !has_label {
             let help = if Self::has_placeholder(element) {
-                "Add aria-label, aria-labelledby, or a <label> element. Placeholder alone is not accessible"
+                ctx.t("a11y/form-control-has-label.help_placeholder")
             } else {
-                "Add aria-label, aria-labelledby, or a <label> element with matching for/id"
+                ctx.t("a11y/form-control-has-label.help")
             };
 
             ctx.warn_with_help(
-                format!("<{}> elements must have an associated label", element.tag),
+                ctx.t_fmt(
+                    "a11y/form-control-has-label.message",
+                    &[("tag", element.tag.as_str())],
+                ),
                 &element.loc,
                 help,
             );

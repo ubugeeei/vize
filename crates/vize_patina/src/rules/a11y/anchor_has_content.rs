@@ -93,9 +93,9 @@ impl Rule for AnchorHasContent {
 
         if !Self::has_accessible_content(element) {
             ctx.warn_with_help(
-                "<a> elements must have accessible content",
+                ctx.t("a11y/anchor-has-content.message"),
                 &element.loc,
-                "Add text content, an image with alt text, or aria-label attribute",
+                ctx.t("a11y/anchor-has-content.help"),
             );
         }
     }

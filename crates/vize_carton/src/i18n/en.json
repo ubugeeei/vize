@@ -157,6 +157,39 @@
   "musea/require-title.message": "Art component requires a title attribute",
   "musea/require-title.help": "Add a title attribute to describe the component",
 
+  "a11y/img-alt.description": "Require alt attribute on images",
+  "a11y/img-alt.message": "<img> elements must have an alt attribute for accessibility",
+  "a11y/img-alt.help": "Add alt=\"description\" for informative images or alt=\"\" for decorative images",
+
+  "a11y/anchor-has-content.description": "Require anchor elements to have accessible content",
+  "a11y/anchor-has-content.message": "<a> elements must have accessible content",
+  "a11y/anchor-has-content.help": "Add text content, an image with alt text, or aria-label attribute",
+
+  "a11y/heading-has-content.description": "Require heading elements to have accessible content",
+  "a11y/heading-has-content.message": "<{tag}> elements must have accessible content",
+  "a11y/heading-has-content.help": "Add text content or aria-label attribute",
+
+  "a11y/iframe-has-title.description": "Require iframe elements to have a title attribute",
+  "a11y/iframe-has-title.message": "<iframe> elements must have a title attribute",
+  "a11y/iframe-has-title.help": "Add title=\"...\" to describe the iframe content for screen readers",
+
+  "a11y/no-distracting-elements.description": "Disallow distracting elements like <marquee> and <blink>",
+  "a11y/no-distracting-elements.message": "<{tag}> elements are distracting and should not be used",
+  "a11y/no-distracting-elements.help": "Remove this element or use CSS animations with reduced motion support",
+
+  "a11y/tabindex-no-positive.description": "Disallow positive tabindex values",
+  "a11y/tabindex-no-positive.message": "Avoid using positive tabindex values",
+  "a11y/tabindex-no-positive.help": "Use tabindex=\"0\" for focusable elements or tabindex=\"-1\" for programmatic focus only",
+
+  "a11y/click-events-have-key-events.description": "Require keyboard event handlers with click events",
+  "a11y/click-events-have-key-events.message": "Non-interactive elements with @click must also have keyboard event handlers",
+  "a11y/click-events-have-key-events.help": "Add @keydown or @keyup handler, or use an interactive element like <button>",
+
+  "a11y/form-control-has-label.description": "Require form controls to have associated labels",
+  "a11y/form-control-has-label.message": "<{tag}> elements must have an associated label",
+  "a11y/form-control-has-label.help": "Add aria-label, aria-labelledby, or a <label> element with matching for/id",
+  "a11y/form-control-has-label.help_placeholder": "Add aria-label, aria-labelledby, or a <label> element. Placeholder alone is not accessible",
+
   "compiler.parse_error": "Parse error: {message}",
   "compiler.unexpected_token": "Unexpected token '{token}'",
   "compiler.unclosed_tag": "Unclosed tag <{tag}>",

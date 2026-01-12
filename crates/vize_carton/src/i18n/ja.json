@@ -157,6 +157,39 @@
   "musea/require-title.message": "Artコンポーネントにはtitle属性が必要です",
   "musea/require-title.help": "コンポーネントを説明するtitle属性を追加してください",
 
+  "a11y/img-alt.description": "画像にalt属性を必須にする",
+  "a11y/img-alt.message": "<img>要素にはアクセシビリティのためにalt属性が必要です",
+  "a11y/img-alt.help": "情報を伝える画像にはalt=\"説明\"を、装飾的な画像にはalt=\"\"を追加してください",
+
+  "a11y/anchor-has-content.description": "アンカー要素にアクセシブルなコンテンツを必須にする",
+  "a11y/anchor-has-content.message": "<a>要素にはアクセシブルなコンテンツが必要です",
+  "a11y/anchor-has-content.help": "テキストコンテンツ、alt属性を持つ画像、またはaria-label属性を追加してください",
+
+  "a11y/heading-has-content.description": "見出し要素にアクセシブルなコンテンツを必須にする",
+  "a11y/heading-has-content.message": "<{tag}>要素にはアクセシブルなコンテンツが必要です",
+  "a11y/heading-has-content.help": "テキストコンテンツまたはaria-label属性を追加してください",
+
+  "a11y/iframe-has-title.description": "iframe要素にtitle属性を必須にする",
+  "a11y/iframe-has-title.message": "<iframe>要素にはtitle属性が必要です",
+  "a11y/iframe-has-title.help": "スクリーンリーダー用にiframeの内容を説明するtitle=\"...\"を追加してください",
+
+  "a11y/no-distracting-elements.description": "<marquee>や<blink>などの注意散漫な要素を禁止する",
+  "a11y/no-distracting-elements.message": "<{tag}>要素は注意散漫であり、使用すべきではありません",
+  "a11y/no-distracting-elements.help": "この要素を削除するか、動きを抑制したCSSアニメーションを使用してください",
+
+  "a11y/tabindex-no-positive.description": "正のtabindex値を禁止する",
+  "a11y/tabindex-no-positive.message": "正のtabindex値の使用を避けてください",
+  "a11y/tabindex-no-positive.help": "フォーカス可能な要素にはtabindex=\"0\"を、プログラムによるフォーカスのみにはtabindex=\"-1\"を使用してください",
+
+  "a11y/click-events-have-key-events.description": "クリックイベントとともにキーボードイベントハンドラを必須にする",
+  "a11y/click-events-have-key-events.message": "@clickを持つ非インタラクティブ要素にはキーボードイベントハンドラも必要です",
+  "a11y/click-events-have-key-events.help": "@keydownまたは@keyupハンドラを追加するか、<button>のようなインタラクティブ要素を使用してください",
+
+  "a11y/form-control-has-label.description": "フォームコントロールに関連付けられたラベルを必須にする",
+  "a11y/form-control-has-label.message": "<{tag}>要素には関連付けられたラベルが必要です",
+  "a11y/form-control-has-label.help": "aria-label、aria-labelledby、またはfor/idが一致する<label>要素を追加してください",
+  "a11y/form-control-has-label.help_placeholder": "aria-label、aria-labelledby、または<label>要素を追加してください。プレースホルダーだけではアクセシブルではありません",
+
   "compiler.parse_error": "パースエラー: {message}",
   "compiler.unexpected_token": "予期しないトークン'{token}'",
   "compiler.unclosed_tag": "閉じられていないタグ<{tag}>",

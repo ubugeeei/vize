@@ -51,9 +51,9 @@ impl Rule for ImgAlt {
 
         if !has_alt {
             ctx.warn_with_help(
-                "<img> elements must have an alt attribute for accessibility",
+                ctx.t("a11y/img-alt.message"),
                 &element.loc,
-                "Add alt=\"description\" for informative images or alt=\"\" for decorative images",
+                ctx.t("a11y/img-alt.help"),
             );
         }
     }
