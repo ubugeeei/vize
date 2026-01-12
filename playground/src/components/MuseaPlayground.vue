@@ -35,39 +35,6 @@ const ART_PRESET = `<art
 <script setup lang="ts">
 import Button from './Button.vue'
 <\/script>
-
-<style scoped>
-/* Design Tokens */
-:root {
-  --color-primary: #3b82f6;
-  --color-primary-hover: #2563eb;
-  --color-secondary: #6b7280;
-  --color-success: #22c55e;
-  --color-danger: #ef4444;
-  --color-background: #f8fafc;
-  --color-text: #1e293b;
-
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-
-  --font-family: 'Inter', sans-serif;
-  --font-size-sm: 12px;
-  --font-size-md: 14px;
-  --font-size-lg: 18px;
-}
-
-.art-container {
-  padding: var(--spacing-md);
-  background: var(--color-background);
-}
-</style>
 `;
 
 const source = ref(ART_PRESET);
