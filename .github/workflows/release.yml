@@ -182,7 +182,7 @@ jobs:
 
       - name: Move artifacts
         working-directory: npm/vize-native
-        run: npx napi artifacts
+        run: npx napi artifacts --artifacts-dir artifacts
 
       - name: List packages
         run: ls -la npm/vize-native/npm/
