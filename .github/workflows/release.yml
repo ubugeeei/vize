@@ -184,9 +184,8 @@ jobs:
         run: ls -la npm/vize-native/npm/
 
       - name: Publish
-        run: |
-          cd npm/vize-native
-          npm publish --access public
+        working-directory: npm/vize-native
+        run: pnpm publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -196,6 +195,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -221,7 +223,7 @@ jobs:
 
       - name: Publish @vizejs/wasm
         working-directory: npm/vize-wasm
-        run: npm publish --access public
+        run: pnpm publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -356,6 +358,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -364,6 +369,6 @@ jobs:
 
       - name: Publish vize CLI package
         working-directory: npm/vize
-        run: npm publish --access public
+        run: pnpm publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
