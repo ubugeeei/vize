@@ -402,7 +402,8 @@ watch(
             >
               <div class="variant-header">
                 <h5>{{ variant.name }}</h5>
-                <div class="variant-badges">
+                <div class="variant-actions">
+                  <button @click="copyToClipboard(variant.template)" class="btn-ghost btn-small">Copy</button>
                   <span v-if="variant.isDefault" class="badge default">Default</span>
                   <span v-if="variant.skipVrt" class="badge skip">Skip VRT</span>
                 </div>
@@ -417,6 +418,7 @@ watch(
           <div v-else-if="activeTab === 'csf' && csfOutput" class="csf-output">
             <div class="csf-header">
               <h4>{{ csfOutput.filename }}</h4>
+              <button @click="copyToClipboard(csfOutput.code)" class="btn-ghost">Copy</button>
             </div>
             <CodeHighlight
               :code="csfOutput.code"
@@ -668,9 +670,15 @@ watch(
   color: var(--text-primary);
 }
 
-.variant-badges {
+.variant-actions {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
+}
+
+.btn-small {
+  padding: 0.125rem 0.5rem;
+  font-size: 0.625rem;
 }
 
 .variant-template {

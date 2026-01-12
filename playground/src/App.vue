@@ -16,7 +16,25 @@ import ts from 'typescript';
 
 // Main tab for switching between Atelier, Musea, Patina, and Glyph
 type MainTab = 'atelier' | 'musea' | 'patina' | 'glyph';
-const mainTab = ref<MainTab>('atelier');
+const validTabs: MainTab[] = ['atelier', 'musea', 'patina', 'glyph'];
+
+function getInitialTab(): MainTab {
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get('tab');
+  if (tab && validTabs.includes(tab as MainTab)) {
+    return tab as MainTab;
+  }
+  return 'atelier';
+}
+
+const mainTab = ref<MainTab>(getInitialTab());
+
+// Sync mainTab to URL query param
+watch(mainTab, (newTab) => {
+  const url = new URL(window.location.href);
+  url.searchParams.set('tab', newTab);
+  window.history.replaceState({}, '', url.toString());
+});
 
 // Convert Map objects to plain objects recursively (for serde_wasm_bindgen output)
 function mapToObject(value: unknown): unknown {

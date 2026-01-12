@@ -68,7 +68,7 @@ watch(() => [props.code, props.language], highlight);
 .code-highlight {
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1;
   border-radius: 12px;
   overflow: auto;
 }
@@ -80,10 +80,12 @@ watch(() => [props.code, props.language], highlight);
   border-radius: 12px;
   overflow: auto;
   white-space: pre;
+  line-height: 1 !important;
 }
 
 .code-highlight :deep(code) {
   font-family: inherit;
+  line-height: 1 !important;
 }
 
 .code-highlight :deep(.line) {
