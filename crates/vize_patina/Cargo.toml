@@ -12,9 +12,16 @@ vize_relief.workspace = true
 vize_armature.workspace = true
 vize_carton.workspace = true
 
-# OXC for diagnostics
+# OXC for JS/TS parsing and diagnostics
+oxc_allocator.workspace = true
+oxc_parser.workspace = true
+oxc_ast.workspace = true
 oxc_diagnostics.workspace = true
 oxc_span.workspace = true
+oxc_syntax.workspace = true
+
+# Lightning CSS for CSS parsing
+lightningcss.workspace = true
 
 # Error handling
 thiserror.workspace = true

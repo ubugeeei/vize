@@ -2,8 +2,15 @@
 //!
 //! These rules are compatible with eslint-plugin-vue's essential and
 //! strongly-recommended rule sets.
+//!
+//! ## Rule Categories
+//!
+//! - **Essential**: Prevent errors (default severity: Error)
+//! - **Strongly Recommended**: Improve readability (default severity: Warning)
+//! - **Recommended**: Ensure consistency (default severity: Warning)
 
 // Essential rules
+mod multi_word_component_names;
 mod no_dupe_v_else_if;
 mod no_duplicate_attributes;
 mod no_reserved_component_names;
@@ -31,10 +38,30 @@ mod v_bind_style;
 mod v_on_style;
 
 // Recommended rules
+mod attribute_order;
 mod component_name_in_template_casing;
+mod no_inline_style;
 mod no_lone_template;
+mod prefer_props_shorthand;
+mod scoped_event_names;
+mod sfc_element_order;
+
+// Security rules
+mod no_unsafe_url;
+mod no_v_html;
+
+// Accessibility rules
+mod a11y_img_alt;
+
+// Style rules
+mod require_scoped_style;
+
+// Warning rules
+mod warn_custom_block;
+mod warn_custom_directive;
 
 // Essential rules exports
+pub use multi_word_component_names::MultiWordComponentNames;
 pub use no_dupe_v_else_if::NoDupeVElseIf;
 pub use no_duplicate_attributes::NoDuplicateAttributes;
 pub use no_reserved_component_names::NoReservedComponentNames;
@@ -62,5 +89,24 @@ pub use v_bind_style::{VBindStyle, VBindStyleOption};
 pub use v_on_style::{VOnStyle, VOnStyleOption};
 
 // Recommended rules exports
+pub use attribute_order::AttributeOrder;
 pub use component_name_in_template_casing::ComponentNameInTemplateCasing;
+pub use no_inline_style::NoInlineStyle;
 pub use no_lone_template::NoLoneTemplate;
+pub use prefer_props_shorthand::PreferPropsShorthand;
+pub use scoped_event_names::ScopedEventNames;
+pub use sfc_element_order::SfcElementOrder;
+
+// Security rules exports
+pub use no_unsafe_url::NoUnsafeUrl;
+pub use no_v_html::NoVHtml;
+
+// Accessibility rules exports
+pub use a11y_img_alt::A11yImgAlt;
+
+// Style rules exports
+pub use require_scoped_style::RequireScopedStyle;
+
+// Warning rules exports
+pub use warn_custom_block::WarnCustomBlock;
+pub use warn_custom_directive::WarnCustomDirective;

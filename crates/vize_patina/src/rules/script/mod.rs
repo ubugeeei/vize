@@ -20,19 +20,49 @@
 //! - `script/no-options-api` - Disallow Options API patterns
 //! - `script/no-get-current-instance` - Disallow getCurrentInstance() calls
 
+mod no_async_in_computed;
+mod no_deep_destructure_in_props;
 mod no_get_current_instance;
+mod no_import_compiler_macros;
 mod no_internal_imports;
 mod no_options_api;
+mod no_reactive_destructure;
+mod no_reserved_identifiers;
+mod no_top_level_ref_in_script;
+mod no_with_defaults;
+mod prefer_computed;
 mod prefer_import_from_vue;
+mod prefer_ref_over_reactive;
+mod prefer_use_attrs;
+mod prefer_use_id;
+mod prefer_use_slots;
+mod prefer_use_template_ref;
+mod require_function_return_type;
+mod require_symbol_provide;
 
 use memchr::memmem;
 
 use crate::diagnostic::{LintDiagnostic, Severity};
 
+pub use no_async_in_computed::NoAsyncInComputed;
+pub use no_deep_destructure_in_props::NoDeepDestructureInProps;
 pub use no_get_current_instance::NoGetCurrentInstance;
+pub use no_import_compiler_macros::NoImportCompilerMacros;
 pub use no_internal_imports::NoInternalImports;
 pub use no_options_api::NoOptionsApi;
+pub use no_reactive_destructure::NoReactiveDestructure;
+pub use no_reserved_identifiers::NoReservedIdentifiers;
+pub use no_top_level_ref_in_script::NoTopLevelRefInScript;
+pub use no_with_defaults::NoWithDefaults;
+pub use prefer_computed::PreferComputed;
 pub use prefer_import_from_vue::PreferImportFromVue;
+pub use prefer_ref_over_reactive::PreferRefOverReactive;
+pub use prefer_use_attrs::PreferUseAttrs;
+pub use prefer_use_id::PreferUseId;
+pub use prefer_use_slots::PreferUseSlots;
+pub use prefer_use_template_ref::PreferUseTemplateRef;
+pub use require_function_return_type::RequireFunctionReturnType;
+pub use require_symbol_provide::RequireSymbolProvide;
 
 /// Metadata for a script-level rule
 pub struct ScriptRuleMeta {

@@ -103,10 +103,20 @@ impl RuleRegistry {
     }
 
     /// Create registry with all built-in rules enabled
+    ///
+    /// This includes:
+    /// - **Essential rules** (severity: Error) - Prevent errors
+    /// - **Strongly recommended rules** (severity: Warning) - Improve readability
+    /// - **Recommended rules** (severity: Warning) - Ensure consistency
+    /// - **Vapor mode rules** - Vue 3.6+ Vapor compatibility
     pub fn with_recommended() -> Self {
         let mut registry = Self::new();
 
-        // Register Vue essential rules
+        // ============================================
+        // Vue Essential Rules (Error)
+        // ============================================
+        // These rules help prevent errors and should be followed at all costs.
+
         registry.register(Box::new(crate::rules::vue::RequireVForKey));
         registry.register(Box::new(crate::rules::vue::ValidVFor));
         registry.register(Box::new(crate::rules::vue::NoUseVIfWithVFor));
@@ -125,10 +135,16 @@ impl RuleRegistry {
             crate::rules::vue::NoReservedComponentNames::default(),
         ));
         registry.register(Box::new(crate::rules::vue::ValidVSlot));
+        registry.register(Box::new(
+            crate::rules::vue::MultiWordComponentNames::default(),
+        ));
 
-        // Register Vue strongly recommended rules
+        // ============================================
+        // Vue Strongly Recommended Rules (Warning)
+        // ============================================
+        // These rules improve readability and developer experience.
+
         registry.register(Box::new(crate::rules::vue::NoTemplateShadow));
-        // NoMultiSpaces is not registered by default (opt-in only)
         registry.register(Box::new(crate::rules::vue::VBindStyle::default()));
         registry.register(Box::new(crate::rules::vue::VOnStyle::default()));
         registry.register(Box::new(crate::rules::vue::HtmlSelfClosing));
@@ -136,17 +152,74 @@ impl RuleRegistry {
             crate::rules::vue::MustacheInterpolationSpacing::default(),
         ));
         registry.register(Box::new(crate::rules::vue::AttributeHyphenation::default()));
+        // NoMultiSpaces is opt-in only
 
-        // Register Vue recommended rules
+        // ============================================
+        // Vue Recommended Rules (Warning)
+        // ============================================
+        // These rules ensure consistency across the codebase.
+
         registry.register(Box::new(crate::rules::vue::NoLoneTemplate));
+        registry.register(Box::new(crate::rules::vue::AttributeOrder));
+        registry.register(Box::new(crate::rules::vue::SfcElementOrder));
+        registry.register(Box::new(crate::rules::vue::ScopedEventNames));
 
-        // Register Vapor mode rules
+        // ============================================
+        // Vapor Mode Rules (Warning)
+        // ============================================
+        // These rules help with Vue 3.6+ Vapor mode compatibility.
+
         registry.register(Box::new(crate::rules::vapor::NoSuspense));
         registry.register(Box::new(crate::rules::vapor::NoInlineTemplate));
         registry.register(Box::new(crate::rules::vapor::NoVueLifecycleEvents));
         registry.register(Box::new(crate::rules::vapor::PreferStaticClass));
         registry.register(Box::new(
             crate::rules::vapor::RequireVaporAttribute::default(),
+        ));
+
+        registry
+    }
+
+    /// Create registry with only essential rules (errors only)
+    ///
+    /// Use this for minimal checking that only catches definite errors.
+    pub fn with_essential() -> Self {
+        let mut registry = Self::new();
+
+        // Vue Essential Rules only
+        registry.register(Box::new(crate::rules::vue::RequireVForKey));
+        registry.register(Box::new(crate::rules::vue::ValidVFor));
+        registry.register(Box::new(crate::rules::vue::NoUseVIfWithVFor));
+        registry.register(Box::new(crate::rules::vue::NoUnusedVars::default()));
+        registry.register(Box::new(crate::rules::vue::NoDuplicateAttributes::default()));
+        registry.register(Box::new(crate::rules::vue::NoTemplateKey));
+        registry.register(Box::new(crate::rules::vue::NoTextareaMustache));
+        registry.register(Box::new(crate::rules::vue::ValidVElse));
+        registry.register(Box::new(crate::rules::vue::ValidVIf));
+        registry.register(Box::new(crate::rules::vue::ValidVOn));
+        registry.register(Box::new(crate::rules::vue::ValidVBind));
+        registry.register(Box::new(crate::rules::vue::ValidVModel));
+        registry.register(Box::new(crate::rules::vue::ValidVShow));
+        registry.register(Box::new(crate::rules::vue::NoDupeVElseIf));
+        registry.register(Box::new(
+            crate::rules::vue::NoReservedComponentNames::default(),
+        ));
+        registry.register(Box::new(crate::rules::vue::ValidVSlot));
+        registry.register(Box::new(
+            crate::rules::vue::MultiWordComponentNames::default(),
+        ));
+
+        registry
+    }
+
+    /// Create registry with all available rules (including opt-in)
+    pub fn with_all() -> Self {
+        let mut registry = Self::with_recommended();
+
+        // Opt-in rules
+        registry.register(Box::new(crate::rules::vue::NoMultiSpaces::default()));
+        registry.register(Box::new(
+            crate::rules::vue::ComponentNameInTemplateCasing::default(),
         ));
 
         registry

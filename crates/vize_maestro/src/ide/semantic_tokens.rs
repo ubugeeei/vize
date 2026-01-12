@@ -349,7 +349,18 @@ impl SemanticTokensService {
 
     /// Collect tokens from script content.
     fn collect_script_tokens(script: &str, base_line: u32, tokens: &mut Vec<AbsoluteToken>) {
-        // Find Vue composition API functions
+        // Vue compiler macros (special highlighting)
+        let compiler_macros = [
+            "defineProps",
+            "defineEmits",
+            "defineExpose",
+            "defineModel",
+            "defineOptions",
+            "defineSlots",
+            "withDefaults",
+        ];
+
+        // Vue composition API functions
         let vue_functions = [
             "ref",
             "reactive",
@@ -364,12 +375,36 @@ impl SemanticTokensService {
             "onBeforeUpdate",
             "provide",
             "inject",
-            "defineProps",
-            "defineEmits",
-            "defineExpose",
-            "withDefaults",
         ];
 
+        // Highlight compiler macros with Macro token type
+        for macro_name in compiler_macros {
+            let pattern = format!("{}(", macro_name);
+            let mut pos = 0;
+            while let Some(found) = script[pos..].find(&pattern) {
+                let abs_pos = pos + found;
+
+                // Check word boundary
+                let is_start =
+                    abs_pos == 0 || !Self::is_ident_char(script.as_bytes()[abs_pos - 1] as char);
+
+                if is_start {
+                    let (line, col) = Self::offset_to_line_col(script, abs_pos);
+
+                    tokens.push(AbsoluteToken {
+                        line: base_line + line - 1,
+                        start: col,
+                        length: macro_name.len() as u32,
+                        token_type: TokenType::Macro as u32,
+                        modifiers: TokenModifier::encode(&[TokenModifier::DefaultLibrary]),
+                    });
+                }
+
+                pos = abs_pos + macro_name.len();
+            }
+        }
+
+        // Highlight Vue functions with Function token type
         for func in vue_functions {
             let pattern = format!("{}(", func);
             let mut pos = 0;

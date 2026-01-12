@@ -70,8 +70,106 @@ const error = ref<string | null>(null);
 const activeTab = ref<'diagnostics' | 'rules'>('diagnostics');
 const lintTime = ref<number | null>(null);
 
+// Rule configuration state
+const enabledRules = ref<Set<string>>(new Set());
+const severityOverrides = ref<Map<string, 'error' | 'warning' | 'off'>>(new Map());
+const STORAGE_KEY = 'vize-patina-rules-config';
+
+// Load saved rule configuration from localStorage
+function loadRuleConfig() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const config = JSON.parse(saved);
+      enabledRules.value = new Set(config.enabledRules || []);
+      severityOverrides.value = new Map(Object.entries(config.severityOverrides || {}));
+    }
+  } catch (e) {
+    console.warn('Failed to load rule config:', e);
+  }
+}
+
+// Save rule configuration to localStorage
+function saveRuleConfig() {
+  try {
+    const config = {
+      enabledRules: Array.from(enabledRules.value),
+      severityOverrides: Object.fromEntries(severityOverrides.value),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  } catch (e) {
+    console.warn('Failed to save rule config:', e);
+  }
+}
+
+// Initialize all rules as enabled when rules are loaded
+function initializeRuleState() {
+  if (enabledRules.value.size === 0 && rules.value.length > 0) {
+    // Enable all rules by default
+    rules.value.forEach(rule => {
+      enabledRules.value.add(rule.name);
+    });
+    saveRuleConfig();
+  }
+}
+
+// Toggle rule enabled state
+function toggleRule(ruleName: string) {
+  if (enabledRules.value.has(ruleName)) {
+    enabledRules.value.delete(ruleName);
+  } else {
+    enabledRules.value.add(ruleName);
+  }
+  saveRuleConfig();
+  lint();
+}
+
+// Toggle all rules in a category
+function toggleCategory(category: string, enabled: boolean) {
+  const categoryRules = rules.value.filter(r => r.category === category);
+  categoryRules.forEach(rule => {
+    if (enabled) {
+      enabledRules.value.add(rule.name);
+    } else {
+      enabledRules.value.delete(rule.name);
+    }
+  });
+  saveRuleConfig();
+  lint();
+}
+
+// Enable all rules
+function enableAllRules() {
+  rules.value.forEach(rule => {
+    enabledRules.value.add(rule.name);
+  });
+  saveRuleConfig();
+  lint();
+}
+
+// Disable all rules
+function disableAllRules() {
+  enabledRules.value.clear();
+  saveRuleConfig();
+  lint();
+}
+
+// Check if all rules in a category are enabled
+function isCategoryFullyEnabled(category: string): boolean {
+  const categoryRules = rules.value.filter(r => r.category === category);
+  return categoryRules.every(rule => enabledRules.value.has(rule.name));
+}
+
+// Check if some rules in a category are enabled
+function isCategoryPartiallyEnabled(category: string): boolean {
+  const categoryRules = rules.value.filter(r => r.category === category);
+  const enabledCount = categoryRules.filter(rule => enabledRules.value.has(rule.name)).length;
+  return enabledCount > 0 && enabledCount < categoryRules.length;
+}
+
 const errorCount = computed(() => lintResult.value?.errorCount ?? 0);
 const warningCount = computed(() => lintResult.value?.warningCount ?? 0);
+const enabledRuleCount = computed(() => enabledRules.value.size);
 
 // Calculate template start line offset for correct diagnostic positioning
 // The extracted content includes the newline after <template>, so no +1 needed
@@ -127,6 +225,8 @@ async function lint() {
   try {
     const result = props.compiler.lintSfc(source.value, {
       filename: 'example.vue',
+      enabledRules: Array.from(enabledRules.value),
+      severityOverrides: Object.fromEntries(severityOverrides.value),
     });
     lintResult.value = result;
     lintTime.value = performance.now() - startTime;
@@ -141,6 +241,7 @@ function loadRules() {
 
   try {
     rules.value = props.compiler.getLintRules();
+    initializeRuleState();
   } catch (e) {
     console.error('Failed to load rules:', e);
   }
@@ -176,6 +277,7 @@ watch(
 );
 
 onMounted(() => {
+  loadRuleConfig();
   if (props.compiler) {
     loadRules();
   }
@@ -264,31 +366,63 @@ onMounted(() => {
 
           <!-- Rules Tab -->
           <div v-else-if="activeTab === 'rules'" class="rules-output">
-            <div class="rules-filters">
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="Search rules..."
-                class="search-input"
-              />
-              <select v-model="selectedCategory" class="category-select">
-                <option v-for="cat in categories" :key="cat" :value="cat">
-                  {{ cat === 'all' ? 'All Categories' : cat }}
-                </option>
-              </select>
+            <div class="rules-toolbar">
+              <div class="rules-filters">
+                <input
+                  v-model="searchQuery"
+                  type="text"
+                  placeholder="Search rules..."
+                  class="search-input"
+                />
+                <select v-model="selectedCategory" class="category-select">
+                  <option v-for="cat in categories" :key="cat" :value="cat">
+                    {{ cat === 'all' ? 'All Categories' : cat }}
+                  </option>
+                </select>
+              </div>
+              <div class="rules-actions">
+                <button @click="enableAllRules" class="btn-action">Enable All</button>
+                <button @click="disableAllRules" class="btn-action">Disable All</button>
+              </div>
             </div>
 
             <div class="rules-count">
-              {{ filteredRules.length }} of {{ rules.length }} rules
+              {{ enabledRuleCount }} enabled / {{ filteredRules.length }} of {{ rules.length }} rules
+            </div>
+
+            <!-- Category toggle headers when filtering by category -->
+            <div
+              v-if="selectedCategory !== 'all'"
+              class="category-toggle"
+            >
+              <label class="toggle-label">
+                <input
+                  type="checkbox"
+                  :checked="isCategoryFullyEnabled(selectedCategory)"
+                  :indeterminate="isCategoryPartiallyEnabled(selectedCategory)"
+                  @change="toggleCategory(selectedCategory, ($event.target as HTMLInputElement).checked)"
+                  class="rule-checkbox"
+                />
+                <span class="category-name">{{ selectedCategory }}</span>
+                <span class="category-count">({{ filteredRules.length }} rules)</span>
+              </label>
             </div>
 
             <div
               v-for="rule in filteredRules"
               :key="rule.name"
-              class="rule-card"
+              :class="['rule-card', { disabled: !enabledRules.has(rule.name) }]"
             >
               <div class="rule-header">
-                <span class="rule-name">{{ rule.name }}</span>
+                <label class="rule-toggle">
+                  <input
+                    type="checkbox"
+                    :checked="enabledRules.has(rule.name)"
+                    @change="toggleRule(rule.name)"
+                    class="rule-checkbox"
+                  />
+                  <span class="rule-name">{{ rule.name }}</span>
+                </label>
                 <div class="rule-badges">
                   <span class="badge category">{{ rule.category }}</span>
                   <span :class="['badge', 'severity', rule.defaultSeverity]">
@@ -612,10 +746,85 @@ onMounted(() => {
   line-height: 1.5;
 }
 
+.rules-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
 .rules-filters {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+}
+
+.rules-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-action {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-action:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--accent-rust);
+}
+
+.category-toggle {
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  border: 1px solid var(--border-primary);
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.category-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.category-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.rule-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.rule-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-rust);
+  cursor: pointer;
+}
+
+.rule-card.disabled {
+  opacity: 0.5;
+}
+
+.rule-card.disabled .rule-name {
+  text-decoration: line-through;
 }
 
 .search-input {

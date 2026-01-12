@@ -130,6 +130,10 @@ export interface CsfOutput {
 // Patina (Linter) types
 export interface LintOptions {
   filename?: string;
+  /** Rules to enable (if not set, all rules are enabled) */
+  enabledRules?: string[];
+  /** Override severity for specific rules */
+  severityOverrides?: Record<string, 'error' | 'warning' | 'off'>;
 }
 
 export interface LintDiagnostic {
@@ -589,14 +593,35 @@ function createMockModule(): WasmModule {
 
   // Mock lint functions
   const mockLintTemplate = (source: string, options: LintOptions): LintResult => {
-    const diagnostics: LintDiagnostic[] = [];
+    const allDiagnostics: LintDiagnostic[] = [];
     const filename = options.filename || 'anonymous.vue';
+
+    // Helper to check if a rule is enabled
+    const isRuleEnabled = (ruleName: string): boolean => {
+      if (!options.enabledRules || options.enabledRules.length === 0) {
+        return true; // All rules enabled by default
+      }
+      return options.enabledRules.includes(ruleName);
+    };
+
+    // Helper to get severity for a rule
+    const getSeverity = (ruleName: string, defaultSeverity: 'error' | 'warning'): 'error' | 'warning' | 'off' => {
+      if (options.severityOverrides && ruleName in options.severityOverrides) {
+        return options.severityOverrides[ruleName];
+      }
+      return defaultSeverity;
+    };
 
     // Simple mock lint rules
     // Check for v-for without :key - find elements with v-for but no :key on same element
     const vForRegex = /<(\w+)[^>]*v-for="[^"]+"/g;
     let vForMatch;
     while ((vForMatch = vForRegex.exec(source)) !== null) {
+      const ruleName = 'vue/require-v-for-key';
+      if (!isRuleEnabled(ruleName)) continue;
+      const severity = getSeverity(ruleName, 'error');
+      if (severity === 'off') continue;
+
       // Check if this element has a :key
       const elementEnd = source.indexOf('>', vForMatch.index);
       const elementStr = source.substring(vForMatch.index, elementEnd + 1);
@@ -604,9 +629,9 @@ function createMockModule(): WasmModule {
         const startPos = getPositionFromOffset(source, vForMatch.index);
         const endOffset = vForMatch.index + vForMatch[0].length;
         const endPos = getPositionFromOffset(source, endOffset);
-        diagnostics.push({
-          rule: 'vue/require-v-for-key',
-          severity: 'error',
+        allDiagnostics.push({
+          rule: ruleName,
+          severity,
           message: `Elements in iteration expect to have 'v-bind:key' directives. Element: <${vForMatch[1]}>`,
           location: {
             start: { line: startPos.line, column: startPos.column, offset: vForMatch.index },
@@ -618,48 +643,60 @@ function createMockModule(): WasmModule {
     }
 
     // Check for v-if with v-for on same element
-    const vIfWithVForRegex = /<(\w+)[^>]*v-for="[^"]*"[^>]*v-if="[^"]*"/g;
-    let vIfWithVFor;
-    while ((vIfWithVFor = vIfWithVForRegex.exec(source)) !== null) {
-      const startPos = getPositionFromOffset(source, vIfWithVFor.index);
-      const endOffset = vIfWithVFor.index + vIfWithVFor[0].length;
-      const endPos = getPositionFromOffset(source, endOffset);
-      diagnostics.push({
-        rule: 'vue/no-use-v-if-with-v-for',
-        severity: 'warning',
-        message: 'Avoid using `v-if` with `v-for` on the same element. Use a computed property to filter the list instead.',
-        location: {
-          start: { line: startPos.line, column: startPos.column, offset: vIfWithVFor.index },
-          end: { line: endPos.line, column: endPos.column, offset: endOffset },
-        },
-        help: 'Use a computed property to pre-filter the list, e.g., `computed: { activeItems() { return items.filter(i => i.active) } }`',
-      });
+    const vIfWithVForRuleName = 'vue/no-use-v-if-with-v-for';
+    if (isRuleEnabled(vIfWithVForRuleName)) {
+      const vIfWithVForSeverity = getSeverity(vIfWithVForRuleName, 'warning');
+      if (vIfWithVForSeverity !== 'off') {
+        const vIfWithVForRegex = /<(\w+)[^>]*v-for="[^"]*"[^>]*v-if="[^"]*"/g;
+        let vIfWithVFor;
+        while ((vIfWithVFor = vIfWithVForRegex.exec(source)) !== null) {
+          const startPos = getPositionFromOffset(source, vIfWithVFor.index);
+          const endOffset = vIfWithVFor.index + vIfWithVFor[0].length;
+          const endPos = getPositionFromOffset(source, endOffset);
+          allDiagnostics.push({
+            rule: vIfWithVForRuleName,
+            severity: vIfWithVForSeverity,
+            message: 'Avoid using `v-if` with `v-for` on the same element. Use a computed property to filter the list instead.',
+            location: {
+              start: { line: startPos.line, column: startPos.column, offset: vIfWithVFor.index },
+              end: { line: endPos.line, column: endPos.column, offset: endOffset },
+            },
+            help: 'Use a computed property to pre-filter the list, e.g., `computed: { activeItems() { return items.filter(i => i.active) } }`',
+          });
+        }
+      }
     }
 
     // Check for :key on <template> elements
-    const templateKeyRegex = /<template[^>]*:key="[^"]*"/g;
-    let templateKey;
-    while ((templateKey = templateKeyRegex.exec(source)) !== null) {
-      const startPos = getPositionFromOffset(source, templateKey.index);
-      const endOffset = templateKey.index + templateKey[0].length;
-      const endPos = getPositionFromOffset(source, endOffset);
-      diagnostics.push({
-        rule: 'vue/no-template-key',
-        severity: 'error',
-        message: '`<template>` cannot have a `:key` attribute',
-        location: {
-          start: { line: startPos.line, column: startPos.column, offset: templateKey.index },
-          end: { line: endPos.line, column: endPos.column, offset: endOffset },
-        },
-        help: 'Move the `:key` attribute to a real element inside the template',
-      });
+    const templateKeyRuleName = 'vue/no-template-key';
+    if (isRuleEnabled(templateKeyRuleName)) {
+      const templateKeySeverity = getSeverity(templateKeyRuleName, 'error');
+      if (templateKeySeverity !== 'off') {
+        const templateKeyRegex = /<template[^>]*:key="[^"]*"/g;
+        let templateKey;
+        while ((templateKey = templateKeyRegex.exec(source)) !== null) {
+          const startPos = getPositionFromOffset(source, templateKey.index);
+          const endOffset = templateKey.index + templateKey[0].length;
+          const endPos = getPositionFromOffset(source, endOffset);
+          allDiagnostics.push({
+            rule: templateKeyRuleName,
+            severity: templateKeySeverity,
+            message: '`<template>` cannot have a `:key` attribute',
+            location: {
+              start: { line: startPos.line, column: startPos.column, offset: templateKey.index },
+              end: { line: endPos.line, column: endPos.column, offset: endOffset },
+            },
+            help: 'Move the `:key` attribute to a real element inside the template',
+          });
+        }
+      }
     }
 
     return {
       filename,
-      errorCount: diagnostics.filter(d => d.severity === 'error').length,
-      warningCount: diagnostics.filter(d => d.severity === 'warning').length,
-      diagnostics,
+      errorCount: allDiagnostics.filter(d => d.severity === 'error').length,
+      warningCount: allDiagnostics.filter(d => d.severity === 'warning').length,
+      diagnostics: allDiagnostics,
     };
   };
 

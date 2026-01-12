@@ -144,11 +144,69 @@ npm install @vizejs/vite-plugin
 
 ## Quick Start (Development)
 
+### With mise (Recommended)
+
 ```bash
 mise install && mise setup
 mise cli      # Enable `vize` CLI command
 mise dev      # Playground
 ```
+
+### Without mise
+
+<details>
+<summary>Manual Setup</summary>
+
+**Prerequisites:**
+
+- [Rust](https://rustup.rs/) (1.80+)
+- [Node.js](https://nodejs.org/) (20+)
+- [pnpm](https://pnpm.io/) (9+)
+
+**Setup:**
+
+```bash
+# Install Rust (if not already installed)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Install pnpm (if not already installed)
+npm install -g pnpm
+
+# Clone and setup
+git clone https://github.com/ubugeeei/vize.git
+cd vize
+pnpm install
+
+# Build CLI
+cargo build --release -p vize
+# The binary will be at: ./target/release/vize
+
+# Or install to your PATH
+cargo install --path crates/vize
+
+# Run playground (optional)
+pnpm -C playground dev
+```
+
+**Building Native Bindings (for @vizejs/native):**
+
+```bash
+cd npm/vize-native
+pnpm build
+```
+
+**Building WASM (for @vizejs/wasm):**
+
+```bash
+# Install wasm-bindgen-cli
+cargo install wasm-bindgen-cli
+
+# Build WASM
+cargo build --release -p vize_vitrine --no-default-features --features wasm --target wasm32-unknown-unknown
+wasm-bindgen target/wasm32-unknown-unknown/release/vize_bindings.wasm --out-dir npm/vize-wasm --target web
+```
+
+</details>
 
 ## Usage
 
