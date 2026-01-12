@@ -40,6 +40,12 @@ const PLATFORMS = {
 };
 
 async function main() {
+  // Skip in CI environment - binary is built separately and not available during pnpm install
+  if (process.env.CI) {
+    console.log("CI environment detected, skipping binary download.");
+    return;
+  }
+
   const platform = `${process.platform}-${process.arch}`;
   const config = PLATFORMS[platform];
 
