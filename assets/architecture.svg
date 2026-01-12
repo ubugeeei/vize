@@ -43,20 +43,6 @@
     </marker>
   </defs>
 
-  <!-- LOGO -->
-  <g transform="translate(450, 490) scale(0.35)">
-    <g transform="translate(0, 0) skewX(-20)">
-      <rect x="0" y="0" width="150" height="4" fill="url(#speed-grad)" rx="2"/>
-      <rect x="20" y="25" width="100" height="3" fill="url(#speed-grad)" rx="1.5"/>
-      <rect x="10" y="-25" width="80" height="2" fill="url(#speed-grad)" rx="1"/>
-    </g>
-    <g transform="translate(-180, -80) skewX(-15)">
-      <path d="M 200 0 L 120 180 L 210 60 L 200 0 Z" fill="url(#metal-grad-dark)" stroke="#3E4654" stroke-width="1"/>
-      <path d="M 60 0 L 120 180 L 160 40 L 60 0 Z" fill="url(#metal-grad)" stroke-width="1.5" stroke-opacity="0.6"/>
-    </g>
-  </g>
-  <text x="550" y="525" text-anchor="middle" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="18" font-weight="700" letter-spacing="3">VIZE</text>
-
   <!-- APPLICATIONS -->
   <g filter="url(#shadow)">
     <rect x="20" y="20" width="150" height="440" rx="14" fill="url(#app-grad)"/>
