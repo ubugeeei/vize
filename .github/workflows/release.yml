@@ -181,6 +181,10 @@ jobs:
           pattern: bindings-*
           path: npm/vize-native/artifacts
 
+      - name: Prepare npm packages
+        working-directory: npm/vize-native
+        run: npx napi prepublish -t npm
+
       - name: Move artifacts
         working-directory: npm/vize-native
         run: npx napi artifacts --dir artifacts
