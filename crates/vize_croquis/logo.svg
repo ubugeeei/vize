@@ -1,0 +1,31 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sketch-grad" x1="0%" y1="0%" x2="100%" y2="20%">
+      <stop offset="0%" stop-color="#f0f2f5"/>
+      <stop offset="50%" stop-color="#9ca3b0"/>
+      <stop offset="100%" stop-color="#e07048"/>
+    </linearGradient>
+    <linearGradient id="sketch-grad-dark" x1="0%" y1="0%" x2="100%" y2="30%">
+      <stop offset="0%" stop-color="#d0d4dc"/>
+      <stop offset="60%" stop-color="#6b7280"/>
+      <stop offset="100%" stop-color="#c45530"/>
+    </linearGradient>
+  </defs>
+
+  <!-- V Logo -->
+  <g transform="translate(40, 40)">
+    <g transform="skewX(-12)">
+      <path d="M 100 0 L 60 120 L 105 30 L 100 0 Z" fill="url(#sketch-grad-dark)" stroke="#4b5563" stroke-width="0.5"/>
+      <path d="M 30 0 L 60 120 L 80 20 L 30 0 Z" fill="url(#sketch-grad)" stroke-width="0.5" stroke-opacity="0.4"/>
+      <path d="M 30 0 L 60 120" stroke="#f0f2f5" stroke-width="0.5" stroke-linecap="round" opacity="0.4"/>
+    </g>
+  </g>
+
+  <!-- Croquis accent: quick sketch strokes -->
+  <g transform="translate(115, 125)">
+    <!-- Sketchy, loose strokes representing quick drawing -->
+    <path d="M 0 5 Q 15 0, 30 8 Q 45 15, 55 5" stroke="#e07048" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.9"/>
+    <path d="M 5 18 Q 20 12, 35 20 Q 48 28, 52 18" stroke="#e07048" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.7"/>
+    <path d="M 10 32 Q 22 25, 38 32 Q 45 38, 48 30" stroke="#e07048" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.5"/>
+  </g>
+</svg>

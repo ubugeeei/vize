@@ -2976,6 +2976,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "vize_croquis"
+version = "0.0.1-alpha.31"
+dependencies = [
+ "bitflags 2.10.0",
+ "rustc-hash",
+ "vize_carton",
+ "vize_relief",
+]
+
+[[package]]
 name = "vize_glyph"
 version = "0.0.1-alpha.31"
 dependencies = [

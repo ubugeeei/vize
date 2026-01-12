@@ -1,0 +1,15 @@
+[package]
+name = "vize_croquis"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Croquis - Semantic analysis layer for Vize. Quick sketches of meaning from Vue templates."
+
+[dependencies]
+vize_carton.workspace = true
+vize_relief.workspace = true
+rustc-hash.workspace = true
+bitflags.workspace = true
+
+[dev-dependencies]
