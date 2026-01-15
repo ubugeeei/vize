@@ -77,9 +77,10 @@ function __setup<
   }
 ) {
   // ========== Script Setup Content ==========
-  
-  
-  const items = ref([1, 2, 3])
+
+
+const items = ref([1, 2, 3])
+  // @vize-map: 1546:1577 -> 51:81
 
   // ========== Template Function ==========
   function __template() {
@@ -106,10 +107,23 @@ function __setup<
 
     // v-for: item in items @114:162
     for (const item of items) {
+      // @vize-map: 2580:2612 -> 114:162
       const index: string | number = undefined!; // loop key
       const __key: string | number = index; // :key type constraint
+      // @vize-map: 2714:2782 -> 114:162
       void item;
     }
+
+    // ========== Template Expressions ==========
+    // VBind @155:160
+    void (index);
+    // @vize-map: 2919:2937 -> 155:160
+    // Interpolation @172:177
+    void (index);
+    // @vize-map: 3006:3024 -> 172:177
+    // Interpolation @185:189
+    void (item);
+    // @vize-map: 3093:3110 -> 185:189
 
   }
 

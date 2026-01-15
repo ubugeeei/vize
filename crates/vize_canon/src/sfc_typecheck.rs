@@ -269,6 +269,7 @@ pub fn type_check_sfc(source: &str, options: &SfcTypeCheckOptions) -> SfcTypeChe
         result.virtual_ts = Some(generate_virtual_ts_with_scopes(
             &summary,
             script_content,
+            script_offset,
             template_ast.as_ref(),
             template_offset,
         ));
@@ -475,17 +476,19 @@ fn check_template_bindings(
 fn generate_virtual_ts_with_scopes(
     summary: &vize_croquis::AnalysisSummary,
     script_content: Option<&str>,
+    script_offset: u32,
     _template_ast: Option<&vize_relief::ast::RootNode<'_>>,
     template_offset: u32,
 ) -> String {
     let mut ts = String::with_capacity(8192);
 
     // Extract imports from script content for hoisting
-    let (hoisted_imports, script_without_imports) = if let Some(script) = script_content {
-        extract_imports(script)
-    } else {
-        (Vec::new(), String::new())
-    };
+    let (hoisted_imports, script_without_imports, import_end_offset) =
+        if let Some(script) = script_content {
+            extract_imports_with_offset(script)
+        } else {
+            (Vec::new(), String::new(), 0)
+        };
 
     // Header
     ts.push_str("// ============================================\n");
@@ -599,12 +602,29 @@ fn generate_virtual_ts_with_scopes(
     // ========== Script Setup Content (imports hoisted) ==========
     if !script_without_imports.is_empty() {
         ts.push_str("  // ========== Script Setup Content ==========\n");
-        // Indent each line of the script (without imports)
-        for line in script_without_imports.lines() {
-            ts.push_str("  ");
-            ts.push_str(line);
+
+        // Track positions for source mapping
+        // NOTE: We output script content WITHOUT indentation so that character
+        // positions map 1:1 with the source. This is required for accurate
+        // diagnostic position mapping.
+        let gen_start = ts.len();
+        let src_start = script_offset as usize + import_end_offset;
+
+        // Output script content directly (no indentation for accurate mapping)
+        ts.push_str(&script_without_imports);
+        if !script_without_imports.ends_with('\n') {
             ts.push('\n');
         }
+
+        let gen_end = ts.len();
+        let src_end = src_start + script_without_imports.len();
+
+        // Emit source map marker for script content
+        // Format: // @vize-map: genStart:genEnd -> srcStart:srcEnd
+        ts.push_str(&format!(
+            "  // @vize-map: {}:{} -> {}:{}\n",
+            gen_start, gen_end, src_start, src_end
+        ));
         ts.push('\n');
     }
 
@@ -647,6 +667,33 @@ fn generate_virtual_ts_with_scopes(
 
     // Generate nested template scopes inside __template function
     generate_template_scopes(&mut ts, summary, template_offset, 2);
+
+    // Generate template expressions for type checking
+    if !summary.template_expressions.is_empty() {
+        ts.push_str("    // ========== Template Expressions ==========\n");
+        for expr in &summary.template_expressions {
+            let src_start = template_offset + expr.start;
+            let src_end = template_offset + expr.end;
+
+            // Output expression comment
+            ts.push_str(&format!(
+                "    // {:?} @{}:{}\n",
+                expr.kind, src_start, src_end
+            ));
+
+            // Output expression with source map
+            let gen_start = ts.len();
+            ts.push_str(&format!("    void ({});\n", expr.content));
+            let gen_end = ts.len();
+
+            // Emit source map marker
+            ts.push_str(&format!(
+                "    // @vize-map: {}:{} -> {}:{}\n",
+                gen_start, gen_end, src_start, src_end
+            ));
+        }
+        ts.push('\n');
+    }
 
     ts.push_str("  }\n\n");
 
@@ -755,19 +802,26 @@ fn generate_template_scopes(
         match (scope.kind, scope.data()) {
             // v-for: Real for-of loop with type inference
             (ScopeKind::VFor, ScopeData::VFor(data)) => {
+                let src_start = template_offset + scope.span.start;
+                let src_end = template_offset + scope.span.end;
+
                 ts.push_str(&format!(
                     "{}// v-for: {} in {} @{}:{}\n",
-                    indent,
-                    data.value_alias,
-                    data.source,
-                    template_offset + scope.span.start,
-                    template_offset + scope.span.end
+                    indent, data.value_alias, data.source, src_start, src_end
                 ));
 
-                // Use for-of with proper type inference
+                // Use for-of with proper type inference - track source expression position
+                let gen_start = ts.len();
                 ts.push_str(&format!(
                     "{}for (const {} of {}) {{\n",
                     indent, data.value_alias, data.source
+                ));
+                let gen_end = ts.len();
+
+                // Emit source map for the for-of statement (covers the source expression)
+                ts.push_str(&format!(
+                    "{}  // @vize-map: {}:{} -> {}:{}\n",
+                    indent, gen_start, gen_end, src_start, src_end
                 ));
 
                 // Index and key variables inside the loop
@@ -800,9 +854,17 @@ fn generate_template_scopes(
                 // Output :key expression for type checking
                 // Key must be string | number for Vue's reconciliation
                 if let Some(ref key_expr) = data.key_expression {
+                    let key_gen_start = ts.len();
                     ts.push_str(&format!(
                         "{}  const __key: string | number = {}; // :key type constraint\n",
                         indent, key_expr
+                    ));
+                    let key_gen_end = ts.len();
+
+                    // Source map for key expression
+                    ts.push_str(&format!(
+                        "{}  // @vize-map: {}:{} -> {}:{}\n",
+                        indent, key_gen_start, key_gen_end, src_start, src_end
                     ));
                 }
 
@@ -866,18 +928,19 @@ fn generate_template_scopes(
             (ScopeKind::EventHandler, ScopeData::EventHandler(data)) => {
                 let event_type = get_event_type(&data.event_name);
 
+                // Calculate source position for this handler
+                let src_start = template_offset + scope.span.start;
+                let src_end = template_offset + scope.span.end;
+
                 ts.push_str(&format!(
                     "{}// @{} @{}:{}\n",
-                    indent,
-                    data.event_name,
-                    template_offset + scope.span.start,
-                    template_offset + scope.span.end
+                    indent, data.event_name, src_start, src_end
                 ));
 
                 if data.has_implicit_event {
                     ts.push_str(&format!("{}(($event: {}) => {{\n", indent, event_type));
 
-                    // Output the handler expression with $event
+                    // Output the handler expression with $event and source map
                     if let Some(ref expr) = data.handler_expression {
                         let expr_str = expr.as_str();
                         // Check if it's a simple identifier (method reference)
@@ -885,6 +948,7 @@ fn generate_template_scopes(
                             .chars()
                             .all(|c| c.is_alphanumeric() || c == '_' || c == '.');
 
+                        let gen_start = ts.len();
                         if is_simple_identifier && !expr_str.contains('(') {
                             // Simple method reference like "handleClick" -> "handleClick($event)"
                             ts.push_str(&format!("{}  {}($event);\n", indent, expr_str));
@@ -892,6 +956,13 @@ fn generate_template_scopes(
                             // Expression already has parens or is complex, output as-is
                             ts.push_str(&format!("{}  {};\n", indent, expr_str));
                         }
+                        let gen_end = ts.len();
+
+                        // Emit source map for the expression
+                        ts.push_str(&format!(
+                            "{}  // @vize-map: {}:{} -> {}:{}\n",
+                            indent, gen_start, gen_end, src_start, src_end
+                        ));
                     }
                 } else if !data.param_names.is_empty() {
                     ts.push_str(&format!("{}((", indent));
@@ -910,16 +981,30 @@ fn generate_template_scopes(
                     }
                     ts.push_str(") => {\n");
 
-                    // Output the handler expression
+                    // Output the handler expression with source map
                     if let Some(ref expr) = data.handler_expression {
+                        let gen_start = ts.len();
                         ts.push_str(&format!("{}  {};\n", indent, expr.as_str()));
+                        let gen_end = ts.len();
+
+                        ts.push_str(&format!(
+                            "{}  // @vize-map: {}:{} -> {}:{}\n",
+                            indent, gen_start, gen_end, src_start, src_end
+                        ));
                     }
                 } else {
                     ts.push_str(&format!("{}(() => {{\n", indent));
 
-                    // Output the handler expression
+                    // Output the handler expression with source map
                     if let Some(ref expr) = data.handler_expression {
+                        let gen_start = ts.len();
                         ts.push_str(&format!("{}  {};\n", indent, expr.as_str()));
+                        let gen_end = ts.len();
+
+                        ts.push_str(&format!(
+                            "{}  // @vize-map: {}:{} -> {}:{}\n",
+                            indent, gen_start, gen_end, src_start, src_end
+                        ));
                     }
                 }
 
@@ -1060,21 +1145,27 @@ fn get_event_type(event_name: &str) -> &'static str {
 
 /// Extract import statements from script content for hoisting.
 /// Returns (hoisted_imports, script_without_imports).
-fn extract_imports(script: &str) -> (Vec<String>, String) {
+/// Extract imports from script and return (imports, remaining, byte offset where imports end).
+fn extract_imports_with_offset(script: &str) -> (Vec<String>, String, usize) {
     let mut imports = Vec::new();
     let mut remaining_lines = Vec::new();
+    let mut import_end_byte = 0;
+    let mut current_byte = 0;
 
     for line in script.lines() {
+        let line_len = line.len() + 1; // +1 for newline
         let trimmed = line.trim();
         // Check if line starts with import (including `import type`)
         if trimmed.starts_with("import ") || trimmed.starts_with("import{") {
             imports.push(line.to_string());
+            import_end_byte = current_byte + line_len;
         } else {
             remaining_lines.push(line);
         }
+        current_byte += line_len;
     }
 
-    (imports, remaining_lines.join("\n"))
+    (imports, remaining_lines.join("\n"), import_end_byte)
 }
 
 /// Vue runtime type declarations for type checking.

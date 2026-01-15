@@ -90,6 +90,39 @@ pub struct AnalysisSummary {
 
     /// Invalid non-type exports in script setup
     pub invalid_exports: Vec<InvalidExport>,
+
+    /// Template expressions for type checking (interpolations, v-bind, etc.)
+    pub template_expressions: Vec<TemplateExpression>,
+}
+
+/// Template expression for type checking.
+#[derive(Debug, Clone)]
+pub struct TemplateExpression {
+    /// The expression content
+    pub content: CompactString,
+    /// Kind of expression
+    pub kind: TemplateExpressionKind,
+    /// Start offset in template (relative to template block)
+    pub start: u32,
+    /// End offset in template (relative to template block)
+    pub end: u32,
+}
+
+/// Kind of template expression.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TemplateExpressionKind {
+    /// Mustache interpolation: {{ expr }}
+    Interpolation,
+    /// v-bind: :prop="expr" or v-bind:prop="expr"
+    VBind,
+    /// v-on handler (non-inline): @event="handler"
+    VOn,
+    /// v-if condition: v-if="cond"
+    VIf,
+    /// v-show condition: v-show="cond"
+    VShow,
+    /// v-model: v-model="value"
+    VModel,
 }
 
 impl AnalysisSummary {

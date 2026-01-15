@@ -37,7 +37,9 @@
 mod checker;
 mod context;
 mod diagnostic;
+pub mod intelligence;
 pub mod sfc_typecheck;
+pub mod source_map;
 mod types;
 pub mod virtual_ts;
 
@@ -53,9 +55,17 @@ mod tests;
 pub use checker::TypeChecker;
 pub use context::{Binding, BindingKind, Import, Prop, TypeContext};
 pub use diagnostic::{TypeDiagnostic, TypeSeverity};
+pub use intelligence::{
+    Completion, CompletionKind as IntelCompletionKind, CursorContext, Diagnostic,
+    DiagnosticSeverity, HoverInfo, Location, TypeIntelligence,
+};
 pub use sfc_typecheck::{
     type_check_sfc, SfcRelatedLocation, SfcTypeCheckOptions, SfcTypeCheckResult, SfcTypeDiagnostic,
     SfcTypeSeverity,
+};
+pub use source_map::{
+    offset_to_position, position_to_offset, Mapping, MappingFlags, MappingKind, Position,
+    SourceMap, Span,
 };
 pub use types::{CompletionItem, CompletionKind, TypeInfo, TypeKind};
 

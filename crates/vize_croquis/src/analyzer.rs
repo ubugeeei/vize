@@ -53,6 +53,8 @@ pub struct AnalyzerOptions {
     pub detect_undefined: bool,
     /// Analyze hoisting opportunities
     pub analyze_hoisting: bool,
+    /// Collect template expressions for type checking
+    pub collect_template_expressions: bool,
 }
 
 impl AnalyzerOptions {
@@ -65,6 +67,7 @@ impl AnalyzerOptions {
             track_usage: true,
             detect_undefined: true,
             analyze_hoisting: true,
+            collect_template_expressions: true,
         }
     }
 
@@ -77,6 +80,7 @@ impl AnalyzerOptions {
             track_usage: true,
             detect_undefined: true,
             analyze_hoisting: false,
+            collect_template_expressions: false,
         }
     }
 
@@ -89,6 +93,7 @@ impl AnalyzerOptions {
             track_usage: true,
             detect_undefined: false,
             analyze_hoisting: true,
+            collect_template_expressions: false,
         }
     }
 }
@@ -240,6 +245,22 @@ impl Analyzer {
             TemplateChildNode::If(if_node) => self.visit_if(if_node, scope_vars),
             TemplateChildNode::For(for_node) => self.visit_for(for_node, scope_vars),
             TemplateChildNode::Interpolation(interp) => {
+                // Collect expression for type checking
+                if self.options.collect_template_expressions {
+                    let content = match &interp.content {
+                        ExpressionNode::Simple(s) => s.content.as_str(),
+                        ExpressionNode::Compound(c) => c.loc.source.as_str(),
+                    };
+                    let loc = interp.content.loc();
+                    self.summary
+                        .template_expressions
+                        .push(crate::analysis::TemplateExpression {
+                            content: CompactString::new(content),
+                            kind: crate::analysis::TemplateExpressionKind::Interpolation,
+                            start: loc.start.offset,
+                            end: loc.end.offset,
+                        });
+                }
                 if self.options.detect_undefined && self.script_analyzed {
                     // Use the content's loc, not the interpolation's loc (which includes {{ }})
                     self.check_expression_refs(
@@ -316,21 +337,96 @@ impl Analyzer {
                         }
                     }
                 }
-                // Extract :key expression (v-bind:key or :key)
+                // Extract :key expression (v-bind:key or :key) and collect v-bind expressions
                 else if dir.name == "bind" {
-                    if let Some(ref arg) = dir.arg {
-                        let arg_name = match arg {
+                    if let Some(ref exp) = dir.exp {
+                        let content = match exp {
                             ExpressionNode::Simple(s) => s.content.as_str(),
                             ExpressionNode::Compound(c) => c.loc.source.as_str(),
                         };
-                        if arg_name == "key" {
-                            if let Some(ref exp) = dir.exp {
-                                let content = match exp {
-                                    ExpressionNode::Simple(s) => s.content.as_str(),
-                                    ExpressionNode::Compound(c) => c.loc.source.as_str(),
-                                };
+                        let loc = exp.loc();
+
+                        // Collect expression for type checking
+                        if self.options.collect_template_expressions {
+                            self.summary.template_expressions.push(
+                                crate::analysis::TemplateExpression {
+                                    content: CompactString::new(content),
+                                    kind: crate::analysis::TemplateExpressionKind::VBind,
+                                    start: loc.start.offset,
+                                    end: loc.end.offset,
+                                },
+                            );
+                        }
+
+                        // Extract :key for v-for
+                        if let Some(ref arg) = dir.arg {
+                            let arg_name = match arg {
+                                ExpressionNode::Simple(s) => s.content.as_str(),
+                                ExpressionNode::Compound(c) => c.loc.source.as_str(),
+                            };
+                            if arg_name == "key" {
                                 key_expression = Some(CompactString::new(content));
                             }
+                        }
+                    }
+                }
+                // Collect v-if expression
+                else if dir.name == "if" || dir.name == "else-if" {
+                    if self.options.collect_template_expressions {
+                        if let Some(ref exp) = dir.exp {
+                            let content = match exp {
+                                ExpressionNode::Simple(s) => s.content.as_str(),
+                                ExpressionNode::Compound(c) => c.loc.source.as_str(),
+                            };
+                            let loc = exp.loc();
+                            self.summary.template_expressions.push(
+                                crate::analysis::TemplateExpression {
+                                    content: CompactString::new(content),
+                                    kind: crate::analysis::TemplateExpressionKind::VIf,
+                                    start: loc.start.offset,
+                                    end: loc.end.offset,
+                                },
+                            );
+                        }
+                    }
+                }
+                // Collect v-show expression
+                else if dir.name == "show" {
+                    if self.options.collect_template_expressions {
+                        if let Some(ref exp) = dir.exp {
+                            let content = match exp {
+                                ExpressionNode::Simple(s) => s.content.as_str(),
+                                ExpressionNode::Compound(c) => c.loc.source.as_str(),
+                            };
+                            let loc = exp.loc();
+                            self.summary.template_expressions.push(
+                                crate::analysis::TemplateExpression {
+                                    content: CompactString::new(content),
+                                    kind: crate::analysis::TemplateExpressionKind::VShow,
+                                    start: loc.start.offset,
+                                    end: loc.end.offset,
+                                },
+                            );
+                        }
+                    }
+                }
+                // Collect v-model expression
+                else if dir.name == "model" {
+                    if self.options.collect_template_expressions {
+                        if let Some(ref exp) = dir.exp {
+                            let content = match exp {
+                                ExpressionNode::Simple(s) => s.content.as_str(),
+                                ExpressionNode::Compound(c) => c.loc.source.as_str(),
+                            };
+                            let loc = exp.loc();
+                            self.summary.template_expressions.push(
+                                crate::analysis::TemplateExpression {
+                                    content: CompactString::new(content),
+                                    kind: crate::analysis::TemplateExpressionKind::VModel,
+                                    start: loc.start.offset,
+                                    end: loc.end.offset,
+                                },
+                            );
                         }
                     }
                 }
@@ -753,6 +849,8 @@ impl Analyzer {
             let is_defined = scope_vars.iter().any(|v| v.as_str() == ident)
                 || self.summary.bindings.contains(ident)
                 || crate::builtins::is_js_global(ident)
+                || crate::builtins::is_vue_builtin(ident)
+                || crate::builtins::is_event_local(ident)
                 || is_keyword(ident);
 
             if !is_defined {

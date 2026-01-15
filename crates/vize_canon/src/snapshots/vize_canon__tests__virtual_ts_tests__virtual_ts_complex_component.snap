@@ -77,34 +77,35 @@ function __setup<
   }
 ) {
   // ========== Script Setup Content ==========
-  
-  
-  interface Props {
-    initialCount?: number
-    title: string
-  }
-  
-  interface Emits {
-    (e: 'change', value: number): void
-  }
-  
-  const props = withDefaults(defineProps<Props>(), {
-    initialCount: 0
-  })
-  
-  const emit = defineEmits<Emits>()
-  
-  const count = ref(props.initialCount)
-  const doubled = computed(() => count.value * 2)
-  
-  function increment() {
-    count.value++
-    emit('change', count.value)
-  }
-  
-  watch(count, (newVal) => {
-    console.log('Count changed:', newVal)
-  })
+
+
+interface Props {
+  initialCount?: number
+  title: string
+}
+
+interface Emits {
+  (e: 'change', value: number): void
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  initialCount: 0
+})
+
+const emit = defineEmits<Emits>()
+
+const count = ref(props.initialCount)
+const doubled = computed(() => count.value * 2)
+
+function increment() {
+  count.value++
+  emit('change', count.value)
+}
+
+watch(count, (newVal) => {
+  console.log('Count changed:', newVal)
+})
+  // @vize-map: 1563:2021 -> 68:525
 
   // ========== Template Function ==========
   function __template() {
@@ -138,7 +139,19 @@ function __setup<
     // @click @678:695
     (($event: MouseEvent) => {
       increment($event);
+      // @vize-map: 3146:3171 -> 678:695
     })();
+
+    // ========== Template Expressions ==========
+    // Interpolation @582:593
+    void (props.title);
+    // @vize-map: 3303:3327 -> 582:593
+    // Interpolation @619:624
+    void (count);
+    // @vize-map: 3396:3414 -> 619:624
+    // Interpolation @651:658
+    void (doubled);
+    // @vize-map: 3483:3503 -> 651:658
 
   }
 

@@ -15,10 +15,11 @@ interface Diagnostic {
 
 // Monaco TypeScript Worker diagnostics
 interface TsDiagnostic {
-  message: string;
+  messageText: string | { messageText: string };
+  message?: string;
   start: number;
   length: number;
-  category: number; // 1=warning, 2=message, 3=hint, else error
+  category: number; // 0=warning, 1=error, 2=suggestion, 3=message
   code: number;
 }
 
@@ -154,23 +155,83 @@ async function configureTypeScript() {
     strictNullChecks: strictMode.value,
   });
 
-  // Fetch and add Vue type declarations from unpkg
-  try {
-    const vueTypesResponse = await fetch('https://unpkg.com/vue@3/dist/vue.d.ts');
-    if (vueTypesResponse.ok) {
-      const vueTypes = await vueTypesResponse.text();
-      monaco.languages.typescript.typescriptDefaults.addExtraLib(vueTypes, 'node_modules/vue/dist/vue.d.ts');
-    }
-  } catch (e) {
-    console.warn('Failed to load Vue types from unpkg, using fallback:', e);
-  }
-
-  // Add fallback/additional Vue type declarations (compiler macros and globals)
-  monaco.languages.typescript.typescriptDefaults.addExtraLib(VUE_GLOBALS_DECLARATIONS, 'vue-globals.d.ts');
+  // Add Vue type declarations (module + compiler macros + globals)
+  monaco.languages.typescript.typescriptDefaults.addExtraLib(VUE_GLOBALS_DECLARATIONS, 'vue.d.ts');
 }
 
-// Additional Vue declarations not in main vue.d.ts (compiler macros & template globals)
+// Vue module and type declarations for Monaco TypeScript
 const VUE_GLOBALS_DECLARATIONS = `
+// Vue module declaration
+declare module 'vue' {
+  // Reactivity: Core
+  export function ref<T>(value: T): Ref<T>;
+  export function ref<T = any>(): Ref<T | undefined>;
+  export function reactive<T extends object>(target: T): T;
+  export function readonly<T extends object>(target: T): Readonly<T>;
+  export function computed<T>(getter: () => T): ComputedRef<T>;
+  export function computed<T>(options: { get: () => T; set: (value: T) => void }): WritableComputedRef<T>;
+
+  // Reactivity: Utilities
+  export function unref<T>(ref: T | Ref<T>): T;
+  export function toRef<T extends object, K extends keyof T>(object: T, key: K): Ref<T[K]>;
+  export function toRefs<T extends object>(object: T): { [K in keyof T]: Ref<T[K]> };
+  export function isRef<T>(value: Ref<T> | unknown): value is Ref<T>;
+  export function isReactive(value: unknown): boolean;
+  export function isReadonly(value: unknown): boolean;
+  export function isProxy(value: unknown): boolean;
+
+  // Reactivity: Advanced
+  export function shallowRef<T>(value: T): ShallowRef<T>;
+  export function triggerRef(ref: ShallowRef): void;
+  export function customRef<T>(factory: (track: () => void, trigger: () => void) => { get: () => T; set: (value: T) => void }): Ref<T>;
+  export function toRaw<T>(observed: T): T;
+  export function markRaw<T extends object>(value: T): T;
+
+  // Lifecycle Hooks
+  export function onMounted(callback: () => void): void;
+  export function onUnmounted(callback: () => void): void;
+  export function onBeforeMount(callback: () => void): void;
+  export function onBeforeUnmount(callback: () => void): void;
+  export function onUpdated(callback: () => void): void;
+  export function onBeforeUpdate(callback: () => void): void;
+  export function onActivated(callback: () => void): void;
+  export function onDeactivated(callback: () => void): void;
+  export function onErrorCaptured(callback: (err: unknown, instance: any, info: string) => boolean | void): void;
+
+  // Watch
+  export function watch<T>(source: () => T, callback: (newValue: T, oldValue: T) => void, options?: WatchOptions): () => void;
+  export function watch<T>(source: Ref<T>, callback: (newValue: T, oldValue: T) => void, options?: WatchOptions): () => void;
+  export function watchEffect(effect: () => void, options?: WatchOptions): () => void;
+
+  // Dependency Injection
+  export function provide<T>(key: string | symbol, value: T): void;
+  export function inject<T>(key: string | symbol): T | undefined;
+  export function inject<T>(key: string | symbol, defaultValue: T): T;
+
+  // Misc
+  export function nextTick(callback?: () => void): Promise<void>;
+  export function getCurrentInstance(): any;
+
+  // Types
+  export interface Ref<T = any> {
+    value: T;
+  }
+  export interface ComputedRef<T = any> extends Ref<T> {
+    readonly value: T;
+  }
+  export interface WritableComputedRef<T> extends Ref<T> {}
+  export interface ShallowRef<T = any> extends Ref<T> {}
+  export type UnwrapRef<T> = T extends Ref<infer V> ? V : T;
+  export type Reactive<T> = T;
+  export type MaybeRef<T> = T | Ref<T>;
+
+  export interface WatchOptions {
+    immediate?: boolean;
+    deep?: boolean;
+    flush?: 'pre' | 'post' | 'sync';
+  }
+}
+
 // Vue Compiler Macros (available in <script setup>)
 declare function defineProps<T>(): Readonly<T>;
 declare function defineEmits<T>(): T;
@@ -195,44 +256,142 @@ declare const $nextTick: (callback?: () => void) => Promise<void>;
 declare const $event: Event;
 `;
 
+// Cached source map entries for hover
+let cachedSourceMap: SourceMapEntry[] = [];
+let cachedVirtualTs: string = '';
+
+// Virtual TS model URI - use ts-nul-authority scheme for Monaco TypeScript worker
+const VIRTUAL_TS_URI = monaco.Uri.parse('ts:virtual-sfc.ts');
+
+// Get hover info from TypeScript at a given position in Virtual TS
+async function getTypeScriptHover(genOffset: number): Promise<string | null> {
+  if (!virtualTsModel) return null;
+
+  try {
+    const worker = await monaco.languages.typescript.getTypeScriptWorker();
+    const client = await worker(VIRTUAL_TS_URI);
+
+    // Get quick info at position
+    const quickInfo = await client.getQuickInfoAtPosition(VIRTUAL_TS_URI.toString(), genOffset);
+    if (!quickInfo) return null;
+
+    // Build hover content
+    const parts: string[] = [];
+
+    if (quickInfo.displayParts) {
+      const displayText = quickInfo.displayParts.map((p: { text: string }) => p.text).join('');
+      if (displayText) {
+        parts.push('```typescript\n' + displayText + '\n```');
+      }
+    }
+
+    if (quickInfo.documentation) {
+      const docs = quickInfo.documentation.map((d: { text: string }) => d.text).join('\n');
+      if (docs) {
+        parts.push(docs);
+      }
+    }
+
+    return parts.length > 0 ? parts.join('\n\n') : null;
+  } catch (e) {
+    console.error('Failed to get TypeScript hover:', e);
+    return null;
+  }
+}
+
+// Map source offset to generated offset using source map
+function mapSourceToGenerated(srcOffset: number): number | null {
+  for (const entry of cachedSourceMap) {
+    if (srcOffset >= entry.srcStart && srcOffset < entry.srcEnd) {
+      // Calculate relative position within the source range
+      const relativeOffset = srcOffset - entry.srcStart;
+      return entry.genStart + relativeOffset;
+    }
+  }
+  return null;
+}
+
+// Register hover provider for Vue language
+let hoverProviderDisposable: monaco.IDisposable | null = null;
+
+function registerHoverProvider() {
+  if (hoverProviderDisposable) {
+    hoverProviderDisposable.dispose();
+  }
+
+  hoverProviderDisposable = monaco.languages.registerHoverProvider('vue', {
+    async provideHover(model, position) {
+      // Convert position to offset
+      const srcOffset = model.getOffsetAt(position);
+
+      // Map to Virtual TS offset
+      const genOffset = mapSourceToGenerated(srcOffset);
+      if (genOffset === null) return null;
+
+      // Get hover info from TypeScript
+      const hoverContent = await getTypeScriptHover(genOffset);
+      if (!hoverContent) return null;
+
+      // Return hover info
+      return {
+        contents: [{ value: hoverContent }],
+      };
+    },
+  });
+}
+
 // Get TypeScript diagnostics from Monaco Worker
 async function getTypeScriptDiagnostics(virtualTs: string): Promise<Diagnostic[]> {
   if (!virtualTs) return [];
-
-  const uri = monaco.Uri.parse('inmemory://virtual.ts');
 
   // Create or update the virtual TS model
   if (virtualTsModel) {
     virtualTsModel.setValue(virtualTs);
   } else {
-    virtualTsModel = monaco.editor.createModel(virtualTs, 'typescript', uri);
+    virtualTsModel = monaco.editor.createModel(virtualTs, 'typescript', VIRTUAL_TS_URI);
   }
 
   try {
     // Get TypeScript Worker
     const worker = await monaco.languages.typescript.getTypeScriptWorker();
-    const client = await worker(uri);
+    const client = await worker(VIRTUAL_TS_URI);
 
     // Get semantic and syntactic diagnostics
     const [semanticDiags, syntacticDiags] = await Promise.all([
-      client.getSemanticDiagnostics(uri.toString()),
-      client.getSyntacticDiagnostics(uri.toString()),
+      client.getSemanticDiagnostics(VIRTUAL_TS_URI.toString()),
+      client.getSyntacticDiagnostics(VIRTUAL_TS_URI.toString()),
     ]);
 
     const allDiags = [...syntacticDiags, ...semanticDiags] as TsDiagnostic[];
+
+    console.log('[TypeCheck] Virtual TS diagnostics:', allDiags.length, JSON.stringify(allDiags, null, 2));
 
     // Convert to our Diagnostic format
     return allDiags.map(d => {
       const startPos = virtualTsModel!.getPositionAt(d.start);
       const endPos = virtualTsModel!.getPositionAt(d.start + d.length);
 
+      // Extract message text - can be string, object with messageText, or nested chain
+      let message = 'Unknown error';
+      if (typeof d.messageText === 'string') {
+        message = d.messageText;
+      } else if (d.messageText && typeof d.messageText === 'object') {
+        // DiagnosticMessageChain - get the first message
+        message = (d.messageText as any).messageText || 'Unknown error';
+      } else if (typeof d.message === 'string') {
+        message = d.message;
+      }
+
+      // TypeScript DiagnosticCategory: 0=Warning, 1=Error, 2=Suggestion, 3=Message
+      const severity = d.category === 1 ? 'error' : d.category === 0 ? 'warning' : 'info';
+
       return {
-        message: typeof d.message === 'string' ? d.message : (d.message as any)?.messageText || 'Unknown error',
+        message,
         startLine: startPos.lineNumber,
         startColumn: startPos.column,
         endLine: endPos.lineNumber,
         endColumn: endPos.column,
-        severity: d.category === 1 ? 'warning' : 'error',
+        severity: severity as 'error' | 'warning' | 'info',
       };
     });
   } catch (e) {
@@ -271,7 +430,6 @@ function mapDiagnosticsToSource(
   const sourceMapEntries = parseSourceMap(virtualTs);
 
   const mapped: Diagnostic[] = [];
-  const virtualTsLines = virtualTs.split('\n');
 
   // Helper: convert line/column to offset
   function lineColToOffset(content: string, line: number, col: number): number {
@@ -327,47 +485,11 @@ function mapDiagnosticsToSource(
       }
     }
 
+    // Only include diagnostics that have valid source mappings
+    // Skip diagnostics from Virtual TS boilerplate (no mapping = generated code)
     if (!foundMapping) {
-      // Fallback: try heuristic matching
-      const errorLine = virtualTsLines[diag.startLine - 1] || '';
-
-      // Look for expressions after "__undef_" or variable names
-      const undefMatch = errorLine.match(/__undef_(\w+)/);
-      const ctxMatch = errorLine.match(/__ctx\.(\w+)/);
-      const varName = undefMatch?.[1] || ctxMatch?.[1];
-
-      if (varName) {
-        // Find this variable in the Vue source
-        const vueLines = vueSource.split('\n');
-
-        for (let i = 0; i < vueLines.length; i++) {
-          const col = vueLines[i].indexOf(varName);
-          if (col >= 0) {
-            mapped.push({
-              ...diag,
-              startLine: i + 1,
-              startColumn: col + 1,
-              endLine: i + 1,
-              endColumn: col + 1 + varName.length,
-              message: `[TS] ${diag.message}`,
-            });
-            foundMapping = true;
-            break;
-          }
-        }
-      }
-
-      // Final fallback: show at line 1
-      if (!foundMapping) {
-        mapped.push({
-          ...diag,
-          startLine: 1,
-          startColumn: 1,
-          endLine: 1,
-          endColumn: 1,
-          message: `[Virtual TS] ${diag.message}`,
-        });
-      }
+      // Skip errors from boilerplate - these are not user code errors
+      console.log('[TypeCheck] Skipping unmapped diagnostic:', diag.message);
     }
   }
 
@@ -477,10 +599,16 @@ async function typeCheck() {
 
     // If Monaco TS checking is enabled and we have virtual TS
     if (useMonacoTs.value && result.virtualTs) {
+      // Cache source map for hover
+      cachedVirtualTs = result.virtualTs;
+      cachedSourceMap = parseSourceMap(result.virtualTs);
+
       const tsDiags = await getTypeScriptDiagnostics(result.virtualTs);
       tsDiagnostics.value = mapDiagnosticsToSource(tsDiags, result.virtualTs, source.value);
     } else {
       tsDiagnostics.value = [];
+      cachedSourceMap = [];
+      cachedVirtualTs = '';
     }
 
     checkTime.value = performance.now() - startTime;
@@ -546,6 +674,7 @@ watch(
 onMounted(async () => {
   loadOptions();
   await configureTypeScript();
+  registerHoverProvider();
   if (props.compiler) {
     loadCapabilities();
   }
@@ -556,6 +685,11 @@ onUnmounted(() => {
   if (virtualTsModel) {
     virtualTsModel.dispose();
     virtualTsModel = null;
+  }
+  // Clean up hover provider
+  if (hoverProviderDisposable) {
+    hoverProviderDisposable.dispose();
+    hoverProviderDisposable = null;
   }
 });
 </script>

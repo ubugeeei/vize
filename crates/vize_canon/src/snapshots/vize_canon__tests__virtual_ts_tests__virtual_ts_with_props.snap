@@ -74,13 +74,14 @@ function __setup<
   }
 ) {
   // ========== Script Setup Content ==========
-  
-  interface Props {
-    title: string
-    count?: number
-  }
-  
-  const props = defineProps<Props>()
+
+interface Props {
+  title: string
+  count?: number
+}
+
+const props = defineProps<Props>()
+  // @vize-map: 1478:1568 -> 24:113
 
   // ========== Template Function ==========
   function __template() {
@@ -103,6 +104,17 @@ function __setup<
 
     // Script setup bindings (mark as used for unused detection)
     void props;
+
+    // ========== Template Expressions ==========
+    // Interpolation @145:156
+    void (props.title);
+    // @vize-map: 2601:2625 -> 145:156
+    // VIf @176:187
+    void (props.count);
+    // @vize-map: 2684:2708 -> 176:187
+    // Interpolation @199:210
+    void (props.count);
+    // @vize-map: 2777:2801 -> 199:210
 
   }
 

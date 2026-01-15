@@ -77,9 +77,10 @@ function __setup<
   }
 ) {
   // ========== Script Setup Content ==========
-  
-  
-  const { x, y } = useMouse()
+
+
+const { x, y } = useMouse()
+  // @vize-map: 1560:1590 -> 65:94
 
   // ========== Template Function ==========
   function __template() {
@@ -104,6 +105,14 @@ function __setup<
     void useMouse;
     void x;
     void y;
+
+    // ========== Template Expressions ==========
+    // Interpolation @147:148
+    void (x);
+    // @vize-map: 2649:2663 -> 147:148
+    // Interpolation @156:157
+    void (y);
+    // @vize-map: 2732:2746 -> 156:157
 
   }
 

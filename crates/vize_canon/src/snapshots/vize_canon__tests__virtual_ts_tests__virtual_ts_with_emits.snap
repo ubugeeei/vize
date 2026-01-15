@@ -74,17 +74,18 @@ function __setup<
   }
 ) {
   // ========== Script Setup Content ==========
-  
-  interface Emits {
-    (e: 'update', value: number): void
-    (e: 'close'): void
-  }
-  
-  const emit = defineEmits<Emits>()
-  
-  function handleClick() {
-    emit('update', 42)
-  }
+
+interface Emits {
+  (e: 'update', value: number): void
+  (e: 'close'): void
+}
+
+const emit = defineEmits<Emits>()
+
+function handleClick() {
+  emit('update', 42)
+}
+  // @vize-map: 1478:1641 -> 24:186
 
   // ========== Template Function ==========
   function __template() {
@@ -112,6 +113,7 @@ function __setup<
     // @click @219:238
     (($event: MouseEvent) => {
       handleClick($event);
+      // @vize-map: 2669:2696 -> 219:238
     })();
 
   }

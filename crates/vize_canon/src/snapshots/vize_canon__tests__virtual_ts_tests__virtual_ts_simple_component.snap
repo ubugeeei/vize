@@ -77,14 +77,15 @@ function __setup<
   }
 ) {
   // ========== Script Setup Content ==========
-  
-  
-  const count = ref(0)
-  const message = ref('Hello')
-  
-  function increment() {
-    count.value++
-  }
+
+
+const count = ref(0)
+const message = ref('Hello')
+
+function increment() {
+  count.value++
+}
+  // @vize-map: 1546:1640 -> 51:144
 
   // ========== Template Function ==========
   function __template() {
@@ -114,7 +115,16 @@ function __setup<
     // @click @241:258
     (($event: MouseEvent) => {
       increment($event);
+      // @vize-map: 2699:2724 -> 241:258
     })();
+
+    // ========== Template Expressions ==========
+    // Interpolation @184:191
+    void (message);
+    // @vize-map: 2856:2876 -> 184:191
+    // Interpolation @216:221
+    void (count);
+    // @vize-map: 2945:2963 -> 216:221
 
   }
 

@@ -77,9 +77,10 @@ function __setup<
   }
 ) {
   // ========== Script Setup Content ==========
-  
-  
-  const slots = useSlots()
+
+
+const slots = useSlots()
+  // @vize-map: 1551:1578 -> 56:82
 
   // ========== Template Function ==========
   function __template() {
@@ -103,6 +104,11 @@ function __setup<
     // Script setup bindings (mark as used for unused detection)
     void slots;
     void useSlots;
+
+    // ========== Template Expressions ==========
+    // VBind @144:152
+    void ('Header');
+    // @vize-map: 2621:2642 -> 144:152
 
   }
 
