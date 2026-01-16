@@ -229,6 +229,8 @@ pub struct ScriptSetupScopeData {
     pub is_ts: bool,
     /// Whether async setup
     pub is_async: bool,
+    /// Generic type parameter from `<script setup generic="T">`
+    pub generic: Option<CompactString>,
 }
 
 /// Data specific to non-script-setup scope (Options API, regular script)
@@ -1673,6 +1675,7 @@ mod tests {
             ScriptSetupScopeData {
                 is_ts: true,
                 is_async: false,
+                generic: None,
             },
             0,
             500,
@@ -1719,6 +1722,7 @@ mod tests {
             ScriptSetupScopeData {
                 is_ts: true,
                 is_async: false,
+                generic: None,
             },
             0,
             500,
@@ -1761,6 +1765,7 @@ mod tests {
             ScriptSetupScopeData {
                 is_ts: true,
                 is_async: false,
+                generic: None,
             },
             0,
             500,
@@ -1984,6 +1989,7 @@ mod tests {
             ScriptSetupScopeData {
                 is_ts: true,
                 is_async: false,
+                generic: None,
             },
             0,
             500,

@@ -194,7 +194,7 @@ mod tests {
 
     #[test]
     fn test_meta() {
-        let rule = NoMutatingProps::default();
+        let rule = NoMutatingProps;
         assert_eq!(rule.meta().name, "vue/no-mutating-props");
         assert_eq!(rule.meta().category, RuleCategory::Essential);
         assert_eq!(rule.meta().default_severity, Severity::Error);

@@ -196,6 +196,7 @@ pub fn parse_script_setup(source: &str) -> ScriptParseResult {
         ScriptSetupScopeData {
             is_ts: true,
             is_async: false,
+            generic: None, // TODO: Extract from <script setup generic="T">
         },
         0,
         source_len,

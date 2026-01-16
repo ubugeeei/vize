@@ -252,6 +252,7 @@ impl Analyzer {
                         ExpressionNode::Compound(c) => c.loc.source.as_str(),
                     };
                     let loc = interp.content.loc();
+                    let scope_id = self.summary.scopes.current_id();
                     self.summary
                         .template_expressions
                         .push(crate::analysis::TemplateExpression {
@@ -259,6 +260,7 @@ impl Analyzer {
                             kind: crate::analysis::TemplateExpressionKind::Interpolation,
                             start: loc.start.offset,
                             end: loc.end.offset,
+                            scope_id,
                         });
                 }
                 if self.options.detect_undefined && self.script_analyzed {
@@ -348,12 +350,14 @@ impl Analyzer {
 
                         // Collect expression for type checking
                         if self.options.collect_template_expressions {
+                            let scope_id = self.summary.scopes.current_id();
                             self.summary.template_expressions.push(
                                 crate::analysis::TemplateExpression {
                                     content: CompactString::new(content),
                                     kind: crate::analysis::TemplateExpressionKind::VBind,
                                     start: loc.start.offset,
                                     end: loc.end.offset,
+                                    scope_id,
                                 },
                             );
                         }
@@ -379,12 +383,14 @@ impl Analyzer {
                                 ExpressionNode::Compound(c) => c.loc.source.as_str(),
                             };
                             let loc = exp.loc();
+                            let scope_id = self.summary.scopes.current_id();
                             self.summary.template_expressions.push(
                                 crate::analysis::TemplateExpression {
                                     content: CompactString::new(content),
                                     kind: crate::analysis::TemplateExpressionKind::VIf,
                                     start: loc.start.offset,
                                     end: loc.end.offset,
+                                    scope_id,
                                 },
                             );
                         }
@@ -399,12 +405,14 @@ impl Analyzer {
                                 ExpressionNode::Compound(c) => c.loc.source.as_str(),
                             };
                             let loc = exp.loc();
+                            let scope_id = self.summary.scopes.current_id();
                             self.summary.template_expressions.push(
                                 crate::analysis::TemplateExpression {
                                     content: CompactString::new(content),
                                     kind: crate::analysis::TemplateExpressionKind::VShow,
                                     start: loc.start.offset,
                                     end: loc.end.offset,
+                                    scope_id,
                                 },
                             );
                         }
@@ -419,12 +427,14 @@ impl Analyzer {
                                 ExpressionNode::Compound(c) => c.loc.source.as_str(),
                             };
                             let loc = exp.loc();
+                            let scope_id = self.summary.scopes.current_id();
                             self.summary.template_expressions.push(
                                 crate::analysis::TemplateExpression {
                                     content: CompactString::new(content),
                                     kind: crate::analysis::TemplateExpressionKind::VModel,
                                     start: loc.start.offset,
                                     end: loc.end.offset,
+                                    scope_id,
                                 },
                             );
                         }

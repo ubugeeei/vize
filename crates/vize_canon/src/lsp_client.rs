@@ -467,6 +467,74 @@ impl TsgoLspClient {
         }
     }
 
+    /// Request diagnostics for multiple URIs in batch (pipelined)
+    /// Sends all requests first, then collects all responses
+    pub fn request_diagnostics_batch(
+        &mut self,
+        uris: &[String],
+    ) -> Vec<(String, Vec<LspDiagnostic>)> {
+        use std::collections::HashMap;
+
+        // Phase 1: Send all requests
+        let mut request_ids: HashMap<i64, String> = HashMap::new();
+        for uri in uris {
+            let id = self.request_id.fetch_add(1, Ordering::SeqCst);
+            let request = serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": id,
+                "method": "textDocument/diagnostic",
+                "params": {
+                    "textDocument": {
+                        "uri": uri
+                    }
+                }
+            });
+
+            if self.send_message(&request).is_ok() {
+                request_ids.insert(id, uri.clone());
+            }
+        }
+
+        // Phase 2: Collect all responses
+        let mut results: Vec<(String, Vec<LspDiagnostic>)> = Vec::new();
+        let max_wait = Duration::from_secs(30);
+        let start = std::time::Instant::now();
+
+        while !request_ids.is_empty() && start.elapsed() < max_wait {
+            match self.try_read_message_nonblocking() {
+                Some(Ok(msg)) => {
+                    // Check if this is a response
+                    if let Some(msg_id) = msg.get("id").and_then(|i| i.as_i64()) {
+                        if let Some(uri) = request_ids.remove(&msg_id) {
+                            // Parse diagnostics from result
+                            let diags = msg
+                                .get("result")
+                                .and_then(|r| r.get("items"))
+                                .and_then(|i| i.as_array())
+                                .map(|items| {
+                                    items
+                                        .iter()
+                                        .filter_map(|d| serde_json::from_value(d.clone()).ok())
+                                        .collect()
+                                })
+                                .unwrap_or_default();
+                            results.push((uri, diags));
+                        }
+                    } else {
+                        // Handle notification
+                        self.handle_notification(&msg);
+                    }
+                }
+                Some(Err(_)) => break,
+                None => {
+                    thread::sleep(Duration::from_millis(1));
+                }
+            }
+        }
+
+        results
+    }
+
     /// Try to read a message without blocking forever
     fn try_read_message_nonblocking(&mut self) -> Option<Result<Value, String>> {
         // Check if there's data available using fill_buf

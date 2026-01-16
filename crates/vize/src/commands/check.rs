@@ -570,16 +570,27 @@ fn run_direct(args: &CheckArgs) {
                     // Wait for diagnostics
                     lsp_client.wait_for_diagnostics(files_to_open.len());
 
-                    // PHASE 2: Get cached diagnostics (no request round-trip needed!)
-                    // publishDiagnostics already arrived during wait_for_diagnostics
+                    // PHASE 2: Request diagnostics in batch (pipelined)
+                    // tsgo doesn't publish diagnostics automatically - we must request them
+                    let uris: Vec<String> = indices
+                        .iter()
+                        .map(|i| format!("file://{}.ts", generated[*i].original))
+                        .collect();
+
+                    let batch_results = lsp_client.request_diagnostics_batch(&uris);
+
+                    // Build a map from URI to diagnostics
+                    let diag_map: std::collections::HashMap<_, _> =
+                        batch_results.into_iter().collect();
+
                     let mut chunk_diagnostics: Vec<(String, Vec<String>)> = Vec::new();
 
                     for idx in &indices {
                         let g = &generated[*idx];
                         let virtual_uri = format!("file://{}.ts", g.original);
 
-                        // Use cached diagnostics from publishDiagnostics - no LSP round-trip!
-                        let diagnostics = lsp_client.get_diagnostics(&virtual_uri);
+                        // Get diagnostics from batch result
+                        let diagnostics = diag_map.get(&virtual_uri).cloned().unwrap_or_default();
 
                         // Filter and format diagnostics
                         let mut file_diags: Vec<String> = Vec::new();
@@ -606,7 +617,9 @@ fn run_direct(args: &CheckArgs) {
                             if matches!(code_num, Some(6133) | Some(6196) | Some(2578))
                                 && (diag.message.contains("__")
                                     || diag.message.contains("handler")
-                                    || diag.message.contains("@ts-expect-error"))
+                                    || diag.message.contains("@ts-expect-error")
+                                    || diag.message.contains("'$"))
+                            // Vue template globals
                             {
                                 continue;
                             }

@@ -106,6 +106,8 @@ pub struct TemplateExpression {
     pub start: u32,
     /// End offset in template (relative to template block)
     pub end: u32,
+    /// The scope this expression belongs to
+    pub scope_id: crate::scope::ScopeId,
 }
 
 /// Kind of template expression.
