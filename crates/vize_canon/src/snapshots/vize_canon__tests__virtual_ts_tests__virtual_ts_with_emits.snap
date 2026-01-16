@@ -121,11 +121,3 @@ function handleClick() {
   // Component render return
   return __template;
 }
-
-// ========== Undefined Reference Errors ==========
-function __undefinedReferenceErrors() {
-  // @ts-expect-error TS2304: 'close' is not defined
-  // Context: template expression @[272:277]
-  void close;
-
-}

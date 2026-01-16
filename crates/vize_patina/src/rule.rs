@@ -218,6 +218,15 @@ impl RuleRegistry {
         registry.register(Box::new(crate::rules::ssr::NoBrowserGlobalsInSsr));
         registry.register(Box::new(crate::rules::ssr::NoHydrationMismatch));
 
+        // ============================================
+        // Semantic Analysis Rules (require croquis)
+        // ============================================
+        // These rules use croquis Croquis for accurate detection.
+
+        registry.register(Box::new(crate::rules::vue::NoUnusedComponents::default()));
+        registry.register(Box::new(crate::rules::vue::NoUnusedProperties::default()));
+        registry.register(Box::new(crate::rules::vue::NoMutatingProps));
+
         registry
     }
 

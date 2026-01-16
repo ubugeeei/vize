@@ -1,6 +1,6 @@
 //! High-performance Vue SFC analyzer.
 //!
-//! This module provides the `Analyzer` that produces `AnalysisSummary`.
+//! This module provides the `Analyzer` that produces `Croquis`.
 //!
 //! ## Performance Considerations
 //!
@@ -25,7 +25,7 @@
 //! let summary = analyzer.finish();
 //! ```
 
-use crate::analysis::{AnalysisSummary, UndefinedRef};
+use crate::analysis::{Croquis, UndefinedRef};
 use crate::scope::{CallbackScopeData, EventHandlerScopeData, VForScopeData, VSlotScopeData};
 use crate::ScopeBinding;
 use oxc_allocator::Allocator;
@@ -103,7 +103,7 @@ impl AnalyzerOptions {
 /// Uses lazy evaluation and efficient data structures to minimize overhead.
 pub struct Analyzer {
     options: AnalyzerOptions,
-    summary: AnalysisSummary,
+    summary: Croquis,
     /// Track if script was analyzed (for undefined detection)
     script_analyzed: bool,
 }
@@ -120,7 +120,7 @@ impl Analyzer {
     pub fn with_options(options: AnalyzerOptions) -> Self {
         Self {
             options,
-            summary: AnalysisSummary::new(),
+            summary: Croquis::new(),
             script_analyzed: false,
         }
     }
@@ -220,13 +220,13 @@ impl Analyzer {
     ///
     /// Consumes the analyzer.
     #[inline]
-    pub fn finish(self) -> AnalysisSummary {
+    pub fn finish(self) -> Croquis {
         self.summary
     }
 
     /// Get a reference to the current summary (without consuming).
     #[inline]
-    pub fn summary(&self) -> &AnalysisSummary {
+    pub fn summary(&self) -> &Croquis {
         &self.summary
     }
 
@@ -252,6 +252,7 @@ impl Analyzer {
                         ExpressionNode::Compound(c) => c.loc.source.as_str(),
                     };
                     let loc = interp.content.loc();
+                    let scope_id = self.summary.scopes.current_id();
                     self.summary
                         .template_expressions
                         .push(crate::analysis::TemplateExpression {
@@ -259,6 +260,7 @@ impl Analyzer {
                             kind: crate::analysis::TemplateExpressionKind::Interpolation,
                             start: loc.start.offset,
                             end: loc.end.offset,
+                            scope_id,
                         });
                 }
                 if self.options.detect_undefined && self.script_analyzed {
@@ -348,12 +350,14 @@ impl Analyzer {
 
                         // Collect expression for type checking
                         if self.options.collect_template_expressions {
+                            let scope_id = self.summary.scopes.current_id();
                             self.summary.template_expressions.push(
                                 crate::analysis::TemplateExpression {
                                     content: CompactString::new(content),
                                     kind: crate::analysis::TemplateExpressionKind::VBind,
                                     start: loc.start.offset,
                                     end: loc.end.offset,
+                                    scope_id,
                                 },
                             );
                         }
@@ -379,12 +383,14 @@ impl Analyzer {
                                 ExpressionNode::Compound(c) => c.loc.source.as_str(),
                             };
                             let loc = exp.loc();
+                            let scope_id = self.summary.scopes.current_id();
                             self.summary.template_expressions.push(
                                 crate::analysis::TemplateExpression {
                                     content: CompactString::new(content),
                                     kind: crate::analysis::TemplateExpressionKind::VIf,
                                     start: loc.start.offset,
                                     end: loc.end.offset,
+                                    scope_id,
                                 },
                             );
                         }
@@ -399,12 +405,14 @@ impl Analyzer {
                                 ExpressionNode::Compound(c) => c.loc.source.as_str(),
                             };
                             let loc = exp.loc();
+                            let scope_id = self.summary.scopes.current_id();
                             self.summary.template_expressions.push(
                                 crate::analysis::TemplateExpression {
                                     content: CompactString::new(content),
                                     kind: crate::analysis::TemplateExpressionKind::VShow,
                                     start: loc.start.offset,
                                     end: loc.end.offset,
+                                    scope_id,
                                 },
                             );
                         }
@@ -419,12 +427,14 @@ impl Analyzer {
                                 ExpressionNode::Compound(c) => c.loc.source.as_str(),
                             };
                             let loc = exp.loc();
+                            let scope_id = self.summary.scopes.current_id();
                             self.summary.template_expressions.push(
                                 crate::analysis::TemplateExpression {
                                     content: CompactString::new(content),
                                     kind: crate::analysis::TemplateExpressionKind::VModel,
                                     start: loc.start.offset,
                                     end: loc.end.offset,
+                                    scope_id,
                                 },
                             );
                         }
@@ -831,7 +841,7 @@ impl Analyzer {
         vars
     }
 
-    /// Check expression for undefined references
+    /// Check expression for undefined references and mark used variables
     fn check_expression_refs(
         &mut self,
         expr: &ExpressionNode<'_>,
@@ -843,21 +853,32 @@ impl Analyzer {
             ExpressionNode::Compound(c) => c.loc.source.as_str(),
         };
 
-        // Fast identifier extraction with position tracking
-        for ident in extract_identifiers_fast(content) {
-            // Check if defined
-            let is_defined = scope_vars.iter().any(|v| v.as_str() == ident)
-                || self.summary.bindings.contains(ident)
-                || crate::builtins::is_js_global(ident)
-                || crate::builtins::is_vue_builtin(ident)
-                || crate::builtins::is_event_local(ident)
-                || is_keyword(ident);
+        // OXC-based identifier extraction for accurate AST analysis
+        for ident in extract_identifiers_oxc(content) {
+            let ident_str = ident.as_str();
 
-            if !is_defined {
+            // Check if defined in local scope vars
+            let in_scope_vars = scope_vars.iter().any(|v| v.as_str() == ident_str);
+
+            // Check if defined in bindings or scope chain
+            let in_bindings = self.summary.bindings.contains(ident_str);
+            let in_scope_chain = self.summary.scopes.is_defined(ident_str);
+
+            let is_builtin = crate::builtins::is_js_global(ident_str)
+                || crate::builtins::is_vue_builtin(ident_str)
+                || crate::builtins::is_event_local(ident_str)
+                || is_keyword(ident_str);
+
+            let is_defined = in_scope_vars || in_bindings || in_scope_chain || is_builtin;
+
+            if is_defined && !is_builtin {
+                // Mark the variable as used in scope chain
+                self.summary.scopes.mark_used(ident_str);
+            } else if !is_defined {
                 // Find the identifier's position within content
-                let ident_offset_in_content = content.find(ident).unwrap_or(0) as u32;
+                let ident_offset_in_content = content.find(ident_str).unwrap_or(0) as u32;
                 self.summary.undefined_refs.push(UndefinedRef {
-                    name: CompactString::new(ident),
+                    name: ident,
                     offset: base_offset + ident_offset_in_content,
                     context: CompactString::new("template expression"),
                 });
@@ -952,12 +973,25 @@ fn is_keyword(s: &str) -> bool {
     )
 }
 
-/// Fast identifier extraction from expression string.
-/// Only extracts "root" identifiers - identifiers that are references, not property accesses.
-/// For example, in "item.name + user.id", only "item" and "user" are extracted,
-/// not "name" or "id" (which are property accesses).
+/// Hybrid identifier extraction - fast path for simple expressions, OXC for complex ones.
+/// Only extracts "root" identifiers - identifiers that are references, not:
+/// - Property accesses (item.name -> only "item" extracted)
+/// - Object literal keys ({ active: value } -> only "value" extracted)
+/// - String literals, computed property names, etc.
 #[inline]
-fn extract_identifiers_fast(expr: &str) -> Vec<&str> {
+fn extract_identifiers_oxc(expr: &str) -> Vec<CompactString> {
+    // Fast path: if no object literal, use fast string-based extraction
+    if !expr.contains('{') {
+        return extract_identifiers_fast(expr);
+    }
+
+    // Slow path: use OXC for expressions with object literals
+    extract_identifiers_oxc_slow(expr)
+}
+
+/// Fast string-based identifier extraction for simple expressions.
+#[inline]
+fn extract_identifiers_fast(expr: &str) -> Vec<CompactString> {
     let mut identifiers = Vec::with_capacity(4);
     let bytes = expr.as_bytes();
     let len = bytes.len();
@@ -966,19 +1000,91 @@ fn extract_identifiers_fast(expr: &str) -> Vec<&str> {
     while i < len {
         let c = bytes[i];
 
+        // Skip single-quoted strings
+        if c == b'\'' {
+            i += 1;
+            while i < len && bytes[i] != b'\'' {
+                if bytes[i] == b'\\' && i + 1 < len {
+                    i += 2;
+                } else {
+                    i += 1;
+                }
+            }
+            if i < len {
+                i += 1;
+            }
+            continue;
+        }
+
+        // Skip double-quoted strings
+        if c == b'"' {
+            i += 1;
+            while i < len && bytes[i] != b'"' {
+                if bytes[i] == b'\\' && i + 1 < len {
+                    i += 2;
+                } else {
+                    i += 1;
+                }
+            }
+            if i < len {
+                i += 1;
+            }
+            continue;
+        }
+
+        // Handle template literals
+        if c == b'`' {
+            i += 1;
+            while i < len {
+                if bytes[i] == b'\\' && i + 1 < len {
+                    i += 2;
+                    continue;
+                }
+                if bytes[i] == b'`' {
+                    i += 1;
+                    break;
+                }
+                if bytes[i] == b'$' && i + 1 < len && bytes[i + 1] == b'{' {
+                    i += 2;
+                    let interp_start = i;
+                    let mut brace_depth = 1;
+                    while i < len && brace_depth > 0 {
+                        match bytes[i] {
+                            b'{' => brace_depth += 1,
+                            b'}' => brace_depth -= 1,
+                            _ => {}
+                        }
+                        if brace_depth > 0 {
+                            i += 1;
+                        }
+                    }
+                    if interp_start < i {
+                        let interp_content = &expr[interp_start..i];
+                        for ident in extract_identifiers_fast(interp_content) {
+                            identifiers.push(ident);
+                        }
+                    }
+                    if i < len {
+                        i += 1;
+                    }
+                    continue;
+                }
+                i += 1;
+            }
+            continue;
+        }
+
         // Start of identifier
         if c.is_ascii_alphabetic() || c == b'_' || c == b'$' {
             let start = i;
             i += 1;
-
             while i < len
                 && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b'_' || bytes[i] == b'$')
             {
                 i += 1;
             }
 
-            // Check if this identifier is a property access (preceded by '.')
-            // Look backwards from start to find the previous non-whitespace character
+            // Check if preceded by '.' (property access)
             let is_property_access = if start > 0 {
                 let mut j = start - 1;
                 loop {
@@ -996,15 +1102,269 @@ fn extract_identifiers_fast(expr: &str) -> Vec<&str> {
                 false
             };
 
-            // Only add root identifiers (not property accesses)
             if !is_property_access {
-                identifiers.push(&expr[start..i]);
+                identifiers.push(CompactString::new(&expr[start..i]));
             }
         } else {
             i += 1;
         }
     }
 
+    identifiers
+}
+
+/// OXC-based identifier extraction for expressions with object literals.
+#[inline]
+fn extract_identifiers_oxc_slow(expr: &str) -> Vec<CompactString> {
+    use oxc_ast::ast::{ArrayExpressionElement, Expression, ObjectPropertyKind, PropertyKey};
+
+    let allocator = Allocator::default();
+    let source_type = SourceType::from_path("expr.ts").unwrap_or_default();
+
+    let ret = Parser::new(&allocator, expr, source_type).parse_expression();
+    let parsed_expr = match ret {
+        Ok(expr) => expr,
+        Err(_) => return Vec::new(),
+    };
+
+    let mut identifiers = Vec::with_capacity(4);
+
+    // Recursive AST walker to collect identifier references
+    fn walk_expr(expr: &Expression<'_>, identifiers: &mut Vec<CompactString>) {
+        match expr {
+            // Direct identifier reference - this is what we want
+            Expression::Identifier(id) => {
+                identifiers.push(CompactString::new(id.name.as_str()));
+            }
+
+            // Member expressions - only extract the object, not the property
+            Expression::StaticMemberExpression(member) => {
+                walk_expr(&member.object, identifiers);
+                // member.property is skipped (it's a property access, not a reference)
+            }
+            Expression::ComputedMemberExpression(member) => {
+                walk_expr(&member.object, identifiers);
+                // The computed expression IS evaluated, so extract its identifiers
+                walk_expr(&member.expression, identifiers);
+            }
+            Expression::PrivateFieldExpression(field) => {
+                walk_expr(&field.object, identifiers);
+            }
+
+            // Object expressions - skip keys, only process values
+            Expression::ObjectExpression(obj) => {
+                for prop in obj.properties.iter() {
+                    match prop {
+                        ObjectPropertyKind::ObjectProperty(p) => {
+                            // Skip the key (it's not a reference)
+                            // But if the key is computed, extract from that
+                            if p.computed {
+                                if let Some(key_expr) = p.key.as_expression() {
+                                    walk_expr(key_expr, identifiers);
+                                }
+                            }
+                            // Process the value (it IS a reference)
+                            // Handle shorthand: { foo } is equivalent to { foo: foo }
+                            if p.shorthand {
+                                // In shorthand, the key IS also the value
+                                if let PropertyKey::StaticIdentifier(id) = &p.key {
+                                    identifiers.push(CompactString::new(id.name.as_str()));
+                                }
+                            } else {
+                                walk_expr(&p.value, identifiers);
+                            }
+                        }
+                        ObjectPropertyKind::SpreadProperty(spread) => {
+                            walk_expr(&spread.argument, identifiers);
+                        }
+                    }
+                }
+            }
+
+            // Array expressions
+            Expression::ArrayExpression(arr) => {
+                for elem in arr.elements.iter() {
+                    match elem {
+                        ArrayExpressionElement::SpreadElement(spread) => {
+                            walk_expr(&spread.argument, identifiers);
+                        }
+                        ArrayExpressionElement::Elision(_) => {}
+                        _ => {
+                            if let Some(e) = elem.as_expression() {
+                                walk_expr(e, identifiers);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Binary/Logical/Conditional expressions
+            Expression::BinaryExpression(binary) => {
+                walk_expr(&binary.left, identifiers);
+                walk_expr(&binary.right, identifiers);
+            }
+            Expression::LogicalExpression(logical) => {
+                walk_expr(&logical.left, identifiers);
+                walk_expr(&logical.right, identifiers);
+            }
+            Expression::ConditionalExpression(cond) => {
+                walk_expr(&cond.test, identifiers);
+                walk_expr(&cond.consequent, identifiers);
+                walk_expr(&cond.alternate, identifiers);
+            }
+
+            // Unary expressions
+            Expression::UnaryExpression(unary) => {
+                walk_expr(&unary.argument, identifiers);
+            }
+            Expression::UpdateExpression(update) => {
+                // UpdateExpression argument is SimpleAssignmentTarget
+                match &update.argument {
+                    oxc_ast::ast::SimpleAssignmentTarget::AssignmentTargetIdentifier(id) => {
+                        identifiers.push(CompactString::new(id.name.as_str()));
+                    }
+                    oxc_ast::ast::SimpleAssignmentTarget::StaticMemberExpression(member) => {
+                        walk_expr(&member.object, identifiers);
+                    }
+                    oxc_ast::ast::SimpleAssignmentTarget::ComputedMemberExpression(member) => {
+                        walk_expr(&member.object, identifiers);
+                        walk_expr(&member.expression, identifiers);
+                    }
+                    oxc_ast::ast::SimpleAssignmentTarget::PrivateFieldExpression(field) => {
+                        walk_expr(&field.object, identifiers);
+                    }
+                    _ => {}
+                }
+            }
+
+            // Call expressions
+            Expression::CallExpression(call) => {
+                walk_expr(&call.callee, identifiers);
+                for arg in call.arguments.iter() {
+                    if let Some(e) = arg.as_expression() {
+                        walk_expr(e, identifiers);
+                    }
+                }
+            }
+            Expression::NewExpression(new_expr) => {
+                walk_expr(&new_expr.callee, identifiers);
+                for arg in new_expr.arguments.iter() {
+                    if let Some(e) = arg.as_expression() {
+                        walk_expr(e, identifiers);
+                    }
+                }
+            }
+
+            // Arrow/Function expressions - extract from body but skip params
+            Expression::ArrowFunctionExpression(arrow) => {
+                // Note: params create new bindings, so we skip them
+                // The body may reference outer scope variables
+                if arrow.expression {
+                    if let Some(oxc_ast::ast::Statement::ExpressionStatement(expr_stmt)) =
+                        arrow.body.statements.first()
+                    {
+                        walk_expr(&expr_stmt.expression, identifiers);
+                    }
+                }
+                // For block arrows, we'd need to track scopes properly
+                // For now, skip complex function bodies
+            }
+
+            // Sequence expressions
+            Expression::SequenceExpression(seq) => {
+                for e in seq.expressions.iter() {
+                    walk_expr(e, identifiers);
+                }
+            }
+
+            // Assignment expressions
+            Expression::AssignmentExpression(assign) => {
+                // Left side creates/modifies binding, right side is evaluated
+                walk_expr(&assign.right, identifiers);
+            }
+
+            // Template literals
+            Expression::TemplateLiteral(template) => {
+                for expr in template.expressions.iter() {
+                    walk_expr(expr, identifiers);
+                }
+            }
+            Expression::TaggedTemplateExpression(tagged) => {
+                walk_expr(&tagged.tag, identifiers);
+                for expr in tagged.quasi.expressions.iter() {
+                    walk_expr(expr, identifiers);
+                }
+            }
+
+            // Parenthesized/Await/Yield
+            Expression::ParenthesizedExpression(paren) => {
+                walk_expr(&paren.expression, identifiers);
+            }
+            Expression::AwaitExpression(await_expr) => {
+                walk_expr(&await_expr.argument, identifiers);
+            }
+            Expression::YieldExpression(yield_expr) => {
+                if let Some(arg) = &yield_expr.argument {
+                    walk_expr(arg, identifiers);
+                }
+            }
+
+            // Chained expressions
+            Expression::ChainExpression(chain) => match &chain.expression {
+                oxc_ast::ast::ChainElement::CallExpression(call) => {
+                    walk_expr(&call.callee, identifiers);
+                    for arg in call.arguments.iter() {
+                        if let Some(e) = arg.as_expression() {
+                            walk_expr(e, identifiers);
+                        }
+                    }
+                }
+                oxc_ast::ast::ChainElement::TSNonNullExpression(non_null) => {
+                    walk_expr(&non_null.expression, identifiers);
+                }
+                oxc_ast::ast::ChainElement::StaticMemberExpression(member) => {
+                    walk_expr(&member.object, identifiers);
+                }
+                oxc_ast::ast::ChainElement::ComputedMemberExpression(member) => {
+                    walk_expr(&member.object, identifiers);
+                    walk_expr(&member.expression, identifiers);
+                }
+                oxc_ast::ast::ChainElement::PrivateFieldExpression(field) => {
+                    walk_expr(&field.object, identifiers);
+                }
+            },
+
+            // TypeScript specific
+            Expression::TSAsExpression(as_expr) => {
+                walk_expr(&as_expr.expression, identifiers);
+            }
+            Expression::TSSatisfiesExpression(satisfies) => {
+                walk_expr(&satisfies.expression, identifiers);
+            }
+            Expression::TSNonNullExpression(non_null) => {
+                walk_expr(&non_null.expression, identifiers);
+            }
+            Expression::TSTypeAssertion(assertion) => {
+                walk_expr(&assertion.expression, identifiers);
+            }
+            Expression::TSInstantiationExpression(inst) => {
+                walk_expr(&inst.expression, identifiers);
+            }
+
+            // Literals - no identifiers
+            Expression::BooleanLiteral(_)
+            | Expression::NullLiteral(_)
+            | Expression::NumericLiteral(_)
+            | Expression::BigIntLiteral(_)
+            | Expression::StringLiteral(_)
+            | Expression::RegExpLiteral(_) => {}
+
+            // Other expressions we don't need to handle
+            _ => {}
+        }
+    }
+
+    walk_expr(&parsed_expr, &mut identifiers);
     identifiers
 }
 
@@ -1491,30 +1851,62 @@ mod tests {
     use crate::analysis::{InvalidExportKind, TypeExportKind};
 
     #[test]
-    fn test_extract_identifiers_fast() {
-        let ids = extract_identifiers_fast("count + 1");
+    fn test_extract_identifiers_oxc() {
+        fn to_strings(ids: Vec<CompactString>) -> Vec<String> {
+            ids.into_iter().map(|s| s.to_string()).collect()
+        }
+
+        let ids = to_strings(extract_identifiers_oxc("count + 1"));
         assert_eq!(ids, vec!["count"]);
 
         // Only root identifiers should be extracted, not property accesses
-        let ids = extract_identifiers_fast("user.name + item.value");
+        let ids = to_strings(extract_identifiers_oxc("user.name + item.value"));
         assert_eq!(ids, vec!["user", "item"]);
 
-        let ids = extract_identifiers_fast("item.name");
+        let ids = to_strings(extract_identifiers_oxc("item.name"));
         assert_eq!(ids, vec!["item"]);
 
-        let ids = extract_identifiers_fast("a.b.c.d");
+        let ids = to_strings(extract_identifiers_oxc("a.b.c.d"));
         assert_eq!(ids, vec!["a"]);
 
-        let ids = extract_identifiers_fast("");
+        let ids = extract_identifiers_oxc("");
         assert!(ids.is_empty());
 
         // Multiple root identifiers
-        let ids = extract_identifiers_fast("foo + bar - baz");
+        let ids = to_strings(extract_identifiers_oxc("foo + bar - baz"));
         assert_eq!(ids, vec!["foo", "bar", "baz"]);
 
-        // With method calls
-        let ids = extract_identifiers_fast("items.map(x => x.name)");
-        assert_eq!(ids, vec!["items", "x", "x"]);
+        // With method calls - fast path extracts identifiers (duplicates are ok)
+        let ids = to_strings(extract_identifiers_oxc("items.map(x => x.name)"));
+        assert!(ids.contains(&"items".to_string()));
+        assert!(ids.contains(&"x".to_string())); // extracted from arrow function
+
+        // Object literal keys should NOT be extracted, only values
+        let ids = to_strings(extract_identifiers_oxc("{ active: isActive }"));
+        assert_eq!(ids, vec!["isActive"]);
+
+        // Object shorthand should extract the identifier (it's both key and value)
+        let ids = to_strings(extract_identifiers_oxc("{ foo }"));
+        assert_eq!(ids, vec!["foo"]);
+
+        // Complex object with mixed keys
+        let ids = to_strings(extract_identifiers_oxc(
+            "{ active: isActive, 'btn-primary': isPrimary, [dynamicKey]: value }",
+        ));
+        assert!(ids.contains(&"isActive".to_string()));
+        assert!(ids.contains(&"isPrimary".to_string()));
+        assert!(ids.contains(&"dynamicKey".to_string())); // computed key expression
+        assert!(ids.contains(&"value".to_string()));
+        assert!(!ids.contains(&"active".to_string())); // NOT a reference
+
+        // Style bindings should work correctly
+        let ids = to_strings(extract_identifiers_oxc("{ marginLeft: offset + 'px' }"));
+        assert_eq!(ids, vec!["offset"]);
+        assert!(!ids.contains(&"marginLeft".to_string()));
+
+        // Ternary expressions should extract all parts
+        let ids = to_strings(extract_identifiers_oxc("cond ? a : b"));
+        assert_eq!(ids, vec!["cond", "a", "b"]);
     }
 
     #[test]

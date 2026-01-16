@@ -64,8 +64,9 @@ pub use symbol::*;
 
 // Re-export analysis types
 pub use analysis::{
-    AnalysisStats, AnalysisSummary, BindingMetadata, InvalidExport, InvalidExportKind,
-    TemplateExpression, TemplateExpressionKind, TypeExport, TypeExportKind, UndefinedRef,
+    AnalysisStats, BindingMetadata, Croquis, InvalidExport, InvalidExportKind, TemplateExpression,
+    TemplateExpressionKind, TypeExport, TypeExportKind, UndefinedRef, UnusedTemplateVar,
+    UnusedVarContext,
 };
 pub use analyzer::{Analyzer, AnalyzerOptions};
 

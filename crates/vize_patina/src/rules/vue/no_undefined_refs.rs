@@ -2,7 +2,7 @@
 //!
 //! Disallow undefined variable references in templates.
 //!
-//! This rule requires semantic analysis (AnalysisSummary) to be effective.
+//! This rule requires semantic analysis (Croquis) to be effective.
 //! Without analysis, it only checks v-for scope variables.
 //!
 //! ## Examples

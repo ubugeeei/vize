@@ -115,11 +115,3 @@ const slots = useSlots()
   // Component render return
   return __template;
 }
-
-// ========== Undefined Reference Errors ==========
-function __undefinedReferenceErrors() {
-  // @ts-expect-error TS2304: 'Header' is not defined
-  // Context: template expression @[137:143]
-  void Header;
-
-}

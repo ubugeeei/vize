@@ -196,65 +196,91 @@ impl Linter {
 
     /// Lint a full Vue SFC file
     ///
-    /// This extracts the template from the SFC and lints it.
+    /// Uses ultra-fast template extraction optimized for linting.
     #[inline]
     pub fn lint_sfc(&self, source: &str, filename: &str) -> LintResult {
-        // Extract template content from SFC with byte offset
-        let template_info = extract_template_content(source);
+        // Fast template extraction using memchr
+        let (content, byte_offset) = match extract_template_fast(source) {
+            Some(r) => r,
+            None => {
+                return LintResult {
+                    filename: filename.to_string(),
+                    diagnostics: Vec::new(),
+                    error_count: 0,
+                    warning_count: 0,
+                };
+            }
+        };
 
-        if let Some((content, byte_offset)) = template_info {
-            let mut result = self.lint_template(&content, filename);
+        let mut result = self.lint_template(&content, filename);
 
-            // Adjust byte offsets in diagnostics to match original file positions
-            if byte_offset > 0 {
-                for diag in &mut result.diagnostics {
-                    diag.start += byte_offset;
-                    diag.end += byte_offset;
-                    // Also adjust label positions
-                    for label in &mut diag.labels {
-                        label.start += byte_offset;
-                        label.end += byte_offset;
-                    }
+        // Adjust byte offsets in diagnostics to match original file positions
+        if byte_offset > 0 {
+            for diag in &mut result.diagnostics {
+                diag.start += byte_offset;
+                diag.end += byte_offset;
+                for label in &mut diag.labels {
+                    label.start += byte_offset;
+                    label.end += byte_offset;
                 }
             }
-
-            result
-        } else {
-            // No template found, return empty result
-            LintResult {
-                filename: filename.to_string(),
-                diagnostics: Vec::new(),
-                error_count: 0,
-                warning_count: 0,
-            }
         }
+
+        result
     }
 }
 
-/// Extract template content from SFC source (optimized)
-/// Returns the content and the byte offset where the template content starts
+/// Ultra-fast template extraction using memchr for SIMD-accelerated search
 #[inline]
-fn extract_template_content(source: &str) -> Option<(String, u32)> {
-    // Fast path: check if template tag exists
-    let start_tag = "<template";
-    let start_idx = source.find(start_tag)?;
+fn extract_template_fast(source: &str) -> Option<(String, u32)> {
+    let bytes = source.as_bytes();
 
-    // Find the end of the opening tag (handle attributes)
-    let tag_end = source[start_idx..].find('>')?;
-    let content_start = start_idx + tag_end + 1;
+    // Find <template using memchr (SIMD accelerated)
+    let start_pattern = b"<template";
 
-    // Find </template> closing tag (search from end for speed)
-    let end_tag = "</template>";
-    let content_end = source.rfind(end_tag)?;
+    // Find first <template occurrence
+    let start_idx = memchr::memmem::find(bytes, start_pattern)?;
 
-    if content_start >= content_end {
-        return None;
+    // Find > after <template (end of opening tag)
+    let tag_end = memchr::memchr(b'>', &bytes[start_idx..])? + start_idx;
+    let content_start = tag_end + 1;
+
+    // Find matching </template> - handle nesting with simple depth tracking
+    let mut depth = 1u32;
+    let mut pos = content_start;
+
+    while pos < bytes.len() && depth > 0 {
+        // Find next < character
+        let next_lt = match memchr::memchr(b'<', &bytes[pos..]) {
+            Some(p) => pos + p,
+            None => break,
+        };
+
+        // Check if it's <template or </template
+        if bytes.len() > next_lt + 9 && &bytes[next_lt..next_lt + 9] == b"<template" {
+            // Check if self-closing
+            if let Some(gt) = memchr::memchr(b'>', &bytes[next_lt..]) {
+                let tag_end_pos = next_lt + gt;
+                if tag_end_pos > 0 && bytes[tag_end_pos - 1] != b'/' {
+                    depth += 1;
+                }
+                pos = tag_end_pos + 1;
+            } else {
+                pos = next_lt + 9;
+            }
+        } else if bytes.len() > next_lt + 11 && &bytes[next_lt..next_lt + 11] == b"</template>" {
+            depth -= 1;
+            if depth == 0 {
+                let content = std::str::from_utf8(&bytes[content_start..next_lt]).ok()?;
+                return Some((content.to_string(), content_start as u32));
+            }
+            pos = next_lt + 11;
+        } else {
+            pos = next_lt + 1;
+        }
     }
 
-    Some((
-        source[content_start..content_end].to_string(),
-        content_start as u32,
-    ))
+    None
 }
 
 impl Default for Linter {
@@ -469,5 +495,52 @@ const foo = 'bar';
                 "First diagnostic should be on line 5 (0-indexed)"
             );
         }
+    }
+
+    #[test]
+    fn test_lint_sfc_with_nested_templates() {
+        let linter = Linter::new();
+        // SFC with nested template elements - should extract full content
+        let sfc = r#"<script setup lang="ts">
+const show = true;
+</script>
+
+<template>
+  <div>
+    <template v-if="show">
+      <span>Visible</span>
+    </template>
+    <template v-else>
+      <span>Hidden</span>
+    </template>
+  </div>
+</template>
+"#;
+        let result = linter.lint_sfc(sfc, "test.vue");
+        // Should not have errors - nested templates have v-if/v-else directives
+        // Most importantly, should not report "no-lone-template" on the root <template>
+        assert_eq!(
+            result.error_count, 0,
+            "Should not report errors for valid nested templates with directives"
+        );
+    }
+
+    #[test]
+    fn test_lint_sfc_with_nested_template_extraction() {
+        // Test that nested templates are properly handled via parse_sfc
+        let linter = Linter::new();
+        let sfc = r#"<script></script>
+<template>
+  <div>
+    <template v-if="x">nested</template>
+  </div>
+</template>"#;
+
+        let result = linter.lint_sfc(sfc, "test.vue");
+        // Should not report errors for the nested template with v-if directive
+        assert_eq!(
+            result.error_count, 0,
+            "Should properly extract and lint nested templates"
+        );
     }
 }

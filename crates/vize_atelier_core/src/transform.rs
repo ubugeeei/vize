@@ -3,9 +3,7 @@
 //! This module provides the transform context, traversal, and base transform traits.
 
 use vize_carton::{is_builtin_directive, Box, Bump, CompactString, FxHashSet, String, Vec};
-use vize_croquis::{
-    AnalysisSummary, BindingType, ScopeBinding, ScopeChain, ScopeKind, VForScopeData,
-};
+use vize_croquis::{BindingType, Croquis, ScopeBinding, ScopeChain, ScopeKind, VForScopeData};
 
 use crate::ast::*;
 use crate::errors::{CompilerError, ErrorCode};
@@ -82,7 +80,7 @@ pub struct TransformContext<'a> {
     /// Node was removed flag
     node_removed: bool,
     /// Semantic analysis summary (optional, for enhanced transforms)
-    analysis: Option<&'a AnalysisSummary>,
+    analysis: Option<&'a Croquis>,
 }
 
 /// Enum for parent node types
@@ -150,7 +148,7 @@ impl<'a> TransformContext<'a> {
         allocator: &'a Bump,
         source: String,
         options: TransformOptions,
-        analysis: &'a AnalysisSummary,
+        analysis: &'a Croquis,
     ) -> Self {
         let mut ctx = Self::new(allocator, source, options);
         ctx.analysis = Some(analysis);
@@ -158,13 +156,13 @@ impl<'a> TransformContext<'a> {
     }
 
     /// Set the analysis summary
-    pub fn set_analysis(&mut self, analysis: &'a AnalysisSummary) {
+    pub fn set_analysis(&mut self, analysis: &'a Croquis) {
         self.analysis = Some(analysis);
     }
 
     /// Get the analysis summary if available
     #[inline]
-    pub fn analysis(&self) -> Option<&AnalysisSummary> {
+    pub fn analysis(&self) -> Option<&Croquis> {
         self.analysis
     }
 

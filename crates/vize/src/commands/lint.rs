@@ -1,6 +1,7 @@
 //! Lint command - Lint Vue SFC files
 
 use clap::Args;
+use glob::glob;
 use ignore::Walk;
 use rayon::prelude::*;
 use std::fs;
@@ -39,20 +40,32 @@ pub struct LintArgs {
 pub fn run(args: LintArgs) {
     let start = Instant::now();
 
-    // Collect .vue files
+    // Collect .vue files using glob patterns or directory walking
     let files: Vec<PathBuf> = args
         .patterns
         .iter()
         .flat_map(|pattern| {
-            Walk::new(pattern)
-                .filter_map(|e| e.ok())
-                .filter(|e| {
-                    e.path()
-                        .extension()
-                        .map(|ext| ext == "vue")
-                        .unwrap_or(false)
-                })
-                .map(|e| e.path().to_path_buf())
+            // Check if pattern contains glob characters
+            if pattern.contains('*') || pattern.contains('?') || pattern.contains('[') {
+                // Use glob for pattern matching
+                glob(pattern)
+                    .ok()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|r| r.ok())
+                    .filter(|p| {
+                        p.extension().is_some_and(|ext| ext == "vue")
+                            && !p.components().any(|c| c.as_os_str() == "node_modules")
+                    })
+                    .collect::<Vec<_>>()
+            } else {
+                // Use directory walking for paths (respects .gitignore)
+                Walk::new(pattern)
+                    .filter_map(|e| e.ok())
+                    .filter(|e| e.path().extension().is_some_and(|ext| ext == "vue"))
+                    .map(|e| e.path().to_path_buf())
+                    .collect::<Vec<_>>()
+            }
         })
         .collect();
 

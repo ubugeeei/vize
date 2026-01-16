@@ -3,63 +3,113 @@
 //! This module generates TypeScript code that represents a Vue SFC's
 //! runtime behavior, enabling type checking of template expressions
 //! and script setup bindings.
+//!
+//! Key design: Uses closures from Croquis scope information instead of
+//! `declare const` to properly model Vue's template scoping.
 
-use vize_croquis::{AnalysisSummary, BindingType};
+use vize_croquis::{Croquis, ScopeData, ScopeKind};
 
 /// Vue runtime type declarations for type checking.
-/// Uses imports from 'vue' so Monaco/TypeScript can resolve actual Vue types.
-pub const VUE_RUNTIME_TYPES: &str = r#"// Import Vue types (resolved by Monaco TypeScript)
-import type {
-  Ref,
-  ComputedRef,
-  UnwrapRef,
-  Reactive,
-  ShallowRef,
-  WritableComputedRef,
-} from 'vue';
+/// Only script setup macros - Vue instance context is in template closure.
+pub const VUE_RUNTIME_TYPES: &str = r#"// Vue SFC compiler macros (available globally in <script setup>)
+declare function defineProps<T>(): T;
+declare function defineEmits<T>(): T;
+declare function defineExpose<T>(exposed?: T): void;
+declare function defineModel<T>(name?: string, options?: any): any;
+declare function withDefaults<T, D>(props: T, defaults: D): T & D;"#;
 
-import {
-  ref,
-  reactive,
-  computed,
-  watch,
-  watchEffect,
-  unref,
-  toRef,
-  toRefs,
-  shallowRef,
-  triggerRef,
-  customRef,
-  readonly,
-  onMounted,
-  onUnmounted,
-  onBeforeMount,
-  onBeforeUnmount,
-  onUpdated,
-  onBeforeUpdate,
-  onActivated,
-  onDeactivated,
-  onErrorCaptured,
-  nextTick,
-  getCurrentInstance,
-  inject,
-  provide,
-} from 'vue';
+/// Vue template context - available inside template expressions
+/// Note: $event is declared in event handler closures, not here
+const VUE_TEMPLATE_CONTEXT: &str = r#"  // Vue instance context (available in template)
+  const $attrs: Record<string, unknown> = {} as any;
+  const $slots: Record<string, (...args: any[]) => any> = {} as any;
+  const $refs: Record<string, any> = {} as any;
+  const $emit: (...args: any[]) => void = (() => {}) as any;"#;
 
-// Re-export MaybeRef type alias
-type MaybeRef<T> = T | Ref<T>;"#;
+/// Get the TypeScript event type for a DOM event name.
+/// Returns the specific event interface (MouseEvent, KeyboardEvent, etc.)
+fn get_dom_event_type(event_name: &str) -> &'static str {
+    match event_name {
+        // Mouse events
+        "click" | "dblclick" | "mousedown" | "mouseup" | "mousemove" | "mouseenter"
+        | "mouseleave" | "mouseover" | "mouseout" | "contextmenu" => "MouseEvent",
+
+        // Pointer events
+        "pointerdown" | "pointerup" | "pointermove" | "pointerenter" | "pointerleave"
+        | "pointerover" | "pointerout" | "pointercancel" | "gotpointercapture"
+        | "lostpointercapture" => "PointerEvent",
+
+        // Touch events
+        "touchstart" | "touchend" | "touchmove" | "touchcancel" => "TouchEvent",
+
+        // Keyboard events
+        "keydown" | "keyup" | "keypress" => "KeyboardEvent",
+
+        // Focus events
+        "focus" | "blur" | "focusin" | "focusout" => "FocusEvent",
+
+        // Input events
+        "input" | "beforeinput" => "InputEvent",
+
+        // Composition events
+        "compositionstart" | "compositionend" | "compositionupdate" => "CompositionEvent",
+
+        // Form events
+        "submit" => "SubmitEvent",
+        "change" => "Event",
+        "reset" => "Event",
+
+        // Drag events
+        "drag" | "dragstart" | "dragend" | "dragenter" | "dragleave" | "dragover" | "drop" => {
+            "DragEvent"
+        }
+
+        // Clipboard events
+        "cut" | "copy" | "paste" => "ClipboardEvent",
+
+        // Wheel events
+        "wheel" => "WheelEvent",
+
+        // Animation events
+        "animationstart" | "animationend" | "animationiteration" | "animationcancel" => {
+            "AnimationEvent"
+        }
+
+        // Transition events
+        "transitionstart" | "transitionend" | "transitionrun" | "transitioncancel" => {
+            "TransitionEvent"
+        }
+
+        // UI events
+        "scroll" | "resize" => "Event",
+
+        // Media events
+        "play" | "pause" | "ended" | "loadeddata" | "loadedmetadata" | "timeupdate"
+        | "volumechange" | "waiting" | "seeking" | "seeked" | "ratechange" | "durationchange"
+        | "canplay" | "canplaythrough" | "playing" | "progress" | "stalled" | "suspend"
+        | "emptied" | "abort" => "Event",
+
+        // Error/Load events
+        "error" => "ErrorEvent",
+        "load" => "Event",
+
+        // Selection events
+        "select" | "selectionchange" | "selectstart" => "Event",
+
+        // Default fallback
+        _ => "Event",
+    }
+}
 
 /// Generate virtual TypeScript from Vue SFC analysis.
 ///
 /// The generated TypeScript includes:
 /// - Vue runtime type imports
-/// - Vue global instance declarations ($attrs, $slots, $refs, etc.)
 /// - The original script content
-/// - Exported type definitions (Props, Emits, Slots)
-/// - Template type verification function
-/// - Source map markers for position mapping
+/// - Proper closures for v-for, v-slot scopes
+/// - Template expressions type-checked in their scope context
 pub fn generate_virtual_ts(
-    summary: &AnalysisSummary,
+    summary: &Croquis,
     script_content: Option<&str>,
     template_ast: Option<&vize_relief::ast::RootNode<'_>>,
     template_offset: u32,
@@ -77,23 +127,6 @@ pub fn generate_virtual_ts(
     ts.push_str(VUE_RUNTIME_TYPES);
     ts.push_str("\n\n");
 
-    // Vue Global Instance Context
-    ts.push_str("// ========== Vue Instance Context ==========\n");
-    ts.push_str("declare const $attrs: Record<string, unknown>;\n");
-    ts.push_str("declare const $slots: Record<string, (...args: any[]) => any>;\n");
-    ts.push_str("declare const $refs: Record<string, any>;\n");
-    ts.push_str("declare const $el: HTMLElement | undefined;\n");
-    ts.push_str("declare const $parent: any;\n");
-    ts.push_str("declare const $root: any;\n");
-    ts.push_str("declare const $emit: (...args: any[]) => void;\n");
-    ts.push_str("declare const $forceUpdate: () => void;\n");
-    ts.push_str("declare const $nextTick: (callback?: () => void) => Promise<void>;\n");
-    ts.push_str("declare const $event: Event;\n\n");
-
-    // Setup Function (supports generics)
-    // TODO: Extract generic type parameter from <script setup generic="T">
-    let has_generic = false; // Will be enabled when croquis supports generic tracking
-
     // Original Script
     if let Some(script) = script_content {
         ts.push_str("// ========== Script Setup ==========\n");
@@ -110,146 +143,317 @@ pub fn generate_virtual_ts(
         ));
     }
 
-    // Exported Types
+    // Props type generation
+    generate_props_type(&mut ts, summary);
+
+    // Emits type
+    let emits_already_defined = summary
+        .type_exports
+        .iter()
+        .any(|te| te.name.as_str() == "Emits");
+    if !emits_already_defined {
+        ts.push_str("export type Emits = {};\n");
+    }
+    ts.push_str("export type Slots = {};\n\n");
+
+    // Template Type Verification with proper closures
+    if template_ast.is_some() {
+        ts.push_str("// ========== Template Type Verification ==========\n");
+
+        // Check for generic type parameter from <script setup generic="T">
+        let generic_param = summary
+            .scopes
+            .iter()
+            .find(|s| matches!(s.kind, ScopeKind::ScriptSetup))
+            .and_then(|s| {
+                if let ScopeData::ScriptSetup(data) = s.data() {
+                    data.generic.as_ref().map(|s| s.as_str())
+                } else {
+                    None
+                }
+            });
+
+        // Generate function with optional generic
+        if let Some(generic) = generic_param {
+            ts.push_str(&format!(
+                "function __verifyTemplateTypes<{}>() {{\n",
+                generic
+            ));
+        } else {
+            ts.push_str("function __verifyTemplateTypes() {\n");
+        }
+
+        // Vue template context (available in template expressions)
+        ts.push_str(VUE_TEMPLATE_CONTEXT);
+        ts.push_str("\n\n");
+
+        // Generate scope closures
+        generate_scope_closures(&mut ts, summary, template_offset);
+
+        ts.push_str("}\n\n");
+    }
+
+    // Default export
+    ts.push_str("// ========== Default Export ==========\n");
+    ts.push_str("declare const __vize_component__: {\n");
+    ts.push_str("  props: Props;\n");
+    ts.push_str("  emits: Emits;\n");
+    ts.push_str("  slots: Slots;\n");
+    ts.push_str("};\n");
+    ts.push_str("export default __vize_component__;\n");
+
+    ts
+}
+
+/// Generate Props type definition
+fn generate_props_type(ts: &mut String, summary: &Croquis) {
+    let props = summary.macros.props();
+    let has_props = !props.is_empty();
+    let define_props_type_args = summary
+        .macros
+        .define_props()
+        .and_then(|m| m.type_args.as_ref());
+    let props_already_defined = summary
+        .type_exports
+        .iter()
+        .any(|te| te.name.as_str() == "Props");
+
     ts.push_str("// ========== Exported Types ==========\n");
 
-    // Props type
-    let props = summary.macros.props();
-    if !props.is_empty() {
-        ts.push_str(
-            "export type Props = typeof __props extends undefined ? {} : typeof __props;\n",
-        );
+    if props_already_defined {
+        // User defined Props, no need to re-export
+    } else if let Some(type_args) = define_props_type_args {
+        let inner_type = type_args
+            .strip_prefix('<')
+            .and_then(|s| s.strip_suffix('>'))
+            .unwrap_or(type_args.as_str());
+        let is_simple_reference = inner_type
+            .chars()
+            .all(|c: char| c.is_alphanumeric() || c == '_');
+        if is_simple_reference
+            && summary
+                .type_exports
+                .iter()
+                .any(|te| te.name.as_str() == inner_type)
+        {
+            // Type arg references existing type
+        } else {
+            ts.push_str(&format!("export type Props = {};\n", inner_type));
+        }
+    } else if has_props {
+        ts.push_str("export type Props = {\n");
+        for prop in props {
+            let prop_type = prop.prop_type.as_deref().unwrap_or("unknown");
+            let optional = if prop.required { "" } else { "?" };
+            ts.push_str(&format!("  {}{}: {};\n", prop.name, optional, prop_type));
+        }
+        ts.push_str("};\n");
     } else {
         ts.push_str("export type Props = {};\n");
     }
 
-    // Emits type
-    let emits = summary.macros.emits();
-    if !emits.is_empty() {
-        ts.push_str("export type Emits = typeof __emit extends undefined ? {} : typeof __emit;\n");
-    } else {
-        ts.push_str("export type Emits = {};\n");
-    }
-
-    // Slots type (TODO: add slots tracking to MacroTracker)
-    ts.push_str("export type Slots = {};\n");
-
-    ts.push('\n');
-
-    // Macro Information
-    ts.push_str("// ========== Macro Information ==========\n");
-    let macros = &summary.macros;
-
-    // defineProps details
-    if !props.is_empty() {
-        ts.push_str("// defineProps:\n");
+    // Props variable declarations for template access
+    if has_props || define_props_type_args.is_some() {
+        ts.push_str("\n// Props are available in template as variables\n");
+        ts.push_str("const __props: Props = {} as Props;\n");
         for prop in props {
-            ts.push_str(&format!("//   - {}\n", prop.name));
+            ts.push_str(&format!(
+                "const {} = __props[\"{}\"];\n",
+                prop.name, prop.name
+            ));
         }
-    }
-
-    // defineEmits details
-    if !emits.is_empty() {
-        ts.push_str("// defineEmits:\n");
-        for emit in emits {
-            ts.push_str(&format!("//   - {}\n", emit.name));
-        }
-    }
-
-    // defineModel
-    let models = macros.models();
-    if !models.is_empty() {
-        ts.push_str("// defineModel:\n");
-        for model in models {
-            ts.push_str(&format!("//   - {}\n", model.name));
-        }
-    }
-
-    ts.push('\n');
-
-    // Binding Type Inference
-    ts.push_str("// ========== Inferred Bindings ==========\n");
-    for (name, binding_type) in summary.bindings.iter() {
-        let type_hint = match binding_type {
-            BindingType::SetupRef => format!("// {}: Ref<inferred>", name),
-            BindingType::SetupConst => format!("// {}: inferred const", name),
-            BindingType::SetupLet => format!("// {}: inferred let", name),
-            BindingType::SetupReactiveConst => format!("// {}: reactive<inferred>", name),
-            BindingType::SetupMaybeRef => format!("// {}: MaybeRef<inferred>", name),
-            BindingType::Props => format!("// {}: from props", name),
-            BindingType::PropsAliased => format!("// {}: aliased from props", name),
-            _ => format!("// {}: {:?}", name, binding_type),
-        };
-        ts.push_str(&format!("{}\n", type_hint));
     }
     ts.push('\n');
+}
 
-    // Template Type Verification
-    if template_ast.is_some() {
-        ts.push_str("// ========== Template Type Verification ==========\n");
-        ts.push_str("function __verifyTemplateTypes() {\n");
+/// Generate scope closures from Croquis scope chain
+fn generate_scope_closures(ts: &mut String, summary: &Croquis, template_offset: u32) {
+    use std::collections::HashMap;
 
-        // Verify all bindings are accessible with proper types
-        // Skip Props/PropsAliased as they are properties of the props object, not standalone variables
-        for (name, binding_type) in summary.bindings.iter() {
-            // Props bindings are accessed via props.name, not as standalone variables
-            if matches!(binding_type, BindingType::Props | BindingType::PropsAliased) {
+    // Group expressions by scope_id
+    let mut expressions_by_scope: HashMap<u32, Vec<_>> = HashMap::new();
+    for expr in &summary.template_expressions {
+        expressions_by_scope
+            .entry(expr.scope_id.as_u32())
+            .or_default()
+            .push(expr);
+    }
+
+    // Track generated scopes to avoid duplicates
+    let mut generated_scopes = std::collections::HashSet::new();
+
+    // Generate closures for each scope that has expressions or creates bindings
+    for scope in summary.scopes.iter() {
+        let scope_id = scope.id.as_u32();
+
+        // Skip root/global scopes
+        if matches!(
+            scope.kind,
+            ScopeKind::JsGlobalUniversal
+                | ScopeKind::JsGlobalBrowser
+                | ScopeKind::JsGlobalNode
+                | ScopeKind::VueGlobal
+        ) {
+            continue;
+        }
+
+        match scope.data() {
+            ScopeData::VFor(data) => {
+                if generated_scopes.insert(scope_id) {
+                    // Generate v-for closure
+                    ts.push_str(&format!(
+                        "\n  // v-for scope: {} in {}\n",
+                        data.value_alias, data.source
+                    ));
+
+                    // Infer element type from source
+                    let element_type = format!("typeof {}[number]", data.source);
+
+                    // Build parameter list with proper types
+                    // For arrays: (item: T, index: number)
+                    // For objects: (value: T, key: string, index: number)
+                    ts.push_str(&format!(
+                        "  {}.forEach(({}: {}",
+                        data.source, data.value_alias, element_type
+                    ));
+
+                    if let Some(ref key) = data.key_alias {
+                        // key is string for objects, number for arrays
+                        ts.push_str(&format!(", {}: number", key));
+                    }
+                    if let Some(ref index) = data.index_alias {
+                        // When index_alias exists, we have (value, key, index) for objects
+                        // key is string, index is number
+                        if data.key_alias.is_none() {
+                            ts.push_str(", _key: number");
+                        }
+                        ts.push_str(&format!(", {}: number", index));
+                    }
+
+                    ts.push_str(") => {\n");
+
+                    // Generate expressions in this scope
+                    if let Some(exprs) = expressions_by_scope.get(&scope_id) {
+                        for expr in exprs {
+                            let src_start = template_offset + expr.start;
+                            let src_end = template_offset + expr.end;
+
+                            ts.push_str(&format!(
+                                "    const __expr_{} = {}; // {}\n",
+                                expr.start,
+                                expr.content,
+                                expr.kind.as_str()
+                            ));
+                            ts.push_str(&format!(
+                                "    // @vize-map: expr -> {}:{}\n",
+                                src_start, src_end
+                            ));
+                        }
+                    }
+
+                    ts.push_str("  });\n");
+                }
+            }
+            ScopeData::VSlot(data) => {
+                if generated_scopes.insert(scope_id) {
+                    // Generate v-slot closure
+                    ts.push_str(&format!("\n  // v-slot scope: #{}\n", data.name));
+
+                    let props_pattern = data.props_pattern.as_deref().unwrap_or("slotProps");
+                    ts.push_str(&format!(
+                        "  const __slot_{} = ({}: any) => {{\n",
+                        data.name, props_pattern
+                    ));
+
+                    // Generate expressions in this scope
+                    if let Some(exprs) = expressions_by_scope.get(&scope_id) {
+                        for expr in exprs {
+                            let src_start = template_offset + expr.start;
+                            let src_end = template_offset + expr.end;
+
+                            ts.push_str(&format!(
+                                "    const __expr_{} = {}; // {}\n",
+                                expr.start,
+                                expr.content,
+                                expr.kind.as_str()
+                            ));
+                            ts.push_str(&format!(
+                                "    // @vize-map: expr -> {}:{}\n",
+                                src_start, src_end
+                            ));
+                        }
+                    }
+
+                    ts.push_str("  };\n");
+                }
+            }
+            ScopeData::EventHandler(data) => {
+                if generated_scopes.insert(scope_id) {
+                    // Generate event handler closure
+                    let event_type = get_dom_event_type(data.event_name.as_str());
+                    ts.push_str(&format!("\n  // @{} handler\n", data.event_name));
+
+                    // Use $event as parameter with proper event type
+                    ts.push_str(&format!("  (($event: {}) => {{\n", event_type));
+
+                    // Generate expressions in this scope
+                    if let Some(exprs) = expressions_by_scope.get(&scope_id) {
+                        for expr in exprs {
+                            ts.push_str(&format!("    {};  // handler expression\n", expr.content));
+                        }
+                    }
+
+                    ts.push_str(&format!("  }})({{}} as {});\n", event_type));
+                }
+            }
+            _ => {
+                // For other scopes (Template, ScriptSetup, etc.), just generate expressions
+                if let Some(exprs) = expressions_by_scope.get(&scope_id) {
+                    for expr in exprs {
+                        let src_start = template_offset + expr.start;
+                        let src_end = template_offset + expr.end;
+
+                        ts.push_str(&format!(
+                            "  const __expr_{} = {}; // {}\n",
+                            expr.start,
+                            expr.content,
+                            expr.kind.as_str()
+                        ));
+                        ts.push_str(&format!(
+                            "  // @vize-map: expr -> {}:{}\n",
+                            src_start, src_end
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    // Handle undefined references
+    if !summary.undefined_refs.is_empty() {
+        ts.push_str("\n  // Undefined references from template:\n");
+        let mut seen_names: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        for undef in &summary.undefined_refs {
+            if !seen_names.insert(undef.name.as_str()) {
                 continue;
             }
-            let access = match binding_type {
-                BindingType::SetupRef | BindingType::Data => {
-                    format!("  const __{}_value = {}.value;", name, name)
-                }
-                BindingType::SetupMaybeRef => {
-                    format!("  const __{}_value = unref({});", name, name)
-                }
-                _ => format!("  const __{}_value = {};", name, name),
-            };
-            ts.push_str(&format!("{}\n", access));
+
+            let src_start = template_offset + undef.offset;
+            let src_end = src_start + undef.name.len() as u32;
+
+            let gen_start = ts.len();
+            let expr_code = format!("  const __undef_{} = {};\n", undef.name, undef.name);
+            let name_offset = expr_code.find(undef.name.as_str()).unwrap_or(0);
+            let gen_name_start = gen_start + name_offset;
+            let gen_name_end = gen_name_start + undef.name.len();
+
+            ts.push_str(&expr_code);
+            ts.push_str(&format!(
+                "  // @vize-map: {}:{} -> {}:{}\n",
+                gen_name_start, gen_name_end, src_start, src_end
+            ));
         }
-
-        // Check for undefined references with source mapping
-        if !summary.undefined_refs.is_empty() {
-            ts.push_str("\n  // ERROR: Undefined references detected\n");
-            for undef in &summary.undefined_refs {
-                let src_start = template_offset + undef.offset;
-                let src_end = src_start + undef.name.len() as u32;
-
-                ts.push_str(&format!(
-                    "  // @ts-expect-error '{}' is not defined ({})\n",
-                    undef.name, undef.context
-                ));
-
-                let gen_start = ts.len();
-                let expr_code = format!("  const __undef_{} = {};\n", undef.name, undef.name);
-                let name_offset = expr_code.find(undef.name.as_str()).unwrap_or(0);
-                let gen_name_start = gen_start + name_offset;
-                let gen_name_end = gen_name_start + undef.name.len();
-
-                ts.push_str(&expr_code);
-                ts.push_str(&format!(
-                    "  // @vize-map: {}:{} -> {}:{}\n",
-                    gen_name_start, gen_name_end, src_start, src_end
-                ));
-            }
-        }
-
-        ts.push_str("}\n\n");
-
-        // Event Handler Type Context
-        ts.push_str("// ========== Event Handler Context ==========\n");
-        ts.push_str("// $event is available in event handlers\n");
-        ts.push_str("function __eventHandlerContext<T>(handler: (e: T) => void): void {\n");
-        ts.push_str("  // Event handler context where $event is typed as T\n");
-        ts.push_str("}\n");
     }
-
-    // Close generic function wrapper if present
-    if has_generic {
-        ts.push_str("\n} // End of __VizeSetup\n");
-    }
-
-    ts
 }
 
 #[cfg(test)]
@@ -257,10 +461,70 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_vue_runtime_types_contains_imports() {
-        assert!(VUE_RUNTIME_TYPES.contains("import type"));
-        assert!(VUE_RUNTIME_TYPES.contains("from 'vue'"));
-        assert!(VUE_RUNTIME_TYPES.contains("Ref"));
-        assert!(VUE_RUNTIME_TYPES.contains("computed"));
+    fn test_vue_runtime_types_contains_declarations() {
+        // Script setup macros
+        assert!(VUE_RUNTIME_TYPES.contains("declare function defineProps"));
+        assert!(VUE_RUNTIME_TYPES.contains("declare function defineEmits"));
+        // Template context (moved from VUE_RUNTIME_TYPES to VUE_TEMPLATE_CONTEXT)
+        assert!(VUE_TEMPLATE_CONTEXT.contains("$attrs"));
+        assert!(VUE_TEMPLATE_CONTEXT.contains("$slots"));
+    }
+
+    #[test]
+    fn test_dom_event_type_mapping() {
+        // Mouse events
+        assert_eq!(get_dom_event_type("click"), "MouseEvent");
+        assert_eq!(get_dom_event_type("dblclick"), "MouseEvent");
+        assert_eq!(get_dom_event_type("mousedown"), "MouseEvent");
+        assert_eq!(get_dom_event_type("mouseup"), "MouseEvent");
+        assert_eq!(get_dom_event_type("mousemove"), "MouseEvent");
+        assert_eq!(get_dom_event_type("contextmenu"), "MouseEvent");
+
+        // Pointer events
+        assert_eq!(get_dom_event_type("pointerdown"), "PointerEvent");
+        assert_eq!(get_dom_event_type("pointerup"), "PointerEvent");
+
+        // Touch events
+        assert_eq!(get_dom_event_type("touchstart"), "TouchEvent");
+        assert_eq!(get_dom_event_type("touchend"), "TouchEvent");
+
+        // Keyboard events
+        assert_eq!(get_dom_event_type("keydown"), "KeyboardEvent");
+        assert_eq!(get_dom_event_type("keyup"), "KeyboardEvent");
+        assert_eq!(get_dom_event_type("keypress"), "KeyboardEvent");
+
+        // Focus events
+        assert_eq!(get_dom_event_type("focus"), "FocusEvent");
+        assert_eq!(get_dom_event_type("blur"), "FocusEvent");
+
+        // Input events
+        assert_eq!(get_dom_event_type("input"), "InputEvent");
+        assert_eq!(get_dom_event_type("beforeinput"), "InputEvent");
+
+        // Form events
+        assert_eq!(get_dom_event_type("submit"), "SubmitEvent");
+        assert_eq!(get_dom_event_type("change"), "Event");
+
+        // Drag events
+        assert_eq!(get_dom_event_type("drag"), "DragEvent");
+        assert_eq!(get_dom_event_type("drop"), "DragEvent");
+
+        // Clipboard events
+        assert_eq!(get_dom_event_type("copy"), "ClipboardEvent");
+        assert_eq!(get_dom_event_type("paste"), "ClipboardEvent");
+
+        // Wheel events
+        assert_eq!(get_dom_event_type("wheel"), "WheelEvent");
+
+        // Animation events
+        assert_eq!(get_dom_event_type("animationstart"), "AnimationEvent");
+        assert_eq!(get_dom_event_type("animationend"), "AnimationEvent");
+
+        // Transition events
+        assert_eq!(get_dom_event_type("transitionend"), "TransitionEvent");
+
+        // Unknown/custom events fallback to Event
+        assert_eq!(get_dom_event_type("customEvent"), "Event");
+        assert_eq!(get_dom_event_type("unknown"), "Event");
     }
 }

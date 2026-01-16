@@ -318,10 +318,10 @@ impl TsgoBridge {
             return Ok(path);
         }
 
-        // Try common locations
+        // Try common locations (npm global, local node_modules)
         let candidates = [
             "node_modules/.bin/tsgo",
-            "node_modules/@anthropic/tsgo/bin/tsgo",
+            "node_modules/@typescript/native-preview/bin/tsgo",
         ];
 
         for candidate in candidates {
@@ -332,7 +332,8 @@ impl TsgoBridge {
         }
 
         Err(TsgoBridgeError::SpawnFailed(
-            "tsgo executable not found. Install with: npm install -g @anthropic/tsgo".to_string(),
+            "tsgo executable not found. Install with: npm install -g @typescript/native-preview"
+                .to_string(),
         ))
     }
 
@@ -643,8 +644,8 @@ impl TsgoBridge {
 
         self.cache_stats.miss();
 
-        // Wait a bit for diagnostics to be published
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        // Wait for diagnostics to be published (reduced from 100ms for faster batch processing)
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
 
         // Return cached diagnostics or empty
         Ok(self
@@ -781,8 +782,8 @@ impl BatchTypeChecker {
                 }
             }
 
-            // Wait for diagnostics to be computed
-            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+            // Wait for diagnostics to be computed (reduced for faster batch processing)
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
             // Collect diagnostics
             for uri in uris.into_iter().flatten() {

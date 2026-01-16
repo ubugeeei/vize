@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
-import MonacoEditor from './MonacoEditor.vue';
-import * as monaco from 'monaco-editor';
-import type { WasmModule, TypeCheckResult, TypeCheckDiagnostic, TypeCheckCapabilities } from '../wasm/index';
+import { ref, watch, computed, onMounted, onUnmounted } from "vue";
+import MonacoEditor from "./MonacoEditor.vue";
+import * as monaco from "monaco-editor";
+import type {
+  WasmModule,
+  TypeCheckResult,
+  TypeCheckDiagnostic,
+  TypeCheckCapabilities,
+} from "../wasm/index";
 
 interface Diagnostic {
   message: string;
@@ -12,7 +17,7 @@ interface Diagnostic {
   startColumn: number;
   endLine?: number;
   endColumn?: number;
-  severity: 'error' | 'warning' | 'info';
+  severity: "error" | "warning" | "info";
 }
 
 // Generate help suggestions based on TypeScript error code and message
@@ -20,21 +25,35 @@ function generateHelp(code: number, message: string): string | undefined {
   // Common TypeScript errors with helpful suggestions
   switch (code) {
     // ========== Name Resolution Errors ==========
-    case 2304: { // Cannot find name 'X'
+    case 2304: {
+      // Cannot find name 'X'
       const nameMatch = message.match(/Cannot find name '(\w+)'/);
       if (nameMatch) {
         const name = nameMatch[1];
-        if (name.startsWith('$')) {
+        if (name.startsWith("$")) {
           return `**\`${name}\`** is a Vue template variable.\n\n**Why:** Template variables like \`$event\`, \`$refs\`, \`$slots\` are only available in \`<template>\`.\n\n**Fix:** Use it inside template, or access via script APIs:\n\`\`\`ts\n// In <script setup>\nconst slots = useSlots()\nconst attrs = useAttrs()\n\`\`\``;
         }
-        if (['ref', 'reactive', 'computed', 'watch', 'watchEffect', 'onMounted', 'onUnmounted', 'toRef', 'toRefs'].includes(name)) {
+        if (
+          [
+            "ref",
+            "reactive",
+            "computed",
+            "watch",
+            "watchEffect",
+            "onMounted",
+            "onUnmounted",
+            "toRef",
+            "toRefs",
+          ].includes(name)
+        ) {
           return `**\`${name}\`** is a Vue Composition API function.\n\n**Fix:** Import from \`vue\`:\n\`\`\`ts\nimport { ${name} } from 'vue'\n\n// Usage example\nconst count = ref(0)\nconst doubled = computed(() => count.value * 2)\n\`\`\``;
         }
         return `**\`${name}\`** is not defined.\n\n**Possible causes:**\n- Not imported from a module\n- Not declared in this scope\n- Typo in the name\n\n**Fix options:**\n\`\`\`ts\n// 1. Import from module\nimport { ${name} } from './module'\n\n// 2. Declare locally\nconst ${name} = someValue\n\n// 3. Import from package\nimport { ${name} } from 'package-name'\n\`\`\``;
       }
       break;
     }
-    case 2552: { // Cannot find name 'X'. Did you mean 'Y'?
+    case 2552: {
+      // Cannot find name 'X'. Did you mean 'Y'?
       const meanMatch = message.match(/Did you mean '(\w+)'/);
       if (meanMatch) {
         return `**Typo detected.**\n\n**Suggestion:** Did you mean **\`${meanMatch[1]}\`**?\n\n**Fix:**\n\`\`\`ts\n// Change to:\n${meanMatch[1]}\n\`\`\``;
@@ -43,22 +62,28 @@ function generateHelp(code: number, message: string): string | undefined {
     }
 
     // ========== Type Mismatch Errors ==========
-    case 2322: { // Type 'X' is not assignable to type 'Y'
-      const typeMatch = message.match(/Type '(.+?)' is not assignable to type '(.+?)'/);
+    case 2322: {
+      // Type 'X' is not assignable to type 'Y'
+      const typeMatch = message.match(
+        /Type '(.+?)' is not assignable to type '(.+?)'/,
+      );
       if (typeMatch) {
         const [, fromType, toType] = typeMatch;
-        if (fromType === 'string' && toType === 'number') {
+        if (fromType === "string" && toType === "number") {
           return `**Type mismatch:** \`string\` cannot be assigned to \`number\`.\n\n**Why:** TypeScript requires explicit type conversion.\n\n**Fix options:**\n\`\`\`ts\n// parseInt for integers\nconst num = parseInt(str, 10)\n\n// parseFloat for decimals\nconst num = parseFloat(str)\n\n// Number constructor\nconst num = Number(str)\n\n// With fallback for NaN\nconst num = Number(str) || 0\n\n// Unary plus (shortest)\nconst num = +str\n\`\`\``;
         }
-        if (fromType === 'number' && toType === 'string') {
+        if (fromType === "number" && toType === "string") {
           return `**Type mismatch:** \`number\` cannot be assigned to \`string\`.\n\n**Fix options:**\n\`\`\`ts\n// String constructor\nconst str = String(num)\n\n// toString method\nconst str = num.toString()\n\n// Template literal (recommended)\nconst str = \`\${num}\`\n\n// With formatting\nconst str = num.toFixed(2) // "123.45"\n\`\`\``;
         }
         return `**Type mismatch:** \`${fromType}\` cannot be assigned to \`${toType}\`.\n\n**Fix options:**\n\`\`\`ts\n// 1. Fix the value to match expected type\nconst value: ${toType} = correctValue\n\n// 2. Type assertion (if you're sure)\nconst value = someValue as ${toType}\n\n// 3. Update type definition to accept both\ntype MyType = ${fromType} | ${toType}\n\`\`\``;
       }
       return `**Type mismatch.** The value type doesn't match the expected type.\n\n**Fix:** Check the type definition and ensure the value matches.`;
     }
-    case 2345: { // Argument type mismatch
-      const argMatch = message.match(/Argument of type '(.+?)' is not assignable to parameter of type '(.+?)'/);
+    case 2345: {
+      // Argument type mismatch
+      const argMatch = message.match(
+        /Argument of type '(.+?)' is not assignable to parameter of type '(.+?)'/,
+      );
       if (argMatch) {
         return `**Argument type mismatch.**\n\n**Expected:** \`${argMatch[2]}\`\n**Received:** \`${argMatch[1]}\`\n\n**Fix options:**\n\`\`\`ts\n// 1. Convert the argument\nfunc(convertedValue)\n\n// 2. Type assertion (if compatible)\nfunc(value as ${argMatch[2]})\n\n// 3. Update function to accept the type\nfunction func(param: ${argMatch[1]} | ${argMatch[2]}) { }\n\`\`\``;
       }
@@ -68,18 +93,22 @@ function generateHelp(code: number, message: string): string | undefined {
       return `**Expression is not callable.**\n\n**Why:** You're trying to call something that isn't a function.\n\n**Common causes:**\n- Value is \`undefined\` or \`null\`\n- It's an object or primitive, not a function\n- Property returns a value, not a method\n\n**Fix options:**\n\`\`\`ts\n// 1. Check if it's a function first\nif (typeof maybeFunc === 'function') {\n  maybeFunc()\n}\n\n// 2. Use optional chaining for optional calls\nmaybeFunc?.()\n\n// 3. Provide default function\nconst fn = maybeFunc ?? (() => {})\nfn()\n\`\`\``;
 
     // ========== Property Access Errors ==========
-    case 2339: { // Property 'X' does not exist on type 'Y'
-      const propMatch = message.match(/Property '(\w+)' does not exist on type '(.+?)'/);
+    case 2339: {
+      // Property 'X' does not exist on type 'Y'
+      const propMatch = message.match(
+        /Property '(\w+)' does not exist on type '(.+?)'/,
+      );
       if (propMatch) {
         const [, prop, type] = propMatch;
-        if (type.includes('Ref<')) {
+        if (type.includes("Ref<")) {
           return `**Ref access error.**\n\n**Why:** \`Ref\` wraps the value in \`.value\` property.\n\n**Fix:** Access through \`.value\`:\n\`\`\`ts\n// Wrong\nmyRef.${prop}\n\n// Correct\nmyRef.value.${prop}\n\n// In template (auto-unwrapped)\n{{ myRef.${prop} }}\n\`\`\``;
         }
         return `**Property \`${prop}\` doesn't exist** on type \`${type}\`.\n\n**Possible causes:**\n- Typo in property name\n- Property not defined in type\n- Accessing wrong object\n\n**Fix options:**\n\`\`\`ts\n// 1. Check if property exists\nif ('${prop}' in obj) {\n  obj.${prop}\n}\n\n// 2. Optional chaining (returns undefined if missing)\nobj?.${prop}\n\n// 3. Extend the type definition\ninterface Extended extends Original {\n  ${prop}: SomeType\n}\n\n// 4. Index signature access\nobj['${prop}']\n\`\`\``;
       }
       break;
     }
-    case 2551: { // Property 'X' does not exist. Did you mean 'Y'?
+    case 2551: {
+      // Property 'X' does not exist. Did you mean 'Y'?
       const suggestMatch = message.match(/Did you mean '(\w+)'/);
       if (suggestMatch) {
         return `**Typo detected in property name.**\n\n**Suggestion:** Did you mean **\`${suggestMatch[1]}\`**?\n\n**Fix:**\n\`\`\`ts\n// Change to:\nobj.${suggestMatch[1]}\n\`\`\``;
@@ -100,9 +129,10 @@ function generateHelp(code: number, message: string): string | undefined {
     // ========== Type Unknown/Any Errors ==========
     case 2571: // Object is of type 'unknown'
       return `**Type is \`unknown\`.**\n\n**Why:** \`unknown\` is the type-safe version of \`any\`. You must narrow the type before using it.\n\n**Fix options:**\n\`\`\`ts\n// 1. typeof type guard\nif (typeof value === 'string') {\n  value.toUpperCase() // OK, value is string\n}\nif (typeof value === 'number') {\n  value.toFixed(2) // OK, value is number\n}\n\n// 2. instanceof check\nif (value instanceof Error) {\n  value.message // OK\n}\n\n// 3. Custom type guard\nfunction isUser(v: unknown): v is User {\n  return (\n    typeof v === 'object' &&\n    v !== null &&\n    'name' in v &&\n    'email' in v\n  )\n}\nif (isUser(value)) {\n  value.name // OK\n}\n\n// 4. Type assertion (less safe)\nconst user = value as User\n\`\`\``;
-    case 7006: { // Parameter implicitly has an 'any' type
+    case 7006: {
+      // Parameter implicitly has an 'any' type
       const paramMatch = message.match(/Parameter '(\w+)'/);
-      const paramName = paramMatch ? paramMatch[1] : 'param';
+      const paramName = paramMatch ? paramMatch[1] : "param";
       return `**Parameter \`${paramName}\` needs a type.**\n\n**Why:** TypeScript cannot infer the type and defaults to \`any\`.\n\n**Fix options:**\n\`\`\`ts\n// 1. Add explicit type annotation\nfunction example(${paramName}: string) {\n  return ${paramName}.toUpperCase()\n}\n\n// 2. Arrow function with type\nconst fn = (${paramName}: number) => ${paramName} * 2\n\n// 3. Default value (type inferred)\nfunction example(${paramName} = 'default') {\n  // ${paramName} is inferred as string\n}\n\n// 4. Object parameter with type\nfunction example({ ${paramName} }: { ${paramName}: string }) { }\n\`\`\``;
     }
     case 7031: // Binding element implicitly has an 'any' type
@@ -111,8 +141,11 @@ function generateHelp(code: number, message: string): string | undefined {
       return `**Variable type is implicitly \`any\`.**\n\n**Why:** TypeScript couldn't infer the type.\n\n**Fix options:**\n\`\`\`ts\n// 1. Add explicit type\nlet value: string\nlet items: number[]\nlet user: User | null = null\n\n// 2. Initialize with value (type inferred)\nlet value = 'hello' // string\nlet count = 0 // number\n\n// 3. Empty array with type\nconst items: string[] = []\nconst map: Map<string, number> = new Map()\n\n// 4. Generic type parameters\nconst ref = ref<User | null>(null)\n\`\`\``;
 
     // ========== Function Errors ==========
-    case 2554: { // Expected X arguments, but got Y
-      const argMatch = message.match(/Expected (\d+) arguments?, but got (\d+)/);
+    case 2554: {
+      // Expected X arguments, but got Y
+      const argMatch = message.match(
+        /Expected (\d+) arguments?, but got (\d+)/,
+      );
       if (argMatch) {
         const [, expected, got] = argMatch;
         const expectedNum = parseInt(expected);
@@ -129,8 +162,11 @@ function generateHelp(code: number, message: string): string | undefined {
       }
       break;
     }
-    case 2555: { // Expected at least X arguments, but got Y
-      const argMatch = message.match(/Expected at least (\d+) arguments?, but got (\d+)/);
+    case 2555: {
+      // Expected at least X arguments, but got Y
+      const argMatch = message.match(
+        /Expected at least (\d+) arguments?, but got (\d+)/,
+      );
       if (argMatch) {
         return `**Not enough arguments.**\n\n**Required:** at least ${argMatch[1]} argument(s)\n**Provided:** ${argMatch[2]} argument(s)\n\n**Fix:** Provide all required arguments:\n\`\`\`ts\n// Function with required and optional params\nfunction example(required1: string, required2: number, optional?: boolean) { }\n\n// Must provide at least required params\nexample('hello', 42) // OK\n\`\`\``;
       }
@@ -140,15 +176,17 @@ function generateHelp(code: number, message: string): string | undefined {
       return `**Spread argument type error.**\n\n**Why:** TypeScript needs to know the exact types when spreading.\n\n**Fix options:**\n\`\`\`ts\n// 1. Use tuple type\nconst args: [string, number] = ['hello', 42]\nfunc(...args) // OK\n\n// 2. Use 'as const' for literal types\nconst args = ['hello', 42] as const\nfunc(...args) // OK\n\n// 3. Type assertion\nconst args = ['hello', 42] as [string, number]\nfunc(...args)\n\n// 4. Rest parameters in function\nfunction func(...args: [string, number]) { }\n\`\`\``;
 
     // ========== Module/Import Errors ==========
-    case 2307: { // Cannot find module 'X'
+    case 2307: {
+      // Cannot find module 'X'
       const modMatch = message.match(/Cannot find module '([^']+)'/);
-      const modName = modMatch ? modMatch[1] : 'module';
-      const pkgName = modName.startsWith('.') ? null : modName.split('/')[0];
-      return `**Module not found:** \`${modName}\`\n\n**Fix options:**\n\`\`\`ts\n// 1. Install the package${pkgName ? `\n// npm install ${pkgName}` : ''}\n\n// 2. Install type definitions${pkgName ? `\n// npm install -D @types/${pkgName}` : ''}\n\n// 3. For local modules, check path\nimport { something } from './correct/path'\n\n// 4. Add module declaration\ndeclare module '${modName}' {\n  export const value: string\n}\n\`\`\``;
+      const modName = modMatch ? modMatch[1] : "module";
+      const pkgName = modName.startsWith(".") ? null : modName.split("/")[0];
+      return `**Module not found:** \`${modName}\`\n\n**Fix options:**\n\`\`\`ts\n// 1. Install the package${pkgName ? `\n// npm install ${pkgName}` : ""}\n\n// 2. Install type definitions${pkgName ? `\n// npm install -D @types/${pkgName}` : ""}\n\n// 3. For local modules, check path\nimport { something } from './correct/path'\n\n// 4. Add module declaration\ndeclare module '${modName}' {\n  export const value: string\n}\n\`\`\``;
     }
     case 2306: // 'X' is not a module
       return `**File is not a module.**\n\n**Why:** This file doesn't have any exports.\n\n**Fix:** Add exports to the file:\n\`\`\`ts\n// Named exports\nexport const myValue = 'hello'\nexport function myFunc() { }\nexport interface MyType { }\n\n// Default export\nexport default MyComponent\n\n// Re-export from another module\nexport { something } from './other'\nexport * from './utils'\n\`\`\``;
-    case 2614: { // Module 'X' has no exported member 'Y'
+    case 2614: {
+      // Module 'X' has no exported member 'Y'
       const exportMatch = message.match(/has no exported member '(\w+)'/);
       if (exportMatch) {
         const name = exportMatch[1];
@@ -288,17 +326,19 @@ const source = ref(TYPECHECK_PRESET);
 const typeCheckResult = ref<TypeCheckResult | null>(null);
 const capabilities = ref<TypeCheckCapabilities | null>(null);
 const error = ref<string | null>(null);
-const activeTab = ref<'diagnostics' | 'virtualTs' | 'capabilities'>('diagnostics');
+const activeTab = ref<"diagnostics" | "virtualTs" | "capabilities">(
+  "diagnostics",
+);
 const checkTime = ref<number | null>(null);
 
 // Options
 const strictMode = ref(false);
-const includeVirtualTs = ref(true);  // Enable by default to show Virtual TS
+const includeVirtualTs = ref(true); // Enable by default to show Virtual TS
 const checkProps = ref(true);
 const checkEmits = ref(true);
 const checkTemplateBindings = ref(true);
 
-const STORAGE_KEY = 'vize-canon-typecheck-options';
+const STORAGE_KEY = "vize-canon-typecheck-options";
 
 // Use Monaco TypeScript for real type checking
 const useMonacoTs = ref(true);
@@ -323,7 +363,10 @@ async function configureTypeScript() {
   });
 
   // Add Vue type declarations (module + compiler macros + globals)
-  monaco.languages.typescript.typescriptDefaults.addExtraLib(VUE_GLOBALS_DECLARATIONS, 'vue.d.ts');
+  monaco.languages.typescript.typescriptDefaults.addExtraLib(
+    VUE_GLOBALS_DECLARATIONS,
+    "vue.d.ts",
+  );
 }
 
 // Vue module and type declarations for Monaco TypeScript
@@ -425,10 +468,10 @@ declare const $event: Event;
 
 // Cached source map entries for hover
 let cachedSourceMap: SourceMapEntry[] = [];
-let cachedVirtualTs: string = '';
+let cachedVirtualTs: string = "";
 
 // Virtual TS model URI - use ts-nul-authority scheme for Monaco TypeScript worker
-const VIRTUAL_TS_URI = monaco.Uri.parse('ts:virtual-sfc.ts');
+const VIRTUAL_TS_URI = monaco.Uri.parse("ts:virtual-sfc.ts");
 
 // Get hover info from TypeScript at a given position in Virtual TS
 async function getTypeScriptHover(genOffset: number): Promise<string | null> {
@@ -439,29 +482,36 @@ async function getTypeScriptHover(genOffset: number): Promise<string | null> {
     const client = await worker(VIRTUAL_TS_URI);
 
     // Get quick info at position
-    const quickInfo = await client.getQuickInfoAtPosition(VIRTUAL_TS_URI.toString(), genOffset);
+    const quickInfo = await client.getQuickInfoAtPosition(
+      VIRTUAL_TS_URI.toString(),
+      genOffset,
+    );
     if (!quickInfo) return null;
 
     // Build hover content
     const parts: string[] = [];
 
     if (quickInfo.displayParts) {
-      const displayText = quickInfo.displayParts.map((p: { text: string }) => p.text).join('');
+      const displayText = quickInfo.displayParts
+        .map((p: { text: string }) => p.text)
+        .join("");
       if (displayText) {
-        parts.push('```typescript\n' + displayText + '\n```');
+        parts.push("```typescript\n" + displayText + "\n```");
       }
     }
 
     if (quickInfo.documentation) {
-      const docs = quickInfo.documentation.map((d: { text: string }) => d.text).join('\n');
+      const docs = quickInfo.documentation
+        .map((d: { text: string }) => d.text)
+        .join("\n");
       if (docs) {
         parts.push(docs);
       }
     }
 
-    return parts.length > 0 ? parts.join('\n\n') : null;
+    return parts.length > 0 ? parts.join("\n\n") : null;
   } catch (e) {
-    console.error('Failed to get TypeScript hover:', e);
+    console.error("Failed to get TypeScript hover:", e);
     return null;
   }
 }
@@ -482,7 +532,10 @@ function mapSourceToGenerated(srcOffset: number): number | null {
 let hoverProviderDisposable: monaco.IDisposable | null = null;
 
 // Find diagnostic at a given position
-function findDiagnosticAtPosition(line: number, col: number): Diagnostic | null {
+function findDiagnosticAtPosition(
+  line: number,
+  col: number,
+): Diagnostic | null {
   for (const diag of diagnostics.value) {
     const startLine = diag.startLine;
     const startCol = diag.startColumn;
@@ -513,15 +566,23 @@ function registerHoverProvider() {
     hoverProviderDisposable.dispose();
   }
 
-  hoverProviderDisposable = monaco.languages.registerHoverProvider('vue', {
+  hoverProviderDisposable = monaco.languages.registerHoverProvider("vue", {
     async provideHover(model, position) {
       const contents: monaco.IMarkdownString[] = [];
 
       // Check if hovering over a diagnostic
-      const diag = findDiagnosticAtPosition(position.lineNumber, position.column);
+      const diag = findDiagnosticAtPosition(
+        position.lineNumber,
+        position.column,
+      );
       if (diag) {
         // Add diagnostic message with severity indicator
-        const severityLabel = diag.severity === 'error' ? 'Error' : diag.severity === 'warning' ? 'Warning' : 'Info';
+        const severityLabel =
+          diag.severity === "error"
+            ? "Error"
+            : diag.severity === "warning"
+              ? "Warning"
+              : "Info";
         contents.push({
           value: `**[${severityLabel}]** ${diag.message}`,
         });
@@ -541,7 +602,7 @@ function registerHoverProvider() {
         const hoverContent = await getTypeScriptHover(genOffset);
         if (hoverContent) {
           if (contents.length > 0) {
-            contents.push({ value: '---' });
+            contents.push({ value: "---" });
           }
           contents.push({ value: hoverContent });
         }
@@ -558,14 +619,20 @@ function registerHoverProvider() {
 }
 
 // Get TypeScript diagnostics from Monaco Worker
-async function getTypeScriptDiagnostics(virtualTs: string): Promise<Diagnostic[]> {
+async function getTypeScriptDiagnostics(
+  virtualTs: string,
+): Promise<Diagnostic[]> {
   if (!virtualTs) return [];
 
   // Create or update the virtual TS model
   if (virtualTsModel) {
     virtualTsModel.setValue(virtualTs);
   } else {
-    virtualTsModel = monaco.editor.createModel(virtualTs, 'typescript', VIRTUAL_TS_URI);
+    virtualTsModel = monaco.editor.createModel(
+      virtualTs,
+      "typescript",
+      VIRTUAL_TS_URI,
+    );
   }
 
   try {
@@ -581,26 +648,31 @@ async function getTypeScriptDiagnostics(virtualTs: string): Promise<Diagnostic[]
 
     const allDiags = [...syntacticDiags, ...semanticDiags] as TsDiagnostic[];
 
-    console.log('[TypeCheck] Virtual TS diagnostics:', allDiags.length, JSON.stringify(allDiags, null, 2));
+    console.log(
+      "[TypeCheck] Virtual TS diagnostics:",
+      allDiags.length,
+      JSON.stringify(allDiags, null, 2),
+    );
 
     // Convert to our Diagnostic format
-    return allDiags.map(d => {
+    return allDiags.map((d) => {
       const startPos = virtualTsModel!.getPositionAt(d.start);
       const endPos = virtualTsModel!.getPositionAt(d.start + d.length);
 
       // Extract message text - can be string, object with messageText, or nested chain
-      let message = 'Unknown error';
-      if (typeof d.messageText === 'string') {
+      let message = "Unknown error";
+      if (typeof d.messageText === "string") {
         message = d.messageText;
-      } else if (d.messageText && typeof d.messageText === 'object') {
+      } else if (d.messageText && typeof d.messageText === "object") {
         // DiagnosticMessageChain - get the first message
-        message = (d.messageText as any).messageText || 'Unknown error';
-      } else if (typeof d.message === 'string') {
+        message = (d.messageText as any).messageText || "Unknown error";
+      } else if (typeof d.message === "string") {
         message = d.message;
       }
 
       // TypeScript DiagnosticCategory: 0=Warning, 1=Error, 2=Suggestion, 3=Message
-      const severity = d.category === 1 ? 'error' : d.category === 0 ? 'warning' : 'info';
+      const severity =
+        d.category === 1 ? "error" : d.category === 0 ? "warning" : "info";
 
       return {
         message,
@@ -609,11 +681,11 @@ async function getTypeScriptDiagnostics(virtualTs: string): Promise<Diagnostic[]
         startColumn: startPos.column,
         endLine: endPos.lineNumber,
         endColumn: endPos.column,
-        severity: severity as 'error' | 'warning' | 'info',
+        severity: severity as "error" | "warning" | "info",
       };
     });
   } catch (e) {
-    console.error('Failed to get TypeScript diagnostics:', e);
+    console.error("Failed to get TypeScript diagnostics:", e);
     return [];
   }
 }
@@ -642,7 +714,7 @@ function parseSourceMap(virtualTs: string): SourceMapEntry[] {
 function mapDiagnosticsToSource(
   tsDiags: Diagnostic[],
   virtualTs: string,
-  vueSource: string
+  vueSource: string,
 ): Diagnostic[] {
   // Parse source map entries from Virtual TS comments
   const sourceMapEntries = parseSourceMap(virtualTs);
@@ -651,7 +723,7 @@ function mapDiagnosticsToSource(
 
   // Helper: convert line/column to offset
   function lineColToOffset(content: string, line: number, col: number): number {
-    const lines = content.split('\n');
+    const lines = content.split("\n");
     let offset = 0;
     for (let i = 0; i < line - 1 && i < lines.length; i++) {
       offset += lines[i].length + 1; // +1 for newline
@@ -660,8 +732,11 @@ function mapDiagnosticsToSource(
   }
 
   // Helper: convert offset to line/column in Vue source
-  function offsetToLineCol(content: string, offset: number): { line: number; col: number } {
-    const lines = content.split('\n');
+  function offsetToLineCol(
+    content: string,
+    offset: number,
+  ): { line: number; col: number } {
+    const lines = content.split("\n");
     let currentOffset = 0;
     for (let i = 0; i < lines.length; i++) {
       const lineEnd = currentOffset + lines[i].length + 1;
@@ -675,8 +750,16 @@ function mapDiagnosticsToSource(
 
   for (const diag of tsDiags) {
     // Calculate offset in virtual TS
-    const diagOffset = lineColToOffset(virtualTs, diag.startLine, diag.startColumn);
-    const diagEndOffset = lineColToOffset(virtualTs, diag.endLine || diag.startLine, diag.endColumn || diag.startColumn);
+    const diagOffset = lineColToOffset(
+      virtualTs,
+      diag.startLine,
+      diag.startColumn,
+    );
+    const diagEndOffset = lineColToOffset(
+      virtualTs,
+      diag.endLine || diag.startLine,
+      diag.endColumn || diag.startColumn,
+    );
 
     // Try to find a matching source map entry
     let foundMapping = false;
@@ -685,13 +768,18 @@ function mapDiagnosticsToSource(
         // Calculate relative position within the generated range
         const relativeOffset = diagOffset - entry.genStart;
         const srcOffset = entry.srcStart + relativeOffset;
-        const srcEndOffset = Math.min(entry.srcEnd, srcOffset + (diagEndOffset - diagOffset));
+        const srcEndOffset = Math.min(
+          entry.srcEnd,
+          srcOffset + (diagEndOffset - diagOffset),
+        );
 
         const startPos = offsetToLineCol(vueSource, srcOffset);
         const endPos = offsetToLineCol(vueSource, srcEndOffset);
 
         // Generate help suggestion based on error code
-        const help = diag.code ? generateHelp(diag.code, diag.message) : undefined;
+        const help = diag.code
+          ? generateHelp(diag.code, diag.message)
+          : undefined;
 
         mapped.push({
           ...diag,
@@ -699,7 +787,9 @@ function mapDiagnosticsToSource(
           startColumn: startPos.col,
           endLine: endPos.line,
           endColumn: endPos.col,
-          message: diag.code ? `[vize:TS${diag.code}] ${diag.message}` : `[vize] ${diag.message}`,
+          message: diag.code
+            ? `[vize:TS${diag.code}] ${diag.message}`
+            : `[vize] ${diag.message}`,
           help,
         });
         foundMapping = true;
@@ -711,7 +801,7 @@ function mapDiagnosticsToSource(
     // Skip diagnostics from Virtual TS boilerplate (no mapping = generated code)
     if (!foundMapping) {
       // Skip errors from boilerplate - these are not user code errors
-      console.log('[TypeCheck] Skipping unmapped diagnostic:', diag.message);
+      console.log("[TypeCheck] Skipping unmapped diagnostic:", diag.message);
     }
   }
 
@@ -725,14 +815,14 @@ function loadOptions() {
     if (saved) {
       const config = JSON.parse(saved);
       strictMode.value = config.strictMode ?? false;
-      includeVirtualTs.value = config.includeVirtualTs ?? true;  // Default to true
+      includeVirtualTs.value = config.includeVirtualTs ?? true; // Default to true
       checkProps.value = config.checkProps ?? true;
       checkEmits.value = config.checkEmits ?? true;
       checkTemplateBindings.value = config.checkTemplateBindings ?? true;
       useMonacoTs.value = config.useMonacoTs ?? true; // Default to true
     }
   } catch (e) {
-    console.warn('Failed to load options:', e);
+    console.warn("Failed to load options:", e);
   }
 }
 
@@ -749,24 +839,31 @@ function saveOptions() {
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
   } catch (e) {
-    console.warn('Failed to save options:', e);
+    console.warn("Failed to save options:", e);
   }
 }
 
 const errorCount = computed(() => {
   const wasmErrors = typeCheckResult.value?.errorCount ?? 0;
-  const tsErrors = tsDiagnostics.value.filter(d => d.severity === 'error').length;
+  const tsErrors = tsDiagnostics.value.filter(
+    (d) => d.severity === "error",
+  ).length;
   return wasmErrors + tsErrors;
 });
 const warningCount = computed(() => {
   const wasmWarnings = typeCheckResult.value?.warningCount ?? 0;
-  const tsWarnings = tsDiagnostics.value.filter(d => d.severity === 'warning').length;
+  const tsWarnings = tsDiagnostics.value.filter(
+    (d) => d.severity === "warning",
+  ).length;
   return wasmWarnings + tsWarnings;
 });
 
 // Calculate position from offset
-function getPositionFromOffset(source: string, offset: number): { line: number; column: number } {
-  const lines = source.substring(0, offset).split('\n');
+function getPositionFromOffset(
+  source: string,
+  offset: number,
+): { line: number; column: number } {
+  const lines = source.substring(0, offset).split("\n");
   return {
     line: lines.length,
     column: lines[lines.length - 1].length + 1,
@@ -783,7 +880,9 @@ const diagnostics = computed((): Diagnostic[] => {
       const startPos = getPositionFromOffset(source.value, d.start);
       const endPos = getPositionFromOffset(source.value, d.end);
       // Format: [vize:CODE] message
-      const message = d.code ? `[vize:${d.code}] ${d.message}` : `[vize] ${d.message}`;
+      const message = d.code
+        ? `[vize:${d.code}] ${d.message}`
+        : `[vize] ${d.message}`;
       wasmDiags.push({
         message,
         help: d.help, // WASM diagnostics may include help from Rust side
@@ -791,7 +890,12 @@ const diagnostics = computed((): Diagnostic[] => {
         startColumn: startPos.column,
         endLine: endPos.line,
         endColumn: endPos.column,
-        severity: d.severity === 'error' ? 'error' : d.severity === 'warning' ? 'warning' : 'info',
+        severity:
+          d.severity === "error"
+            ? "error"
+            : d.severity === "warning"
+              ? "warning"
+              : "info",
       });
     }
   }
@@ -812,7 +916,7 @@ async function typeCheck() {
 
   try {
     const result = props.compiler.typeCheck(source.value, {
-      filename: 'example.vue',
+      filename: "example.vue",
       strict: strictMode.value,
       includeVirtualTs: true, // Always generate virtual TS for Monaco checking
       checkProps: checkProps.value,
@@ -828,11 +932,15 @@ async function typeCheck() {
       cachedSourceMap = parseSourceMap(result.virtualTs);
 
       const tsDiags = await getTypeScriptDiagnostics(result.virtualTs);
-      tsDiagnostics.value = mapDiagnosticsToSource(tsDiags, result.virtualTs, source.value);
+      tsDiagnostics.value = mapDiagnosticsToSource(
+        tsDiags,
+        result.virtualTs,
+        source.value,
+      );
     } else {
       tsDiagnostics.value = [];
       cachedSourceMap = [];
-      cachedVirtualTs = '';
+      cachedVirtualTs = "";
     }
 
     checkTime.value = performance.now() - startTime;
@@ -849,7 +957,7 @@ function loadCapabilities() {
   try {
     capabilities.value = props.compiler.getTypeCheckCapabilities();
   } catch (e) {
-    console.error('Failed to load capabilities:', e);
+    console.error("Failed to load capabilities:", e);
   }
 }
 
@@ -867,78 +975,93 @@ function highlightCode(code: string, lang: string): string {
   let result = code;
 
   // Vue/HTML specific
-  if (lang === 'vue' || lang === 'html') {
+  if (lang === "vue" || lang === "html") {
     // HTML comments first
     result = result.replace(/(&lt;!--[\s\S]*?--&gt;)/g, (_, m) =>
-      placeholder(`<span class="hl-comment">${m}</span>`)
+      placeholder(`<span class="hl-comment">${m}</span>`),
     );
     // Attribute values in quotes (before tags to avoid conflicts)
-    result = result.replace(/="([^"]*)"/g, (_, v) =>
-      `="${placeholder(`<span class="hl-string">${v}</span>`)}"`
+    result = result.replace(
+      /="([^"]*)"/g,
+      (_, v) => `="${placeholder(`<span class="hl-string">${v}</span>`)}"`,
     );
     // Vue directives
-    result = result.replace(/(v-[\w-]+|@[\w.-]+|:[\w.-]+(?==")|#[\w.-]+)/g, (_, m) =>
-      placeholder(`<span class="hl-directive">${m}</span>`)
+    result = result.replace(
+      /(v-[\w-]+|@[\w.-]+|:[\w.-]+(?==")|#[\w.-]+)/g,
+      (_, m) => placeholder(`<span class="hl-directive">${m}</span>`),
     );
     // Tags (opening and closing)
-    result = result.replace(/(&lt;\/?)([\w-]+)/g, (_, prefix, tag) =>
-      `${prefix}${placeholder(`<span class="hl-tag">${tag}</span>`)}`
+    result = result.replace(
+      /(&lt;\/?)([\w-]+)/g,
+      (_, prefix, tag) =>
+        `${prefix}${placeholder(`<span class="hl-tag">${tag}</span>`)}`,
     );
     // Mustache interpolation
     result = result.replace(/(\{\{|\}\})/g, (_, m) =>
-      placeholder(`<span class="hl-delimiter">${m}</span>`)
+      placeholder(`<span class="hl-delimiter">${m}</span>`),
     );
   }
 
   // TypeScript/JavaScript
-  if (lang === 'ts' || lang === 'typescript' || lang === 'js' || lang === 'javascript') {
+  if (
+    lang === "ts" ||
+    lang === "typescript" ||
+    lang === "js" ||
+    lang === "javascript"
+  ) {
     // Comments first (to avoid highlighting inside comments)
     result = result.replace(/(\/\/.*)/g, (_, m) =>
-      placeholder(`<span class="hl-comment">${m}</span>`)
+      placeholder(`<span class="hl-comment">${m}</span>`),
     );
     // Strings (must be before keywords to avoid highlighting keywords inside strings)
     result = result.replace(/('[^']*'|"[^"]*"|`[^`]*`)/g, (_, m) =>
-      placeholder(`<span class="hl-string">${m}</span>`)
+      placeholder(`<span class="hl-string">${m}</span>`),
     );
     // Vue APIs (before general keywords)
-    result = result.replace(/\b(ref|reactive|computed|watch|watchEffect|onMounted|onUnmounted|defineProps|defineEmits|toRefs|inject|provide)\b/g, (_, m) =>
-      placeholder(`<span class="hl-vue-api">${m}</span>`)
+    result = result.replace(
+      /\b(ref|reactive|computed|watch|watchEffect|onMounted|onUnmounted|defineProps|defineEmits|toRefs|inject|provide)\b/g,
+      (_, m) => placeholder(`<span class="hl-vue-api">${m}</span>`),
     );
     // Keywords
-    result = result.replace(/\b(const|let|var|function|return|if|else|for|while|import|export|from|async|await|new|typeof|instanceof|class|interface|type|extends)\b/g, (_, m) =>
-      placeholder(`<span class="hl-keyword">${m}</span>`)
+    result = result.replace(
+      /\b(const|let|var|function|return|if|else|for|while|import|export|from|async|await|new|typeof|instanceof|class|interface|type|extends)\b/g,
+      (_, m) => placeholder(`<span class="hl-keyword">${m}</span>`),
     );
     // Types
-    result = result.replace(/\b(string|number|boolean|null|undefined|void|any|never)\b/g, (_, m) =>
-      placeholder(`<span class="hl-type">${m}</span>`)
+    result = result.replace(
+      /\b(string|number|boolean|null|undefined|void|any|never)\b/g,
+      (_, m) => placeholder(`<span class="hl-type">${m}</span>`),
     );
     // Numbers
     result = result.replace(/\b(\d+)\b/g, (_, m) =>
-      placeholder(`<span class="hl-number">${m}</span>`)
+      placeholder(`<span class="hl-number">${m}</span>`),
     );
   }
 
   // CSS
-  if (lang === 'css') {
+  if (lang === "css") {
     // At-rules
     result = result.replace(/(@[\w-]+)/g, (_, m) =>
-      placeholder(`<span class="hl-keyword">${m}</span>`)
+      placeholder(`<span class="hl-keyword">${m}</span>`),
     );
     // Properties
-    result = result.replace(/([\w-]+)(\s*:)/g, (_, prop, colon) =>
-      `${placeholder(`<span class="hl-property">${prop}</span>`)}${colon}`
+    result = result.replace(
+      /([\w-]+)(\s*:)/g,
+      (_, prop, colon) =>
+        `${placeholder(`<span class="hl-property">${prop}</span>`)}${colon}`,
     );
   }
 
   // Bash
-  if (lang === 'bash' || lang === 'sh') {
+  if (lang === "bash" || lang === "sh") {
     // Comments first
     result = result.replace(/(#.*)/g, (_, m) =>
-      placeholder(`<span class="hl-comment">${m}</span>`)
+      placeholder(`<span class="hl-comment">${m}</span>`),
     );
     // Commands
-    result = result.replace(/\b(npm|yarn|pnpm|git|cd|mkdir|rm|cp|mv|install)\b/g, (_, m) =>
-      placeholder(`<span class="hl-keyword">${m}</span>`)
+    result = result.replace(
+      /\b(npm|yarn|pnpm|git|cd|mkdir|rm|cp|mv|install)\b/g,
+      (_, m) => placeholder(`<span class="hl-keyword">${m}</span>`),
     );
   }
 
@@ -954,49 +1077,60 @@ function highlightCode(code: string, lang: string): string {
 function formatHelp(help: string): string {
   let result = help
     // Escape HTML first
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 
   // Code blocks (```lang ... ```)
   result = result.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
-    const highlighted = highlightCode(code, lang || 'text');
-    return `<pre class="help-code" data-lang="${lang || 'text'}"><code>${highlighted}</code></pre>`;
+    const highlighted = highlightCode(code, lang || "text");
+    return `<pre class="help-code" data-lang="${lang || "text"}"><code>${highlighted}</code></pre>`;
   });
 
   // Inline code (`code`)
-  result = result.replace(/`([^`]+)`/g, '<code class="help-inline-code">$1</code>');
+  result = result.replace(
+    /`([^`]+)`/g,
+    '<code class="help-inline-code">$1</code>',
+  );
   // Bold (**text**)
-  result = result.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  result = result.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   // Line breaks
-  result = result.replace(/\n/g, '<br>');
+  result = result.replace(/\n/g, "<br>");
 
   return result;
 }
 
 // Format diagnostic message with basic markdown (inline code, types)
 function formatMessage(message: string): string {
-  return message
-    // Escape HTML first
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    // Highlight type names in quotes: 'TypeName' or "TypeName"
-    .replace(/'([^']+)'/g, '<code class="msg-type">$1</code>')
-    .replace(/"([^"]+)"/g, '<code class="msg-type">$1</code>');
+  return (
+    message
+      // Escape HTML first
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      // Highlight type names in quotes: 'TypeName' or "TypeName"
+      .replace(/'([^']+)'/g, '<code class="msg-type">$1</code>')
+      .replace(/"([^"]+)"/g, '<code class="msg-type">$1</code>')
+  );
 }
 
-function getSeverityIcon(severity: 'error' | 'warning' | 'info' | 'hint'): string {
+function getSeverityIcon(
+  severity: "error" | "warning" | "info" | "hint",
+): string {
   switch (severity) {
-    case 'error': return '\u2717';
-    case 'warning': return '\u26A0';
-    case 'info': return '\u24D8';
-    default: return '\u2022';
+    case "error":
+      return "\u2717";
+    case "warning":
+      return "\u26A0";
+    case "info":
+      return "\u24D8";
+    default:
+      return "\u2022";
   }
 }
 
-function setPreset(preset: 'untyped' | 'typed') {
-  source.value = preset === 'typed' ? TYPECHECK_TYPED_PRESET : TYPECHECK_PRESET;
+function setPreset(preset: "untyped" | "typed") {
+  source.value = preset === "typed" ? TYPECHECK_TYPED_PRESET : TYPECHECK_PRESET;
 }
 
 let checkTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1007,15 +1141,22 @@ watch(
     if (checkTimer) clearTimeout(checkTimer);
     checkTimer = setTimeout(typeCheck, 300);
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 watch(
-  [strictMode, includeVirtualTs, checkProps, checkEmits, checkTemplateBindings, useMonacoTs],
+  [
+    strictMode,
+    includeVirtualTs,
+    checkProps,
+    checkEmits,
+    checkTemplateBindings,
+    useMonacoTs,
+  ],
   () => {
     saveOptions();
     typeCheck();
-  }
+  },
 );
 
 watch(
@@ -1025,7 +1166,7 @@ watch(
       typeCheck();
       loadCapabilities();
     }
-  }
+  },
 );
 
 onMounted(async () => {
@@ -1060,12 +1201,18 @@ onUnmounted(() => {
           <h2>Source</h2>
         </div>
         <div class="panel-actions">
-          <button @click="setPreset('untyped')" class="btn-ghost">Untyped</button>
+          <button @click="setPreset('untyped')" class="btn-ghost">
+            Untyped
+          </button>
           <button @click="setPreset('typed')" class="btn-ghost">Typed</button>
         </div>
       </div>
       <div class="editor-container">
-        <MonacoEditor v-model="source" language="vue" :diagnostics="diagnostics" />
+        <MonacoEditor
+          v-model="source"
+          language="vue"
+          :diagnostics="diagnostics"
+        />
       </div>
     </div>
 
@@ -1078,25 +1225,36 @@ onUnmounted(() => {
             {{ checkTime.toFixed(2) }}ms
           </span>
           <template v-if="typeCheckResult">
-            <span v-if="errorCount > 0" class="count-badge errors">{{ errorCount }}</span>
-            <span v-if="warningCount > 0" class="count-badge warnings">{{ warningCount }}</span>
+            <span v-if="errorCount > 0" class="count-badge errors">{{
+              errorCount
+            }}</span>
+            <span v-if="warningCount > 0" class="count-badge warnings">{{
+              warningCount
+            }}</span>
           </template>
         </div>
         <div class="tabs">
           <button
             :class="['tab', { active: activeTab === 'diagnostics' }]"
             @click="activeTab = 'diagnostics'"
-          >Diagnostics
-            <span v-if="diagnostics.length" class="tab-badge">{{ diagnostics.length }}</span>
+          >
+            Diagnostics
+            <span v-if="diagnostics.length" class="tab-badge">{{
+              diagnostics.length
+            }}</span>
           </button>
           <button
             :class="['tab', { active: activeTab === 'virtualTs' }]"
             @click="activeTab = 'virtualTs'"
-          >Virtual TS</button>
+          >
+            Virtual TS
+          </button>
           <button
             :class="['tab', { active: activeTab === 'capabilities' }]"
             @click="activeTab = 'capabilities'"
-          >Info</button>
+          >
+            Info
+          </button>
         </div>
       </div>
 
@@ -1154,19 +1312,29 @@ onUnmounted(() => {
                 :class="['diagnostic-item', `severity-${diagnostic.severity}`]"
               >
                 <div class="diagnostic-header">
-                  <span class="severity-icon">{{ getSeverityIcon(diagnostic.severity) }}</span>
-                  <code v-if="diagnostic.code" class="error-code">TS{{ diagnostic.code }}</code>
+                  <span class="severity-icon">{{
+                    getSeverityIcon(diagnostic.severity)
+                  }}</span>
+                  <code v-if="diagnostic.code" class="error-code"
+                    >TS{{ diagnostic.code }}</code
+                  >
                   <span class="location-badge">
                     {{ diagnostic.startLine }}:{{ diagnostic.startColumn }}
                   </span>
                 </div>
-                <div class="diagnostic-message" v-html="formatMessage(diagnostic.message)"></div>
+                <div
+                  class="diagnostic-message"
+                  v-html="formatMessage(diagnostic.message)"
+                ></div>
                 <div v-if="diagnostic.help" class="diagnostic-help">
                   <div class="help-header">
                     <span class="help-icon">?</span>
                     <span class="help-label">Hint</span>
                   </div>
-                  <div class="help-content" v-html="formatHelp(diagnostic.help)"></div>
+                  <div
+                    class="help-content"
+                    v-html="formatHelp(diagnostic.help)"
+                  ></div>
                 </div>
               </div>
             </div>
@@ -1185,12 +1353,18 @@ onUnmounted(() => {
               />
             </div>
             <div v-else class="empty-state">
-              <span>Enable "Generate Virtual TS" option to see generated TypeScript</span>
+              <span
+                >Enable "Generate Virtual TS" option to see generated
+                TypeScript</span
+              >
             </div>
           </div>
 
           <!-- Capabilities Tab -->
-          <div v-else-if="activeTab === 'capabilities'" class="capabilities-output">
+          <div
+            v-else-if="activeTab === 'capabilities'"
+            class="capabilities-output"
+          >
             <div class="output-header-bar">
               <span class="output-title">Type Checker Capabilities</span>
             </div>
@@ -1205,9 +1379,15 @@ onUnmounted(() => {
               <div class="capability-section">
                 <h3>Available Checks</h3>
                 <div class="checks-list">
-                  <div v-for="check in capabilities.checks" :key="check.name" class="check-item">
+                  <div
+                    v-for="check in capabilities.checks"
+                    :key="check.name"
+                    class="check-item"
+                  >
                     <code class="check-name">{{ check.name }}</code>
-                    <span :class="['check-severity', check.severity]">{{ check.severity }}</span>
+                    <span :class="['check-severity', check.severity]">{{
+                      check.severity
+                    }}</span>
                     <p class="check-description">{{ check.description }}</p>
                   </div>
                 </div>
@@ -1216,7 +1396,9 @@ onUnmounted(() => {
               <div class="capability-section">
                 <h3>Notes</h3>
                 <ul class="notes-list">
-                  <li v-for="(note, i) in capabilities.notes" :key="i">{{ note }}</li>
+                  <li v-for="(note, i) in capabilities.notes" :key="i">
+                    {{ note }}
+                  </li>
                 </ul>
               </div>
             </div>
@@ -1286,7 +1468,7 @@ onUnmounted(() => {
   background: rgba(74, 222, 128, 0.15);
   color: #4ade80;
   border-radius: 3px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
 }
 
 .count-badge {
@@ -1295,7 +1477,7 @@ onUnmounted(() => {
   border-radius: 8px;
   min-width: 1.25rem;
   text-align: center;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
 }
 
 .count-badge.errors {
@@ -1411,7 +1593,11 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.15),
+    rgba(139, 92, 246, 0.15)
+  );
   border: 1px solid rgba(59, 130, 246, 0.3);
   border-radius: 4px;
   margin-bottom: 0.75rem;
@@ -1527,7 +1713,7 @@ onUnmounted(() => {
 
 .error-code {
   font-size: 0.6875rem;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   color: var(--text-muted);
   background: var(--bg-tertiary);
   padding: 0.125rem 0.375rem;
@@ -1537,7 +1723,7 @@ onUnmounted(() => {
 .location-badge {
   margin-left: auto;
   font-size: 0.625rem;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   color: var(--text-muted);
 }
 
@@ -1548,7 +1734,7 @@ onUnmounted(() => {
 }
 
 .diagnostic-message :deep(.msg-type) {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   font-size: 0.85em;
   color: #79c0ff;
   background: rgba(121, 192, 255, 0.1);
@@ -1559,7 +1745,11 @@ onUnmounted(() => {
 .diagnostic-help {
   margin-top: 0.75rem;
   padding: 0.75rem;
-  background: linear-gradient(135deg, rgba(96, 165, 250, 0.08) 0%, rgba(147, 51, 234, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(96, 165, 250, 0.08) 0%,
+    rgba(147, 51, 234, 0.05) 100%
+  );
   border: 1px solid rgba(96, 165, 250, 0.2);
   border-radius: 6px;
   font-size: 0.85rem;
@@ -1600,7 +1790,7 @@ onUnmounted(() => {
   background: rgba(0, 0, 0, 0.3);
   border-radius: 4px;
   overflow-x: auto;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.8rem;
   line-height: 1.5;
 }
@@ -1615,7 +1805,7 @@ onUnmounted(() => {
   background: rgba(110, 118, 129, 0.3);
   padding: 0.15rem 0.4rem;
   border-radius: 3px;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.85em;
   color: #ff7b72;
 }
@@ -1680,7 +1870,7 @@ onUnmounted(() => {
 
 .diagnostic-code {
   font-size: 0.6875rem;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   color: var(--text-muted);
   background: var(--bg-tertiary);
   padding: 0.125rem 0.375rem;
@@ -1690,7 +1880,7 @@ onUnmounted(() => {
 .location-badge {
   margin-left: auto;
   font-size: 0.625rem;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   color: var(--text-muted);
 }
 
@@ -1753,7 +1943,7 @@ onUnmounted(() => {
 
 .check-name {
   font-size: 0.75rem;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   color: var(--text-primary);
 }
 
