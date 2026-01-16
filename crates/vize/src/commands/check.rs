@@ -476,25 +476,7 @@ fn run_direct(args: &CheckArgs) {
             p.parent().map(|d| d.to_string_lossy().to_string())
         });
 
-    // Initialize LSP client with project root
-    let mut lsp_client =
-        match TsgoLspClient::new(args.tsgo_path.as_deref(), project_root.as_deref()) {
-            Ok(client) => client,
-            Err(e) => {
-                eprintln!("\x1b[31mError:\x1b[0m Failed to start tsgo LSP: {}", e);
-                eprintln!();
-                eprintln!("\x1b[33mHint:\x1b[0m Install tsgo and set path:");
-                eprintln!("  npm install -g @typescript/native-preview");
-                eprintln!("  export TSGO_PATH=$(npm root -g)/../bin/tsgo");
-                eprintln!("  # or use --tsgo-path option");
-                std::process::exit(1);
-            }
-        };
-
-    let mut total_errors = 0;
-    let mut all_diagnostics: Vec<(String, Vec<String>)> = Vec::new();
-
-    // Build URI map for all files (so imports can be resolved)
+    // Build shared URI map for all files (so imports can be resolved across servers)
     let uri_map: Vec<(String, String)> = generated
         .iter()
         .map(|g| {
@@ -503,92 +485,167 @@ fn run_direct(args: &CheckArgs) {
         })
         .collect();
 
-    // PHASE 1: Open ALL files fast (no waiting per file)
-    for (uri, content) in &uri_map {
-        if let Err(e) = lsp_client.did_open_fast(uri, content) {
-            eprintln!("Failed to open {}: {}", uri, e);
-        }
-    }
+    // Determine number of parallel LSP servers
+    // Only use parallel servers for large file counts (threshold: 30 files)
+    // Below this threshold, the overhead of multiple servers negates the benefit
+    let num_cpus = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(4);
+    let num_servers = if generated.len() < 30 {
+        1 // Single server for small projects (less overhead)
+    } else {
+        // Use at most 4 servers (diminishing returns beyond that)
+        num_cpus.min(4).min(generated.len() / 10).max(1)
+    };
 
-    // Wait briefly for the server to process files
-    lsp_client.wait_for_diagnostics(uri_map.len());
+    // Partition INDICES for diagnostics collection (each server checks a subset)
+    let chunk_size = generated.len().div_ceil(num_servers);
+    let index_chunks: Vec<_> = (0..generated.len())
+        .collect::<Vec<_>>()
+        .chunks(chunk_size)
+        .map(|c| c.to_vec())
+        .collect();
 
-    // PHASE 2: Request diagnostics for each file
-    for g in &generated {
-        let virtual_uri = format!("file://{}.ts", g.original);
+    // Run type checking in parallel across multiple LSP servers
+    use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
+    use std::sync::Mutex;
+    let total_errors = AtomicUsize::new(0);
+    let all_diagnostics: Mutex<Vec<(String, Vec<String>)>> = Mutex::new(Vec::new());
 
-        // Request diagnostics explicitly (tsgo requires pull-based diagnostics)
-        let diagnostics = match lsp_client.request_diagnostics(&virtual_uri) {
-            Ok(diags) => diags,
-            Err(_) => lsp_client.get_diagnostics(&virtual_uri),
-        };
+    std::thread::scope(|s| {
+        let handles: Vec<_> = index_chunks
+            .into_iter()
+            .map(|indices| {
+                let project_root = project_root.clone();
+                let tsgo_path = args.tsgo_path.clone();
+                let total_errors = &total_errors;
+                let all_diagnostics = &all_diagnostics;
+                let uri_map = &uri_map;
+                let generated = &generated;
 
-        // Collect diagnostics (filter out noise from generated code and .vue module resolution)
-        let mut file_diags: Vec<String> = Vec::new();
-        for diag in &diagnostics {
-            let code_num = diag.code.as_ref().and_then(|c| match c {
-                serde_json::Value::Number(n) => n.as_u64(),
-                serde_json::Value::String(s) => s.parse::<u64>().ok(),
-                _ => None,
-            });
+                s.spawn(move || {
+                    // Initialize LSP client for this thread
+                    let mut lsp_client =
+                        match TsgoLspClient::new(tsgo_path.as_deref(), project_root.as_deref()) {
+                            Ok(client) => client,
+                            Err(e) => {
+                                eprintln!("\x1b[31mError:\x1b[0m Failed to start tsgo LSP: {}", e);
+                                return;
+                            }
+                        };
 
-            // Skip errors from generated code and .vue module resolution:
-            // - TS2307: Cannot find module (for .vue imports - virtual files not resolvable)
-            // - TS2666: Exports not permitted in module augmentations (generated declare module)
-            // - TS2300: Duplicate identifier (generated component declarations)
-            // - TS6133: Unused variable, TS6196: Unused type, TS2578: Unused ts-expect-error
-            if matches!(code_num, Some(2307) | Some(2666)) && diag.message.contains(".vue") {
-                continue;
-            }
-            if matches!(code_num, Some(2300))
-                && (diag.message.contains("component")
-                    || diag.message.contains("VueComponent")
-                    || diag.message.contains("_default"))
-            {
-                continue;
-            }
-            if matches!(code_num, Some(6133) | Some(6196) | Some(2578))
-                && (diag.message.contains("__")
-                    || diag.message.contains("handler")
-                    || diag.message.contains("@ts-expect-error"))
-            {
-                continue;
-            }
+                    // PHASE 1: Open files
+                    // For single server: open all files
+                    // For multiple servers: only open assigned files (rely on tsconfig for imports)
+                    let files_to_open: Vec<_> = if num_servers == 1 {
+                        uri_map.iter().collect()
+                    } else {
+                        indices.iter().map(|i| &uri_map[*i]).collect()
+                    };
 
-            let severity = match diag.severity {
-                Some(1) => {
-                    total_errors += 1;
-                    "error"
-                }
-                Some(2) => "warning",
-                _ => "error",
-            };
-            let code_str = diag
-                .code
-                .as_ref()
-                .map(|c| match c {
-                    serde_json::Value::Number(n) => format!(" [TS{}]", n),
-                    serde_json::Value::String(s) => format!(" [{}]", s),
-                    _ => String::new(),
+                    for (uri, content) in &files_to_open {
+                        let _ = lsp_client.did_open_fast(uri, content);
+                    }
+
+                    // Wait for diagnostics
+                    lsp_client.wait_for_diagnostics(files_to_open.len());
+
+                    // PHASE 2: Request diagnostics only for this server's assigned files
+                    let mut chunk_diagnostics: Vec<(String, Vec<String>)> = Vec::new();
+
+                    for idx in &indices {
+                        let g = &generated[*idx];
+                        let virtual_uri = format!("file://{}.ts", g.original);
+
+                        let diagnostics = match lsp_client.request_diagnostics(&virtual_uri) {
+                            Ok(diags) => diags,
+                            Err(_) => lsp_client.get_diagnostics(&virtual_uri),
+                        };
+
+                        // Filter and format diagnostics
+                        let mut file_diags: Vec<String> = Vec::new();
+                        for diag in &diagnostics {
+                            let code_num = diag.code.as_ref().and_then(|c| match c {
+                                serde_json::Value::Number(n) => n.as_u64(),
+                                serde_json::Value::String(s) => s.parse::<u64>().ok(),
+                                _ => None,
+                            });
+
+                            // Skip noise
+                            if matches!(code_num, Some(2307) | Some(2666))
+                                && diag.message.contains(".vue")
+                            {
+                                continue;
+                            }
+                            if matches!(code_num, Some(2300))
+                                && (diag.message.contains("component")
+                                    || diag.message.contains("VueComponent")
+                                    || diag.message.contains("_default"))
+                            {
+                                continue;
+                            }
+                            if matches!(code_num, Some(6133) | Some(6196) | Some(2578))
+                                && (diag.message.contains("__")
+                                    || diag.message.contains("handler")
+                                    || diag.message.contains("@ts-expect-error"))
+                            {
+                                continue;
+                            }
+
+                            let severity = match diag.severity {
+                                Some(1) => {
+                                    total_errors.fetch_add(1, AtomicOrdering::Relaxed);
+                                    "error"
+                                }
+                                Some(2) => "warning",
+                                _ => {
+                                    total_errors.fetch_add(1, AtomicOrdering::Relaxed);
+                                    "error"
+                                }
+                            };
+                            let code_str = diag
+                                .code
+                                .as_ref()
+                                .map(|c| match c {
+                                    serde_json::Value::Number(n) => format!(" [TS{}]", n),
+                                    serde_json::Value::String(s) => format!(" [{}]", s),
+                                    _ => String::new(),
+                                })
+                                .unwrap_or_default();
+                            let line = diag.range.start.line + 1;
+                            let col = diag.range.start.character + 1;
+                            file_diags.push(format!(
+                                "{}:{}:{}{} {}",
+                                severity, line, col, code_str, diag.message
+                            ));
+                        }
+
+                        if !file_diags.is_empty() {
+                            chunk_diagnostics.push((g.original.clone(), file_diags));
+                        }
+                    }
+
+                    // PHASE 3: Close files that were opened
+                    for (uri, _) in &files_to_open {
+                        let _ = lsp_client.did_close(uri);
+                    }
+
+                    // Merge diagnostics into shared state
+                    if let Ok(mut diags) = all_diagnostics.lock() {
+                        diags.extend(chunk_diagnostics);
+                    }
                 })
-                .unwrap_or_default();
-            let line = diag.range.start.line + 1;
-            let col = diag.range.start.character + 1;
-            file_diags.push(format!(
-                "{}:{}:{}{} {}",
-                severity, line, col, code_str, diag.message
-            ));
-        }
+            })
+            .collect();
 
-        if !file_diags.is_empty() {
-            all_diagnostics.push((g.original.clone(), file_diags));
+        // Wait for all threads to complete
+        for handle in handles {
+            handle.join().expect("Thread panicked");
         }
-    }
+    });
 
-    // PHASE 3: Close all files
-    for (uri, _) in &uri_map {
-        let _ = lsp_client.did_close(uri);
-    }
+    let total_errors = total_errors.load(AtomicOrdering::Relaxed);
+    let all_diagnostics = all_diagnostics.into_inner().unwrap();
 
     let check_time = check_start.elapsed();
     let total_time = start.elapsed();

@@ -236,16 +236,19 @@ pub fn generate_virtual_ts(
         }
 
         // Check for undefined references with source mapping
+        // These will cause TypeScript errors which is intentional
+        // Only emit one error per unique variable name to avoid duplicate declarations
         if !summary.undefined_refs.is_empty() {
-            ts.push_str("\n  // ERROR: Undefined references detected\n");
+            ts.push_str("\n  // Undefined references from template:\n");
+            let mut seen_names: std::collections::HashSet<&str> = std::collections::HashSet::new();
             for undef in &summary.undefined_refs {
+                // Skip if we've already emitted this variable name
+                if !seen_names.insert(undef.name.as_str()) {
+                    continue;
+                }
+
                 let src_start = template_offset + undef.offset;
                 let src_end = src_start + undef.name.len() as u32;
-
-                ts.push_str(&format!(
-                    "  // @ts-expect-error '{}' is not defined ({})\n",
-                    undef.name, undef.context
-                ));
 
                 let gen_start = ts.len();
                 let expr_code = format!("  const __undef_{} = {};\n", undef.name, undef.name);

@@ -512,8 +512,21 @@ impl TsgoLspClient {
 
     /// Shutdown the LSP server
     pub fn shutdown(&mut self) -> Result<(), String> {
-        let _ = self.send_request("shutdown", Value::Null);
-        self.send_notification("exit", Value::Null)?;
+        // Send shutdown request but don't wait for response (server may exit immediately)
+        let shutdown_req = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": self.request_id.fetch_add(1, Ordering::SeqCst),
+            "method": "shutdown",
+            "params": Value::Null
+        });
+        let _ = self.send_message(&shutdown_req);
+
+        // Send exit notification
+        let _ = self.send_notification("exit", Value::Null);
+
+        // Give server a moment to exit gracefully, then kill if needed
+        thread::sleep(Duration::from_millis(100));
+        let _ = self.process.kill();
         let _ = self.process.wait();
         Ok(())
     }
