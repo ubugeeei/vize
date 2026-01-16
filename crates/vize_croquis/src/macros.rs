@@ -134,6 +134,19 @@ pub struct EmitDefinition {
     pub payload_type: Option<CompactString>,
 }
 
+/// An actual emit() call in the code
+#[derive(Debug, Clone)]
+pub struct EmitCall {
+    /// Event name being emitted
+    pub event_name: CompactString,
+    /// Whether this is a dynamic emit (variable event name)
+    pub is_dynamic: bool,
+    /// Source start offset
+    pub start: u32,
+    /// Source end offset
+    pub end: u32,
+}
+
 /// Model definition from defineModel
 #[derive(Debug, Clone)]
 pub struct ModelDefinition {
@@ -150,6 +163,24 @@ pub struct TopLevelAwait {
     pub start: u32,
     pub end: u32,
     pub expression: CompactString,
+}
+
+/// Expose definition from defineExpose
+#[derive(Debug, Clone)]
+pub struct ExposeDefinition {
+    /// Exposed property name
+    pub name: CompactString,
+    /// Type of the exposed property (if known)
+    pub expose_type: Option<CompactString>,
+}
+
+/// Slots definition from defineSlots
+#[derive(Debug, Clone)]
+pub struct SlotsDefinition {
+    /// Slot name
+    pub name: CompactString,
+    /// Slot props type (if known)
+    pub props_type: Option<CompactString>,
 }
 
 /// Macro binding kind for props destructure
@@ -169,13 +200,21 @@ pub struct MacroTracker {
     calls: Vec<MacroCall>,
     props: Vec<PropDefinition>,
     emits: Vec<EmitDefinition>,
+    /// Actual emit() calls in the code (not declarations)
+    emit_calls: Vec<EmitCall>,
     models: Vec<ModelDefinition>,
+    /// Exposed properties from defineExpose
+    exposes: Vec<ExposeDefinition>,
+    /// Slots from defineSlots
+    slots: Vec<SlotsDefinition>,
     props_destructure: Option<PropsDestructuredBindings>,
     top_level_awaits: Vec<TopLevelAwait>,
     next_id: u32,
     /// Cached indices for quick lookup
     define_props_idx: Option<usize>,
     define_emits_idx: Option<usize>,
+    define_expose_idx: Option<usize>,
+    define_slots_idx: Option<usize>,
 }
 
 impl MacroTracker {
@@ -199,10 +238,12 @@ impl MacroTracker {
 
         let idx = self.calls.len();
 
-        // Cache defineProps/defineEmits indices
+        // Cache macro indices for quick lookup
         match kind {
             MacroKind::DefineProps => self.define_props_idx = Some(idx),
             MacroKind::DefineEmits => self.define_emits_idx = Some(idx),
+            MacroKind::DefineExpose => self.define_expose_idx = Some(idx),
+            MacroKind::DefineSlots => self.define_slots_idx = Some(idx),
             _ => {}
         }
 
@@ -237,6 +278,18 @@ impl MacroTracker {
         self.define_emits_idx.map(|idx| &self.calls[idx])
     }
 
+    /// Get defineExpose call (cached lookup)
+    #[inline]
+    pub fn define_expose(&self) -> Option<&MacroCall> {
+        self.define_expose_idx.map(|idx| &self.calls[idx])
+    }
+
+    /// Get defineSlots call (cached lookup)
+    #[inline]
+    pub fn define_slots(&self) -> Option<&MacroCall> {
+        self.define_slots_idx.map(|idx| &self.calls[idx])
+    }
+
     /// Add a prop definition
     #[inline]
     pub fn add_prop(&mut self, prop: PropDefinition) {
@@ -261,6 +314,47 @@ impl MacroTracker {
         &self.emits
     }
 
+    /// Add an emit call (actual emit() invocation in code)
+    #[inline]
+    pub fn add_emit_call(
+        &mut self,
+        event_name: CompactString,
+        is_dynamic: bool,
+        start: u32,
+        end: u32,
+    ) {
+        self.emit_calls.push(EmitCall {
+            event_name,
+            is_dynamic,
+            start,
+            end,
+        });
+    }
+
+    /// Get all emit calls
+    #[inline]
+    pub fn emit_calls(&self) -> &[EmitCall] {
+        &self.emit_calls
+    }
+
+    /// Check if an event is actually emitted (called)
+    #[inline]
+    pub fn is_event_emitted(&self, event_name: &str) -> bool {
+        self.emit_calls
+            .iter()
+            .any(|c| c.event_name.as_str() == event_name && !c.is_dynamic)
+    }
+
+    /// Get emit calls for a specific event
+    pub fn emit_calls_for_event<'a>(
+        &'a self,
+        event_name: &'a str,
+    ) -> impl Iterator<Item = &'a EmitCall> + 'a {
+        self.emit_calls
+            .iter()
+            .filter(move |c| c.event_name.as_str() == event_name)
+    }
+
     /// Add a model definition
     #[inline]
     pub fn add_model(&mut self, model: ModelDefinition) {
@@ -271,6 +365,30 @@ impl MacroTracker {
     #[inline]
     pub fn models(&self) -> &[ModelDefinition] {
         &self.models
+    }
+
+    /// Add an expose definition
+    #[inline]
+    pub fn add_expose(&mut self, expose: ExposeDefinition) {
+        self.exposes.push(expose);
+    }
+
+    /// Get all exposes
+    #[inline]
+    pub fn exposes(&self) -> &[ExposeDefinition] {
+        &self.exposes
+    }
+
+    /// Add a slot definition
+    #[inline]
+    pub fn add_slot(&mut self, slot: SlotsDefinition) {
+        self.slots.push(slot);
+    }
+
+    /// Get all slots
+    #[inline]
+    pub fn slots(&self) -> &[SlotsDefinition] {
+        &self.slots
     }
 
     /// Set props destructure

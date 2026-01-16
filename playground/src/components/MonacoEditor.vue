@@ -124,8 +124,11 @@ function configureMonaco() {
   });
 
   // Set Vue language configuration
+  // Note: Vue has different comment styles in different sections (template: HTML, script: JS, style: CSS)
+  // We use HTML comments as default since template is common, but script comments are handled via custom keybinding
   monaco.languages.setLanguageConfiguration('vue', {
     comments: {
+      // Use HTML comments for template sections (most common case for quick commenting)
       blockComment: ['<!--', '-->'],
     },
     brackets: [
@@ -248,6 +251,75 @@ onMounted(() => {
     const value = editorInstance.value?.getValue() || '';
     emit('update:modelValue', value);
   });
+
+  // Custom comment toggle for Vue files - context-aware comments
+  if (props.language === 'vue') {
+    editorInstance.value.addAction({
+      id: 'vue-toggle-line-comment',
+      label: 'Toggle Line Comment (Vue-aware)',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash],
+      run: (editor) => {
+        const model = editor.getModel();
+        const selection = editor.getSelection();
+        if (!model || !selection) return;
+
+        const content = model.getValue();
+        const lineNumber = selection.startLineNumber;
+        const lineContent = model.getLineContent(lineNumber);
+
+        // Determine which section we're in by scanning backwards for section tags
+        const beforeCursor = content.substring(0, model.getOffsetAt({ lineNumber, column: 1 }));
+        // Use string concatenation to avoid Vue template parser interpreting these as tags
+        const scriptOpen = '<' + 'script';
+        const scriptClose = '</' + 'script>';
+        const templateOpen = '<' + 'template';
+        const styleOpen = '<' + 'style';
+        const styleClose = '</' + 'style>';
+        const isInScript = (beforeCursor.lastIndexOf(scriptOpen) > beforeCursor.lastIndexOf(scriptClose)) &&
+                          (beforeCursor.lastIndexOf(scriptOpen) > beforeCursor.lastIndexOf(templateOpen));
+        const isInStyle = (beforeCursor.lastIndexOf(styleOpen) > beforeCursor.lastIndexOf(styleClose)) &&
+                         (beforeCursor.lastIndexOf(styleOpen) > beforeCursor.lastIndexOf(scriptClose));
+
+        // Apply appropriate comment style
+        const trimmedLine = lineContent.trim();
+        let newLine: string;
+
+        if (isInScript) {
+          // JS-style comments for script section
+          if (trimmedLine.startsWith('//')) {
+            // Remove comment
+            newLine = lineContent.replace(/^(\s*)\/\/\s?/, '$1');
+          } else {
+            // Add comment
+            const leadingWhitespace = lineContent.match(/^(\s*)/)?.[1] || '';
+            newLine = leadingWhitespace + '// ' + lineContent.trimStart();
+          }
+        } else if (isInStyle) {
+          // CSS-style comments for style section
+          if (trimmedLine.startsWith('/*') && trimmedLine.endsWith('*/')) {
+            newLine = lineContent.replace(/^(\s*)\/\*\s?/, '$1').replace(/\s?\*\/$/, '');
+          } else {
+            const leadingWhitespace = lineContent.match(/^(\s*)/)?.[1] || '';
+            newLine = leadingWhitespace + '/* ' + lineContent.trimStart() + ' */';
+          }
+        } else {
+          // HTML-style comments for template section
+          if (trimmedLine.startsWith('<!--') && trimmedLine.endsWith('-->')) {
+            newLine = lineContent.replace(/^(\s*)<!--\s?/, '$1').replace(/\s?-->$/, '');
+          } else {
+            const leadingWhitespace = lineContent.match(/^(\s*)/)?.[1] || '';
+            newLine = leadingWhitespace + '<!-- ' + lineContent.trimStart() + ' -->';
+          }
+        }
+
+        // Apply the edit
+        editor.executeEdits('vue-comment', [{
+          range: new monaco.Range(lineNumber, 1, lineNumber, lineContent.length + 1),
+          text: newLine,
+        }]);
+      },
+    });
+  }
 
   // Apply scopes if they were already set before mount
   if (props.scopes && props.scopes.length > 0) {

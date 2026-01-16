@@ -1149,24 +1149,126 @@ pub fn analyze_sfc_wasm(source: &str, options: JsValue) -> Result<JsValue, JsVal
     // Generate VIR (Vize Intermediate Representation) text
     let vir = summary.to_vir();
 
-    // Build result
+    // Convert provides to JSON
+    let provides: Vec<serde_json::Value> = summary
+        .provide_inject
+        .provides()
+        .iter()
+        .map(|p| {
+            let key = match &p.key {
+                vize_croquis::provide::ProvideKey::String(s) => serde_json::json!({
+                    "type": "string",
+                    "value": s.as_str(),
+                }),
+                vize_croquis::provide::ProvideKey::Symbol(s) => serde_json::json!({
+                    "type": "symbol",
+                    "value": s.as_str(),
+                }),
+            };
+            serde_json::json!({
+                "key": key,
+                "value": p.value.as_str(),
+                "valueType": p.value_type.as_ref().map(|t| t.as_str()),
+                "fromComposable": p.from_composable.as_ref().map(|c| c.as_str()),
+                "start": p.start + script_offset,
+                "end": p.end + script_offset,
+            })
+        })
+        .collect();
+
+    // Convert injects to JSON
+    let injects: Vec<serde_json::Value> = summary
+        .provide_inject
+        .injects()
+        .iter()
+        .map(|i| {
+            let key = match &i.key {
+                vize_croquis::provide::ProvideKey::String(s) => serde_json::json!({
+                    "type": "string",
+                    "value": s.as_str(),
+                }),
+                vize_croquis::provide::ProvideKey::Symbol(s) => serde_json::json!({
+                    "type": "symbol",
+                    "value": s.as_str(),
+                }),
+            };
+            let pattern = match &i.pattern {
+                vize_croquis::provide::InjectPattern::Simple => "simple",
+                vize_croquis::provide::InjectPattern::ObjectDestructure(_) => "objectDestructure",
+                vize_croquis::provide::InjectPattern::ArrayDestructure(_) => "arrayDestructure",
+            };
+            let destructured_props: Option<Vec<&str>> = match &i.pattern {
+                vize_croquis::provide::InjectPattern::ObjectDestructure(props) => {
+                    Some(props.iter().map(|p| p.as_str()).collect())
+                }
+                vize_croquis::provide::InjectPattern::ArrayDestructure(items) => {
+                    Some(items.iter().map(|p| p.as_str()).collect())
+                }
+                vize_croquis::provide::InjectPattern::Simple => None,
+            };
+            serde_json::json!({
+                "key": key,
+                "localName": i.local_name.as_str(),
+                "defaultValue": i.default_value.as_ref().map(|d| d.as_str()),
+                "expectedType": i.expected_type.as_ref().map(|t| t.as_str()),
+                "pattern": pattern,
+                "destructuredProps": destructured_props,
+                "fromComposable": i.from_composable.as_ref().map(|c| c.as_str()),
+                "start": i.start + script_offset,
+                "end": i.end + script_offset,
+            })
+        })
+        .collect();
+
+    // Build result with croquis wrapper to match TypeScript interface
     let result = serde_json::json!({
-        "filename": filename,
+        "croquis": {
+            "component_name": filename.clone(),
+            "is_setup": summary.bindings.is_script_setup,
+            "scopes": scopes,
+            "bindings": bindings,
+            "macros": macros,
+            "props": props,
+            "emits": emits,
+            "provides": provides,
+            "injects": injects,
+            "typeExports": summary.type_exports.iter().map(|te| serde_json::json!({
+                "name": te.name.as_str(),
+                "kind": match te.kind {
+                    vize_croquis::analysis::TypeExportKind::Type => "type",
+                    vize_croquis::analysis::TypeExportKind::Interface => "interface",
+                },
+                "start": te.start,
+                "end": te.end,
+                "hoisted": true,
+            })).collect::<Vec<serde_json::Value>>(),
+            "invalidExports": summary.invalid_exports.iter().map(|ie| serde_json::json!({
+                "name": ie.name.as_str(),
+                "kind": match ie.kind {
+                    vize_croquis::analysis::InvalidExportKind::Const => "const",
+                    vize_croquis::analysis::InvalidExportKind::Let => "let",
+                    vize_croquis::analysis::InvalidExportKind::Var => "var",
+                    vize_croquis::analysis::InvalidExportKind::Function => "function",
+                    vize_croquis::analysis::InvalidExportKind::Class => "class",
+                    vize_croquis::analysis::InvalidExportKind::Default => "default",
+                },
+                "start": ie.start,
+                "end": ie.end,
+            })).collect::<Vec<serde_json::Value>>(),
+            "diagnostics": [],
+            "stats": {
+                "binding_count": bindings.len(),
+                "unused_binding_count": summary.unused_bindings.len(),
+                "scope_count": scopes.len(),
+                "macro_count": macros.len(),
+                "type_export_count": summary.type_exports.len(),
+                "invalid_export_count": summary.invalid_exports.len(),
+                "error_count": 0,
+                "warning_count": 0,
+            },
+        },
+        "diagnostics": [],
         "vir": vir,
-        "scopes": scopes,
-        "bindings": bindings,
-        "macros": macros,
-        "props": props,
-        "emits": emits,
-        "isScriptSetup": summary.bindings.is_script_setup,
-        "usedComponents": summary.used_components.iter().map(|c| c.as_str()).collect::<Vec<_>>(),
-        "usedDirectives": summary.used_directives.iter().map(|d| d.as_str()).collect::<Vec<_>>(),
-        "undefinedRefs": summary.undefined_refs.iter().map(|r| serde_json::json!({
-            "name": r.name.as_str(),
-            "offset": r.offset,
-            "context": r.context.as_str(),
-        })).collect::<Vec<serde_json::Value>>(),
-        "unusedBindings": summary.unused_bindings.iter().map(|b| b.as_str()).collect::<Vec<_>>(),
     });
 
     to_js_value(&result)

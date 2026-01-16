@@ -23,6 +23,7 @@ use crate::macros::{
     EmitDefinition, MacroKind, MacroTracker, ModelDefinition, PropDefinition,
     PropsDestructuredBindings,
 };
+use crate::provide::{InjectPattern, ProvideInjectTracker, ProvideKey};
 use crate::reactivity::{ReactiveKind, ReactivityTracker};
 use crate::scope::{
     BlockKind, BlockScopeData, ClientOnlyScopeData, ClosureScopeData, ExternalModuleScopeData,
@@ -41,6 +42,8 @@ pub struct ScriptParseResult {
     pub invalid_exports: Vec<InvalidExport>,
     /// Scope chain for tracking nested JavaScript scopes
     pub scopes: ScopeChain,
+    /// Provide/Inject tracking
+    pub provide_inject: ProvideInjectTracker,
 }
 
 /// Setup global scopes hierarchy:
@@ -425,6 +428,22 @@ fn process_statement(result: &mut ScriptParseResult, stmt: &Statement<'_>, sourc
     }
 }
 
+/// Extract a CallExpression from an expression, unwrapping type assertions (as/satisfies)
+fn extract_call_expression<'a>(expr: &'a Expression<'a>) -> Option<&'a CallExpression<'a>> {
+    match expr {
+        Expression::CallExpression(call) => Some(call),
+        Expression::TSAsExpression(ts_as) => extract_call_expression(&ts_as.expression),
+        Expression::TSSatisfiesExpression(ts_satisfies) => {
+            extract_call_expression(&ts_satisfies.expression)
+        }
+        Expression::TSNonNullExpression(ts_non_null) => {
+            extract_call_expression(&ts_non_null.expression)
+        }
+        Expression::ParenthesizedExpression(paren) => extract_call_expression(&paren.expression),
+        _ => None,
+    }
+}
+
 /// Process a variable declarator
 fn process_variable_declarator(
     result: &mut ScriptParseResult,
@@ -438,35 +457,44 @@ fn process_variable_declarator(
             let name = id.name.as_str();
 
             // Check if the init is a macro or reactivity call
-            if let Some(Expression::CallExpression(call)) = &declarator.init {
-                // Check for macro calls (defineProps, defineEmits, etc.)
-                if process_call_expression(result, call, source) {
-                    // Macro was processed, add binding
-                    let binding_type = get_binding_type_from_kind(kind);
-                    result.bindings.add(name, binding_type);
-                    // Walk into the call's callback arguments to track nested scopes
-                    walk_call_arguments(result, call, source);
-                    return;
-                }
+            // Use extract_call_expression to handle type assertions (as/satisfies)
+            let call_extracted =
+                if let Some(call) = declarator.init.as_ref().and_then(extract_call_expression) {
+                    // Check for macro calls (defineProps, defineEmits, etc.)
+                    if process_call_expression(result, call, source) {
+                        // Macro was processed, add binding
+                        let binding_type = get_binding_type_from_kind(kind);
+                        result.bindings.add(name, binding_type);
+                        // Walk into the call's callback arguments to track nested scopes
+                        walk_call_arguments(result, call, source);
+                        return;
+                    }
 
-                // Check for reactivity wrappers
-                if let Some((reactive_kind, binding_type)) = detect_reactivity_call(call) {
-                    result
-                        .reactivity
-                        .register(CompactString::new(name), reactive_kind, 0);
-                    result.bindings.add(name, binding_type);
-                    // Walk into the call's callback arguments to track nested scopes
-                    walk_call_arguments(result, call, source);
-                    return;
-                }
+                    // Check for reactivity wrappers
+                    if let Some((reactive_kind, binding_type)) = detect_reactivity_call(call) {
+                        result
+                            .reactivity
+                            .register(CompactString::new(name), reactive_kind, 0);
+                        result.bindings.add(name, binding_type);
+                        // Walk into the call's callback arguments to track nested scopes
+                        walk_call_arguments(result, call, source);
+                        return;
+                    }
 
-                // Not a known macro/reactivity, but still walk for nested scopes
-                walk_call_arguments(result, call, source);
-            }
+                    // Not a known macro/reactivity, but still walk for nested scopes
+                    // Note: detect_provide_inject_call is called inside walk_call_arguments
+                    walk_call_arguments(result, call, source);
+                    true // Call was extracted and processed
+                } else {
+                    false
+                };
 
             // Walk other expression types for nested scopes
-            if let Some(init) = &declarator.init {
-                walk_expression(result, init, source);
+            // Skip if we already extracted and processed a call expression to avoid double processing
+            if !call_extracted {
+                if let Some(init) = &declarator.init {
+                    walk_expression(result, init, source);
+                }
             }
 
             // Regular binding
@@ -500,6 +528,48 @@ fn process_variable_declarator(
                     _ => false,
                 }
             });
+
+            // Check if this is destructuring from inject() - this loses reactivity!
+            let inject_call = declarator.init.as_ref().and_then(|init| {
+                let call = extract_call_expression(init)?;
+                if let Expression::Identifier(id) = &call.callee {
+                    if id.name.as_str() == "inject" {
+                        return Some(call);
+                    }
+                }
+                None
+            });
+
+            // If inject(), track it with ObjectDestructure pattern
+            if let Some(call) = inject_call {
+                // Extract destructured property names
+                let mut destructured_props: Vec<CompactString> = Vec::new();
+                for prop in obj.properties.iter() {
+                    if let Some(name) = get_binding_pattern_name(&prop.value.kind) {
+                        destructured_props.push(CompactString::new(&name));
+                    }
+                }
+
+                // Extract inject key
+                if let Some(key) = call
+                    .arguments
+                    .first()
+                    .and_then(|arg| extract_provide_key(arg, source))
+                {
+                    result.provide_inject.add_inject(
+                        key,
+                        CompactString::new("(destructured)"),
+                        call.arguments
+                            .get(1)
+                            .map(|arg| CompactString::new(extract_argument_source(arg, source))),
+                        None,
+                        InjectPattern::ObjectDestructure(destructured_props.clone()),
+                        None,
+                        call.span.start,
+                        call.span.end,
+                    );
+                }
+            }
 
             // If defineProps, process it first to extract prop definitions
             if is_define_props {
@@ -881,6 +951,111 @@ fn detect_reactivity_call(call: &CallExpression<'_>) -> Option<(ReactiveKind, Bi
     }
 }
 
+/// Detect provide() and inject() calls and track them
+fn detect_provide_inject_call(
+    result: &mut ScriptParseResult,
+    call: &CallExpression<'_>,
+    source: &str,
+) {
+    let callee_name = match &call.callee {
+        Expression::Identifier(id) => id.name.as_str(),
+        _ => return,
+    };
+
+    match callee_name {
+        "provide" => {
+            // provide(key, value)
+            if call.arguments.len() >= 2 {
+                let key = extract_provide_key(&call.arguments[0], source);
+                let value = call
+                    .arguments
+                    .get(1)
+                    .map(|arg| extract_argument_source(arg, source))
+                    .unwrap_or_default();
+
+                if let Some(key) = key {
+                    result.provide_inject.add_provide(
+                        key,
+                        CompactString::new(&value),
+                        None, // value_type
+                        None, // from_composable
+                        call.span.start,
+                        call.span.end,
+                    );
+                }
+            }
+        }
+        "inject" => {
+            // inject(key) or inject(key, defaultValue)
+            if !call.arguments.is_empty() {
+                let key = extract_provide_key(&call.arguments[0], source);
+                let default_value = call
+                    .arguments
+                    .get(1)
+                    .map(|arg| CompactString::new(extract_argument_source(arg, source)));
+
+                if let Some(key) = key {
+                    result.provide_inject.add_inject(
+                        key,
+                        CompactString::new(""), // local_name (will be set by binding)
+                        default_value,
+                        None, // expected_type
+                        InjectPattern::Simple,
+                        None, // from_composable
+                        call.span.start,
+                        call.span.end,
+                    );
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Extract a provide/inject key from an argument
+fn extract_provide_key(arg: &Argument<'_>, source: &str) -> Option<ProvideKey> {
+    match arg {
+        Argument::StringLiteral(s) => {
+            Some(ProvideKey::String(CompactString::new(s.value.as_str())))
+        }
+        Argument::Identifier(id) => {
+            // Could be a Symbol or a variable reference - treat as Symbol for now
+            Some(ProvideKey::Symbol(CompactString::new(id.name.as_str())))
+        }
+        _ => {
+            // For complex expressions, extract source as string key
+            let expr_source = extract_argument_source(arg, source);
+            if !expr_source.is_empty() {
+                Some(ProvideKey::String(CompactString::new(&expr_source)))
+            } else {
+                None
+            }
+        }
+    }
+}
+
+/// Extract source code of an argument
+fn extract_argument_source(arg: &Argument<'_>, source: &str) -> String {
+    let span = match arg {
+        Argument::SpreadElement(s) => s.span,
+        Argument::Identifier(id) => id.span,
+        Argument::StringLiteral(s) => s.span,
+        Argument::NumericLiteral(n) => n.span,
+        Argument::BooleanLiteral(b) => b.span,
+        Argument::NullLiteral(n) => n.span,
+        Argument::ArrayExpression(a) => a.span,
+        Argument::ObjectExpression(o) => o.span,
+        Argument::FunctionExpression(f) => f.span,
+        Argument::ArrowFunctionExpression(a) => a.span,
+        Argument::CallExpression(c) => c.span,
+        _ => return String::new(),
+    };
+    source
+        .get(span.start as usize..span.end as usize)
+        .unwrap_or("")
+        .to_string()
+}
+
 /// Get binding type from variable declaration kind
 fn get_binding_type_from_kind(kind: VariableDeclarationKind) -> BindingType {
     match kind {
@@ -1168,6 +1343,17 @@ fn walk_expression(result: &mut ScriptParseResult, expr: &Expression<'_>, source
             walk_expression(result, &assign.right, source);
         }
 
+        // TypeScript type assertions (as, satisfies, !)
+        Expression::TSAsExpression(ts_as) => {
+            walk_expression(result, &ts_as.expression, source);
+        }
+        Expression::TSSatisfiesExpression(ts_satisfies) => {
+            walk_expression(result, &ts_satisfies.expression, source);
+        }
+        Expression::TSNonNullExpression(ts_non_null) => {
+            walk_expression(result, &ts_non_null.expression, source);
+        }
+
         // Other expressions don't need walking for scopes
         _ => {}
     }
@@ -1178,6 +1364,9 @@ fn walk_expression(result: &mut ScriptParseResult, expr: &Expression<'_>, source
 fn walk_call_arguments(result: &mut ScriptParseResult, call: &CallExpression<'_>, source: &str) {
     // First, walk the callee (might be a chained call like foo.bar().baz())
     walk_expression(result, &call.callee, source);
+
+    // Check for provide/inject calls
+    detect_provide_inject_call(result, call, source);
 
     // Check if this is a client-only lifecycle hook
     let is_lifecycle_hook = if let Expression::Identifier(id) = &call.callee {

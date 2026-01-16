@@ -116,6 +116,14 @@ function handleClick() {
       // @vize-map: 2669:2696 -> 219:238
     })();
 
+    // ========== Template Expressions ==========
+    // VOn @219:238
+    void (handleClick);
+    // @vize-map: 2818:2842 -> 219:238
+    // VOn @266:287
+    void (emit('close'));
+    // @vize-map: 2901:2927 -> 266:287
+
   }
 
   // Component render return

@@ -152,6 +152,9 @@ watch(count, (newVal) => {
     // Interpolation @651:658
     void (doubled);
     // @vize-map: 3483:3503 -> 651:658
+    // VOn @678:695
+    void (increment);
+    // @vize-map: 3562:3584 -> 678:695
 
   }
 

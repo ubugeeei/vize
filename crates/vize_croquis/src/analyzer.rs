@@ -168,6 +168,7 @@ impl Analyzer {
         self.summary.type_exports = result.type_exports;
         self.summary.invalid_exports = result.invalid_exports;
         self.summary.scopes = result.scopes;
+        self.summary.provide_inject = result.provide_inject;
 
         self
     }
@@ -190,6 +191,7 @@ impl Analyzer {
         self.summary.type_exports = result.type_exports;
         self.summary.invalid_exports = result.invalid_exports;
         self.summary.scopes = result.scopes;
+        self.summary.provide_inject = result.provide_inject;
 
         self
     }
@@ -201,6 +203,7 @@ impl Analyzer {
     /// - Component usage
     /// - Directive usage
     /// - Undefined references (if script was analyzed)
+    /// - Root element count (for fallthrough attrs analysis)
     ///
     /// Performance: O(n) single traversal
     pub fn analyze_template(&mut self, root: &RootNode<'_>) -> &mut Self {
@@ -208,12 +211,38 @@ impl Analyzer {
             return self;
         }
 
+        // Count root-level elements (for fallthrough attrs analysis)
+        let mut root_element_count = 0;
+        for child in root.children.iter() {
+            if Self::is_element_child(child) {
+                root_element_count += 1;
+            }
+        }
+        self.summary.template_info.root_element_count = root_element_count;
+
         // Single-pass template traversal
         for child in root.children.iter() {
             self.visit_template_child(child, &mut Vec::new());
         }
 
         self
+    }
+
+    /// Check if a template child is an actual element (not text, comment, etc.)
+    fn is_element_child(node: &TemplateChildNode<'_>) -> bool {
+        match node {
+            TemplateChildNode::Element(_) => true,
+            TemplateChildNode::If(if_node) => {
+                // v-if can produce element - count the first branch
+                if_node
+                    .branches
+                    .first()
+                    .map(|b| b.children.iter().any(Self::is_element_child))
+                    .unwrap_or(false)
+            }
+            TemplateChildNode::For(_) => true, // v-for produces elements
+            _ => false,
+        }
     }
 
     /// Finish analysis and return the summary.
@@ -246,11 +275,17 @@ impl Analyzer {
             TemplateChildNode::For(for_node) => self.visit_for(for_node, scope_vars),
             TemplateChildNode::Interpolation(interp) => {
                 // Collect expression for type checking
+                let content = match &interp.content {
+                    ExpressionNode::Simple(s) => s.content.as_str(),
+                    ExpressionNode::Compound(c) => c.loc.source.as_str(),
+                };
+
+                // Track $attrs usage for fallthrough analysis
+                if content.contains("$attrs") {
+                    self.summary.template_info.uses_attrs = true;
+                }
+
                 if self.options.collect_template_expressions {
-                    let content = match &interp.content {
-                        ExpressionNode::Simple(s) => s.content.as_str(),
-                        ExpressionNode::Compound(c) => c.loc.source.as_str(),
-                    };
                     let loc = interp.content.loc();
                     let scope_id = self.summary.scopes.current_id();
                     self.summary
@@ -278,13 +313,28 @@ impl Analyzer {
 
     /// Visit element node
     fn visit_element(&mut self, el: &ElementNode<'_>, scope_vars: &mut Vec<CompactString>) {
+        let tag = el.tag.as_str();
+        let is_component = is_component_tag(tag);
+
         // Track component usage
-        if self.options.track_usage {
-            let tag = el.tag.as_str();
-            if is_component_tag(tag) {
-                self.summary.used_components.insert(CompactString::new(tag));
-            }
+        if self.options.track_usage && is_component {
+            self.summary.used_components.insert(CompactString::new(tag));
         }
+
+        // Collect detailed component usage information
+        let mut component_usage = if is_component && self.options.track_usage {
+            Some(crate::analysis::ComponentUsage {
+                name: CompactString::new(tag),
+                start: el.loc.start.offset,
+                end: el.loc.end.offset,
+                props: SmallVec::new(),
+                events: SmallVec::new(),
+                slots: SmallVec::new(),
+                has_spread_attrs: false,
+            })
+        } else {
+            None
+        };
 
         // Collect v-slot scopes to create (slot name, prop names, offset)
         let mut slot_scope: Option<(
@@ -501,6 +551,20 @@ impl Analyzer {
                                 dir.loc.end.offset,
                             );
 
+                            // Collect template expression for VOn
+                            if self.options.collect_template_expressions {
+                                let scope_id = self.summary.scopes.current_scope().id;
+                                self.summary.template_expressions.push(
+                                    crate::analysis::TemplateExpression {
+                                        content: CompactString::new(content),
+                                        kind: crate::analysis::TemplateExpressionKind::VOn,
+                                        start: dir.loc.start.offset,
+                                        end: dir.loc.end.offset,
+                                        scope_id,
+                                    },
+                                );
+                            }
+
                             // Add params to scope_vars for checking
                             let params_added: Vec<_> = self
                                 .summary
@@ -556,6 +620,20 @@ impl Analyzer {
                                     dir.loc.end.offset,
                                 );
 
+                                // Collect template expression for VOn (implicit $event handler)
+                                if self.options.collect_template_expressions {
+                                    let scope_id = self.summary.scopes.current_scope().id;
+                                    self.summary.template_expressions.push(
+                                        crate::analysis::TemplateExpression {
+                                            content: CompactString::new(content),
+                                            kind: crate::analysis::TemplateExpressionKind::VOn,
+                                            start: dir.loc.start.offset,
+                                            end: dir.loc.end.offset,
+                                            scope_id,
+                                        },
+                                    );
+                                }
+
                                 // $event is available in scope
                                 scope_vars.push(CompactString::const_new("$event"));
 
@@ -569,8 +647,29 @@ impl Analyzer {
 
                                 scope_vars.pop();
                                 self.summary.scopes.exit_scope();
-                            } else if self.options.detect_undefined && self.script_analyzed {
-                                self.check_expression_refs(exp, scope_vars, dir.loc.start.offset);
+                            } else {
+                                // Simple handler call (e.g., @click="handleClick()") - no event handler scope
+                                // Still collect as template expression for type checking
+                                if self.options.collect_template_expressions {
+                                    let scope_id = self.summary.scopes.current_scope().id;
+                                    self.summary.template_expressions.push(
+                                        crate::analysis::TemplateExpression {
+                                            content: CompactString::new(content),
+                                            kind: crate::analysis::TemplateExpressionKind::VOn,
+                                            start: dir.loc.start.offset,
+                                            end: dir.loc.end.offset,
+                                            scope_id,
+                                        },
+                                    );
+                                }
+
+                                if self.options.detect_undefined && self.script_analyzed {
+                                    self.check_expression_refs(
+                                        exp,
+                                        scope_vars,
+                                        dir.loc.start.offset,
+                                    );
+                                }
                             }
                         }
                     }
@@ -582,6 +681,15 @@ impl Analyzer {
                             ExpressionNode::Simple(s) => s.content.as_str(),
                             ExpressionNode::Compound(c) => c.loc.source.as_str(),
                         };
+
+                        // Track $attrs usage for fallthrough analysis
+                        if content.contains("$attrs") {
+                            self.summary.template_info.uses_attrs = true;
+                            // v-bind="$attrs" without arg means explicit full binding
+                            if dir.arg.is_none() && content.trim() == "$attrs" {
+                                self.summary.template_info.binds_attrs_explicitly = true;
+                            }
+                        }
 
                         if let Some(params) = extract_inline_callback_params(content) {
                             let context = dir
@@ -730,6 +838,137 @@ impl Analyzer {
                 scope_vars.pop();
             }
             self.summary.scopes.exit_scope();
+        }
+
+        // Collect props and events for component usage tracking
+        if let Some(ref mut usage) = component_usage {
+            self.collect_component_props_events(el, usage);
+        }
+
+        // Add component usage to summary
+        if let Some(usage) = component_usage {
+            self.summary.component_usages.push(usage);
+        }
+    }
+
+    /// Collect props and events from element for component usage tracking.
+    #[inline]
+    fn collect_component_props_events(
+        &self,
+        el: &ElementNode<'_>,
+        usage: &mut crate::analysis::ComponentUsage,
+    ) {
+        use crate::analysis::{EventListener, PassedProp};
+
+        for prop in &el.props {
+            match prop {
+                PropNode::Attribute(attr) => {
+                    // Static attribute (prop)
+                    usage.props.push(PassedProp {
+                        name: attr.name.clone(),
+                        value: attr.value.as_ref().map(|v| v.content.clone()),
+                        start: attr.loc.start.offset,
+                        end: attr.loc.end.offset,
+                        is_dynamic: false,
+                    });
+                }
+                PropNode::Directive(dir) => {
+                    match dir.name.as_str() {
+                        "bind" => {
+                            // v-bind or : (dynamic prop)
+                            if let Some(ref arg) = dir.arg {
+                                let prop_name = match arg {
+                                    ExpressionNode::Simple(s) => s.content.clone(),
+                                    ExpressionNode::Compound(c) => {
+                                        CompactString::new(c.loc.source.as_str())
+                                    }
+                                };
+                                let value = dir.exp.as_ref().map(|e| match e {
+                                    ExpressionNode::Simple(s) => s.content.clone(),
+                                    ExpressionNode::Compound(c) => {
+                                        CompactString::new(c.loc.source.as_str())
+                                    }
+                                });
+                                usage.props.push(PassedProp {
+                                    name: prop_name,
+                                    value,
+                                    start: dir.loc.start.offset,
+                                    end: dir.loc.end.offset,
+                                    is_dynamic: true,
+                                });
+                            } else if dir.exp.is_some() {
+                                // v-bind="$attrs" or v-bind="obj" (spread)
+                                usage.has_spread_attrs = true;
+                            }
+                        }
+                        "on" => {
+                            // v-on or @ (event listener)
+                            if let Some(ref arg) = dir.arg {
+                                let event_name = match arg {
+                                    ExpressionNode::Simple(s) => s.content.clone(),
+                                    ExpressionNode::Compound(c) => {
+                                        CompactString::new(c.loc.source.as_str())
+                                    }
+                                };
+                                let handler = dir.exp.as_ref().map(|e| match e {
+                                    ExpressionNode::Simple(s) => s.content.clone(),
+                                    ExpressionNode::Compound(c) => {
+                                        CompactString::new(c.loc.source.as_str())
+                                    }
+                                });
+                                let modifiers: SmallVec<[CompactString; 4]> =
+                                    dir.modifiers.iter().map(|m| m.content.clone()).collect();
+                                usage.events.push(EventListener {
+                                    name: event_name,
+                                    handler,
+                                    modifiers,
+                                    start: dir.loc.start.offset,
+                                    end: dir.loc.end.offset,
+                                });
+                            }
+                        }
+                        "model" => {
+                            // v-model (generates both prop and event)
+                            let model_name = dir
+                                .arg
+                                .as_ref()
+                                .map(|arg| match arg {
+                                    ExpressionNode::Simple(s) => s.content.clone(),
+                                    ExpressionNode::Compound(c) => {
+                                        CompactString::new(c.loc.source.as_str())
+                                    }
+                                })
+                                .unwrap_or_else(|| CompactString::const_new("modelValue"));
+
+                            let value = dir.exp.as_ref().map(|e| match e {
+                                ExpressionNode::Simple(s) => s.content.clone(),
+                                ExpressionNode::Compound(c) => {
+                                    CompactString::new(c.loc.source.as_str())
+                                }
+                            });
+
+                            // v-model generates a prop
+                            usage.props.push(PassedProp {
+                                name: model_name.clone(),
+                                value: value.clone(),
+                                start: dir.loc.start.offset,
+                                end: dir.loc.end.offset,
+                                is_dynamic: true,
+                            });
+
+                            // v-model generates an update event
+                            usage.events.push(EventListener {
+                                name: CompactString::new(format!("update:{}", model_name)),
+                                handler: value,
+                                modifiers: SmallVec::new(),
+                                start: dir.loc.start.offset,
+                                end: dir.loc.end.offset,
+                            });
+                        }
+                        _ => {}
+                    }
+                }
+            }
         }
     }
 

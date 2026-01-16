@@ -4,20 +4,42 @@
 //! to tsgo for type checking. This enables full TypeScript support
 //! for template expressions, props, emits, and other Vue features.
 //!
-//! ## Architecture
+//! ## Scope Hierarchy
 //!
 //! ```text
-//! Vue SFC (.vue)
+//! ~mod (module scope)
 //!     │
-//!     ▼
-//! VirtualTsGenerator
+//!     ├── imports (import { ref } from 'vue')
 //!     │
-//!     ├─► Script Setup Context (props, emits, bindings)
-//!     │
-//!     ├─► Template Expressions TypeScript
-//!     │
-//!     └─► Source Map (Vue → TypeScript positions)
+//!     └── function __setup<T>() {     // setup scope (function)
+//!             │
+//!             ├── defineProps         // compiler macros (setup-only, NOT declare)
+//!             ├── defineEmits
+//!             ├── defineExpose
+//!             │
+//!             ├── script content      // user's setup code
+//!             │
+//!             └── function __template() {  // template scope
+//!                     │
+//!                     └── expressions
+//!                 }
+//!         }
 //! ```
+//!
+//! ## Key Design Principles
+//!
+//! 1. **Setup as Function**: The setup scope is expressed as a generic function,
+//!    supporting `<script setup generic="T">` syntax.
+//!
+//! 2. **Scoped Compiler Macros**: `defineProps`, `defineEmits`, etc. are defined
+//!    as actual functions (NOT `declare`) inside the setup function, making them
+//!    truly scoped and unavailable outside.
+//!
+//! 3. **Template Inherits Setup**: Template scope is nested inside setup,
+//!    with access to all setup bindings.
+//!
+//! 4. **Uses Croquis ScopeChain**: Leverages the full scope analysis from croquis
+//!    including generic parameters, binding types, and scope hierarchy.
 
 use std::path::Path;
 
@@ -30,6 +52,9 @@ use vize_relief::BindingType;
 
 use crate::analysis::BindingMetadata;
 use crate::import_resolver::{ImportResolver, ResolvedModule};
+use crate::macros::MacroTracker;
+use crate::scope::{ScopeChain, ScopeData, ScopeKind};
+use crate::script_parser::ScriptParseResult;
 use crate::types::TypeResolver;
 
 /// Output of virtual TypeScript generation.
@@ -89,11 +114,26 @@ pub enum DiagnosticSeverity {
     Info,
 }
 
+/// Configuration for virtual TypeScript generation.
+#[derive(Debug, Clone, Default)]
+pub struct VirtualTsConfig {
+    /// Generic type parameter from `<script setup generic="T">`
+    /// (Can be overridden, but prefer extracting from ScopeChain)
+    pub generic: Option<CompactString>,
+    /// Whether this is async setup
+    pub is_async: bool,
+    /// Script block offset in the original SFC
+    pub script_offset: u32,
+    /// Template block offset in the original SFC
+    pub template_offset: u32,
+}
+
 /// Virtual TypeScript generator.
 ///
 /// Generates TypeScript code from Vue SFC components for type checking.
 /// Supports:
 /// - Script setup with defineProps/defineEmits
+/// - Generic type parameters (`<script setup generic="T">`)
 /// - Template expressions with proper typing
 /// - External type imports resolution
 pub struct VirtualTsGenerator {
@@ -115,6 +155,8 @@ pub struct VirtualTsGenerator {
     resolved_imports: Vec<ResolvedImport>,
     /// Generation diagnostics
     diagnostics: Vec<GenerationDiagnostic>,
+    /// Current indentation level
+    indent_level: usize,
 }
 
 impl VirtualTsGenerator {
@@ -130,6 +172,7 @@ impl VirtualTsGenerator {
             block_offset: 0,
             resolved_imports: Vec::new(),
             diagnostics: Vec::new(),
+            indent_level: 0,
         }
     }
 
@@ -154,9 +197,72 @@ impl VirtualTsGenerator {
         self.block_offset = 0;
         self.resolved_imports.clear();
         self.diagnostics.clear();
+        self.indent_level = 0;
     }
 
-    /// Generate virtual TypeScript from script setup content.
+    /// Extract setup scope info from ScopeChain.
+    fn extract_setup_info(scopes: &ScopeChain) -> (Option<CompactString>, bool) {
+        // Find ScriptSetup scope and extract generic/async info
+        for scope in scopes.iter() {
+            if scope.kind == ScopeKind::ScriptSetup {
+                if let ScopeData::ScriptSetup(data) = scope.data() {
+                    return (data.generic.clone(), data.is_async);
+                }
+            }
+        }
+        (None, false)
+    }
+
+    /// Generate virtual TypeScript from croquis parse result.
+    ///
+    /// This is the main entry point that uses full croquis analysis.
+    pub fn generate_from_croquis(
+        &mut self,
+        script_content: &str,
+        parse_result: &ScriptParseResult,
+        template_ast: Option<&RootNode>,
+        config: &VirtualTsConfig,
+        from_file: Option<&Path>,
+    ) -> VirtualTsOutput {
+        self.reset();
+        self.block_offset = config.script_offset;
+
+        // Extract setup info from ScopeChain (prefer over config)
+        let (scope_generic, scope_async) = Self::extract_setup_info(&parse_result.scopes);
+        let generic = scope_generic.or_else(|| config.generic.clone());
+        let is_async = scope_async || config.is_async;
+
+        // Header comment
+        self.write_line("// Virtual TypeScript for Vue SFC type checking");
+        self.write_line("// Generated by vize_croquis");
+        self.write_line("");
+
+        // Extract and emit imports at module scope
+        self.emit_module_imports(script_content, from_file);
+
+        // Open setup function with generics
+        self.emit_setup_function_open(&generic, is_async);
+
+        // Define compiler macros as actual functions (NOT declare)
+        // This makes them truly scoped to __setup only
+        self.emit_compiler_macro_definitions(&parse_result.macros);
+
+        // Emit the user's script content (minus imports which are at module level)
+        self.emit_setup_body(script_content);
+
+        // If template exists, emit template scope nested inside setup
+        if let Some(ast) = template_ast {
+            self.block_offset = config.template_offset;
+            self.emit_template_scope(ast, &parse_result.bindings);
+        }
+
+        // Close setup function
+        self.emit_setup_function_close();
+
+        self.create_output()
+    }
+
+    /// Generate virtual TypeScript from script setup content (legacy API).
     ///
     /// This processes the script setup block and generates TypeScript
     /// that includes proper typing for defineProps, defineEmits, etc.
@@ -173,31 +279,222 @@ impl VirtualTsGenerator {
         self.write_line("// Generated by vize_croquis");
         self.write_line("");
 
-        // Include original script content for type checking
-        // Convert relative imports to absolute paths so they work from temp directory
-        self.write_line("// Original script content");
-        let processed_content = self.resolve_import_paths(script_content, from_file);
-        self.write_line(&processed_content);
-        self.write_line("");
+        // Extract and emit imports at module scope
+        self.emit_module_imports(script_content, from_file);
 
-        // Add $event for event handlers in template
-        self.write_line("// Event handler context");
-        self.write_line("declare const $event: Event;");
-        self.write_line("");
+        // Open setup function (no generics in legacy mode)
+        self.emit_setup_function_open(&None, false);
 
-        // Generate props type (for component signature)
+        // Define compiler macros as actual functions (NOT declare)
+        self.emit_default_compiler_macro_definitions();
+
+        // Emit the user's script content (minus imports)
+        self.emit_setup_body(script_content);
+
+        // Generate props/emits types for component signature
+        self.emit_line("");
+        self.emit_line("// Props/Emits types for component");
         self.generate_props_type(bindings);
-
-        // Generate emits type (for component signature)
         self.generate_emits_type(bindings);
 
-        // Generate binding declarations for template access
-        self.generate_binding_declarations(bindings);
+        // Close setup function
+        self.emit_setup_function_close();
 
         self.create_output()
     }
 
-    /// Resolve relative import paths to absolute paths
+    /// Extract imports from script content and emit at module level.
+    fn emit_module_imports(&mut self, content: &str, from_file: Option<&Path>) {
+        self.write_line("// Module-level imports");
+
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("import ") {
+                let resolved_line = self.resolve_import_line(line, from_file);
+                self.write_line(&resolved_line);
+            }
+        }
+        self.write_line("");
+    }
+
+    /// Resolve a single import line's path.
+    fn resolve_import_line(&self, line: &str, from_file: Option<&Path>) -> String {
+        let Some(file_path) = from_file else {
+            return line.to_string();
+        };
+        let Some(parent) = file_path.parent() else {
+            return line.to_string();
+        };
+
+        // Match relative path in import
+        let import_re = regex::Regex::new(r#"from\s+['"](\.[^'"]+)['"]"#);
+        match import_re {
+            Ok(re) => re
+                .replace(line, |caps: &regex::Captures| {
+                    let rel_path = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+                    let resolved = parent.join(rel_path);
+                    let abs_path = resolved
+                        .canonicalize()
+                        .ok()
+                        .and_then(|p| p.to_str().map(String::from))
+                        .unwrap_or_else(|| resolved.to_string_lossy().to_string());
+                    format!("from \"{}\"", abs_path)
+                })
+                .to_string(),
+            Err(_) => line.to_string(),
+        }
+    }
+
+    /// Emit the setup function opening.
+    fn emit_setup_function_open(&mut self, generic: &Option<CompactString>, is_async: bool) {
+        self.write_line("// Setup scope (function)");
+
+        let async_prefix = if is_async { "async " } else { "" };
+        let generic_params = generic
+            .as_ref()
+            .map(|g| format!("<{}>", g))
+            .unwrap_or_default();
+
+        self.write_line(&format!(
+            "{}function __setup{}() {{",
+            async_prefix, generic_params
+        ));
+        self.indent_level += 1;
+    }
+
+    /// Emit the setup function closing.
+    fn emit_setup_function_close(&mut self) {
+        self.indent_level = self.indent_level.saturating_sub(1);
+        self.write_line("}");
+        self.write_line("");
+        self.write_line("// Invoke setup");
+        self.write_line("__setup();");
+    }
+
+    /// Emit compiler macro definitions as actual functions (NOT declare).
+    /// This makes them truly scoped to the setup function only.
+    fn emit_compiler_macro_definitions(&mut self, macros: &MacroTracker) {
+        self.emit_line("// Compiler macros (setup-scope only, actual functions not declare)");
+
+        // Define as actual functions - they throw to indicate they're compile-time only
+        // The important thing is they're scoped to __setup, not global
+        self.emit_line("function defineProps<T>(): T { return undefined as unknown as T; }");
+        self.emit_line("function defineEmits<T>(): T { return undefined as unknown as T; }");
+        self.emit_line("function defineExpose<T>(exposed?: T): void { }");
+        self.emit_line("function defineOptions<T>(options: T): void { }");
+        self.emit_line("function defineSlots<T>(): T { return undefined as unknown as T; }");
+        self.emit_line(
+            "function defineModel<T>(name?: string, options?: { required?: boolean, default?: T }): import('vue').ModelRef<T> { return undefined as unknown as import('vue').ModelRef<T>; }",
+        );
+        self.emit_line("function withDefaults<T, D extends Partial<T>>(props: T, defaults: D): T & D { return undefined as unknown as T & D; }");
+
+        // $event for event handlers
+        self.emit_line("const $event: Event = undefined as unknown as Event;");
+
+        // useTemplateRef (Vue 3.5+)
+        self.emit_line("function useTemplateRef<T extends Element | import('vue').ComponentPublicInstance = Element>(key: string): import('vue').ShallowRef<T | null> { return undefined as unknown as import('vue').ShallowRef<T | null>; }");
+
+        // If macros were actually used, emit type aliases based on their type arguments
+        if let Some(props) = macros.define_props() {
+            if let Some(ref type_args) = props.type_args {
+                self.emit_line(&format!("type __Props = {};", type_args));
+            }
+        }
+        if let Some(emits) = macros.define_emits() {
+            if let Some(ref type_args) = emits.type_args {
+                self.emit_line(&format!("type __Emits = {};", type_args));
+            }
+        }
+        if let Some(expose) = macros.define_expose() {
+            // Generate exposed interface type for InstanceType and useTemplateRef
+            if let Some(ref type_args) = expose.type_args {
+                self.emit_line(&format!("type __Exposed = {};", type_args));
+            } else if let Some(ref runtime_args) = expose.runtime_args {
+                // If runtime args are provided, infer type from the object
+                self.emit_line(&format!("type __Exposed = typeof ({});", runtime_args));
+            }
+            // Generate component instance type that includes exposed properties
+            self.emit_line(
+                "type __ComponentInstance = import('vue').ComponentPublicInstance & __Exposed;",
+            );
+        }
+        if let Some(slots) = macros.define_slots() {
+            if let Some(ref type_args) = slots.type_args {
+                self.emit_line(&format!("type __Slots = {};", type_args));
+            }
+        }
+
+        self.emit_line("");
+    }
+
+    /// Emit default compiler macro definitions (legacy mode).
+    fn emit_default_compiler_macro_definitions(&mut self) {
+        self.emit_line("// Compiler macros (setup-scope only, actual functions not declare)");
+        self.emit_line("function defineProps<T>(): T { return undefined as unknown as T; }");
+        self.emit_line("function defineEmits<T>(): T { return undefined as unknown as T; }");
+        self.emit_line("function defineExpose<T>(exposed?: T): void { }");
+        self.emit_line("function defineOptions<T>(options: T): void { }");
+        self.emit_line("function defineSlots<T>(): T { return undefined as unknown as T; }");
+        self.emit_line(
+            "function defineModel<T>(name?: string, options?: { required?: boolean, default?: T }): import('vue').ModelRef<T> { return undefined as unknown as import('vue').ModelRef<T>; }",
+        );
+        self.emit_line("function withDefaults<T, D extends Partial<T>>(props: T, defaults: D): T & D { return undefined as unknown as T & D; }");
+        self.emit_line("const $event: Event = undefined as unknown as Event;");
+        self.emit_line("function useTemplateRef<T extends Element | import('vue').ComponentPublicInstance = Element>(key: string): import('vue').ShallowRef<T | null> { return undefined as unknown as import('vue').ShallowRef<T | null>; }");
+        self.emit_line("");
+    }
+
+    /// Emit the setup body (script content minus imports).
+    fn emit_setup_body(&mut self, content: &str) {
+        self.emit_line("// User setup code");
+        for line in content.lines() {
+            let trimmed = line.trim();
+            // Skip import statements (already emitted at module level)
+            if trimmed.starts_with("import ") {
+                continue;
+            }
+            self.emit_line(line);
+        }
+    }
+
+    /// Emit template scope nested inside setup.
+    fn emit_template_scope(&mut self, ast: &RootNode, bindings: &BindingMetadata) {
+        self.emit_line("");
+        self.emit_line("// Template scope (inherits from setup)");
+        self.emit_line("(function __template() {");
+        self.indent_level += 1;
+
+        // Declare refs for template ref access
+        self.emit_template_ref_declarations(bindings);
+
+        // Emit template expressions
+        self.emit_line("// Template expressions");
+        self.visit_children(&ast.children);
+
+        self.indent_level = self.indent_level.saturating_sub(1);
+        self.emit_line("})();");
+    }
+
+    /// Emit template ref declarations.
+    fn emit_template_ref_declarations(&mut self, bindings: &BindingMetadata) {
+        let template_refs: Vec<_> = bindings
+            .bindings
+            .iter()
+            .filter(|(_, t)| matches!(t, BindingType::SetupRef))
+            .collect();
+
+        if !template_refs.is_empty() {
+            self.emit_line("// Template refs (auto-unwrapped)");
+            for (name, _) in template_refs {
+                // Template refs are auto-unwrapped in templates
+                self.emit_line(&format!("const __unwrapped_{} = {}.value;", name, name));
+            }
+            self.emit_line("");
+        }
+    }
+
+    /// Resolve relative import paths to absolute paths (legacy).
+    #[allow(unused)]
     fn resolve_import_paths(&self, content: &str, from_file: Option<&Path>) -> String {
         let Some(file_path) = from_file else {
             return content.to_string();
@@ -206,7 +503,6 @@ impl VirtualTsGenerator {
             return content.to_string();
         };
 
-        // Match import statements with relative paths
         let import_re = regex::Regex::new(
             r#"(import\s+(?:type\s+)?(?:\{[^}]*\}|[^{}\s]+)\s+from\s+['"])(\.[^'"]+)(['"])"#,
         );
@@ -218,7 +514,6 @@ impl VirtualTsGenerator {
                     let rel_path = caps.get(2).map(|m| m.as_str()).unwrap_or("");
                     let suffix = caps.get(3).map(|m| m.as_str()).unwrap_or("");
 
-                    // Resolve relative path to absolute
                     let resolved = parent.join(rel_path);
                     let abs_path = resolved
                         .canonicalize()
@@ -233,13 +528,7 @@ impl VirtualTsGenerator {
         }
     }
 
-    /// Generate virtual TypeScript from template AST.
-    ///
-    /// Extracts all expressions from the template and generates
-    /// TypeScript that can be type-checked.
-    ///
-    /// `emit_context` controls whether __ctx declaration and destructuring are emitted.
-    /// Set to false when merging with script output to avoid duplicates.
+    /// Generate virtual TypeScript from template AST (legacy API).
     pub fn generate_template(
         &mut self,
         ast: &RootNode,
@@ -251,7 +540,6 @@ impl VirtualTsGenerator {
         self.block_offset = block_offset;
 
         if emit_context {
-            // Header
             self.write_line("// Virtual TypeScript for template type checking");
             self.write_line("// Generated by vize_croquis");
             self.write_line("");
@@ -265,7 +553,6 @@ impl VirtualTsGenerator {
                 if i > 0 {
                     self.write(", ");
                 }
-                // Use 'any' for all bindings to avoid false positives
                 self.write(&format!("{}: any", name));
             }
             self.write_line(" };");
@@ -291,7 +578,7 @@ impl VirtualTsGenerator {
         self.create_output()
     }
 
-    /// Generate props type definition and declare props variables for template access.
+    /// Generate props type definition.
     fn generate_props_type(&mut self, bindings: &BindingMetadata) {
         let props: Vec<_> = bindings
             .bindings
@@ -299,70 +586,26 @@ impl VirtualTsGenerator {
             .filter(|(_, t)| matches!(t, BindingType::Props | BindingType::PropsAliased))
             .collect();
 
-        self.write_line("// Props type");
-        self.write("type __Props = { ");
+        self.emit_line("// Props type");
+        let mut type_str = String::from("type __Props = { ");
 
         for (i, (name, _)) in props.iter().enumerate() {
             if i > 0 {
-                self.write(", ");
+                type_str.push_str(", ");
             }
-            self.write(&format!("{}?: any", name));
+            type_str.push_str(&format!("{}?: any", name));
         }
 
-        self.write_line(" };");
-        self.write_line("");
-
-        // Declare props variables for template access (they're automatically available in template)
-        if !props.is_empty() {
-            self.write_line("// Props variables for template access");
-            for (name, _) in props.iter() {
-                self.write_line(&format!("declare const {}: any;", name));
-            }
-            self.write_line("");
-        }
+        type_str.push_str(" };");
+        self.emit_line(&type_str);
     }
 
     /// Generate emits type definition.
     fn generate_emits_type(&mut self, _bindings: &BindingMetadata) {
-        self.write_line("// Emits type");
-        self.write_line("type __Emits = {};");
-        self.write_line("");
+        self.emit_line("// Emits type");
+        self.emit_line("type __Emits = {};");
     }
 
-    /// Generate binding declarations for template access.
-    /// This makes script setup variables available in template expressions.
-    fn generate_binding_declarations(&mut self, bindings: &BindingMetadata) {
-        let setup_bindings: Vec<_> = bindings
-            .bindings
-            .iter()
-            .filter(|(_, t)| {
-                matches!(
-                    t,
-                    BindingType::SetupRef
-                        | BindingType::SetupConst
-                        | BindingType::SetupLet
-                        | BindingType::SetupReactiveConst
-                        | BindingType::SetupMaybeRef
-                        | BindingType::Data
-                        | BindingType::Options
-                )
-            })
-            .collect();
-
-        if !setup_bindings.is_empty() {
-            self.write_line("// Setup bindings for template access");
-            for (name, binding_type) in setup_bindings.iter() {
-                // For refs, we need to access .value in templates (auto-unwrapped by Vue)
-                // For type checking, we just declare them as any
-                let _is_ref = matches!(
-                    binding_type,
-                    BindingType::SetupRef | BindingType::SetupMaybeRef
-                );
-                self.write_line(&format!("declare const {}: any;", name));
-            }
-            self.write_line("");
-        }
-    }
     /// Visit template children.
     fn visit_children(&mut self, children: &[TemplateChildNode]) {
         for child in children {
@@ -402,7 +645,6 @@ impl VirtualTsGenerator {
         // If v-for directive exists, handle it with proper scoping
         if let Some(exp) = v_for_exp {
             self.emit_v_for_scope(exp, |this| {
-                // Process other directives (not v-for)
                 for prop in &element.props {
                     if let PropNode::Directive(dir) = prop {
                         if dir.name != "for" {
@@ -410,11 +652,9 @@ impl VirtualTsGenerator {
                         }
                     }
                 }
-                // Process children
                 this.visit_children(&element.children);
             });
         } else {
-            // No v-for - process normally
             for prop in &element.props {
                 if let PropNode::Directive(dir) = prop {
                     self.visit_directive(dir);
@@ -424,7 +664,7 @@ impl VirtualTsGenerator {
         }
     }
 
-    /// Emit v-for scope with loop variables
+    /// Emit v-for scope with loop variables.
     fn emit_v_for_scope<F>(&mut self, exp: &ExpressionNode, body: F)
     where
         F: FnOnce(&mut Self),
@@ -439,8 +679,9 @@ impl VirtualTsGenerator {
             let left = &content[..in_pos];
             let right = &content[in_pos + 4..];
 
-            self.write_line("// v-for scope");
-            self.write_line("{");
+            self.emit_line("// v-for scope");
+            self.emit_line("{");
+            self.indent_level += 1;
 
             // Extract and declare loop variables
             let vars_part = left.trim();
@@ -452,7 +693,7 @@ impl VirtualTsGenerator {
                         .chars()
                         .all(|c| c.is_alphanumeric() || c == '_' || c == '$')
                 {
-                    self.write_line(&format!("  let {}: any;", var));
+                    self.emit_line(&format!("let {}: any;", var));
                 }
             }
 
@@ -460,14 +701,13 @@ impl VirtualTsGenerator {
             let source = right.trim();
             let var_name = format!("__expr_{}", self.expr_counter);
             self.expr_counter += 1;
-            self.write_line(&format!("  const {} = {};", var_name, source));
+            self.emit_line(&format!("const {} = {};", var_name, source));
 
-            // Execute body in this scope
             body(self);
 
-            self.write_line("}");
+            self.indent_level = self.indent_level.saturating_sub(1);
+            self.emit_line("}");
         } else {
-            // Fallback: just emit the expression and run body
             self.emit_expression(exp, "v-for");
             body(self);
         }
@@ -497,13 +737,12 @@ impl VirtualTsGenerator {
 
     /// Visit a for node.
     fn visit_for(&mut self, for_node: &ForNode) {
-        // Use parse_result which contains the properly parsed v-for components
         let parse_result = &for_node.parse_result;
 
-        self.write_line("// v-for scope");
-        self.write_line("{");
+        self.emit_line("// v-for scope");
+        self.emit_line("{");
+        self.indent_level += 1;
 
-        // Helper to extract variable name from expression
         fn extract_var_name(expr: &ExpressionNode) -> Option<String> {
             match expr {
                 ExpressionNode::Simple(simple) => {
@@ -519,7 +758,6 @@ impl VirtualTsGenerator {
                     }
                 }
                 ExpressionNode::Compound(compound) => {
-                    // For compound expressions, try to get the first child
                     use vize_relief::ast::CompoundExpressionChild;
                     if let Some(CompoundExpressionChild::Simple(simple)) = compound.children.first()
                     {
@@ -540,57 +778,56 @@ impl VirtualTsGenerator {
         // Declare loop variables from parse_result
         if let Some(ref value) = parse_result.value {
             if let Some(var_name) = extract_var_name(value) {
-                self.write_line(&format!("  let {}: any;", var_name));
+                self.emit_line(&format!("let {}: any;", var_name));
             }
         }
         if let Some(ref key) = parse_result.key {
             if let Some(var_name) = extract_var_name(key) {
-                self.write_line(&format!("  let {}: any;", var_name));
+                self.emit_line(&format!("let {}: any;", var_name));
             }
         }
         if let Some(ref index) = parse_result.index {
             if let Some(var_name) = extract_var_name(index) {
-                self.write_line(&format!("  let {}: any;", var_name));
+                self.emit_line(&format!("let {}: any;", var_name));
             }
         }
 
-        // Also check the direct aliases on ForNode (might be populated in some cases)
+        // Also check the direct aliases on ForNode
         if let Some(ref value_alias) = for_node.value_alias {
             if let Some(var_name) = extract_var_name(value_alias) {
-                self.write_line(&format!("  let {}: any;", var_name));
+                self.emit_line(&format!("let {}: any;", var_name));
             }
         }
         if let Some(ref key_alias) = for_node.key_alias {
             if let Some(var_name) = extract_var_name(key_alias) {
-                self.write_line(&format!("  let {}: any;", var_name));
+                self.emit_line(&format!("let {}: any;", var_name));
             }
         }
         if let Some(ref index_alias) = for_node.object_index_alias {
             if let Some(var_name) = extract_var_name(index_alias) {
-                self.write_line(&format!("  let {}: any;", var_name));
+                self.emit_line(&format!("let {}: any;", var_name));
             }
         }
 
-        // Emit the source expression (the collection being iterated)
+        // Emit the source expression
         let source_expr = &parse_result.source;
         match source_expr {
             ExpressionNode::Simple(simple) => {
                 if !simple.content.is_empty() {
                     let var_name = format!("__expr_{}", self.expr_counter);
                     self.expr_counter += 1;
-                    self.write_line(&format!("  const {} = {};", var_name, simple.content));
+                    self.emit_line(&format!("const {} = {};", var_name, simple.content));
                 }
             }
             ExpressionNode::Compound(_) => {
-                // Fallback for compound
                 self.emit_expression(source_expr, "v-for source");
             }
         }
 
-        // Visit children in this scope
         self.visit_children(&for_node.children);
 
-        self.write_line("}");
+        self.indent_level = self.indent_level.saturating_sub(1);
+        self.emit_line("}");
     }
 
     /// Emit a TypeScript expression with source mapping.
@@ -604,13 +841,12 @@ impl VirtualTsGenerator {
                 let var_name = format!("__expr_{}", self.expr_counter);
                 self.expr_counter += 1;
 
-                // Generate: const __expr_N = expr;
-                // Context variables are available via destructuring at the top
-                let prefix = format!("const {} = ", var_name);
-                let line = format!("{}{};\n", prefix, simple.content);
+                let line = format!("const {} = {};", var_name, simple.content);
 
                 // Calculate positions for mapping
-                let expr_start = self.gen_offset + prefix.len() as u32;
+                let indent = "  ".repeat(self.indent_level);
+                let prefix_len = indent.len() + "const ".len() + var_name.len() + " = ".len();
+                let expr_start = self.gen_offset + prefix_len as u32;
                 let expr_end = expr_start + simple.content.len() as u32;
 
                 let source_start = simple.loc.start.offset + self.block_offset;
@@ -625,17 +861,15 @@ impl VirtualTsGenerator {
                     },
                 ));
 
-                self.write(&line);
+                self.emit_line(&line);
             }
             ExpressionNode::Compound(_) => {
-                // For compound expressions, emit a placeholder
                 let var_name = format!("__expr_{}", self.expr_counter);
                 self.expr_counter += 1;
-                let line = format!(
-                    "const {} = void 0 as any; // {} compound\n",
+                self.emit_line(&format!(
+                    "const {} = void 0 as any; // {} compound",
                     var_name, context
-                );
-                self.write(&line);
+                ));
             }
         }
     }
@@ -659,11 +893,20 @@ impl VirtualTsGenerator {
         self.gen_offset += s.len() as u32;
     }
 
-    /// Write a line to output.
+    /// Write a line to output (no indentation).
     fn write_line(&mut self, s: &str) {
         self.output.push_str(s);
         self.output.push('\n');
         self.gen_offset += s.len() as u32 + 1;
+    }
+
+    /// Write a line with proper indentation.
+    fn emit_line(&mut self, s: &str) {
+        let indent = "  ".repeat(self.indent_level);
+        self.output.push_str(&indent);
+        self.output.push_str(s);
+        self.output.push('\n');
+        self.gen_offset += indent.len() as u32 + s.len() as u32 + 1;
     }
 }
 
@@ -692,18 +935,15 @@ pub fn generate_virtual_ts(
     let has_script = script_output.is_some();
 
     // Generate template output
-    // emit_context is false when script exists to avoid duplicate declarations
     let template_output =
         template_ast.map(|ast| gen.generate_template(ast, bindings, template_offset, !has_script));
 
     // Combine outputs
     match (script_output, template_output) {
         (Some(mut script), Some(template)) => {
-            // Merge template content into script
             script.content.push('\n');
             script.content.push_str(&template.content);
 
-            // Adjust template mappings and merge
             let script_len = script.content.len() as u32;
             for mut mapping in template.source_map.mappings().iter().cloned() {
                 mapping.generated.start += script_len;
@@ -720,9 +960,35 @@ pub fn generate_virtual_ts(
     }
 }
 
+/// Generate virtual TypeScript using croquis analysis.
+///
+/// This is the preferred entry point that uses full scope analysis.
+pub fn generate_virtual_ts_with_croquis(
+    script_content: &str,
+    parse_result: &ScriptParseResult,
+    template_ast: Option<&RootNode>,
+    config: &VirtualTsConfig,
+    import_resolver: Option<ImportResolver>,
+    from_file: Option<&Path>,
+) -> VirtualTsOutput {
+    let mut gen = VirtualTsGenerator::new();
+    if let Some(resolver) = import_resolver {
+        gen = gen.with_import_resolver(resolver);
+    }
+
+    gen.generate_from_croquis(
+        script_content,
+        parse_result,
+        template_ast,
+        config,
+        from_file,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::script_parser::parse_script_setup;
 
     #[test]
     fn test_generate_script_setup() {
@@ -737,10 +1003,42 @@ const count = ref(0);
         let mut gen = VirtualTsGenerator::new();
         let output = gen.generate_script_setup(script, &bindings, None);
 
-        // Script content should be included directly for type checking
+        // Should contain setup function
+        assert!(output.content.contains("function __setup()"));
+        // Compiler macros should be actual functions (NOT declare)
+        assert!(output.content.contains("function defineProps<T>(): T"));
+        assert!(!output.content.contains("declare function defineProps"));
+        // Original code should be present
         assert!(output.content.contains("msg"));
         assert!(output.content.contains("count"));
-        assert!(output.content.contains("Original script content"));
+    }
+
+    #[test]
+    fn test_generate_with_croquis() {
+        let script = r#"
+import { ref } from 'vue'
+const props = defineProps<{ name: string }>()
+const count = ref(0)
+"#;
+        let parse_result = parse_script_setup(script);
+        let config = VirtualTsConfig {
+            generic: Some(CompactString::new("T extends string")),
+            is_async: false,
+            script_offset: 0,
+            template_offset: 0,
+        };
+
+        let mut gen = VirtualTsGenerator::new();
+        let output = gen.generate_from_croquis(script, &parse_result, None, &config, None);
+
+        // Should have generics in setup function
+        assert!(output
+            .content
+            .contains("function __setup<T extends string>()"));
+        // Imports should be at module level
+        assert!(output.content.contains("import { ref } from 'vue'"));
+        // Setup content should be inside function
+        assert!(output.content.contains("defineProps"));
     }
 
     #[test]
@@ -758,5 +1056,48 @@ const count = ref(0);
         assert!(output.content.contains("__ctx"));
         assert!(output.content.contains("message"));
         assert!(!output.source_map.is_empty());
+    }
+
+    #[test]
+    fn test_compiler_macros_are_scoped() {
+        let script = r#"
+const props = defineProps<{ msg: string }>()
+"#;
+        let mut bindings = BindingMetadata::default();
+        bindings.add("props", BindingType::SetupConst);
+
+        let mut gen = VirtualTsGenerator::new();
+        let output = gen.generate_script_setup(script, &bindings, None);
+
+        // defineProps should be an actual function (NOT declare) inside __setup
+        let setup_start = output.content.find("function __setup()").unwrap();
+        let setup_end = output.content.rfind("}").unwrap();
+        let setup_body = &output.content[setup_start..setup_end];
+
+        // Should be actual function, not declare
+        assert!(setup_body.contains("function defineProps<T>(): T"));
+        assert!(!setup_body.contains("declare function defineProps"));
+    }
+
+    #[test]
+    fn test_extracts_generic_from_scope_chain() {
+        // This test would need a way to set generic in the scope chain
+        // For now, we test that the config generic is used
+        let script = "const x = 1;";
+        let parse_result = parse_script_setup(script);
+        let config = VirtualTsConfig {
+            generic: Some(CompactString::new("T, U extends T")),
+            is_async: true,
+            script_offset: 0,
+            template_offset: 0,
+        };
+
+        let mut gen = VirtualTsGenerator::new();
+        let output = gen.generate_from_croquis(script, &parse_result, None, &config, None);
+
+        // Should have async and generics
+        assert!(output
+            .content
+            .contains("async function __setup<T, U extends T>()"));
     }
 }

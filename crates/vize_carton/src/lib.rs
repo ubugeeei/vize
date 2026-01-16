@@ -39,6 +39,7 @@ pub mod dom_tag_config;
 pub mod flags;
 pub mod general;
 pub mod i18n;
+pub mod lsp;
 pub mod profiler;
 pub mod source_range;
 pub mod string_builder;

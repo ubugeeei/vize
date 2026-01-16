@@ -125,6 +125,9 @@ function increment() {
     // Interpolation @216:221
     void (count);
     // @vize-map: 2945:2963 -> 216:221
+    // VOn @241:258
+    void (increment);
+    // @vize-map: 3022:3044 -> 241:258
 
   }
 

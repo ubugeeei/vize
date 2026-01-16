@@ -39,6 +39,7 @@ mod symbol;
 pub mod analysis;
 pub mod analyzer;
 pub mod builtins;
+pub mod call_graph;
 pub mod css;
 pub mod display;
 pub mod hoist;
@@ -48,9 +49,13 @@ pub mod naming;
 pub mod optimization;
 pub mod provide;
 pub mod reactivity;
+pub mod reactivity_tracking;
 pub mod script_parser;
 pub mod types;
 pub mod virtual_ts;
+
+// Cross-file analysis (opt-in)
+pub mod cross_file;
 
 // Re-export commonly used utilities from vize_carton for convenience
 pub use vize_carton::{
