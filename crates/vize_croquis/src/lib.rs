@@ -52,6 +52,9 @@ pub mod script_parser;
 pub mod types;
 pub mod virtual_ts;
 
+// Cross-file analysis (opt-in)
+pub mod cross_file;
+
 // Re-export commonly used utilities from vize_carton for convenience
 pub use vize_carton::{
     is_builtin_directive, is_builtin_tag, is_html_tag, is_math_ml_tag, is_native_tag,

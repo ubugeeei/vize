@@ -201,6 +201,7 @@ impl Analyzer {
     /// - Component usage
     /// - Directive usage
     /// - Undefined references (if script was analyzed)
+    /// - Root element count (for fallthrough attrs analysis)
     ///
     /// Performance: O(n) single traversal
     pub fn analyze_template(&mut self, root: &RootNode<'_>) -> &mut Self {
@@ -208,12 +209,38 @@ impl Analyzer {
             return self;
         }
 
+        // Count root-level elements (for fallthrough attrs analysis)
+        let mut root_element_count = 0;
+        for child in root.children.iter() {
+            if Self::is_element_child(child) {
+                root_element_count += 1;
+            }
+        }
+        self.summary.template_info.root_element_count = root_element_count;
+
         // Single-pass template traversal
         for child in root.children.iter() {
             self.visit_template_child(child, &mut Vec::new());
         }
 
         self
+    }
+
+    /// Check if a template child is an actual element (not text, comment, etc.)
+    fn is_element_child(node: &TemplateChildNode<'_>) -> bool {
+        match node {
+            TemplateChildNode::Element(_) => true,
+            TemplateChildNode::If(if_node) => {
+                // v-if can produce element - count the first branch
+                if_node
+                    .branches
+                    .first()
+                    .map(|b| b.children.iter().any(Self::is_element_child))
+                    .unwrap_or(false)
+            }
+            TemplateChildNode::For(_) => true, // v-for produces elements
+            _ => false,
+        }
     }
 
     /// Finish analysis and return the summary.
@@ -246,11 +273,17 @@ impl Analyzer {
             TemplateChildNode::For(for_node) => self.visit_for(for_node, scope_vars),
             TemplateChildNode::Interpolation(interp) => {
                 // Collect expression for type checking
+                let content = match &interp.content {
+                    ExpressionNode::Simple(s) => s.content.as_str(),
+                    ExpressionNode::Compound(c) => c.loc.source.as_str(),
+                };
+
+                // Track $attrs usage for fallthrough analysis
+                if content.contains("$attrs") {
+                    self.summary.template_info.uses_attrs = true;
+                }
+
                 if self.options.collect_template_expressions {
-                    let content = match &interp.content {
-                        ExpressionNode::Simple(s) => s.content.as_str(),
-                        ExpressionNode::Compound(c) => c.loc.source.as_str(),
-                    };
                     let loc = interp.content.loc();
                     let scope_id = self.summary.scopes.current_id();
                     self.summary
@@ -582,6 +615,15 @@ impl Analyzer {
                             ExpressionNode::Simple(s) => s.content.as_str(),
                             ExpressionNode::Compound(c) => c.loc.source.as_str(),
                         };
+
+                        // Track $attrs usage for fallthrough analysis
+                        if content.contains("$attrs") {
+                            self.summary.template_info.uses_attrs = true;
+                            // v-bind="$attrs" without arg means explicit full binding
+                            if dir.arg.is_none() && content.trim() == "$attrs" {
+                                self.summary.template_info.binds_attrs_explicitly = true;
+                            }
+                        }
 
                         if let Some(params) = extract_inline_callback_params(content) {
                             let context = dir

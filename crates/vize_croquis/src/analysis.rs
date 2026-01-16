@@ -40,11 +40,40 @@
 
 use crate::hoist::HoistTracker;
 use crate::macros::MacroTracker;
+use crate::provide::ProvideInjectTracker;
 use crate::reactivity::ReactivityTracker;
 use crate::types::TypeResolver;
 use crate::{ScopeChain, SymbolTable};
 use vize_carton::{CompactString, FxHashMap, FxHashSet};
 use vize_relief::BindingType;
+
+/// Template-level metadata collected during analysis.
+#[derive(Debug, Clone, Default)]
+pub struct TemplateInfo {
+    /// Number of root elements at depth 0 in template.
+    /// A value > 1 indicates multi-root component (fragments).
+    pub root_element_count: usize,
+    /// Whether $attrs is referenced anywhere in the template.
+    pub uses_attrs: bool,
+    /// Whether v-bind="$attrs" is explicitly used (not just $attrs.class etc.)
+    pub binds_attrs_explicitly: bool,
+    /// Whether inheritAttrs: false is set in defineOptions.
+    pub inherit_attrs_disabled: bool,
+}
+
+impl TemplateInfo {
+    /// Check if the component has multiple root elements.
+    #[inline]
+    pub fn has_multiple_roots(&self) -> bool {
+        self.root_element_count > 1
+    }
+
+    /// Check if fallthrough attrs may be lost (multi-root without explicit binding).
+    #[inline]
+    pub fn may_lose_fallthrough_attrs(&self) -> bool {
+        self.has_multiple_roots() && !self.binds_attrs_explicitly
+    }
+}
 
 /// Complete semantic analysis summary for a Vue SFC.
 ///
@@ -64,6 +93,9 @@ pub struct Croquis {
     /// Reactivity tracking (ref, reactive, computed)
     pub reactivity: ReactivityTracker,
 
+    /// Provide/Inject tracking
+    pub provide_inject: ProvideInjectTracker,
+
     /// TypeScript type resolution
     pub types: TypeResolver,
 
@@ -72,6 +104,9 @@ pub struct Croquis {
 
     /// Script binding metadata (for template access)
     pub bindings: BindingMetadata,
+
+    /// Template-level metadata (root count, $attrs usage, etc.)
+    pub template_info: TemplateInfo,
 
     /// Components used in template
     pub used_components: FxHashSet<CompactString>,

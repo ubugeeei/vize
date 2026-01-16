@@ -38,12 +38,26 @@ pub struct ProvideEntry {
     pub end: u32,
 }
 
+/// Destructure pattern for inject results
+#[derive(Debug, Clone, Default)]
+pub enum InjectPattern {
+    /// Simple assignment: `const foo = inject('foo')`
+    #[default]
+    Simple,
+    /// Object destructuring: `const { a, b } = inject('foo')`
+    ObjectDestructure(Vec<CompactString>),
+    /// Array destructuring: `const [a, b] = inject('foo')`
+    ArrayDestructure(Vec<CompactString>),
+}
+
 /// An inject() call
 #[derive(Debug, Clone)]
 pub struct InjectEntry {
     pub key: ProvideKey,
     pub local_name: CompactString,
     pub default_value: Option<CompactString>,
+    /// The destructure pattern used (if any)
+    pub pattern: InjectPattern,
     pub start: u32,
     pub end: u32,
 }
@@ -90,6 +104,7 @@ impl ProvideInjectTracker {
         key: ProvideKey,
         local_name: CompactString,
         default_value: Option<CompactString>,
+        pattern: InjectPattern,
         start: u32,
         end: u32,
     ) {
@@ -97,9 +112,25 @@ impl ProvideInjectTracker {
             key,
             local_name,
             default_value,
+            pattern,
             start,
             end,
         });
+    }
+
+    /// Check if any inject uses destructuring (reactivity loss risk)
+    #[inline]
+    pub fn has_destructured_injects(&self) -> bool {
+        self.injects
+            .iter()
+            .any(|i| !matches!(i.pattern, InjectPattern::Simple))
+    }
+
+    /// Get injects that use destructuring
+    pub fn destructured_injects(&self) -> impl Iterator<Item = &InjectEntry> {
+        self.injects
+            .iter()
+            .filter(|i| !matches!(i.pattern, InjectPattern::Simple))
     }
 
     /// Get all provides
@@ -134,6 +165,7 @@ mod tests {
             ProvideKey::String(CompactString::new("theme")),
             CompactString::new("theme"),
             Some(CompactString::new("'light'")),
+            InjectPattern::Simple,
             30,
             50,
         );

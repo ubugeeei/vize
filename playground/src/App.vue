@@ -6,6 +6,7 @@ import MuseaPlayground from "./components/MuseaPlayground.vue";
 import PatinaPlayground from "./components/PatinaPlayground.vue";
 import GlyphPlayground from "./components/GlyphPlayground.vue";
 import CroquisPlayground from "./components/CroquisPlayground.vue";
+import CrossFilePlayground from "./components/CrossFilePlayground.vue";
 import TypeCheckPlayground from "./components/TypeCheckPlayground.vue";
 import { PRESETS, type PresetKey, type InputMode } from "./presets";
 import {
@@ -27,13 +28,14 @@ import ts from "typescript";
 
 const ああああ: number = "";
 
-// Main tab for switching between Atelier, Patina, Canon, Croquis, Musea, and Glyph
-type MainTab = "atelier" | "patina" | "canon" | "croquis" | "musea" | "glyph";
+// Main tab for switching between Atelier, Patina, Canon, Croquis, CrossFile, Musea, and Glyph
+type MainTab = "atelier" | "patina" | "canon" | "croquis" | "cross-file" | "musea" | "glyph";
 const validTabs: MainTab[] = [
   "atelier",
   "patina",
   "canon",
   "croquis",
+  "cross-file",
   "musea",
   "glyph",
 ];
@@ -708,6 +710,13 @@ onMounted(async () => {
           <span class="tab-desc">analyzer</span>
         </button>
         <button
+          :class="['main-tab', { active: mainTab === 'cross-file' }]"
+          @click="mainTab = 'cross-file'"
+        >
+          <span class="tab-name">Croquis (CF)</span>
+          <span class="tab-desc">cross-file</span>
+        </button>
+        <button
           :class="['main-tab', { active: mainTab === 'musea' }]"
           @click="mainTab = 'musea'"
         >
@@ -781,6 +790,11 @@ onMounted(async () => {
       <!-- Croquis View -->
       <template v-else-if="mainTab === 'croquis'">
         <CroquisPlayground :compiler="compiler" />
+      </template>
+
+      <!-- CrossFile View -->
+      <template v-else-if="mainTab === 'cross-file'">
+        <CrossFilePlayground :compiler="compiler" />
       </template>
 
       <!-- Musea View -->

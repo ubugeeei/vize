@@ -134,6 +134,19 @@ pub struct EmitDefinition {
     pub payload_type: Option<CompactString>,
 }
 
+/// An actual emit() call in the code
+#[derive(Debug, Clone)]
+pub struct EmitCall {
+    /// Event name being emitted
+    pub event_name: CompactString,
+    /// Whether this is a dynamic emit (variable event name)
+    pub is_dynamic: bool,
+    /// Source start offset
+    pub start: u32,
+    /// Source end offset
+    pub end: u32,
+}
+
 /// Model definition from defineModel
 #[derive(Debug, Clone)]
 pub struct ModelDefinition {
@@ -169,6 +182,8 @@ pub struct MacroTracker {
     calls: Vec<MacroCall>,
     props: Vec<PropDefinition>,
     emits: Vec<EmitDefinition>,
+    /// Actual emit() calls in the code (not declarations)
+    emit_calls: Vec<EmitCall>,
     models: Vec<ModelDefinition>,
     props_destructure: Option<PropsDestructuredBindings>,
     top_level_awaits: Vec<TopLevelAwait>,
@@ -259,6 +274,47 @@ impl MacroTracker {
     #[inline]
     pub fn emits(&self) -> &[EmitDefinition] {
         &self.emits
+    }
+
+    /// Add an emit call (actual emit() invocation in code)
+    #[inline]
+    pub fn add_emit_call(
+        &mut self,
+        event_name: CompactString,
+        is_dynamic: bool,
+        start: u32,
+        end: u32,
+    ) {
+        self.emit_calls.push(EmitCall {
+            event_name,
+            is_dynamic,
+            start,
+            end,
+        });
+    }
+
+    /// Get all emit calls
+    #[inline]
+    pub fn emit_calls(&self) -> &[EmitCall] {
+        &self.emit_calls
+    }
+
+    /// Check if an event is actually emitted (called)
+    #[inline]
+    pub fn is_event_emitted(&self, event_name: &str) -> bool {
+        self.emit_calls
+            .iter()
+            .any(|c| c.event_name.as_str() == event_name && !c.is_dynamic)
+    }
+
+    /// Get emit calls for a specific event
+    pub fn emit_calls_for_event<'a>(
+        &'a self,
+        event_name: &'a str,
+    ) -> impl Iterator<Item = &'a EmitCall> + 'a {
+        self.emit_calls
+            .iter()
+            .filter(move |c| c.event_name.as_str() == event_name)
     }
 
     /// Add a model definition
