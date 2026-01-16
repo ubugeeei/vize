@@ -4,8 +4,7 @@
 //! Can connect to a running check-server via Unix socket for faster repeated checks.
 
 use clap::Args;
-use glob::glob;
-use ignore::Walk;
+use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
@@ -268,24 +267,43 @@ fn collect_vue_files(patterns: &[String]) -> Vec<PathBuf> {
     patterns
         .iter()
         .flat_map(|pattern| {
-            if pattern.contains('*') || pattern.contains('?') || pattern.contains('[') {
-                glob(pattern)
-                    .ok()
-                    .into_iter()
-                    .flatten()
-                    .filter_map(|r| r.ok())
-                    .filter(|p| {
-                        p.extension().is_some_and(|ext| ext == "vue")
-                            && !p.components().any(|c| c.as_os_str() == "node_modules")
-                    })
-                    .collect::<Vec<_>>()
+            // Extract base directory from pattern (everything before first *)
+            let base_dir = if let Some(star_idx) = pattern.find('*') {
+                let prefix = &pattern[..star_idx];
+                // Find the last path separator before the star
+                if let Some(sep_idx) = prefix.rfind('/') {
+                    &pattern[..sep_idx]
+                } else {
+                    "."
+                }
             } else {
-                Walk::new(pattern)
-                    .filter_map(|e| e.ok())
-                    .filter(|e| e.path().extension().is_some_and(|ext| ext == "vue"))
-                    .map(|e| e.path().to_path_buf())
-                    .collect::<Vec<_>>()
-            }
+                pattern.as_str()
+            };
+
+            // Use ignore crate's WalkBuilder for fast parallel walking (respects .gitignore)
+            let walker = WalkBuilder::new(base_dir)
+                .standard_filters(true) // Respect .gitignore
+                .hidden(true) // Skip hidden files/dirs
+                .build_parallel();
+
+            let files: std::sync::Mutex<Vec<PathBuf>> = std::sync::Mutex::new(Vec::new());
+
+            walker.run(|| {
+                let files = &files;
+                Box::new(move |result| {
+                    if let Ok(entry) = result {
+                        let path = entry.path();
+                        if path.extension().is_some_and(|ext| ext == "vue") {
+                            if let Ok(mut f) = files.lock() {
+                                f.push(path.to_path_buf());
+                            }
+                        }
+                    }
+                    ignore::WalkState::Continue
+                })
+            });
+
+            files.into_inner().unwrap()
         })
         .collect()
 }
@@ -303,7 +321,9 @@ fn run_direct(args: &CheckArgs) {
     let start = Instant::now();
 
     // Collect .vue files
+    let collect_start = Instant::now();
     let files = collect_vue_files(&args.patterns);
+    let collect_time = collect_start.elapsed();
 
     if files.is_empty() {
         eprintln!("No .vue files found matching patterns: {:?}", args.patterns);
@@ -550,17 +570,16 @@ fn run_direct(args: &CheckArgs) {
                     // Wait for diagnostics
                     lsp_client.wait_for_diagnostics(files_to_open.len());
 
-                    // PHASE 2: Request diagnostics only for this server's assigned files
+                    // PHASE 2: Get cached diagnostics (no request round-trip needed!)
+                    // publishDiagnostics already arrived during wait_for_diagnostics
                     let mut chunk_diagnostics: Vec<(String, Vec<String>)> = Vec::new();
 
                     for idx in &indices {
                         let g = &generated[*idx];
                         let virtual_uri = format!("file://{}.ts", g.original);
 
-                        let diagnostics = match lsp_client.request_diagnostics(&virtual_uri) {
-                            Ok(diags) => diags,
-                            Err(_) => lsp_client.get_diagnostics(&virtual_uri),
-                        };
+                        // Use cached diagnostics from publishDiagnostics - no LSP round-trip!
+                        let diagnostics = lsp_client.get_diagnostics(&virtual_uri);
 
                         // Filter and format diagnostics
                         let mut file_diags: Vec<String> = Vec::new();
@@ -698,10 +717,11 @@ fn run_direct(args: &CheckArgs) {
     };
 
     println!(
-        "\n{} Type checked {} files in {:.2?} (gen: {:.2?}, lsp: {:.2?})",
+        "\n{} Type checked {} files in {:.2?} (collect: {:.2?}, gen: {:.2?}, lsp: {:.2?})",
         status,
         generated.len(),
         total_time,
+        collect_time,
         gen_time,
         check_time
     );

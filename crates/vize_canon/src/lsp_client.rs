@@ -201,21 +201,29 @@ impl TsgoLspClient {
     }
 
     /// Wait for diagnostics to be published for all opened files
-    /// Waits until idle for 200ms after receiving at least one message
-    pub fn wait_for_diagnostics(&mut self, _expected_count: usize) {
+    /// Waits until we receive diagnostics for expected_count files, or idle timeout
+    pub fn wait_for_diagnostics(&mut self, expected_count: usize) {
         use std::time::Instant;
 
         let max_wait = Duration::from_secs(30); // Maximum total wait
-        let idle_timeout = Duration::from_millis(200); // Idle timeout after receiving messages
+        let idle_timeout = Duration::from_millis(30); // Reduced idle timeout (was 200ms)
         let start = Instant::now();
         let mut last_message: Option<Instant> = None;
-        let mut message_count = 0;
-        let last_report = Instant::now();
+        let initial_diag_count = self.diagnostics.len();
 
-        // Read messages until idle timeout or max wait
+        // Read messages until we have enough diagnostics, idle timeout, or max wait
         loop {
             // Check for max wait timeout
             if start.elapsed() > max_wait {
+                break;
+            }
+
+            // Check if we have diagnostics for all expected files
+            let new_diags = self.diagnostics.len() - initial_diag_count;
+            if new_diags >= expected_count {
+                // Got all diagnostics, wait just a tiny bit more for any stragglers
+                thread::sleep(Duration::from_millis(5));
+                self.drain_pending_messages();
                 break;
             }
 
@@ -230,18 +238,15 @@ impl TsgoLspClient {
             match self.try_read_message_nonblocking() {
                 Some(Ok(msg)) => {
                     last_message = Some(Instant::now()); // Reset idle timer
-                    message_count += 1;
                     self.handle_notification(&msg);
                 }
                 Some(Err(_)) => break,
                 None => {
                     // No data available, wait a bit
-                    thread::sleep(Duration::from_millis(5));
+                    thread::sleep(Duration::from_millis(1));
                 }
             }
         }
-
-        let _ = (message_count, last_report); // Suppress unused warnings
     }
 
     /// Close a virtual document
@@ -339,7 +344,7 @@ impl TsgoLspClient {
                     Ok(n) => break n,
                     Err(e) if e.kind() == ErrorKind::WouldBlock => {
                         // Non-blocking mode: wait a bit and retry
-                        thread::sleep(Duration::from_millis(5));
+                        thread::sleep(Duration::from_millis(1));
                         continue;
                     }
                     Err(e) => return Err(format!("Read error: {}", e)),
@@ -383,7 +388,7 @@ impl TsgoLspClient {
                 Ok(0) => return Err("EOF while reading content".to_string()),
                 Ok(n) => bytes_read += n,
                 Err(e) if e.kind() == ErrorKind::WouldBlock => {
-                    thread::sleep(Duration::from_millis(5));
+                    thread::sleep(Duration::from_millis(1));
                     continue;
                 }
                 Err(e) => return Err(format!("Read error: {}", e)),
@@ -401,9 +406,9 @@ impl TsgoLspClient {
         // Create channel for timeout
         let (tx, rx) = mpsc::channel();
 
-        // Spawn a thread to signal after timeout (200ms for fast response)
+        // Spawn a thread to signal after timeout (50ms for fast response)
         thread::spawn(move || {
-            thread::sleep(Duration::from_millis(200));
+            thread::sleep(Duration::from_millis(50));
             let _ = tx.send(());
         });
 
@@ -427,7 +432,7 @@ impl TsgoLspClient {
                 Some(Err(_)) => break,
                 None => {
                     // No data available, wait a bit
-                    thread::sleep(Duration::from_millis(10));
+                    thread::sleep(Duration::from_millis(1));
                 }
             }
         }
@@ -525,7 +530,7 @@ impl TsgoLspClient {
         let _ = self.send_notification("exit", Value::Null);
 
         // Give server a moment to exit gracefully, then kill if needed
-        thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(10));
         let _ = self.process.kill();
         let _ = self.process.wait();
         Ok(())

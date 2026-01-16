@@ -347,7 +347,7 @@ pub struct AnalysisStats {
 
 /// Complete analysis summary
 #[derive(Debug, Clone)]
-pub struct AnalysisSummary {
+pub struct Croquis {
     pub scopes: Vec<ScopeDisplay>,
     pub bindings: Vec<BindingDisplay>,
     pub props: Vec<PropDisplay>,
@@ -362,13 +362,13 @@ pub struct AnalysisSummary {
     pub top_level_awaits: Vec<TopLevelAwaitDisplay>,
 }
 
-/// Builder for AnalysisSummary
+/// Builder for Croquis
 #[derive(Debug, Default)]
 pub struct SummaryBuilder {
-    summary: AnalysisSummary,
+    summary: Croquis,
 }
 
-impl Default for AnalysisSummary {
+impl Default for Croquis {
     fn default() -> Self {
         Self {
             scopes: Vec::new(),
@@ -540,12 +540,12 @@ impl SummaryBuilder {
     }
 
     /// Build the summary
-    pub fn build(self) -> AnalysisSummary {
+    pub fn build(self) -> Croquis {
         self.summary
     }
 }
 
-impl AnalysisSummary {
+impl Croquis {
     /// Convert to VIR (TOML-like) format
     pub fn to_vir(&self) -> String {
         let mut output = String::with_capacity(4096);

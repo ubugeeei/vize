@@ -1,6 +1,6 @@
 //! Analysis summary for Vue SFC semantic analysis.
 //!
-//! This module provides the `AnalysisSummary` struct that aggregates all
+//! This module provides the `Croquis` struct that aggregates all
 //! semantic analysis results from a Vue SFC. It serves as the bridge between
 //! the parser and downstream consumers (linter, transformer, codegen).
 //!
@@ -13,7 +13,7 @@
 //!        ↓
 //!  vize_croquis (Semantic Analysis)
 //!        ↓
-//!   AnalysisSummary ←── This module
+//!   Croquis ←── This module
 //!        ↓
 //!  ┌─────┴─────┐
 //!  ↓           ↓
@@ -24,7 +24,7 @@
 //! ## Usage
 //!
 //! ```ignore
-//! use vize_croquis::{Analyzer, AnalysisSummary};
+//! use vize_croquis::{Analyzer, Croquis};
 //!
 //! let summary = Analyzer::new()
 //!     .analyze_script(script_content)
@@ -51,7 +51,7 @@ use vize_relief::BindingType;
 /// This struct aggregates all analysis results and provides a unified
 /// interface for downstream consumers (linter, transformer).
 #[derive(Debug, Default)]
-pub struct AnalysisSummary {
+pub struct Croquis {
     /// Scope chain for template expressions
     pub scopes: ScopeChain,
 
@@ -140,7 +140,7 @@ impl TemplateExpressionKind {
     }
 }
 
-impl AnalysisSummary {
+impl Croquis {
     /// Convert analysis summary to VIR (Vize Intermediate Representation) text format.
     ///
     /// This generates a TOML-like human-readable representation of the analysis.
@@ -649,7 +649,7 @@ pub enum InvalidExportKind {
     Default = 5,
 }
 
-impl AnalysisSummary {
+impl Croquis {
     /// Create a new empty analysis summary
     #[inline]
     pub fn new() -> Self {
@@ -829,7 +829,7 @@ mod tests {
 
     #[test]
     fn test_analysis_summary() {
-        let mut summary = AnalysisSummary::new();
+        let mut summary = Croquis::new();
         summary.bindings.add("foo", BindingType::SetupRef);
 
         assert!(summary.is_defined("foo"));

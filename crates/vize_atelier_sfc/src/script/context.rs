@@ -12,7 +12,7 @@ use oxc_span::{GetSpan, SourceType};
 
 use crate::types::{BindingMetadata, BindingType};
 use vize_carton::CompactString;
-use vize_croquis::analysis::AnalysisSummary;
+use vize_croquis::analysis::Croquis;
 use vize_croquis::macros::{is_builtin_macro, EmitDefinition, ModelDefinition, PropDefinition};
 
 use super::define_props_destructure::process_props_destructure;
@@ -96,11 +96,11 @@ impl ScriptCompileContext {
         self.source = source;
     }
 
-    /// Convert to an AnalysisSummary for use in transforms and linting.
+    /// Convert to an Croquis for use in transforms and linting.
     ///
     /// This bridges the atelier script context to the shared croquis analysis format.
-    pub fn to_analysis_summary(&self) -> AnalysisSummary {
-        let mut summary = AnalysisSummary::new();
+    pub fn to_analysis_summary(&self) -> Croquis {
+        let mut summary = Croquis::new();
 
         // Convert bindings
         summary.bindings.is_script_setup = true;

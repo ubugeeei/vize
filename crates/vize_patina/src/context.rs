@@ -6,7 +6,7 @@ use crate::diagnostic::{LintDiagnostic, Severity};
 use std::borrow::Cow;
 use vize_carton::i18n::{t, t_fmt, Locale};
 use vize_carton::{Allocator, CompactString, FxHashMap, FxHashSet};
-use vize_croquis::AnalysisSummary;
+use vize_croquis::Croquis;
 use vize_relief::ast::SourceLocation;
 use vize_relief::BindingType;
 
@@ -102,7 +102,7 @@ pub struct LintContext<'a> {
     /// Optional set of enabled rule names (if None, all rules are enabled)
     enabled_rules: Option<FxHashSet<String>>,
     /// Optional semantic analysis from croquis
-    analysis: Option<&'a AnalysisSummary>,
+    analysis: Option<&'a Croquis>,
     /// SSR mode for linting
     ssr_mode: SsrMode,
 }
@@ -153,7 +153,7 @@ impl<'a> LintContext<'a> {
         allocator: &'a Allocator,
         source: &'a str,
         filename: &'a str,
-        analysis: &'a AnalysisSummary,
+        analysis: &'a Croquis,
     ) -> Self {
         Self {
             allocator,
@@ -177,13 +177,13 @@ impl<'a> LintContext<'a> {
 
     /// Set semantic analysis
     #[inline]
-    pub fn set_analysis(&mut self, analysis: &'a AnalysisSummary) {
+    pub fn set_analysis(&mut self, analysis: &'a Croquis) {
         self.analysis = Some(analysis);
     }
 
     /// Get semantic analysis (if available)
     #[inline]
-    pub fn analysis(&self) -> Option<&AnalysisSummary> {
+    pub fn analysis(&self) -> Option<&Croquis> {
         self.analysis
     }
 
@@ -538,7 +538,7 @@ impl<'a> LintContext<'a> {
     // =========================================================================
     // Semantic Analysis Helpers
     // =========================================================================
-    // These methods leverage croquis AnalysisSummary when available.
+    // These methods leverage croquis Croquis when available.
     // They provide fallback behavior when analysis is not available.
 
     /// Check if a variable is defined (in any scope or script binding)

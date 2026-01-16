@@ -286,7 +286,7 @@ pub fn type_check_sfc(source: &str, options: &SfcTypeCheckOptions) -> SfcTypeChe
 
 /// Check props typing.
 fn check_props_typing(
-    summary: &vize_croquis::AnalysisSummary,
+    summary: &vize_croquis::Croquis,
     script_offset: u32,
     result: &mut SfcTypeCheckResult,
     strict: bool,
@@ -365,7 +365,7 @@ fn check_props_typing(
 
 /// Check emits typing.
 fn check_emits_typing(
-    summary: &vize_croquis::AnalysisSummary,
+    summary: &vize_croquis::Croquis,
     script_offset: u32,
     result: &mut SfcTypeCheckResult,
     strict: bool,
@@ -442,7 +442,7 @@ fn check_emits_typing(
 
 /// Check template bindings for undefined references.
 fn check_template_bindings(
-    summary: &vize_croquis::AnalysisSummary,
+    summary: &vize_croquis::Croquis,
     template_offset: u32,
     result: &mut SfcTypeCheckResult,
     _strict: bool,
@@ -474,7 +474,7 @@ fn check_template_bindings(
 /// to support `<script setup generic="T">` and creates nested scopes
 /// using real JavaScript scoping (closures, for-of, etc.).
 fn generate_virtual_ts_with_scopes(
-    summary: &vize_croquis::AnalysisSummary,
+    summary: &vize_croquis::Croquis,
     script_content: Option<&str>,
     script_offset: u32,
     _template_ast: Option<&vize_relief::ast::RootNode<'_>>,
@@ -755,10 +755,7 @@ fn generate_virtual_ts_with_scopes(
 
 /// Check if a scope is inside a Vue directive scope (v-for, v-slot, event handler).
 /// Returns true if the scope's span is contained within any Vue directive scope.
-fn is_inside_vue_directive(
-    scope: &vize_croquis::Scope,
-    summary: &vize_croquis::AnalysisSummary,
-) -> bool {
+fn is_inside_vue_directive(scope: &vize_croquis::Scope, summary: &vize_croquis::Croquis) -> bool {
     use vize_croquis::ScopeKind;
 
     let vue_directive_kinds = [
@@ -784,7 +781,7 @@ fn is_inside_vue_directive(
 /// Uses croquis scope chain to define identifiers in their correct scopes.
 fn generate_template_scopes(
     ts: &mut String,
-    summary: &vize_croquis::AnalysisSummary,
+    summary: &vize_croquis::Croquis,
     template_offset: u32,
     base_indent: usize,
 ) {

@@ -51,7 +51,7 @@ mod sfc_element_order;
 mod no_unsafe_url;
 mod no_v_html;
 
-// Semantic analysis rules (require AnalysisSummary)
+// Semantic analysis rules (require Croquis)
 mod no_mutating_props;
 mod no_undefined_refs;
 mod no_unused_components;

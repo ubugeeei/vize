@@ -221,7 +221,7 @@ impl RuleRegistry {
         // ============================================
         // Semantic Analysis Rules (require croquis)
         // ============================================
-        // These rules use croquis AnalysisSummary for accurate detection.
+        // These rules use croquis Croquis for accurate detection.
 
         registry.register(Box::new(crate::rules::vue::NoUnusedComponents::default()));
         registry.register(Box::new(crate::rules::vue::NoUnusedProperties::default()));

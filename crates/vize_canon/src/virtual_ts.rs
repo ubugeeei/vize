@@ -4,7 +4,7 @@
 //! runtime behavior, enabling type checking of template expressions
 //! and script setup bindings.
 
-use vize_croquis::{AnalysisSummary, BindingType};
+use vize_croquis::{BindingType, Croquis};
 
 /// Vue runtime type declarations for type checking.
 /// Minimal declarations to avoid conflicts with user imports.
@@ -32,7 +32,7 @@ declare const $event: Event;"#;
 /// - Template type verification function
 /// - Source map markers for position mapping
 pub fn generate_virtual_ts(
-    summary: &AnalysisSummary,
+    summary: &Croquis,
     script_content: Option<&str>,
     template_ast: Option<&vize_relief::ast::RootNode<'_>>,
     template_offset: u32,

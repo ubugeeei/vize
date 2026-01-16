@@ -1,6 +1,6 @@
 //! High-performance Vue SFC analyzer.
 //!
-//! This module provides the `Analyzer` that produces `AnalysisSummary`.
+//! This module provides the `Analyzer` that produces `Croquis`.
 //!
 //! ## Performance Considerations
 //!
@@ -25,7 +25,7 @@
 //! let summary = analyzer.finish();
 //! ```
 
-use crate::analysis::{AnalysisSummary, UndefinedRef};
+use crate::analysis::{Croquis, UndefinedRef};
 use crate::scope::{CallbackScopeData, EventHandlerScopeData, VForScopeData, VSlotScopeData};
 use crate::ScopeBinding;
 use oxc_allocator::Allocator;
@@ -103,7 +103,7 @@ impl AnalyzerOptions {
 /// Uses lazy evaluation and efficient data structures to minimize overhead.
 pub struct Analyzer {
     options: AnalyzerOptions,
-    summary: AnalysisSummary,
+    summary: Croquis,
     /// Track if script was analyzed (for undefined detection)
     script_analyzed: bool,
 }
@@ -120,7 +120,7 @@ impl Analyzer {
     pub fn with_options(options: AnalyzerOptions) -> Self {
         Self {
             options,
-            summary: AnalysisSummary::new(),
+            summary: Croquis::new(),
             script_analyzed: false,
         }
     }
@@ -220,13 +220,13 @@ impl Analyzer {
     ///
     /// Consumes the analyzer.
     #[inline]
-    pub fn finish(self) -> AnalysisSummary {
+    pub fn finish(self) -> Croquis {
         self.summary
     }
 
     /// Get a reference to the current summary (without consuming).
     #[inline]
-    pub fn summary(&self) -> &AnalysisSummary {
+    pub fn summary(&self) -> &Croquis {
         &self.summary
     }
 

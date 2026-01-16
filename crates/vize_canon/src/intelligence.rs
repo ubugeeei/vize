@@ -10,7 +10,7 @@
 //! - Reusable across IDE and non-IDE contexts
 
 use vize_carton::CompactString;
-use vize_croquis::AnalysisSummary;
+use vize_croquis::Croquis;
 use vize_relief::BindingType;
 
 use crate::source_map::{MappingKind, SourceMap, Span};
@@ -137,7 +137,7 @@ pub struct TypeIntelligence<'a> {
     /// Source code
     source: &'a str,
     /// Analysis summary from croquis
-    summary: &'a AnalysisSummary,
+    summary: &'a Croquis,
     /// Source map for position mapping
     source_map: Option<&'a SourceMap>,
     /// Virtual TypeScript content
@@ -147,7 +147,7 @@ pub struct TypeIntelligence<'a> {
 impl<'a> TypeIntelligence<'a> {
     /// Create a new TypeIntelligence provider.
     #[inline]
-    pub fn new(source: &'a str, summary: &'a AnalysisSummary) -> Self {
+    pub fn new(source: &'a str, summary: &'a Croquis) -> Self {
         Self {
             source,
             summary,
