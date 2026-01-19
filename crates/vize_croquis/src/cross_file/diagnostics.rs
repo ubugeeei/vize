@@ -333,8 +333,10 @@ pub struct CrossFileDiagnostic {
     pub severity: DiagnosticSeverity,
     /// Primary file where the issue originates.
     pub primary_file: FileId,
-    /// Offset in the primary file.
+    /// Start offset in the primary file.
     pub primary_offset: u32,
+    /// End offset in the primary file (for highlighting range).
+    pub primary_end_offset: u32,
     /// Related files involved in this diagnostic.
     pub related_files: Vec<(FileId, u32, CompactString)>,
     /// Human-readable message.
@@ -357,10 +359,38 @@ impl CrossFileDiagnostic {
             severity,
             primary_file,
             primary_offset,
+            primary_end_offset: primary_offset, // Default to same as start
             related_files: Vec::new(),
             message: message.into(),
             suggestion: None,
         }
+    }
+
+    /// Create a new diagnostic with span (start and end offset).
+    pub fn with_span(
+        kind: CrossFileDiagnosticKind,
+        severity: DiagnosticSeverity,
+        primary_file: FileId,
+        primary_offset: u32,
+        primary_end_offset: u32,
+        message: impl Into<CompactString>,
+    ) -> Self {
+        Self {
+            kind,
+            severity,
+            primary_file,
+            primary_offset,
+            primary_end_offset,
+            related_files: Vec::new(),
+            message: message.into(),
+            suggestion: None,
+        }
+    }
+
+    /// Set the end offset for the diagnostic span.
+    pub fn with_end_offset(mut self, end_offset: u32) -> Self {
+        self.primary_end_offset = end_offset;
+        self
     }
 
     /// Add a related file location.

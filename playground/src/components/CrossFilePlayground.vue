@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import MonacoEditor from './MonacoEditor.vue';
 import type { Diagnostic } from './MonacoEditor.vue';
-import type { WasmModule, CroquisResult } from '../wasm/index';
+import type { WasmModule, CroquisResult, CrossFileResult, CrossFileInput, CrossFileOptions as WasmCrossFileOptions } from '../wasm/index';
 
 const props = defineProps<{
   compiler: WasmModule | null;
@@ -1234,10 +1234,9 @@ async function analyzeAll() {
 
   isAnalyzing.value = true;
   const startTime = performance.now();
-  const issues: CrossFileIssue[] = [];
   issueIdCounter = 0;
 
-  // First pass: analyze each file
+  // First pass: analyze each file with single-file analyzer
   const results: Record<string, CroquisResult | null> = {};
   for (const [filename, source] of Object.entries(files.value)) {
     try {
@@ -1248,7 +1247,86 @@ async function analyzeAll() {
   }
   croquisResults.value = results;
 
-  // Second pass: cross-file analysis
+  // Prepare files for cross-file analysis
+  const crossFileInputs: CrossFileInput[] = Object.entries(files.value).map(([path, source]) => ({
+    path,
+    source,
+  }));
+
+  // Build options for cross-file analysis
+  const wasmOptions: WasmCrossFileOptions = {
+    provideInject: options.value.provideInject,
+    componentEmits: options.value.componentEmits,
+    fallthroughAttrs: options.value.fallthroughAttrs,
+    reactivityTracking: options.value.reactivityTracking,
+    uniqueIds: options.value.uniqueIds,
+    serverClientBoundary: options.value.serverClientBoundary,
+  };
+
+  let issues: CrossFileIssue[] = [];
+
+  // Try WASM cross-file analysis first
+  try {
+    if (props.compiler.analyzeCrossFile) {
+      const crossFileResult: CrossFileResult = props.compiler.analyzeCrossFile(crossFileInputs, wasmOptions);
+
+      // Convert WASM diagnostics to CrossFileIssue format
+      console.log('[DEBUG] WASM diagnostics:', crossFileResult.diagnostics);
+      for (const diag of crossFileResult.diagnostics) {
+        const source = files.value[diag.file] || '';
+        const loc = offsetToLineColumn(source, diag.offset);
+        const endLoc = offsetToLineColumn(source, diag.endOffset);
+        console.log(`[DEBUG] ${diag.file}: offset=${diag.offset}-${diag.endOffset}, line=${loc.line}, col=${loc.column}, msg=${diag.message.slice(0,50)}`);
+
+        issues.push({
+          id: `issue-${++issueIdCounter}`,
+          type: diag.type,
+          code: diag.code,
+          severity: diag.severity === 'hint' ? 'info' : diag.severity,
+          message: diag.message,
+          file: diag.file,
+          line: loc.line,
+          column: loc.column,
+          endLine: endLoc.line,
+          endColumn: endLoc.column,
+          relatedLocations: diag.relatedLocations?.map(rel => {
+            const relSource = files.value[rel.file] || '';
+            const relLoc = offsetToLineColumn(relSource, rel.offset);
+            return {
+              file: rel.file,
+              line: relLoc.line,
+              column: relLoc.column,
+              message: rel.message,
+            };
+          }),
+          suggestion: diag.suggestion,
+        });
+      }
+
+      analysisTime.value = crossFileResult.stats.analysisTimeMs;
+    } else {
+      // Fallback to TypeScript-based analysis if WASM not available
+      issues = fallbackAnalysis();
+      analysisTime.value = performance.now() - startTime;
+    }
+  } catch (e) {
+    console.warn('WASM cross-file analysis failed, using fallback:', e);
+    issues = fallbackAnalysis();
+    analysisTime.value = performance.now() - startTime;
+  }
+
+  // Apply @vize forget suppression directives
+  const suppressionMap = buildSuppressionMap();
+  const filteredIssues = filterSuppressedIssues(issues, suppressionMap);
+
+  crossFileIssues.value = filteredIssues;
+  isAnalyzing.value = false;
+}
+
+// Fallback TypeScript-based analysis (for when WASM is not available)
+function fallbackAnalysis(): CrossFileIssue[] {
+  const issues: CrossFileIssue[] = [];
+
   if (options.value.provideInject) {
     issues.push(...analyzeProvideInject());
   }
@@ -1268,13 +1346,7 @@ async function analyzeAll() {
     issues.push(...analyzeSSRBoundary());
   }
 
-  // Apply @vize forget suppression directives
-  const suppressionMap = buildSuppressionMap();
-  const filteredIssues = filterSuppressedIssues(issues, suppressionMap);
-
-  crossFileIssues.value = filteredIssues;
-  analysisTime.value = performance.now() - startTime;
-  isAnalyzing.value = false;
+  return issues;
 }
 
 function analyzeProvideInject(): CrossFileIssue[] {
@@ -1738,34 +1810,10 @@ function analyzeReactivity(): CrossFileIssue[] {
     const result = croquisResults.value[filename];
     if (!result?.croquis) continue;
 
-    // 1. Check injects with destructured props (from Rust analysis)
-    for (const inj of result.croquis.injects || []) {
-      const keyValue = inj.key.type === 'symbol' ? `Symbol:${inj.key.value}` : inj.key.value;
+    // Note: Direct destructure of inject() is handled by analyzeProvideInject()
+    // Here we only check for INDIRECT patterns like: const x = inject(...); const { a } = x;
 
-      // Skip if provide value contains refs (destructuring is safe)
-      if (provideValueIsReactive.get(keyValue)) continue;
-
-      // Check if this inject uses destructuring pattern (objectDestructure or arrayDestructure)
-      if ((inj.pattern === 'objectDestructure' || inj.pattern === 'arrayDestructure') && inj.destructuredProps && inj.destructuredProps.length > 0) {
-        const loc = findLineAndColumnAtOffset(source, inj.start, inj.end - inj.start);
-        issues.push(createIssue(
-          'reactivity',
-          'cross-file/reactivity-loss',
-          'error',
-          `Destructuring inject('${inj.key.value}') loses reactivity for: ${inj.destructuredProps.join(', ')}`,
-          filename,
-          loc.line,
-          loc.column,
-          {
-            endLine: loc.endLine,
-            endColumn: loc.endColumn,
-            suggestion: 'Store inject result in a variable first, then use toRefs() or computed()',
-          }
-        ));
-      }
-    }
-
-    // 2. Check for destructuring of inject result variable (indirect pattern)
+    // Check for destructuring of inject result variable (indirect pattern)
     // Use bindings info from Rust analysis
     const injectBindings = new Map<string, string>(); // localName -> injectKey
     for (const inj of result.croquis.injects || []) {
@@ -1775,40 +1823,35 @@ function analyzeReactivity(): CrossFileIssue[] {
       }
     }
 
-    // Look for bindings that are destructured from inject variables
-    for (const binding of result.croquis.bindings || []) {
-      if (binding.source === 'local' && binding.kind === 'SetupConst') {
-        // Check if this binding comes from destructuring an inject variable
-        // by looking at the source code around this binding
-        const bindingStart = binding.start || 0;
-        const lineStart = source.lastIndexOf('\n', bindingStart) + 1;
-        const lineEnd = source.indexOf('\n', bindingStart);
-        const line = source.substring(lineStart, lineEnd === -1 ? undefined : lineEnd);
+    // Look for destructure patterns in source: const { x, y } = injectVar
+    // We search the source directly because binding positions aren't reliable
+    for (const [injectVar, injectKey] of injectBindings) {
+      // Skip if provide value contains refs
+      if (provideValueIsReactive.get(injectKey)) continue;
 
-        // Check for pattern like: const { x } = injectVar
-        for (const [injectVar, injectKey] of injectBindings) {
-          // Skip if provide value contains refs
-          if (provideValueIsReactive.get(injectKey)) continue;
+      // Find all lines that match: const { ... } = injectVar
+      const destructureRegex = new RegExp(`const\\s*\\{\\s*([^}]+)\\s*\\}\\s*=\\s*${injectVar}\\b`, 'g');
+      let match;
+      while ((match = destructureRegex.exec(source)) !== null) {
+        const propsStr = match[1];
+        const props = propsStr.split(',').map(p => p.trim().split(':')[0].trim()).filter(Boolean);
+        const matchStart = match.index;
+        const loc = findLineAndColumnAtOffset(source, matchStart, match[0].length);
 
-          const destructurePattern = new RegExp(`const\\s*\\{[^}]*\\b${binding.name}\\b[^}]*\\}\\s*=\\s*${injectVar}\\b`);
-          if (destructurePattern.test(line)) {
-            const loc = findLineAndColumnAtOffset(source, bindingStart, binding.name.length);
-            issues.push(createIssue(
-              'reactivity',
-              'cross-file/reactivity-loss',
-              'error',
-              `Destructuring '${injectVar}' (from inject('${injectKey}')) loses reactivity for: ${binding.name}`,
-              filename,
-              loc.line,
-              loc.column,
-              {
-                endLine: loc.endLine,
-                endColumn: loc.endColumn,
-                suggestion: `Use toRefs(${injectVar}) or computed(() => ${injectVar}.${binding.name})`,
-              }
-            ));
+        issues.push(createIssue(
+          'reactivity',
+          'cross-file/reactivity-loss',
+          'error',
+          `Destructuring '${injectVar}' (from inject('${injectKey}')) loses reactivity for: ${props.join(', ')}`,
+          filename,
+          loc.line,
+          loc.column,
+          {
+            endLine: loc.endLine,
+            endColumn: loc.endColumn,
+            suggestion: `Use toRefs(${injectVar}) or computed(() => ${injectVar}.propName)`,
           }
-        }
+        ));
       }
     }
 

@@ -31,3 +31,6 @@ pub use fallthrough::{analyze_fallthrough, FallthroughInfo};
 pub use props_validation::{analyze_props_validation, PropsValidationIssue};
 pub use provide_inject::{analyze_provide_inject, ProvideInjectMatch};
 pub use reactivity::{analyze_reactivity, ReactivityIssue, ReactivityIssueKind};
+
+// Cross-file reactivity tracking
+pub use cross_file_reactivity::{analyze_cross_file_reactivity, CrossFileReactivityIssue};

@@ -437,6 +437,7 @@ pub fn analyze_provide_inject(
                                 props.iter().map(|p| p.as_str()).collect::<Vec<_>>().join(", ")
                             ),
                         )
+                        .with_end_offset(inject.end)
                         .with_suggestion(format!(
                             "Store inject result first: `const {} = inject('{}')`, then access properties",
                             inject.local_name,
@@ -462,6 +463,7 @@ pub fn analyze_provide_inject(
                                 items.iter().map(|p| p.as_str()).collect::<Vec<_>>().join(", ")
                             ),
                         )
+                        .with_end_offset(inject.end)
                         .with_suggestion(format!(
                             "Store inject result first: `const {} = inject('{}')`, then access indices",
                             inject.local_name,
@@ -512,6 +514,7 @@ pub fn analyze_provide_inject(
                                     key_str, key_str, key_str
                                 ),
                             )
+                            .with_end_offset(inject.end)
                             .with_suggestion(format!(
                                 "```typescript\n// In parent component:\nprovide('{}', yourValue)\n\n// Or with default:\nconst {} = inject('{}', defaultValue)\n```",
                                 key_str, inject.local_name, key_str
@@ -519,18 +522,21 @@ pub fn analyze_provide_inject(
                         );
                     } else {
                         // Has default, just info
-                        diagnostics.push(CrossFileDiagnostic::new(
-                            CrossFileDiagnosticKind::UnmatchedInject {
-                                key: key_str.clone(),
-                            },
-                            DiagnosticSeverity::Info,
-                            consumer_id,
-                            inject.start,
-                            format!(
-                                "**Info**: `inject('{}')` uses default value — no ancestor provides this key",
-                                key_str
-                            ),
-                        ));
+                        diagnostics.push(
+                            CrossFileDiagnostic::new(
+                                CrossFileDiagnosticKind::UnmatchedInject {
+                                    key: key_str.clone(),
+                                },
+                                DiagnosticSeverity::Info,
+                                consumer_id,
+                                inject.start,
+                                format!(
+                                    "**Info**: `inject('{}')` uses default value — no ancestor provides this key",
+                                    key_str
+                                ),
+                            )
+                            .with_end_offset(inject.end),
+                        );
                     }
                 }
             }
@@ -564,6 +570,7 @@ pub fn analyze_provide_inject(
                                 key_str
                             ),
                         )
+                        .with_end_offset(provide.end)
                         .with_suggestion(
                             "Remove if not needed, or add inject() in a child component",
                         ),

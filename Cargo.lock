@@ -3157,6 +3157,7 @@ dependencies = [
  "vize_patina",
  "vize_relief",
  "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

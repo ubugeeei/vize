@@ -438,6 +438,61 @@ export interface TypeCheckCapabilities {
   notes: string[];
 }
 
+// Cross-file analysis types
+export interface CrossFileOptions {
+  all?: boolean;
+  fallthroughAttrs?: boolean;
+  componentEmits?: boolean;
+  eventBubbling?: boolean;
+  provideInject?: boolean;
+  uniqueIds?: boolean;
+  serverClientBoundary?: boolean;
+  errorSuspenseBoundary?: boolean;
+  reactivityTracking?: boolean;
+  circularDependencies?: boolean;
+  maxImportDepth?: number;
+  componentResolution?: boolean;
+  propsValidation?: boolean;
+}
+
+export interface CrossFileDiagnostic {
+  type: string;
+  code: string;
+  severity: 'error' | 'warning' | 'info' | 'hint';
+  message: string;
+  file: string;
+  offset: number;
+  endOffset: number;
+  relatedLocations?: Array<{
+    file: string;
+    offset: number;
+    message: string;
+  }>;
+  suggestion?: string;
+}
+
+export interface CrossFileStats {
+  filesAnalyzed: number;
+  vueComponents: number;
+  dependencyEdges: number;
+  errorCount: number;
+  warningCount: number;
+  infoCount: number;
+  analysisTimeMs: number;
+}
+
+export interface CrossFileResult {
+  diagnostics: CrossFileDiagnostic[];
+  circularDependencies: string[][];
+  stats: CrossFileStats;
+  filePaths: string[];
+}
+
+export interface CrossFileInput {
+  path: string;
+  source: string;
+}
+
 export interface WasmModule {
   compile: (template: string, options: CompilerOptions) => CompileResult;
   compileVapor: (template: string, options: CompilerOptions) => CompileResult;
@@ -447,6 +502,7 @@ export interface WasmModule {
   compileSfc: (source: string, options: CompilerOptions) => SfcCompileResult;
   // Analysis functions
   analyzeSfc: (source: string, options: CroquisOptions) => CroquisResult;
+  analyzeCrossFile: (files: CrossFileInput[], options: CrossFileOptions) => CrossFileResult;
   // Musea functions
   parseArt: (source: string, options: ArtParseOptions) => ArtDescriptor;
   artToCsf: (source: string, options: ArtParseOptions) => CsfOutput;
@@ -489,8 +545,13 @@ export async function loadWasm(): Promise<WasmModule> {
   loadPromise = (async () => {
     try {
       // Try to load the actual WASM module
+      // For --target web, we need to explicitly call init() before using exports
       const wasm = await import('./vize_vitrine.js');
-      await wasm.default();
+
+      // Initialize WASM - required for --target web
+      if (wasm.default) {
+        await wasm.default();
+      }
 
       // Get mock module to fill in any missing functions
       const mock = createMockModule();
@@ -645,6 +706,8 @@ export async function loadWasm(): Promise<WasmModule> {
         // Note: Scope spans from WASM may be 0 (not tracked during analyze_script yet)
         // but macros, props, emits, bindings are properly extracted
         analyzeSfc: transformAnalyzeSfc,
+        // Cross-file analysis - use Rust CrossFileAnalyzer
+        analyzeCrossFile: wasm.analyzeCrossFile || mock.analyzeCrossFile,
         // Musea functions
         parseArt: wasm.parseArt || mock.parseArt,
         artToCsf: wasm.artToCsf || mock.artToCsf,
@@ -4573,6 +4636,22 @@ function createMockModule(): WasmModule {
     };
   };
 
+  // Mock cross-file analyzer (returns empty results)
+  const mockAnalyzeCrossFile = (_files: CrossFileInput[], _options: CrossFileOptions): CrossFileResult => ({
+    diagnostics: [],
+    circularDependencies: [],
+    stats: {
+      filesAnalyzed: 0,
+      vueComponents: 0,
+      dependencyEdges: 0,
+      errorCount: 0,
+      warningCount: 0,
+      infoCount: 0,
+      analysisTimeMs: 0,
+    },
+    filePaths: [],
+  });
+
   return {
     compile: mockCompile,
     compileVapor: (template: string, options: CompilerOptions) =>
@@ -4582,6 +4661,7 @@ function createMockModule(): WasmModule {
     parseSfc: mockParseSfc,
     compileSfc: mockCompileSfc,
     analyzeSfc: mockAnalyzeSfc,
+    analyzeCrossFile: mockAnalyzeCrossFile,
     parseArt: mockParseArt,
     artToCsf: mockArtToCsf,
     lintTemplate: mockLintTemplate,

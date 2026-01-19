@@ -481,8 +481,34 @@ fn process_variable_declarator(
                         return;
                     }
 
-                    // Not a known macro/reactivity, but still walk for nested scopes
-                    // Note: detect_provide_inject_call is called inside walk_call_arguments
+                    // Check for inject() call - track with local_name for indirect destructure detection
+                    if let Expression::Identifier(callee_id) = &call.callee {
+                        if callee_id.name.as_str() == "inject" && !call.arguments.is_empty() {
+                            if let Some(key) = extract_provide_key(&call.arguments[0], source) {
+                                let default_value = call.arguments.get(1).map(|arg| {
+                                    CompactString::new(extract_argument_source(arg, source))
+                                });
+                                result.provide_inject.add_inject(
+                                    key,
+                                    CompactString::new(name), // local_name is the binding name
+                                    default_value,
+                                    None, // expected_type
+                                    InjectPattern::Simple,
+                                    None, // from_composable
+                                    call.span.start,
+                                    call.span.end,
+                                );
+                                // Walk into the call's callback arguments to track nested scopes
+                                walk_call_arguments(result, call, source);
+                                // Add binding and return
+                                let binding_type = get_binding_type_from_kind(kind);
+                                result.bindings.add(name, binding_type);
+                                return;
+                            }
+                        }
+                    }
+
+                    // Not a known macro/reactivity/inject, but still walk for nested scopes
                     walk_call_arguments(result, call, source);
                     true // Call was extracted and processed
                 } else {
@@ -986,27 +1012,9 @@ fn detect_provide_inject_call(
             }
         }
         "inject" => {
-            // inject(key) or inject(key, defaultValue)
-            if !call.arguments.is_empty() {
-                let key = extract_provide_key(&call.arguments[0], source);
-                let default_value = call
-                    .arguments
-                    .get(1)
-                    .map(|arg| CompactString::new(extract_argument_source(arg, source)));
-
-                if let Some(key) = key {
-                    result.provide_inject.add_inject(
-                        key,
-                        CompactString::new(""), // local_name (will be set by binding)
-                        default_value,
-                        None, // expected_type
-                        InjectPattern::Simple,
-                        None, // from_composable
-                        call.span.start,
-                        call.span.end,
-                    );
-                }
-            }
+            // inject() is now handled in process_variable_declarator for BindingIdentifier
+            // and BindingPatternKind::ObjectPattern cases, which have access to the local_name.
+            // We don't add inject here to avoid duplicates.
         }
         _ => {}
     }

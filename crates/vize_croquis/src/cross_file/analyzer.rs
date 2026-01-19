@@ -190,6 +190,9 @@ pub struct CrossFileResult {
     /// Reactivity issues.
     pub reactivity_issues: Vec<analyzers::ReactivityIssue>,
 
+    /// Cross-file reactivity issues.
+    pub cross_file_reactivity_issues: Vec<analyzers::CrossFileReactivityIssue>,
+
     /// Circular dependencies (as paths of file IDs).
     pub circular_deps: Vec<Vec<FileId>>,
 
@@ -340,8 +343,120 @@ impl CrossFileAnalyzer {
         }
     }
 
+    /// Add a file with pre-computed analysis.
+    ///
+    /// This is useful when the caller has already performed analysis (e.g., WASM bindings
+    /// that parse both script and template content). The analysis should include
+    /// `used_components` populated from template analysis for component usage edges.
+    pub fn add_file_with_analysis(
+        &mut self,
+        path: impl AsRef<Path>,
+        source: &str,
+        analysis: Croquis,
+    ) -> FileId {
+        let path = path.as_ref();
+
+        // Register in module registry (takes ownership of analysis)
+        let (file_id, is_new) = self.registry.register(path, source, analysis);
+
+        if is_new {
+            // Add to dependency graph
+            let mut node = ModuleNode::new(file_id, path.to_string_lossy().as_ref());
+
+            // Extract component name
+            if let Some(entry) = self.registry.get(file_id) {
+                node.component_name = entry.component_name.clone();
+            }
+
+            // Mark entry points
+            let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            if filename == "App.vue"
+                || filename == "main.ts"
+                || filename == "main.js"
+                || filename == "index.vue"
+            {
+                node.is_entry = true;
+            }
+
+            self.graph.add_node(node);
+        }
+
+        // Update dependencies based on imports (get from registry)
+        if let Some(entry) = self.registry.get(file_id) {
+            // Collect data we need before calling update_dependencies
+            let imports_data: Vec<_> = entry
+                .analysis
+                .scopes
+                .iter()
+                .filter(|s| s.kind == crate::scope::ScopeKind::ExternalModule)
+                .filter_map(|s| {
+                    if let crate::scope::ScopeData::ExternalModule(data) = s.data() {
+                        Some((data.source.clone(), data.is_type_only))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            let used_components: Vec<_> = entry.analysis.used_components.iter().cloned().collect();
+
+            // Now update dependencies
+            for (source, is_type_only) in imports_data {
+                if let Some(target_id) = self.resolve_import(&source) {
+                    let edge_type = if is_type_only {
+                        DependencyEdge::TypeImport
+                    } else {
+                        DependencyEdge::Import
+                    };
+                    self.graph.add_edge(file_id, target_id, edge_type);
+                }
+            }
+
+            for component in used_components {
+                if let Some(target_id) = self.graph.find_by_component(component.as_str()) {
+                    self.graph
+                        .add_edge(file_id, target_id, DependencyEdge::ComponentUsage);
+                }
+            }
+        }
+
+        file_id
+    }
+
+    /// Rebuild component usage edges.
+    ///
+    /// This should be called after all files have been added to ensure
+    /// that ComponentUsage edges are correctly established. When files
+    /// are added one by one, component references might not resolve
+    /// if the target component hasn't been added yet.
+    pub fn rebuild_component_edges(&mut self) {
+        // Collect all used_components from all files
+        let component_data: Vec<_> = self
+            .registry
+            .iter()
+            .map(|entry| {
+                let components: Vec<_> = entry.analysis.used_components.iter().cloned().collect();
+                (entry.id, components)
+            })
+            .collect();
+
+        // Add ComponentUsage edges for any that were missed
+        for (file_id, used_components) in component_data {
+            for component in used_components {
+                if let Some(target_id) = self.graph.find_by_component(component.as_str()) {
+                    // add_edge checks for duplicates internally
+                    self.graph
+                        .add_edge(file_id, target_id, DependencyEdge::ComponentUsage);
+                }
+            }
+        }
+    }
+
     /// Run cross-file analysis.
     pub fn analyze(&mut self) -> CrossFileResult {
+        // Note: std::time::Instant is not available in WASM, so we conditionally
+        // compile time measurement only for non-WASM targets
+        #[cfg(not(target_arch = "wasm32"))]
         let start_time = std::time::Instant::now();
 
         let mut result = CrossFileResult::default();
@@ -390,9 +505,16 @@ impl CrossFileAnalyzer {
         }
 
         if self.options.reactivity_tracking {
+            // Single-file reactivity analysis
             let (issues, diags) = analyzers::analyze_reactivity(&self.registry, &self.graph);
             result.reactivity_issues = issues;
             result.diagnostics.extend(diags);
+
+            // Cross-file reactivity analysis
+            let (cross_issues, cross_diags) =
+                analyzers::analyze_cross_file_reactivity(&self.registry, &self.graph);
+            result.cross_file_reactivity_issues = cross_issues;
+            result.diagnostics.extend(cross_diags);
         }
 
         // Static validation analyzers
@@ -410,16 +532,22 @@ impl CrossFileAnalyzer {
         }
 
         // Calculate statistics
+        let error_count = result.diagnostics.iter().filter(|d| d.is_error()).count();
+        let warning_count = result.diagnostics.iter().filter(|d| d.is_warning()).count();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let analysis_time_ms = start_time.elapsed().as_secs_f64() * 1000.0;
+        #[cfg(target_arch = "wasm32")]
+        let analysis_time_ms = 0.0; // Time measurement not available in WASM
+
         result.stats = CrossFileStats {
             files_analyzed: self.registry.len(),
             vue_components: self.registry.vue_components().count(),
             dependency_edges: self.count_edges(),
-            error_count: result.diagnostics.iter().filter(|d| d.is_error()).count(),
-            warning_count: result.diagnostics.iter().filter(|d| d.is_warning()).count(),
-            info_count: result.diagnostics.len()
-                - result.stats.error_count
-                - result.stats.warning_count,
-            analysis_time_ms: start_time.elapsed().as_secs_f64() * 1000.0,
+            error_count,
+            warning_count,
+            info_count: result.diagnostics.len() - error_count - warning_count,
+            analysis_time_ms,
         };
 
         result
@@ -464,9 +592,10 @@ impl CrossFileAnalyzer {
             .is_some_and(|e| e.eq_ignore_ascii_case("vue"));
 
         if is_vue {
-            // Parse SFC and analyze
-            // For now, just analyze the script part
-            // A full implementation would use vize_armature to parse the SFC
+            // For Vue SFC, we need the script content extracted.
+            // The caller should pass just the script content, or use
+            // the WASM bindings which properly parse SFC.
+            // For cross-file analysis, we treat Vue SFC source as script setup.
             analyzer.analyze_script_setup(source);
         } else {
             analyzer.analyze_script_plain(source);
@@ -1000,5 +1129,317 @@ const { foo } = inject('data') as { foo: string }"#,
             }
             _ => panic!("Expected ObjectDestructure pattern"),
         }
+    }
+
+    #[test]
+    fn test_inject_destructure_in_vue_sfc() {
+        use crate::provide::InjectPattern;
+
+        let mut analyzer =
+            CrossFileAnalyzer::new(CrossFileOptions::default().with_reactivity_tracking(true));
+
+        // Add Vue SFC script content (not full SFC - the caller should extract this)
+        // The cross-file analyzer expects script content only for .vue files
+        analyzer.add_file(
+            Path::new("Child.vue"),
+            r#"import { inject } from 'vue'
+
+const { name } = inject('user') as { name: string; id: number }"#,
+        );
+
+        let _result = analyzer.analyze();
+
+        let analysis = analyzer
+            .get_analysis(analyzer.registry().iter().next().unwrap().id)
+            .unwrap();
+
+        let injects = analysis.provide_inject.injects();
+        assert_eq!(injects.len(), 1, "Should have 1 inject");
+        match &injects[0].pattern {
+            InjectPattern::ObjectDestructure(props) => {
+                assert!(
+                    props.contains(&vize_carton::CompactString::new("name")),
+                    "Should contain 'name' prop"
+                );
+            }
+            other => panic!("Expected ObjectDestructure pattern, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_playground_style_provide_inject() {
+        // This test mimics the playground's exact setup (without template parsing)
+        use crate::cross_file::diagnostics::CrossFileDiagnosticKind;
+
+        let mut analyzer = CrossFileAnalyzer::new(
+            CrossFileOptions::default()
+                .with_provide_inject(true)
+                .with_fallthrough_attrs(true)
+                .with_component_emits(true)
+                .with_reactivity_tracking(true),
+        );
+
+        // App.vue - provides 'theme' and 'user', uses ParentComponent
+        let app_script = r#"import { provide, ref } from 'vue'
+import ParentComponent from './ParentComponent.vue'
+
+const theme = ref('dark')
+provide('theme', theme)
+provide('user', { name: 'John', id: 1 })"#;
+
+        let mut app_analyzer = crate::Analyzer::with_options(AnalyzerOptions::full());
+        app_analyzer.analyze_script_setup(app_script);
+        // Simulate template analysis adding used component
+        app_analyzer
+            .croquis_mut()
+            .used_components
+            .insert(vize_carton::CompactString::new("ParentComponent"));
+        let app_analysis = app_analyzer.finish();
+
+        // Debug: check used_components
+        eprintln!(
+            "App.vue used_components: {:?}",
+            app_analysis.used_components
+        );
+
+        // ParentComponent.vue - injects 'theme' and 'user', uses ChildComponent
+        let parent_script = r#"import { inject, ref, onMounted } from 'vue'
+import ChildComponent from './ChildComponent.vue'
+
+const theme = inject('theme')
+const { name } = inject('user')"#;
+
+        let mut parent_analyzer = crate::Analyzer::with_options(AnalyzerOptions::full());
+        parent_analyzer.analyze_script_setup(parent_script);
+        parent_analyzer
+            .croquis_mut()
+            .used_components
+            .insert(vize_carton::CompactString::new("ChildComponent"));
+        let parent_analysis = parent_analyzer.finish();
+
+        eprintln!(
+            "ParentComponent.vue used_components: {:?}",
+            parent_analysis.used_components
+        );
+
+        // ChildComponent.vue - no provide/inject
+        let child_script = r#"const emit = defineEmits(['change'])"#;
+        let mut child_analyzer = crate::Analyzer::with_options(AnalyzerOptions::full());
+        child_analyzer.analyze_script_setup(child_script);
+        let child_analysis = child_analyzer.finish();
+
+        // Add files
+        analyzer.add_file_with_analysis(Path::new("App.vue"), app_script, app_analysis);
+        analyzer.add_file_with_analysis(
+            Path::new("ParentComponent.vue"),
+            parent_script,
+            parent_analysis,
+        );
+        analyzer.add_file_with_analysis(
+            Path::new("ChildComponent.vue"),
+            child_script,
+            child_analysis,
+        );
+
+        // Rebuild edges
+        analyzer.rebuild_component_edges();
+
+        // Debug: check graph edges
+        eprintln!("Graph nodes: {}", analyzer.graph().nodes().count());
+        for node in analyzer.graph().nodes() {
+            eprintln!(
+                "  {} (component_name={:?}): imports={:?}",
+                node.path, node.component_name, node.imports
+            );
+        }
+
+        // Run analysis
+        let result = analyzer.analyze();
+
+        eprintln!("Diagnostics count: {}", result.diagnostics.len());
+        for d in &result.diagnostics {
+            eprintln!("  - {:?}: {}", d.kind, d.message);
+        }
+
+        // Should have provide/inject matches (theme and user)
+        assert!(
+            !result.provide_inject_matches.is_empty(),
+            "Should have at least 1 match (theme), got: {:?}",
+            result.provide_inject_matches
+        );
+
+        // Check for unmatched inject errors - should have none for 'theme'
+        let unmatched_theme: Vec<_> = result
+            .diagnostics
+            .iter()
+            .filter(|d| matches!(&d.kind, CrossFileDiagnosticKind::UnmatchedInject { key } if key == "theme"))
+            .collect();
+        assert_eq!(
+            unmatched_theme.len(),
+            0,
+            "Should have no unmatched inject for 'theme'"
+        );
+    }
+
+    #[test]
+    fn test_provide_inject_with_component_usage_edge() {
+        use crate::cross_file::diagnostics::CrossFileDiagnosticKind;
+
+        let mut analyzer =
+            CrossFileAnalyzer::new(CrossFileOptions::default().with_provide_inject(true));
+
+        // App.vue provides 'theme' and 'user'
+        // App uses Child component in template (simulated via used_components)
+        let mut app_analyzer = crate::Analyzer::with_options(AnalyzerOptions::full());
+        app_analyzer.analyze_script_setup(
+            r#"import { provide, ref } from 'vue'
+
+const theme = ref('dark')
+const user = ref({ name: 'Test' })
+
+provide('theme', theme)
+provide('user', user)"#,
+        );
+        // Manually add used component (normally from template analysis)
+        app_analyzer
+            .croquis_mut()
+            .used_components
+            .insert(vize_carton::CompactString::new("Child"));
+        let app_analysis = app_analyzer.finish();
+
+        // Child.vue injects 'theme' and 'user'
+        let mut child_analyzer = crate::Analyzer::with_options(AnalyzerOptions::full());
+        child_analyzer.analyze_script_setup(
+            r#"import { inject } from 'vue'
+
+const theme = inject('theme')
+const user = inject('user')"#,
+        );
+        let child_analysis = child_analyzer.finish();
+
+        // Add files with pre-computed analysis
+        let _app_id =
+            analyzer.add_file_with_analysis(Path::new("App.vue"), "script content", app_analysis);
+        let _child_id = analyzer.add_file_with_analysis(
+            Path::new("Child.vue"),
+            "script content",
+            child_analysis,
+        );
+
+        // Rebuild component edges (App uses Child)
+        analyzer.rebuild_component_edges();
+
+        // Run analysis
+        let result = analyzer.analyze();
+
+        // Should have 2 provide/inject matches
+        assert_eq!(
+            result.provide_inject_matches.len(),
+            2,
+            "Should have 2 matches (theme and user)"
+        );
+
+        // Should have NO unmatched inject errors
+        let unmatched_inject_errors: Vec<_> = result
+            .diagnostics
+            .iter()
+            .filter(|d| matches!(d.kind, CrossFileDiagnosticKind::UnmatchedInject { .. }))
+            .filter(|d| d.is_error())
+            .collect();
+        assert_eq!(
+            unmatched_inject_errors.len(),
+            0,
+            "Should have no unmatched inject errors, but got: {:?}",
+            unmatched_inject_errors
+                .iter()
+                .map(|d| &d.message)
+                .collect::<Vec<_>>()
+        );
+
+        // Should have NO unused provide warnings
+        let unused_provide_warnings: Vec<_> = result
+            .diagnostics
+            .iter()
+            .filter(|d| matches!(d.kind, CrossFileDiagnosticKind::UnusedProvide { .. }))
+            .collect();
+        assert_eq!(
+            unused_provide_warnings.len(),
+            0,
+            "Should have no unused provide warnings, but got: {:?}",
+            unused_provide_warnings
+                .iter()
+                .map(|d| &d.message)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_provide_inject_multiple_levels() {
+        use crate::cross_file::diagnostics::CrossFileDiagnosticKind;
+
+        let mut analyzer =
+            CrossFileAnalyzer::new(CrossFileOptions::default().with_provide_inject(true));
+
+        // Grandparent provides 'globalState'
+        let mut gp_analyzer = crate::Analyzer::with_options(AnalyzerOptions::full());
+        gp_analyzer.analyze_script_setup(
+            r#"import { provide } from 'vue'
+provide('globalState', { app: 'test' })"#,
+        );
+        gp_analyzer
+            .croquis_mut()
+            .used_components
+            .insert(vize_carton::CompactString::new("Parent"));
+        let gp_analysis = gp_analyzer.finish();
+
+        // Parent doesn't provide/inject anything, just passes through
+        let mut parent_analyzer = crate::Analyzer::with_options(AnalyzerOptions::full());
+        parent_analyzer.analyze_script_setup(r#"// No provide/inject"#);
+        parent_analyzer
+            .croquis_mut()
+            .used_components
+            .insert(vize_carton::CompactString::new("Child"));
+        let parent_analysis = parent_analyzer.finish();
+
+        // Child injects 'globalState' (from grandparent)
+        let mut child_analyzer = crate::Analyzer::with_options(AnalyzerOptions::full());
+        child_analyzer.analyze_script_setup(
+            r#"import { inject } from 'vue'
+const state = inject('globalState')"#,
+        );
+        let child_analysis = child_analyzer.finish();
+
+        // Add files
+        analyzer.add_file_with_analysis(Path::new("Grandparent.vue"), "", gp_analysis);
+        analyzer.add_file_with_analysis(Path::new("Parent.vue"), "", parent_analysis);
+        analyzer.add_file_with_analysis(Path::new("Child.vue"), "", child_analysis);
+
+        // Rebuild edges
+        analyzer.rebuild_component_edges();
+
+        // Run analysis
+        let result = analyzer.analyze();
+
+        // Should have 1 match (globalState from Grandparent to Child)
+        assert_eq!(
+            result.provide_inject_matches.len(),
+            1,
+            "Should have 1 match for globalState"
+        );
+
+        // No errors
+        let errors: Vec<_> = result
+            .diagnostics
+            .iter()
+            .filter(|d| d.is_error())
+            .filter(|d| {
+                matches!(
+                    d.kind,
+                    CrossFileDiagnosticKind::UnmatchedInject { .. }
+                        | CrossFileDiagnosticKind::UnusedProvide { .. }
+                )
+            })
+            .collect();
+        assert_eq!(errors.len(), 0, "Should have no provide/inject errors");
     }
 }

@@ -218,20 +218,9 @@ fn find_browser_api_usage(analysis: &crate::Croquis) -> Vec<(CompactString, u32,
         }
     }
 
-    // Check scope definitions
-    for scope in analysis.scopes.iter() {
-        for (name, binding) in scope.bindings() {
-            for (api, context) in &browser_apis {
-                if name.contains(api) {
-                    usages.push((
-                        CompactString::new(*api),
-                        binding.declaration_offset,
-                        *context,
-                    ));
-                }
-            }
-        }
-    }
+    // Note: We intentionally don't check global scopes here because they define
+    // browser APIs as globals (window, document, etc.) which would cause false positives.
+    // Instead, we only check template expressions for actual usage of these APIs.
 
     usages
 }

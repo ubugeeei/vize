@@ -259,6 +259,15 @@ impl Analyzer {
         &self.summary
     }
 
+    /// Get a mutable reference to the current croquis (analysis result).
+    ///
+    /// This is primarily used for testing and advanced scenarios where
+    /// the caller needs to inject data (e.g., used_components from template parsing).
+    #[inline]
+    pub fn croquis_mut(&mut self) -> &mut Croquis {
+        &mut self.summary
+    }
+
     // =========================================================================
     // Template Analysis (Single-pass traversal)
     // =========================================================================
@@ -2277,5 +2286,40 @@ export interface MyInterface { name: string }
         // Invalid value exports
         assert_eq!(summary.invalid_exports.len(), 1);
         assert_eq!(summary.invalid_exports[0].name.as_str(), "invalid");
+    }
+
+    #[test]
+    fn test_inject_detection_in_script_setup() {
+        let mut analyzer = Analyzer::with_options(AnalyzerOptions::full());
+        analyzer.analyze_script_setup(
+            r#"import { inject } from 'vue'
+
+const theme = inject('theme')
+const { name } = inject('user') as { name: string; id: number }"#,
+        );
+
+        let summary = analyzer.finish();
+        let injects = summary.provide_inject.injects();
+
+        assert_eq!(injects.len(), 2, "Should detect 2 inject calls");
+
+        // First inject: simple pattern
+        assert_eq!(
+            injects[0].key,
+            crate::provide::ProvideKey::String(vize_carton::CompactString::new("theme"))
+        );
+
+        // Second inject: object destructure pattern
+        assert_eq!(
+            injects[1].key,
+            crate::provide::ProvideKey::String(vize_carton::CompactString::new("user"))
+        );
+        assert!(
+            matches!(
+                &injects[1].pattern,
+                crate::provide::InjectPattern::ObjectDestructure(_)
+            ),
+            "Should detect object destructure pattern"
+        );
     }
 }

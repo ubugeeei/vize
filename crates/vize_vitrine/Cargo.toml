@@ -13,7 +13,7 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = []
 napi = ["dep:napi", "dep:napi-derive", "dep:glob", "dep:rayon", "vize_atelier_sfc/native"]
-wasm = ["dep:wasm-bindgen", "dep:serde-wasm-bindgen", "dep:js-sys"]
+wasm = ["dep:wasm-bindgen", "dep:serde-wasm-bindgen", "dep:js-sys", "dep:web-sys"]
 
 [dependencies]
 vize_carton = { workspace = true }
@@ -45,6 +45,7 @@ rayon = { version = "1.10", optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 serde-wasm-bindgen = { workspace = true, optional = true }
 js-sys = { workspace = true, optional = true }
+web-sys = { version = "0.3", features = ["console"], optional = true }
 
 # For WASM compatibility with getrandom
 [target.'cfg(target_arch = "wasm32")'.dependencies]
