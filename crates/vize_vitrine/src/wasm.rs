@@ -1196,6 +1196,9 @@ pub fn analyze_sfc_wasm(source: &str, options: JsValue) -> Result<JsValue, JsVal
                 vize_croquis::provide::InjectPattern::Simple => "simple",
                 vize_croquis::provide::InjectPattern::ObjectDestructure(_) => "objectDestructure",
                 vize_croquis::provide::InjectPattern::ArrayDestructure(_) => "arrayDestructure",
+                vize_croquis::provide::InjectPattern::IndirectDestructure { .. } => {
+                    "indirectDestructure"
+                }
             };
             let destructured_props: Option<Vec<&str>> = match &i.pattern {
                 vize_croquis::provide::InjectPattern::ObjectDestructure(props) => {
@@ -1203,6 +1206,9 @@ pub fn analyze_sfc_wasm(source: &str, options: JsValue) -> Result<JsValue, JsVal
                 }
                 vize_croquis::provide::InjectPattern::ArrayDestructure(items) => {
                     Some(items.iter().map(|p| p.as_str()).collect())
+                }
+                vize_croquis::provide::InjectPattern::IndirectDestructure { props, .. } => {
+                    Some(props.iter().map(|p| p.as_str()).collect())
                 }
                 vize_croquis::provide::InjectPattern::Simple => None,
             };
@@ -1532,6 +1538,35 @@ pub fn analyze_cross_file_wasm(files: JsValue, options: JsValue) -> Result<JsVal
                         ("", 0)
                     };
 
+                // Also analyze the regular <script> block for setup context violations
+                // when it exists alongside <script setup>
+                let plain_script_violations = if descriptor.script_setup.is_some() {
+                    if let Some(ref script) = descriptor.script {
+                        // Parse the plain script to detect setup context violations
+                        let plain_result =
+                            vize_croquis::script_parser::parse_script(&script.content);
+                        // Extract violations with adjusted offsets
+                        plain_result
+                            .setup_context
+                            .violations()
+                            .iter()
+                            .map(|v| {
+                                vize_croquis::setup_context::SetupContextViolation {
+                                    kind: v.kind,
+                                    api_name: v.api_name.clone(),
+                                    // Adjust offset to account for script block position
+                                    start: v.start + script.loc.start as u32,
+                                    end: v.end + script.loc.start as u32,
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                    } else {
+                        Vec::new()
+                    }
+                } else {
+                    Vec::new()
+                };
+
                 // Analyze template for component usages (populates used_components)
                 if let Some(ref template) = descriptor.template {
                     let allocator = Bump::new();
@@ -1540,7 +1575,17 @@ pub fn analyze_cross_file_wasm(files: JsValue, options: JsValue) -> Result<JsVal
                 }
 
                 // Get complete analysis with used_components populated
-                let analysis = single_analyzer.finish();
+                let mut analysis = single_analyzer.finish();
+
+                // Merge setup context violations from plain script
+                for violation in plain_script_violations {
+                    analysis.setup_context.record_violation(
+                        violation.kind,
+                        violation.api_name,
+                        violation.start,
+                        violation.end,
+                    );
+                }
 
                 // Add file with pre-computed analysis
                 let file_id = analyzer.add_file_with_analysis(std_path, script_content, analysis);
@@ -1721,6 +1766,7 @@ fn parse_cross_file_options(options: &JsValue) -> vize_croquis::cross_file::Cros
         server_client_boundary: get_bool("serverClientBoundary"),
         error_suspense_boundary: get_bool("errorSuspenseBoundary"),
         reactivity_tracking: get_bool("reactivityTracking"),
+        setup_context: get_bool("setupContext"),
         circular_dependencies: get_bool("circularDependencies"),
         max_import_depth: js_sys::Reflect::get(options, &JsValue::from_str("maxImportDepth"))
             .ok()
@@ -1822,6 +1868,8 @@ fn diagnostic_kind_to_string(
         PiniaGetterWithoutStoreToRefs { .. } => "pinia-store-refs",
         // Ultra-strict: watchEffect
         WatchEffectWithAsync { .. } => "watch-effect-async",
+        // Setup context violation (unified)
+        SetupContextViolation { .. } => "setup-context",
     }
 }
 
@@ -1904,5 +1952,7 @@ fn diagnostic_kind_to_code(
         ArrayMutationNotTriggering { .. } => "cross-file/array-mutation-not-triggering",
         PiniaGetterWithoutStoreToRefs { .. } => "cross-file/pinia-getter-no-store-to-refs",
         WatchEffectWithAsync { .. } => "cross-file/watch-effect-async",
+        // Setup context violation (unified)
+        SetupContextViolation { .. } => "cross-file/setup-context-violation",
     }
 }

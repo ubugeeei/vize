@@ -139,6 +139,22 @@ fn analyze_component_reactivity(analysis: &crate::Croquis) -> Vec<InternalIssue>
                     source: Some(inject.local_name.clone()),
                 });
             }
+            InjectPattern::IndirectDestructure {
+                inject_var,
+                props,
+                offset,
+            } => {
+                // Indirect destructuring also loses reactivity
+                // e.g., const state = inject('state'); const { count } = state;
+                issues.push(InternalIssue {
+                    kind: ReactivityIssueKind::DestructuredReactive {
+                        source_name: inject_var.clone(),
+                        destructured_props: props.clone(),
+                    },
+                    offset: *offset,
+                    source: Some(inject_var.clone()),
+                });
+            }
             InjectPattern::Simple => {
                 // No issue - inject is stored properly
             }
@@ -183,11 +199,74 @@ fn analyze_component_reactivity(analysis: &crate::Croquis) -> Vec<InternalIssue>
         }
     }
 
-    // Check for reactivity loss patterns in the code
-    // This requires analyzing the AST for patterns like:
-    // - const { x } = reactive({ x: 1 })  // reactivity lost
-    // - const x = ref(0); const y = x.value  // reactivity lost
-    // - const x = toRaw(reactive)  // intentional, but might be wrong
+    // Check for reactivity loss patterns detected by the parser
+    // These are strict, AST-based detections
+    for loss in analysis.reactivity.losses() {
+        use crate::reactivity::ReactivityLossKind;
+        match &loss.kind {
+            ReactivityLossKind::ReactiveDestructure {
+                source_name,
+                destructured_props,
+            } => {
+                issues.push(InternalIssue {
+                    kind: ReactivityIssueKind::DestructuredReactive {
+                        source_name: source_name.clone(),
+                        destructured_props: destructured_props.clone(),
+                    },
+                    offset: loss.start,
+                    source: Some(source_name.clone()),
+                });
+            }
+            ReactivityLossKind::RefValueDestructure {
+                source_name,
+                destructured_props,
+            } => {
+                issues.push(InternalIssue {
+                    kind: ReactivityIssueKind::DestructuredRef {
+                        ref_name: source_name.clone(),
+                    },
+                    offset: loss.start,
+                    source: Some(CompactString::new(format!(
+                        "{}.value (destructured: {})",
+                        source_name,
+                        destructured_props.join(", ")
+                    ))),
+                });
+            }
+            ReactivityLossKind::RefValueExtract {
+                source_name,
+                target_name,
+            } => {
+                issues.push(InternalIssue {
+                    kind: ReactivityIssueKind::ReactiveToPlain {
+                        source_name: CompactString::new(format!("{}.value", source_name)),
+                        target_name: target_name.clone(),
+                    },
+                    offset: loss.start,
+                    source: Some(source_name.clone()),
+                });
+            }
+            ReactivityLossKind::ReactiveSpread { source_name } => {
+                issues.push(InternalIssue {
+                    kind: ReactivityIssueKind::ShouldUseToRefs {
+                        source_name: source_name.clone(),
+                    },
+                    offset: loss.start,
+                    source: Some(source_name.clone()),
+                });
+            }
+            ReactivityLossKind::ReactiveReassign { source_name } => {
+                issues.push(InternalIssue {
+                    kind: ReactivityIssueKind::ReactivityLost {
+                        value_name: source_name.clone(),
+                        context: CompactString::new("reassignment"),
+                    },
+                    offset: loss.start,
+                    source: Some(source_name.clone()),
+                });
+            }
+        }
+    }
 
     // Report if vue imports are present but not used properly
     if !vue_imports.is_empty() {

@@ -471,6 +471,36 @@ pub fn analyze_provide_inject(
                         )),
                     );
                 }
+                InjectPattern::IndirectDestructure {
+                    inject_var,
+                    props,
+                    offset,
+                } => {
+                    // Indirect destructuring also loses reactivity
+                    diagnostics.push(
+                        CrossFileDiagnostic::new(
+                            CrossFileDiagnosticKind::HydrationMismatchRisk {
+                                reason: CompactString::new(format!(
+                                    "Destructuring inject variable '{}' loses reactivity",
+                                    inject_var
+                                )),
+                            },
+                            DiagnosticSeverity::Error,
+                            consumer_id,
+                            *offset,
+                            format!(
+                                "Destructuring '{}' (from inject('{}')) into {{ {} }} breaks reactivity connection",
+                                inject_var,
+                                key_str,
+                                props.iter().map(|p| p.as_str()).collect::<Vec<_>>().join(", ")
+                            ),
+                        )
+                        .with_suggestion(format!(
+                            "Access properties directly: `{}.prop` instead of destructuring",
+                            inject_var
+                        )),
+                    );
+                }
                 InjectPattern::Simple => {
                     // No reactivity loss issue
                 }

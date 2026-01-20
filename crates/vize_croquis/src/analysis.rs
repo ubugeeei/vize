@@ -42,6 +42,7 @@ use crate::hoist::HoistTracker;
 use crate::macros::MacroTracker;
 use crate::provide::ProvideInjectTracker;
 use crate::reactivity::ReactivityTracker;
+use crate::setup_context::SetupContextTracker;
 use crate::types::TypeResolver;
 use crate::{ScopeChain, SymbolTable};
 use vize_carton::{CompactString, FxHashMap, FxHashSet};
@@ -95,6 +96,9 @@ pub struct Croquis {
 
     /// Provide/Inject tracking
     pub provide_inject: ProvideInjectTracker,
+
+    /// Setup context violation tracking (CSRP/memory leaks)
+    pub setup_context: SetupContextTracker,
 
     /// TypeScript type resolution
     pub types: TypeResolver,

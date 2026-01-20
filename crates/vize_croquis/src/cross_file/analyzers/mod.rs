@@ -20,6 +20,7 @@ mod fallthrough;
 mod props_validation;
 mod provide_inject;
 mod reactivity;
+mod setup_context;
 
 // Re-export analyzer types
 pub use boundary::{analyze_boundaries, BoundaryInfo, BoundaryKind};
@@ -34,3 +35,6 @@ pub use reactivity::{analyze_reactivity, ReactivityIssue, ReactivityIssueKind};
 
 // Cross-file reactivity tracking
 pub use cross_file_reactivity::{analyze_cross_file_reactivity, CrossFileReactivityIssue};
+
+// Setup context violation tracking
+pub use setup_context::{analyze_setup_context, SetupContextIssue};

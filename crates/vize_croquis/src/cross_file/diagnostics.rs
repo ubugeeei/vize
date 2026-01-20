@@ -322,6 +322,14 @@ pub enum CrossFileDiagnosticKind {
     WatchEffectWithAsync {
         async_operation: CompactString, // "await" | "setTimeout" | "fetch"
     },
+
+    // === Unified Setup Context Violation ===
+    /// Vue API called outside of setup context (module-level in non-setup script).
+    /// Wraps SetupContextViolationKind for unified handling.
+    SetupContextViolation {
+        kind: crate::setup_context::SetupContextViolationKind,
+        api_name: CompactString,
+    },
 }
 
 /// A cross-file diagnostic with location information.
@@ -550,6 +558,9 @@ impl CrossFileDiagnostic {
             }
             CrossFileDiagnosticKind::WatchEffectWithAsync { .. } => {
                 "vize:croquis/strict/watcheffect-async"
+            }
+            CrossFileDiagnosticKind::SetupContextViolation { .. } => {
+                "vize:croquis/setup-context/violation"
             }
         }
     }

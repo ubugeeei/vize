@@ -52,6 +52,13 @@ pub enum InjectPattern {
     ObjectDestructure(Vec<CompactString>),
     /// Array destructuring: `const [a, b] = inject('foo')`
     ArrayDestructure(Vec<CompactString>),
+    /// Indirect destructuring: `const state = inject('state'); const { a } = state`
+    /// Contains: (inject_var_name, destructured_props, offset)
+    IndirectDestructure {
+        inject_var: CompactString,
+        props: Vec<CompactString>,
+        offset: u32,
+    },
 }
 
 /// An inject() call
@@ -211,6 +218,27 @@ impl ProvideInjectTracker {
     #[inline]
     pub fn injects(&self) -> &[InjectEntry] {
         &self.injects
+    }
+
+    /// Record indirect destructuring of an inject variable.
+    /// e.g., `const state = inject('state'); const { count } = state;`
+    pub fn add_indirect_destructure(
+        &mut self,
+        inject_var: CompactString,
+        props: Vec<CompactString>,
+        offset: u32,
+    ) {
+        // Find the inject entry with this local_name and update its pattern
+        for inject in &mut self.injects {
+            if inject.local_name == inject_var {
+                inject.pattern = InjectPattern::IndirectDestructure {
+                    inject_var: inject_var.clone(),
+                    props,
+                    offset,
+                };
+                return;
+            }
+        }
     }
 }
 

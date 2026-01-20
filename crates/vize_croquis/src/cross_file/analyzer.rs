@@ -29,6 +29,8 @@ pub struct CrossFileOptions {
     pub error_suspense_boundary: bool,
     /// Analyze reactivity loss.
     pub reactivity_tracking: bool,
+    /// Analyze setup context violations (CSRP/memory leaks).
+    pub setup_context: bool,
     /// Detect circular dependencies.
     pub circular_dependencies: bool,
     /// Maximum depth for dependency chain warnings.
@@ -53,6 +55,7 @@ impl CrossFileOptions {
             server_client_boundary: true,
             error_suspense_boundary: true,
             reactivity_tracking: true,
+            setup_context: true,
             circular_dependencies: true,
             max_import_depth: Some(10),
             component_resolution: true,
@@ -157,9 +160,16 @@ impl CrossFileOptions {
             || self.server_client_boundary
             || self.error_suspense_boundary
             || self.reactivity_tracking
+            || self.setup_context
             || self.circular_dependencies
             || self.component_resolution
             || self.props_validation
+    }
+
+    /// Enable setup context violation analysis.
+    pub fn with_setup_context(mut self, enabled: bool) -> Self {
+        self.setup_context = enabled;
+        self
     }
 }
 
@@ -192,6 +202,9 @@ pub struct CrossFileResult {
 
     /// Cross-file reactivity issues.
     pub cross_file_reactivity_issues: Vec<analyzers::CrossFileReactivityIssue>,
+
+    /// Setup context violations (CSRP/memory leaks).
+    pub setup_context_issues: Vec<analyzers::SetupContextIssue>,
 
     /// Circular dependencies (as paths of file IDs).
     pub circular_deps: Vec<Vec<FileId>>,
@@ -515,6 +528,13 @@ impl CrossFileAnalyzer {
                 analyzers::analyze_cross_file_reactivity(&self.registry, &self.graph);
             result.cross_file_reactivity_issues = cross_issues;
             result.diagnostics.extend(cross_diags);
+        }
+
+        if self.options.setup_context {
+            // Setup context violation analysis (CSRP/memory leaks)
+            let (issues, diags) = analyzers::analyze_setup_context(&self.registry, &self.graph);
+            result.setup_context_issues = issues;
+            result.diagnostics.extend(diags);
         }
 
         // Static validation analyzers

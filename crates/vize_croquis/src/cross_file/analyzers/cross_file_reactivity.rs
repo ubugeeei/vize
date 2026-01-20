@@ -566,6 +566,19 @@ impl<'a> CrossFileReactivityAnalyzer<'a> {
                                 severity: DiagnosticSeverity::Error,
                             });
                         }
+                        InjectPattern::IndirectDestructure { props, offset, .. } => {
+                            // Indirect destructuring also loses reactivity
+                            self.issues.push(CrossFileReactivityIssue {
+                                file_id: consumer_file_id,
+                                kind: CrossFileReactivityIssueKind::InjectValueDestructured {
+                                    key: key_str.clone(),
+                                    destructured_props: props.clone(),
+                                },
+                                offset: *offset,
+                                related_file: Some(provider.file_id),
+                                severity: DiagnosticSeverity::Error,
+                            });
+                        }
                         InjectPattern::Simple => {
                             // OK - inject is assigned to a variable
                         }
@@ -605,6 +618,9 @@ impl<'a> CrossFileReactivityAnalyzer<'a> {
                             false,
                             Some(ReactivityLossReason::Destructured { props: vec![] }),
                         ),
+                        InjectPattern::IndirectDestructure { .. } => {
+                            (false, Some(ReactivityLossReason::InjectDestructure))
+                        }
                     };
 
                     self.flows.push(ReactivityFlow {

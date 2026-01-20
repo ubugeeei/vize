@@ -449,6 +449,7 @@ export interface CrossFileOptions {
   serverClientBoundary?: boolean;
   errorSuspenseBoundary?: boolean;
   reactivityTracking?: boolean;
+  setupContext?: boolean;
   circularDependencies?: boolean;
   maxImportDepth?: number;
   componentResolution?: boolean;
