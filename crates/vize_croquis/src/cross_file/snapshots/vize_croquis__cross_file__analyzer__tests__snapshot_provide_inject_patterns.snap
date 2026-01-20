@@ -1,0 +1,36 @@
+---
+source: crates/vize_croquis/src/cross_file/analyzer.rs
+expression: output
+---
+=== Provide/Inject Patterns ===
+
+File: Provider.vue
+  Provides:
+    - key: String("stringKey")
+      value: 'value'
+    - key: String("refValue")
+      value: ref(0)
+    - key: String("reactiveValue")
+      value: reactive({ a: 1 })
+    - key: String("computedValue")
+      value: computed(() => 42)
+    - key: Symbol("ThemeSymbol")
+      value: 'dark'
+
+File: Consumer.vue
+  Injects:
+    - key: String("stringKey")
+      has_default: false
+      pattern: Simple
+    - key: String("missing")
+      has_default: true
+      pattern: Simple
+    - key: String("refValue")
+      has_default: false
+      pattern: Simple
+    - key: String("reactiveValue")
+      has_default: false
+      pattern: ObjectDestructure(["a"])
+    - key: String("computedValue")
+      has_default: false
+      pattern: Simple

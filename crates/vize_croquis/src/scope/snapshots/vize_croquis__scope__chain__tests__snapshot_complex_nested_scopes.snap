@@ -1,0 +1,103 @@
+---
+source: crates/vize_croquis/src/scope/chain.rs
+expression: output
+---
+=== Complex Nested Scopes ===
+
+-- All scopes (root to current) --
+JsGlobalUniversal (id=0)
+  • NaN: JsGlobalUniversal at offset 0
+  • Array: JsGlobalUniversal at offset 0
+  • WeakMap: JsGlobalUniversal at offset 0
+  • decodeURIComponent: JsGlobalUniversal at offset 0
+  • Date: JsGlobalUniversal at offset 0
+  • Number: JsGlobalUniversal at offset 0
+  • JSON: JsGlobalUniversal at offset 0
+  • encodeURI: JsGlobalUniversal at offset 0
+  • Float64Array: JsGlobalUniversal at offset 0
+  • TypeError: JsGlobalUniversal at offset 0
+  • RangeError: JsGlobalUniversal at offset 0
+  • Reflect: JsGlobalUniversal at offset 0
+  • WeakSet: JsGlobalUniversal at offset 0
+  • Iterator: JsGlobalUniversal at offset 0
+  • arguments: JsGlobalUniversal at offset 0
+  • AggregateError: JsGlobalUniversal at offset 0
+  • Boolean: JsGlobalUniversal at offset 0
+  • Uint32Array: JsGlobalUniversal at offset 0
+  • Uint16Array: JsGlobalUniversal at offset 0
+  • Infinity: JsGlobalUniversal at offset 0
+  • Int8Array: JsGlobalUniversal at offset 0
+  • Set: JsGlobalUniversal at offset 0
+  • isFinite: JsGlobalUniversal at offset 0
+  • decodeURI: JsGlobalUniversal at offset 0
+  • Function: JsGlobalUniversal at offset 0
+  • Symbol: JsGlobalUniversal at offset 0
+  • BigUint64Array: JsGlobalUniversal at offset 0
+  • AsyncFunction: JsGlobalUniversal at offset 0
+  • AsyncIterator: JsGlobalUniversal at offset 0
+  • Object: JsGlobalUniversal at offset 0
+  • Float32Array: JsGlobalUniversal at offset 0
+  • RegExp: JsGlobalUniversal at offset 0
+  • AsyncGenerator: JsGlobalUniversal at offset 0
+  • Error: JsGlobalUniversal at offset 0
+  • EvalError: JsGlobalUniversal at offset 0
+  • BigInt: JsGlobalUniversal at offset 0
+  • ArrayBuffer: JsGlobalUniversal at offset 0
+  • BigInt64Array: JsGlobalUniversal at offset 0
+  • this: JsGlobalUniversal at offset 0
+  • encodeURIComponent: JsGlobalUniversal at offset 0
+  • Uint8Array: JsGlobalUniversal at offset 0
+  • Uint8ClampedArray: JsGlobalUniversal at offset 0
+  • Int32Array: JsGlobalUniversal at offset 0
+  • eval: JsGlobalUniversal at offset 0
+  • SyntaxError: JsGlobalUniversal at offset 0
+  • ReferenceError: JsGlobalUniversal at offset 0
+  • Math: JsGlobalUniversal at offset 0
+  • console: JsGlobalUniversal at offset 0
+  • Proxy: JsGlobalUniversal at offset 0
+  • Generator: JsGlobalUniversal at offset 0
+  • DataView: JsGlobalUniversal at offset 0
+  • globalThis: JsGlobalUniversal at offset 0
+  • URIError: JsGlobalUniversal at offset 0
+  • String: JsGlobalUniversal at offset 0
+  • Atomics: JsGlobalUniversal at offset 0
+  • undefined: JsGlobalUniversal at offset 0
+  • GeneratorFunction: JsGlobalUniversal at offset 0
+  • Intl: JsGlobalUniversal at offset 0
+  • parseFloat: JsGlobalUniversal at offset 0
+  • AsyncGeneratorFunction: JsGlobalUniversal at offset 0
+  • Promise: JsGlobalUniversal at offset 0
+  • Int16Array: JsGlobalUniversal at offset 0
+  • isNaN: JsGlobalUniversal at offset 0
+  • parseInt: JsGlobalUniversal at offset 0
+  • SharedArrayBuffer: JsGlobalUniversal at offset 0
+  • Map: JsGlobalUniversal at offset 0
+  JsGlobalUniversal (id=1)
+    • console: JsGlobalUniversal at offset 0
+    • fetch: JsGlobalUniversal at offset 0
+    • setTimeout: JsGlobalUniversal at offset 0
+    VueGlobal (id=2)
+      • $emit: VueGlobal at offset 0
+      • $attrs: VueGlobal at offset 0
+      • $refs: VueGlobal at offset 0
+      ScriptSetup (id=3)
+        • handleClick: SetupConst at offset 100
+        • count: SetupRef at offset 10
+        • items: SetupReactiveConst at offset 50
+        VFor (id=4)
+          • item: SetupConst at offset 200
+          • key: SetupConst at offset 200
+          • index: SetupConst at offset 200
+          VSlot (id=5)
+            • row: SetupConst at offset 250
+            • col: SetupConst at offset 250
+            EventHandler (id=6)
+              • e: SetupConst at offset 300
+
+-- Lookup test --
+count: found in ScriptSetup (scope 3), type=SetupRef
+item: found in VFor (scope 4), type=SetupConst
+row: found in VSlot (scope 5), type=SetupConst
+e: found in EventHandler (scope 6), type=SetupConst
+console: found in JsGlobalUniversal (scope 1), type=JsGlobalUniversal
+unknown: not found

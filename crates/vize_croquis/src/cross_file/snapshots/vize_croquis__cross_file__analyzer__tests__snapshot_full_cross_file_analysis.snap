@@ -1,0 +1,24 @@
+---
+source: crates/vize_croquis/src/cross_file/analyzer.rs
+expression: output
+---
+=== Cross-File Analysis Result ===
+
+== Statistics ==
+Files analyzed: 3
+Vue components: 3
+Dependency edges: 2
+Errors: 0
+Warnings: 0
+
+== Provide/Inject Matches ==
+  FileId(0) -> FileId(1)
+    key: "theme"
+  FileId(0) -> FileId(1)
+    key: "user"
+  FileId(0) -> FileId(2)
+    key: "theme"
+  FileId(1) -> FileId(2)
+    key: "dashboardState"
+
+== Diagnostics ==

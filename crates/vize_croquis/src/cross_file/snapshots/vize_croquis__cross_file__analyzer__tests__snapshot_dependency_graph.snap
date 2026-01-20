@@ -1,0 +1,25 @@
+---
+source: crates/vize_croquis/src/cross_file/analyzer.rs
+expression: output
+---
+=== Dependency Graph ===
+
+Node: CompA.vue
+  component_name: Some("CompA")
+  is_entry: false
+  imports: [(FileId(2), ComponentUsage), (FileId(1), ComponentUsage)]
+
+Node: CompB.vue
+  component_name: Some("CompB")
+  is_entry: false
+  imports: [(FileId(3), ComponentUsage)]
+
+Node: CompC.vue
+  component_name: Some("CompC")
+  is_entry: false
+  imports: [(FileId(3), ComponentUsage)]
+
+Node: CompD.vue
+  component_name: Some("CompD")
+  is_entry: false
+  imports: []

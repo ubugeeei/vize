@@ -1,0 +1,170 @@
+---
+source: crates/vize_croquis/src/cross_file/diagnostics.rs
+expression: output
+---
+=== All Diagnostic Kinds ===
+
+--- UnmatchedInject { key: "theme" } ---
+Severity: error
+Message: No provider found for inject('theme')
+
+Markdown Output:
+🔴 **ERROR** `vize:croquis/cf/unmatched-inject`
+
+### No provider found for inject('theme')
+
+
+
+--- UnusedProvide { key: "config" } ---
+Severity: warning
+Message: provide('config') is never injected
+
+Markdown Output:
+🟡 **WARNING** `vize:croquis/cf/unused-provide`
+
+### provide('config') is never injected
+
+
+
+--- ProvideInjectTypeMismatch { key: "user", provided_type: "Ref<User>", injected_type: "User" } ---
+Severity: warning
+Message: Type mismatch between provide and inject
+
+Markdown Output:
+🟡 **WARNING** `vize:croquis/cf/provide-inject-type`
+
+### Type mismatch between provide and inject
+
+
+
+--- UndeclaredEmit { emit_name: "update" } ---
+Severity: error
+Message: emit('update') is not declared in defineEmits
+
+Markdown Output:
+🔴 **ERROR** `vize:croquis/cf/undeclared-emit`
+
+### emit('update') is not declared in defineEmits
+
+
+
+--- UnusedEmit { emit_name: "submit" } ---
+Severity: warning
+Message: Declared emit 'submit' is never called
+
+Markdown Output:
+🟡 **WARNING** `vize:croquis/cf/unused-emit`
+
+### Declared emit 'submit' is never called
+
+
+
+--- DuplicateElementId { id: "main-header", locations: [(FileId(0), 10), (FileId(0), 250)] } ---
+Severity: error
+Message: Duplicate id 'main-header' found
+
+Markdown Output:
+🔴 **ERROR** `vize:croquis/cf/duplicate-id`
+
+### Duplicate id 'main-header' found
+
+
+
+--- BrowserApiInSsr { api: "window.localStorage", context: "script setup" } ---
+Severity: warning
+Message: Browser API used in potentially SSR context
+
+Markdown Output:
+🟡 **WARNING** `vize:croquis/cf/browser-api-ssr`
+
+### Browser API used in potentially SSR context
+
+
+
+--- WatchMutationCanBeComputed { watch_source: "count", mutated_target: "doubled", suggested_computed: "count * 2" } ---
+Severity: hint
+Message: watch can be simplified to computed
+
+Markdown Output:
+💡 **HINT** `vize:croquis/cf/watch-can-be-computed`
+
+### watch can be simplified to computed
+
+**Problem**: This `watch` callback only mutates a reactive value based on its source.
+
+**Current code** (imperative, harder to trace):
+
+```ts
+watch(count, (newVal) => {
+  doubled.value = transform(newVal)
+})
+```
+
+**Why `computed` is better**:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  watch + mutation       │  computed                     │
+├─────────────────────────┼───────────────────────────────┤
+│  ❌ Imperative flow      │  ✅ Declarative transformation │
+│  ❌ Two variables        │  ✅ Single derived value       │
+│  ❌ Manual sync needed   │  ✅ Auto-cached and reactive   │
+│  ❌ Side effects possible│  ✅ Pure function guarantee    │
+└─────────────────────────┴───────────────────────────────┘
+```
+
+**Refactored code** (declarative, easier to reason about):
+
+```ts
+count * 2
+```
+
+**Note**: Use `watch` only when you need **side effects** (API calls, logging, etc.).
+
+
+--- ReactiveReferenceEscapes { variable_name: "state", escaped_via: "props", target_name: Some("childComponent") } ---
+Severity: warning
+Message: Reactive reference escapes via props
+
+Markdown Output:
+🟡 **WARNING** `vize:croquis/cf/reference-escapes-scope`
+
+### Reactive reference escapes via props
+
+**Problem**: Reactive reference `state` escapes its scope via props.
+
+**Escaped to**: `childComponent`
+
+**Why this is implicit** (like Rust's move semantics):
+
+```
+┌─ setup() ─────────────────────────────┐
+│  const state = reactive({...})          │
+│  someFunction(state)  ←── reference escapes │
+│          │                              │
+│          ▼                              │
+│  ┌─ someFunction() ─────────────────┐  │
+│  │  // state is now accessible here    │  │
+│  │  // mutations affect original     │  │
+│  └────────────────────────────────────┘  │
+└──────────────────────────────────────────┘
+```
+
+**Issues**:
+
+- 🔍 **Hidden Data Flow**: Mutations happen "at a distance" - hard to trace.
+- 🐛 **Unexpected Side Effects**: Function may modify your reactive state.
+- 📦 **Ownership Unclear**: Who "owns" this reactive object now?
+
+**Explicit alternatives**:
+
+```ts
+// Option 1: Pass a readonly version
+someFunction(readonly(state))
+
+// Option 2: Pass a snapshot (non-reactive copy)
+someFunction({ ...state })
+
+// Option 3: Pass specific values explicitly
+someFunction(state.id, state.name)
+```

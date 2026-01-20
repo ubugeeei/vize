@@ -1506,4 +1506,244 @@ mod tests {
 
         assert_snapshot!("scope_chain_structure", output);
     }
+
+    #[test]
+    fn test_snapshot_complex_nested_scopes() {
+        let mut chain = ScopeChain::new();
+
+        // JS Global
+        chain.enter_js_global_scope(
+            JsGlobalScopeData {
+                runtime: JsRuntime::Universal,
+                globals: vize_carton::smallvec![
+                    CompactString::new("console"),
+                    CompactString::new("setTimeout"),
+                    CompactString::new("fetch"),
+                ],
+            },
+            0,
+            0,
+        );
+
+        // Vue Global
+        chain.enter_vue_global_scope(
+            VueGlobalScopeData {
+                globals: vize_carton::smallvec![
+                    CompactString::new("$refs"),
+                    CompactString::new("$emit"),
+                    CompactString::new("$attrs"),
+                ],
+            },
+            0,
+            0,
+        );
+
+        // Script Setup
+        chain.enter_script_setup_scope(
+            ScriptSetupScopeData {
+                is_ts: true,
+                is_async: false,
+                generic: Some(CompactString::new("<T extends object>")),
+            },
+            0,
+            1000,
+        );
+
+        chain.add_binding(
+            CompactString::new("count"),
+            ScopeBinding::new(BindingType::SetupRef, 10),
+        );
+        chain.add_binding(
+            CompactString::new("items"),
+            ScopeBinding::new(BindingType::SetupReactiveConst, 50),
+        );
+        chain.add_binding(
+            CompactString::new("handleClick"),
+            ScopeBinding::new(BindingType::SetupConst, 100),
+        );
+
+        // v-for scope
+        chain.enter_v_for_scope(
+            VForScopeData {
+                value_alias: CompactString::new("item"),
+                key_alias: Some(CompactString::new("key")),
+                index_alias: Some(CompactString::new("index")),
+                source: CompactString::new("items"),
+                key_expression: Some(CompactString::new("item.id")),
+            },
+            200,
+            400,
+        );
+
+        // Nested v-slot scope
+        chain.enter_v_slot_scope(
+            VSlotScopeData {
+                name: CompactString::new("default"),
+                props_pattern: Some(CompactString::new("{ row, col }")),
+                prop_names: vize_carton::smallvec![
+                    CompactString::new("row"),
+                    CompactString::new("col")
+                ],
+            },
+            250,
+            350,
+        );
+
+        // Event handler inside
+        chain.enter_event_handler_scope(
+            EventHandlerScopeData {
+                event_name: CompactString::new("click"),
+                has_implicit_event: false,
+                param_names: vize_carton::smallvec![CompactString::new("e")],
+                handler_expression: None,
+            },
+            300,
+            340,
+        );
+
+        let mut output = String::new();
+        output.push_str("=== Complex Nested Scopes ===\n\n");
+
+        output.push_str("-- All scopes (root to current) --\n");
+        for (depth, scope) in chain.iter().enumerate() {
+            let indent = "  ".repeat(depth);
+            output.push_str(&format!(
+                "{}{:?} (id={})\n",
+                indent,
+                scope.kind,
+                scope.id.as_u32(),
+            ));
+            for (name, binding) in scope.bindings() {
+                output.push_str(&format!(
+                    "{}  • {}: {:?} at offset {}\n",
+                    indent, name, binding.binding_type, binding.declaration_offset
+                ));
+            }
+        }
+
+        output.push_str("\n-- Lookup test --\n");
+        for name in ["count", "item", "row", "e", "console", "unknown"] {
+            if let Some((scope, binding)) = chain.lookup(name) {
+                output.push_str(&format!(
+                    "{}: found in {:?} (scope {}), type={:?}\n",
+                    name,
+                    scope.kind,
+                    scope.id.as_u32(),
+                    binding.binding_type
+                ));
+            } else {
+                output.push_str(&format!("{}: not found\n", name));
+            }
+        }
+
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_snapshot_scope_transitions() {
+        let mut chain = ScopeChain::new();
+
+        let mut output = String::new();
+        output.push_str("=== Scope Transitions ===\n\n");
+
+        // Track scope changes
+        let log_state = |chain: &ScopeChain, output: &mut String, action: &str| {
+            output.push_str(&format!(
+                "[{}] current={:?}\n",
+                action,
+                chain.current_scope().kind,
+            ));
+        };
+
+        log_state(&chain, &mut output, "initial");
+
+        chain.enter_script_setup_scope(
+            ScriptSetupScopeData {
+                is_ts: false,
+                is_async: false,
+                generic: None,
+            },
+            0,
+            500,
+        );
+        log_state(&chain, &mut output, "enter script_setup");
+
+        chain.enter_v_for_scope(
+            VForScopeData {
+                value_alias: CompactString::new("item"),
+                key_alias: None,
+                index_alias: None,
+                source: CompactString::new("list"),
+                key_expression: None,
+            },
+            100,
+            300,
+        );
+        log_state(&chain, &mut output, "enter v_for");
+
+        chain.enter_v_slot_scope(
+            VSlotScopeData {
+                name: CompactString::new("default"),
+                props_pattern: None,
+                prop_names: vize_carton::smallvec![],
+            },
+            150,
+            250,
+        );
+        log_state(&chain, &mut output, "enter v_slot");
+
+        chain.exit_scope();
+        log_state(&chain, &mut output, "exit v_slot");
+
+        chain.exit_scope();
+        log_state(&chain, &mut output, "exit v_for");
+
+        chain.exit_scope();
+        log_state(&chain, &mut output, "exit script_setup");
+
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_snapshot_binding_types() {
+        let mut chain = ScopeChain::new();
+
+        chain.enter_script_setup_scope(
+            ScriptSetupScopeData {
+                is_ts: true,
+                is_async: false,
+                generic: None,
+            },
+            0,
+            500,
+        );
+
+        // Add various binding types
+        let bindings = [
+            ("refBinding", BindingType::SetupRef),
+            ("letBinding", BindingType::SetupLet),
+            ("constBinding", BindingType::SetupConst),
+            ("reactiveConstBinding", BindingType::SetupReactiveConst),
+            ("maybeRefBinding", BindingType::SetupMaybeRef),
+            ("literalConstBinding", BindingType::LiteralConst),
+            ("propsBinding", BindingType::Props),
+        ];
+
+        for (i, (name, binding_type)) in bindings.iter().enumerate() {
+            chain.add_binding(
+                CompactString::new(*name),
+                ScopeBinding::new(*binding_type, i as u32 * 10),
+            );
+        }
+
+        let mut output = String::new();
+        output.push_str("=== Binding Types ===\n\n");
+
+        for (name, _binding_type) in &bindings {
+            let (_, binding) = chain.lookup(name).unwrap();
+            output.push_str(&format!("{}: {:?}\n", name, binding.binding_type,));
+        }
+
+        assert_snapshot!(output);
+    }
 }

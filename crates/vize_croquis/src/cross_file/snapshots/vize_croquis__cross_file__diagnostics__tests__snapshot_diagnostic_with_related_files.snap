@@ -1,0 +1,18 @@
+---
+source: crates/vize_croquis/src/cross_file/diagnostics.rs
+expression: output
+---
+=== Diagnostic with Related Files ===
+
+Primary file: FileId(0)
+Offset: 100 - 100
+Related files count: 2
+
+Related files:
+  - FileId(1) at 50: Provider defined here
+  - FileId(0) at 200: Value used here without .value
+
+Markdown Output:
+🟡 **WARNING** `vize:croquis/cf/provide-inject-type`
+
+### Type mismatch: provide returns Ref<UserStore> but inject expects UserStore

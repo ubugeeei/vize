@@ -1,0 +1,12 @@
+---
+source: crates/vize_croquis/src/cross_file/analyzer.rs
+expression: output
+---
+=== Reactivity Analysis ===
+
+== Reactivity Issues ==
+  File: FileId(0)
+    kind: DestructuredReactive { source_name: "(destructured)", destructured_props: ["count", "name"] }
+    source: Some("(destructured)")
+
+== Cross-File Reactivity Issues ==
