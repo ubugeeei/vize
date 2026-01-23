@@ -70,6 +70,9 @@ const handleClick = () => {}
     <!-- a11y/form-control-has-label: Input without label -->
     <input type="text" placeholder="Enter name" />
 
+    <!-- a11y/aria-props: Invalid ARIA attribute (typo) -->
+    <input aria-labeledby="label-id" />
+
     <!-- vue/no-v-html: XSS risk -->
     <div v-html="htmlContent"></div>
 

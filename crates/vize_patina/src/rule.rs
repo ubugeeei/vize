@@ -209,6 +209,7 @@ impl RuleRegistry {
         registry.register(Box::new(crate::rules::a11y::TabindexNoPositive));
         registry.register(Box::new(crate::rules::a11y::ClickEventsHaveKeyEvents));
         registry.register(Box::new(crate::rules::a11y::FormControlHasLabel));
+        registry.register(Box::new(crate::rules::a11y::AriaProps));
 
         // ============================================
         // SSR Rules (Warning)
