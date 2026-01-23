@@ -197,6 +197,11 @@
   "a11y/form-control-has-label.help": "aria-label、aria-labelledby、またはfor/idが一致する<label>要素を追加してください",
   "a11y/form-control-has-label.help_placeholder": "aria-label、aria-labelledby、または<label>要素を追加してください。プレースホルダーだけではアクセシブルではありません",
 
+  "a11y/aria-props.description": "無効なARIA属性を禁止する",
+  "a11y/aria-props.message": "無効なARIA属性 '{attr}'",
+  "a11y/aria-props.help": "**理由:** 無効なARIA属性は、支援技術がユーザーに意図した意味を伝えることを妨げます。\n\n**有効なARIA属性**はWAI-ARIA仕様で定義されています:\nhttps://www.w3.org/TR/wai-aria/#state_prop_def\n\n**よく使うARIA属性:**\n```vue\n<!-- ラベル付け -->\n<input aria-label=\"検索\" />\n<div aria-labelledby=\"title-id\">\n\n<!-- 状態 -->\n<button aria-expanded=\"false\">\n<input aria-invalid=\"true\">\n\n<!-- 関係性 -->\n<input aria-describedby=\"hint-id\">\n<div aria-controls=\"panel-id\">\n```\n\n**注意:** カスタム`aria-*`属性は許可されていません。WAI-ARIA仕様の属性のみを使用してください。",
+  "a11y/aria-props.help_suggestion": "**無効な属性:** `{invalid}`\n\n**もしかして:** `{valid}`?\n\nこれはよくあるタイプミスです。ARIA属性はWAI-ARIA仕様の特定の命名規則に従います。",
+
   "compiler.parse_error": "パースエラー: {message}",
   "compiler.unexpected_token": "予期しないトークン'{token}'",
   "compiler.unclosed_tag": "閉じられていないタグ<{tag}>",

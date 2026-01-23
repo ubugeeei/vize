@@ -197,6 +197,11 @@
   "a11y/form-control-has-label.help": "**Option 1:** Use `<label>` with `for`:\n```vue\n<label for=\"email\">Email</label>\n<input id=\"email\" type=\"email\">\n```\n\n**Option 2:** Wrap input in label:\n```vue\n<label>\n  Email\n  <input type=\"email\">\n</label>\n```\n\n**Option 3:** Use aria-label:\n```vue\n<input type=\"search\" aria-label=\"Search\">\n```\n\n**Note:** Placeholder is NOT a substitute for a label.",
   "a11y/form-control-has-label.help_placeholder": "**Warning:** Placeholder text disappears when typing and is not accessible to all users.\n\n**Fix:** Add a proper label:\n```vue\n<label for=\"search\">Search</label>\n<input id=\"search\" placeholder=\"Enter keywords...\">\n```\n\nOr use aria-label:\n```vue\n<input aria-label=\"Search\" placeholder=\"Enter keywords...\">\n```",
 
+  "a11y/aria-props.description": "Disallow invalid ARIA attributes",
+  "a11y/aria-props.message": "Invalid ARIA attribute '{attr}'",
+  "a11y/aria-props.help": "**Why:** Invalid ARIA attributes prevent assistive technologies from conveying the intended meaning to users.\n\n**Valid ARIA attributes** are defined in the WAI-ARIA specification:\nhttps://www.w3.org/TR/wai-aria/#state_prop_def\n\n**Common ARIA attributes:**\n```vue\n<!-- Labeling -->\n<input aria-label=\"Search\" />\n<div aria-labelledby=\"title-id\">\n\n<!-- State -->\n<button aria-expanded=\"false\">\n<input aria-invalid=\"true\">\n\n<!-- Relationships -->\n<input aria-describedby=\"hint-id\">\n<div aria-controls=\"panel-id\">\n```\n\n**Note:** Custom `aria-*` attributes are not allowed. Only use attributes from the WAI-ARIA specification.",
+  "a11y/aria-props.help_suggestion": "**Invalid attribute:** `{invalid}`\n\n**Did you mean:** `{valid}`?\n\nThis is a common typo. ARIA attributes follow specific naming conventions from the WAI-ARIA specification.",
+
   "compiler.parse_error": "Parse error: {message}",
   "compiler.unexpected_token": "Unexpected token '{token}'",
   "compiler.unclosed_tag": "Unclosed tag <{tag}>",

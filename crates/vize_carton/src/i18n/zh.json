@@ -197,6 +197,11 @@
   "a11y/form-control-has-label.help": "**方案1:** 使用`<label>`和`for`:\n```vue\n<label for=\"email\">邮箱</label>\n<input id=\"email\" type=\"email\">\n```\n\n**方案2:** 将input包在label中:\n```vue\n<label>\n  邮箱\n  <input type=\"email\">\n</label>\n```\n\n**方案3:** 使用aria-label:\n```vue\n<input type=\"search\" aria-label=\"搜索\">\n```\n\n**注意:** placeholder不能替代label。",
   "a11y/form-control-has-label.help_placeholder": "**警告:** 占位符文本在输入时消失，且并非所有用户都能访问。\n\n**修复:** 添加正确的label:\n```vue\n<label for=\"search\">搜索</label>\n<input id=\"search\" placeholder=\"输入关键词...\">\n```\n\n或使用aria-label:\n```vue\n<input aria-label=\"搜索\" placeholder=\"输入关键词...\">\n```",
 
+  "a11y/aria-props.description": "禁止无效的ARIA属性",
+  "a11y/aria-props.message": "无效的ARIA属性 '{attr}'",
+  "a11y/aria-props.help": "**原因:** 无效的ARIA属性会阻止辅助技术向用户传达预期含义。\n\n**有效的ARIA属性**在WAI-ARIA规范中定义:\nhttps://www.w3.org/TR/wai-aria/#state_prop_def\n\n**常用ARIA属性:**\n```vue\n<!-- 标签 -->\n<input aria-label=\"搜索\" />\n<div aria-labelledby=\"title-id\">\n\n<!-- 状态 -->\n<button aria-expanded=\"false\">\n<input aria-invalid=\"true\">\n\n<!-- 关系 -->\n<input aria-describedby=\"hint-id\">\n<div aria-controls=\"panel-id\">\n```\n\n**注意:** 不允许自定义`aria-*`属性。只能使用WAI-ARIA规范中的属性。",
+  "a11y/aria-props.help_suggestion": "**无效属性:** `{invalid}`\n\n**您是否想输入:** `{valid}`?\n\n这是一个常见的拼写错误。ARIA属性遵循WAI-ARIA规范的特定命名约定。",
+
   "compiler.parse_error": "解析错误: {message}",
   "compiler.unexpected_token": "意外的标记'{token}'",
   "compiler.unclosed_tag": "未关闭的标签<{tag}>",
