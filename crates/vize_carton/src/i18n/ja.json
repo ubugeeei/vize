@@ -209,6 +209,12 @@
   "a11y/aria-role.help_abstract": "**抽象的なrole**はARIA仕様の基本概念であり、直接使用できません。\n\n**抽象的なrole一覧:**\n`command`, `composite`, `input`, `landmark`, `range`, `roletype`, `section`, `sectionhead`, `select`, `structure`, `widget`, `window`\n\n**代わりに具体的なroleを使用:**\n```vue\n<!-- role=\"range\" の代わりに -->\n<div role=\"slider\">...</div>\n<div role=\"progressbar\">...</div>\n\n<!-- role=\"input\" の代わりに -->\n<div role=\"textbox\">...</div>\n<div role=\"checkbox\">...</div>\n```",
   "a11y/aria-role.help_suggestion": "**無効なrole:** `{invalid}`\n\n**もしかして:** `{valid}`?\n\n有効なroleの完全なリストはWAI-ARIA仕様を参照してください。",
 
+  "vue/use-unique-element-ids.description": "静的リテラルの代わりにuseId()を使用してユニークな要素IDを強制する",
+  "vue/use-unique-element-ids.message": "静的な id=\"{value}\" は、コンポーネントが複数回レンダリングされると重複IDを引き起こす可能性があります",
+  "vue/use-unique-element-ids.message_reference": "静的なID参照 '{value}' は一意でないIDを参照する可能性があります",
+  "vue/use-unique-element-ids.help": "**理由:** 静的な`id`属性は、コンポーネントが複数回レンダリングされると重複IDを引き起こし、アクセシビリティの問題や機能の破損（例：label-input関連付け）につながります。\n\n**修正:** Vue 3.5+ の `useId()` を使用:\n```vue\n<script setup>\nimport { useId } from 'vue'\n\nconst id = useId()\n</script>\n\n<template>\n  <label :for=\"id\">名前:</label>\n  <input :id=\"id\" type=\"text\">\n</template>\n```\n\n**メリット:**\n- 各コンポーネントインスタンスにユニークなIDを生成\n- サーバーとクライアントのレンダリング間で安定（SSR対応）\n- label、ARIA属性、フォーム関連付けに対応",
+  "vue/use-unique-element-ids.help_has_use_id": "**良い:** すでに `useId()` を使用しています。生成されたIDをテンプレートで使用してください:\n```vue\n<label :for=\"id\">名前:</label>\n<input :id=\"id\" type=\"text\">\n```\n\n静的な `id`、`for`、ARIA ID参照を動的な値に置き換えてください。",
+
   "compiler.parse_error": "パースエラー: {message}",
   "compiler.unexpected_token": "予期しないトークン'{token}'",
   "compiler.unclosed_tag": "閉じられていないタグ<{tag}>",

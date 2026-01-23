@@ -139,6 +139,66 @@ pub struct Croquis {
 
     /// Template expressions for type checking (interpolations, v-bind, etc.)
     pub template_expressions: Vec<TemplateExpression>,
+
+    /// Element IDs found in template (for cross-file uniqueness checking)
+    pub element_ids: Vec<ElementIdInfo>,
+}
+
+/// Information about element IDs in template (for cross-file uniqueness checking).
+#[derive(Debug, Clone)]
+pub struct ElementIdInfo {
+    /// The ID value (for static IDs) or expression (for dynamic IDs)
+    pub value: CompactString,
+    /// Start offset in template
+    pub start: u32,
+    /// End offset in template
+    pub end: u32,
+    /// Whether this is a static ID (vs dynamic :id binding)
+    pub is_static: bool,
+    /// Whether this is inside a v-for loop
+    pub in_loop: bool,
+    /// The scope this ID belongs to
+    pub scope_id: crate::scope::ScopeId,
+    /// Kind of ID (id attribute, for reference, aria reference, etc.)
+    pub kind: ElementIdKind,
+}
+
+/// Kind of element ID or ID reference.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ElementIdKind {
+    /// id="..." or :id="..."
+    Id,
+    /// for="..." or :for="..."
+    For,
+    /// aria-labelledby, aria-describedby, aria-controls, etc.
+    AriaReference,
+    /// headers, list, form, popovertarget, anchor
+    OtherReference,
+}
+
+impl ElementIdKind {
+    /// Get the string representation.
+    #[inline]
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Id => "id",
+            Self::For => "for",
+            Self::AriaReference => "aria-reference",
+            Self::OtherReference => "other-reference",
+        }
+    }
+
+    /// Check if this is an ID definition (not a reference).
+    #[inline]
+    pub const fn is_definition(&self) -> bool {
+        matches!(self, Self::Id)
+    }
+
+    /// Check if this is an ID reference.
+    #[inline]
+    pub const fn is_reference(&self) -> bool {
+        !self.is_definition()
+    }
 }
 
 /// Template expression for type checking.

@@ -59,6 +59,7 @@ mod no_unused_properties;
 
 // Accessibility rules
 mod a11y_img_alt;
+mod use_unique_element_ids;
 
 // Style rules
 mod no_preprocessor_lang;
@@ -122,6 +123,7 @@ pub use no_unused_properties::NoUnusedProperties;
 
 // Accessibility rules exports
 pub use a11y_img_alt::A11yImgAlt;
+pub use use_unique_element_ids::UseUniqueElementIds;
 
 // Style rules exports
 pub use no_preprocessor_lang::NoPreprocessorLang;

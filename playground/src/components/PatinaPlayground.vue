@@ -79,6 +79,10 @@ const handleClick = () => {}
     <!-- a11y/aria-role: Abstract ARIA role -->
     <div role="range"></div>
 
+    <!-- vue/use-unique-element-ids: Static id attribute -->
+    <label for="user-input">Username:</label>
+    <input id="user-input" type="text" />
+
     <!-- vue/no-v-html: XSS risk -->
     <div v-html="htmlContent"></div>
 

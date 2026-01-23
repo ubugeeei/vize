@@ -209,6 +209,12 @@
   "a11y/aria-role.help_abstract": "**Abstract roles** are base concepts in the ARIA spec and cannot be used directly.\n\n**Abstract roles include:**\n`command`, `composite`, `input`, `landmark`, `range`, `roletype`, `section`, `sectionhead`, `select`, `structure`, `widget`, `window`\n\n**Use concrete roles instead:**\n```vue\n<!-- Instead of role=\"range\" -->\n<div role=\"slider\">...</div>\n<div role=\"progressbar\">...</div>\n\n<!-- Instead of role=\"input\" -->\n<div role=\"textbox\">...</div>\n<div role=\"checkbox\">...</div>\n```",
   "a11y/aria-role.help_suggestion": "**Invalid role:** `{invalid}`\n\n**Did you mean:** `{valid}`?\n\nRefer to the WAI-ARIA specification for a complete list of valid roles.",
 
+  "vue/use-unique-element-ids.description": "Enforce unique element IDs using useId() instead of static literals",
+  "vue/use-unique-element-ids.message": "Static id=\"{value}\" may cause duplicate IDs when component is rendered multiple times",
+  "vue/use-unique-element-ids.message_reference": "Static ID reference '{value}' may reference a non-unique ID",
+  "vue/use-unique-element-ids.help": "**Why:** Static `id` attributes can cause duplicate IDs when components are rendered multiple times, leading to accessibility issues and broken functionality (e.g., label-input associations).\n\n**Fix:** Use `useId()` from Vue 3.5+:\n```vue\n<script setup>\nimport { useId } from 'vue'\n\nconst id = useId()\n</script>\n\n<template>\n  <label :for=\"id\">Name:</label>\n  <input :id=\"id\" type=\"text\">\n</template>\n```\n\n**Benefits:**\n- Generates unique IDs for each component instance\n- Stable across server and client rendering (SSR-safe)\n- Works with labels, ARIA attributes, and form associations",
+  "vue/use-unique-element-ids.help_has_use_id": "**Good:** You're already using `useId()`. Now use the generated ID in your template:\n```vue\n<label :for=\"id\">Name:</label>\n<input :id=\"id\" type=\"text\">\n```\n\nReplace static `id`, `for`, and ARIA ID references with the dynamic value.",
+
   "compiler.parse_error": "Parse error: {message}",
   "compiler.unexpected_token": "Unexpected token '{token}'",
   "compiler.unclosed_tag": "Unclosed tag <{tag}>",

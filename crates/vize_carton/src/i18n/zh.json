@@ -209,6 +209,12 @@
   "a11y/aria-role.help_abstract": "**抽象role**是ARIA规范中的基本概念，不能直接使用。\n\n**抽象role包括:**\n`command`, `composite`, `input`, `landmark`, `range`, `roletype`, `section`, `sectionhead`, `select`, `structure`, `widget`, `window`\n\n**请使用具体role:**\n```vue\n<!-- 代替 role=\"range\" -->\n<div role=\"slider\">...</div>\n<div role=\"progressbar\">...</div>\n\n<!-- 代替 role=\"input\" -->\n<div role=\"textbox\">...</div>\n<div role=\"checkbox\">...</div>\n```",
   "a11y/aria-role.help_suggestion": "**无效role:** `{invalid}`\n\n**您是否想输入:** `{valid}`?\n\n请参阅WAI-ARIA规范获取有效role的完整列表。",
 
+  "vue/use-unique-element-ids.description": "强制使用useId()代替静态字面量生成唯一元素ID",
+  "vue/use-unique-element-ids.message": "静态 id=\"{value}\" 在组件多次渲染时可能导致重复ID",
+  "vue/use-unique-element-ids.message_reference": "静态ID引用 '{value}' 可能引用非唯一ID",
+  "vue/use-unique-element-ids.help": "**原因:** 静态`id`属性在组件多次渲染时可能导致重复ID，造成无障碍问题和功能故障（如label-input关联）。\n\n**修复:** 使用Vue 3.5+的`useId()`:\n```vue\n<script setup>\nimport { useId } from 'vue'\n\nconst id = useId()\n</script>\n\n<template>\n  <label :for=\"id\">姓名:</label>\n  <input :id=\"id\" type=\"text\">\n</template>\n```\n\n**优点:**\n- 为每个组件实例生成唯一ID\n- 在服务器和客户端渲染间保持稳定（SSR安全）\n- 支持label、ARIA属性和表单关联",
+  "vue/use-unique-element-ids.help_has_use_id": "**很好:** 您已经在使用`useId()`。现在在模板中使用生成的ID:\n```vue\n<label :for=\"id\">姓名:</label>\n<input :id=\"id\" type=\"text\">\n```\n\n将静态的`id`、`for`和ARIA ID引用替换为动态值。",
+
   "compiler.parse_error": "解析错误: {message}",
   "compiler.unexpected_token": "意外的标记'{token}'",
   "compiler.unclosed_tag": "未关闭的标签<{tag}>",

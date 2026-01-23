@@ -3,17 +3,15 @@
 //! Detects issues with element IDs across components:
 //! - Duplicate IDs across different components
 //! - Non-unique IDs generated in loops
+//!
+//! Uses the `element_ids` field from Croquis analysis for accurate tracking.
 
+use crate::analysis::ElementIdKind;
 use crate::cross_file::diagnostics::{
     CrossFileDiagnostic, CrossFileDiagnosticKind, DiagnosticSeverity,
 };
 use crate::cross_file::registry::{FileId, ModuleRegistry};
 use vize_carton::{CompactString, FxHashMap};
-
-/// Static ID entry: (id, offset, in_loop)
-type StaticIdEntry = (CompactString, u32, bool);
-/// Dynamic ID entry: (expression, offset)
-type DynamicIdEntry = (CompactString, u32);
 
 /// Information about a unique ID issue.
 #[derive(Debug, Clone)]
@@ -26,50 +24,71 @@ pub struct UniqueIdIssue {
     pub in_loop: bool,
     /// Whether this is a dynamic ID expression.
     pub is_dynamic: bool,
+    /// Kind of ID (id, for, aria reference, etc.)
+    pub kind: ElementIdKind,
 }
 
 /// Analyze element IDs across all components.
+///
+/// Uses the pre-collected `element_ids` from each file's Croquis analysis
+/// to detect duplicate IDs and non-unique IDs in loops.
 pub fn analyze_element_ids(
     registry: &ModuleRegistry,
 ) -> (Vec<UniqueIdIssue>, Vec<CrossFileDiagnostic>) {
     let mut issues = Vec::new();
     let mut diagnostics = Vec::new();
 
-    // Collect all static IDs with their locations
-    let mut static_ids: FxHashMap<CompactString, Vec<(FileId, u32, bool)>> = FxHashMap::default();
+    // Collect all static IDs with their locations (grouped by ID value)
+    // Key: ID value, Value: Vec<(FileId, offset, in_loop, kind)>
+    let mut static_ids: FxHashMap<CompactString, Vec<(FileId, u32, bool, ElementIdKind)>> =
+        FxHashMap::default();
 
     // Collect dynamic IDs that might not be unique
-    let mut dynamic_ids_in_loops: Vec<(FileId, CompactString, u32)> = Vec::new();
+    let mut dynamic_ids_in_loops: Vec<(FileId, CompactString, u32, ElementIdKind)> = Vec::new();
 
     for entry in registry.vue_components() {
-        let (statics, dynamics) = extract_element_ids(&entry.analysis);
-
-        for (id, offset, in_loop) in statics {
-            static_ids
-                .entry(id)
-                .or_default()
-                .push((entry.id, offset, in_loop));
-        }
-
-        for (id_expr, offset) in dynamics {
-            dynamic_ids_in_loops.push((entry.id, id_expr, offset));
+        // Use the pre-collected element_ids from Croquis analysis
+        for id_info in &entry.analysis.element_ids {
+            // Only track ID definitions (not references like `for`, `aria-labelledby`)
+            // References will be checked for matching definitions separately
+            if id_info.kind.is_definition() {
+                if id_info.is_static {
+                    static_ids.entry(id_info.value.clone()).or_default().push((
+                        entry.id,
+                        id_info.start,
+                        id_info.in_loop,
+                        id_info.kind,
+                    ));
+                } else if id_info.in_loop {
+                    // Dynamic ID in a loop - might not be unique
+                    dynamic_ids_in_loops.push((
+                        entry.id,
+                        id_info.value.clone(),
+                        id_info.start,
+                        id_info.kind,
+                    ));
+                }
+            }
         }
     }
 
-    // Check for duplicate static IDs
+    // Check for duplicate static IDs across files
     for (id, locations) in &static_ids {
         if locations.len() > 1 {
-            // Same ID used in multiple places
+            // Same ID used in multiple places (cross-file duplicate)
             let loc_list: Vec<_> = locations
                 .iter()
-                .map(|(file, off, _)| (*file, *off))
+                .map(|(file, off, _, _)| (*file, *off))
                 .collect();
+
+            let kind = locations[0].3;
 
             issues.push(UniqueIdIssue {
                 id: id.clone(),
                 locations: loc_list.clone(),
-                in_loop: locations.iter().any(|(_, _, in_loop)| *in_loop),
+                in_loop: locations.iter().any(|(_, _, in_loop, _)| *in_loop),
                 is_dynamic: false,
+                kind,
             });
 
             diagnostics.push(
@@ -82,23 +101,24 @@ pub fn analyze_element_ids(
                     locations[0].0,
                     locations[0].1,
                     format!(
-                        "Element ID '{}' is used in {} different locations",
+                        "Element ID '{}' is used in {} different locations across files",
                         id,
                         locations.len()
                     ),
                 )
-                .with_suggestion("Use unique IDs or generate them dynamically"),
+                .with_suggestion("Use useId() to generate unique IDs for each component instance"),
             );
         }
 
-        // Check for static IDs inside loops
-        for (file_id, offset, in_loop) in locations {
+        // Check for static IDs inside loops (will create duplicate IDs)
+        for (file_id, offset, in_loop, kind) in locations {
             if *in_loop {
                 issues.push(UniqueIdIssue {
                     id: id.clone(),
                     locations: vec![(*file_id, *offset)],
                     in_loop: true,
                     is_dynamic: false,
+                    kind: *kind,
                 });
 
                 diagnostics.push(
@@ -111,14 +131,14 @@ pub fn analyze_element_ids(
                         *offset,
                         format!("Static ID '{}' inside v-for will create duplicate IDs", id),
                     )
-                    .with_suggestion("Use a dynamic ID like `:id=\"`item-${index}`\"`"),
+                    .with_suggestion("Use a dynamic ID like `:id=\"`item-${index}`\"` or useId()"),
                 );
             }
         }
     }
 
     // Check dynamic IDs in loops that might not be unique
-    for (file_id, id_expr, offset) in dynamic_ids_in_loops {
+    for (file_id, id_expr, offset, kind) in dynamic_ids_in_loops {
         // Check if the expression likely produces unique values
         if !looks_unique(&id_expr) {
             issues.push(UniqueIdIssue {
@@ -126,6 +146,7 @@ pub fn analyze_element_ids(
                 locations: vec![(file_id, offset)],
                 in_loop: true,
                 is_dynamic: true,
+                kind,
             });
 
             diagnostics.push(
@@ -144,93 +165,6 @@ pub fn analyze_element_ids(
     }
 
     (issues, diagnostics)
-}
-
-/// Extract element IDs from a component's analysis.
-///
-/// Returns (static_ids, dynamic_ids_in_loops).
-fn extract_element_ids(analysis: &crate::Croquis) -> (Vec<StaticIdEntry>, Vec<DynamicIdEntry>) {
-    let mut static_ids = Vec::new();
-    let mut dynamic_ids = Vec::new();
-
-    // Look for id bindings in template expressions
-    for expr in &analysis.template_expressions {
-        // Check if this is an id binding
-        // In a real implementation, we'd have more precise tracking from template analysis
-        if expr.kind == crate::analysis::TemplateExpressionKind::VBind {
-            // Check if it's bound to 'id'
-            // This is a heuristic - real implementation would track attribute names
-            if is_id_binding(&expr.content) {
-                let in_loop = is_inside_vfor(expr.scope_id, analysis);
-
-                if is_static_string(&expr.content) {
-                    if let Some(id) = extract_static_string(&expr.content) {
-                        static_ids.push((id, expr.start, in_loop));
-                    }
-                } else if in_loop {
-                    dynamic_ids.push((expr.content.clone(), expr.start));
-                }
-            }
-        }
-    }
-
-    (static_ids, dynamic_ids)
-}
-
-/// Check if an expression is a binding to 'id' attribute.
-fn is_id_binding(expr: &str) -> bool {
-    // This would need more context from template analysis
-    // For now, use heuristics
-    expr.contains("id")
-}
-
-/// Check if an expression is a static string.
-fn is_static_string(expr: &str) -> bool {
-    let trimmed = expr.trim();
-    (trimmed.starts_with('\'') && trimmed.ends_with('\''))
-        || (trimmed.starts_with('"') && trimmed.ends_with('"'))
-        || (trimmed.starts_with('`') && trimmed.ends_with('`') && !trimmed.contains("${"))
-}
-
-/// Extract the value from a static string expression.
-fn extract_static_string(expr: &str) -> Option<CompactString> {
-    let trimmed = expr.trim();
-    if (trimmed.starts_with('\'') && trimmed.ends_with('\''))
-        || (trimmed.starts_with('"') && trimmed.ends_with('"'))
-        || (trimmed.starts_with('`') && trimmed.ends_with('`'))
-    {
-        Some(CompactString::new(&trimmed[1..trimmed.len() - 1]))
-    } else {
-        None
-    }
-}
-
-/// Check if an expression is inside a v-for scope.
-fn is_inside_vfor(scope_id: crate::ScopeId, analysis: &crate::Croquis) -> bool {
-    // Walk up the scope chain to see if we're inside a v-for
-    let mut current = scope_id;
-    let visited_max = 50; // Prevent infinite loops
-    let mut visited = 0;
-
-    while visited < visited_max {
-        if let Some(scope) = analysis.scopes.get_scope(current) {
-            if scope.kind == crate::scope::ScopeKind::VFor {
-                return true;
-            }
-
-            // Move to parent scope
-            if let Some(&parent) = scope.parents.first() {
-                current = parent;
-                visited += 1;
-            } else {
-                break;
-            }
-        } else {
-            break;
-        }
-    }
-
-    false
 }
 
 /// Check if an ID expression looks like it would produce unique values.
@@ -257,15 +191,6 @@ fn looks_unique(expr: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_is_static_string() {
-        assert!(is_static_string("'myId'"));
-        assert!(is_static_string("\"myId\""));
-        assert!(is_static_string("`myId`"));
-        assert!(!is_static_string("`item-${index}`"));
-        assert!(!is_static_string("item.id"));
-    }
 
     #[test]
     fn test_looks_unique() {
