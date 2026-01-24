@@ -255,25 +255,8 @@ impl SemanticTokensService {
                 let expr_end = abs_start + end;
                 let expr = &template[expr_start..expr_end];
 
-                // Highlight identifiers in the expression
-                for (ident, offset) in Self::extract_identifiers(expr) {
-                    let abs_offset = expr_start + offset;
-                    let (line, col) = Self::offset_to_line_col(template, abs_offset);
-
-                    let token_type = if Self::looks_like_function_call(expr, offset) {
-                        TokenType::Function
-                    } else {
-                        TokenType::Variable
-                    };
-
-                    tokens.push(AbsoluteToken {
-                        line: base_line + line - 1,
-                        start: col,
-                        length: ident.len() as u32,
-                        token_type: token_type as u32,
-                        modifiers: 0,
-                    });
-                }
+                // Tokenize the entire expression
+                Self::tokenize_expression(expr, template, expr_start, base_line, tokens);
 
                 pos = abs_start + end + 2;
             } else {
@@ -407,30 +390,14 @@ impl SemanticTokensService {
                             if let Some(end) = remaining[expr_start..].find(quote as char) {
                                 let expr = &remaining[expr_start..expr_start + end];
 
-                                // Extract and highlight identifiers in the expression
-                                for (ident, offset) in Self::extract_identifiers(expr) {
-                                    let abs_offset = start + expr_start + offset;
-                                    let (line, col) =
-                                        Self::offset_to_line_col(template, abs_offset);
-
-                                    // Determine token type based on context
-                                    let token_type = if Self::looks_like_function_call(expr, offset)
-                                    {
-                                        TokenType::Function
-                                    } else if Self::looks_like_property_access(expr, offset) {
-                                        TokenType::Property
-                                    } else {
-                                        TokenType::Variable
-                                    };
-
-                                    tokens.push(AbsoluteToken {
-                                        line: base_line + line - 1,
-                                        start: col,
-                                        length: ident.len() as u32,
-                                        token_type: token_type as u32,
-                                        modifiers: 0,
-                                    });
-                                }
+                                // Tokenize the entire expression
+                                Self::tokenize_expression(
+                                    expr,
+                                    template,
+                                    start + expr_start,
+                                    base_line,
+                                    tokens,
+                                );
 
                                 pos = start + expr_start + end + 1;
                                 continue;
@@ -442,6 +409,237 @@ impl SemanticTokensService {
 
             pos += 1;
         }
+    }
+
+    /// Tokenize a JavaScript/TypeScript expression for syntax highlighting.
+    fn tokenize_expression(
+        expr: &str,
+        template: &str,
+        expr_offset: usize,
+        base_line: u32,
+        tokens: &mut Vec<AbsoluteToken>,
+    ) {
+        let bytes = expr.as_bytes();
+        let mut i = 0;
+
+        while i < bytes.len() {
+            let c = bytes[i] as char;
+
+            // Skip whitespace
+            if c.is_whitespace() {
+                i += 1;
+                continue;
+            }
+
+            // Numbers
+            if c.is_ascii_digit()
+                || (c == '.' && i + 1 < bytes.len() && (bytes[i + 1] as char).is_ascii_digit())
+            {
+                let start = i;
+                while i < bytes.len() {
+                    let ch = bytes[i] as char;
+                    if ch.is_ascii_digit()
+                        || ch == '.'
+                        || ch == 'e'
+                        || ch == 'E'
+                        || ch == '_'
+                        || (ch == '-'
+                            && i > start
+                            && (bytes[i - 1] == b'e' || bytes[i - 1] == b'E'))
+                    {
+                        i += 1;
+                    } else {
+                        break;
+                    }
+                }
+                let abs_offset = expr_offset + start;
+                let (line, col) = Self::offset_to_line_col(template, abs_offset);
+                tokens.push(AbsoluteToken {
+                    line: base_line + line - 1,
+                    start: col,
+                    length: (i - start) as u32,
+                    token_type: TokenType::Number as u32,
+                    modifiers: 0,
+                });
+                continue;
+            }
+
+            // String literals within expressions ('...' or `...`)
+            if c == '\'' || c == '`' {
+                let quote = c;
+                let start = i;
+                i += 1;
+                while i < bytes.len() && bytes[i] as char != quote {
+                    if bytes[i] == b'\\' && i + 1 < bytes.len() {
+                        i += 2; // skip escaped char
+                    } else {
+                        i += 1;
+                    }
+                }
+                if i < bytes.len() {
+                    i += 1; // closing quote
+                }
+                let abs_offset = expr_offset + start;
+                let (line, col) = Self::offset_to_line_col(template, abs_offset);
+                tokens.push(AbsoluteToken {
+                    line: base_line + line - 1,
+                    start: col,
+                    length: (i - start) as u32,
+                    token_type: TokenType::String as u32,
+                    modifiers: 0,
+                });
+                continue;
+            }
+
+            // Identifiers and keywords
+            if Self::is_ident_start(c) {
+                let start = i;
+                while i < bytes.len() && Self::is_ident_char(bytes[i] as char) {
+                    i += 1;
+                }
+                let ident = &expr[start..i];
+                let abs_offset = expr_offset + start;
+                let (line, col) = Self::offset_to_line_col(template, abs_offset);
+
+                // Determine token type
+                let token_type = if Self::is_keyword(ident) || Self::is_boolean_or_null(ident) {
+                    TokenType::Keyword
+                } else if Self::looks_like_function_call(expr, start) {
+                    TokenType::Function
+                } else if Self::looks_like_property_access(expr, start) {
+                    TokenType::Property
+                } else {
+                    TokenType::Variable
+                };
+
+                tokens.push(AbsoluteToken {
+                    line: base_line + line - 1,
+                    start: col,
+                    length: ident.len() as u32,
+                    token_type: token_type as u32,
+                    modifiers: 0,
+                });
+                continue;
+            }
+
+            // Operators
+            if Self::is_operator_start(c) {
+                let start = i;
+                // Multi-character operators: ===, !==, >=, <=, ==, !=, &&, ||, ??, ?., +=, -=, etc.
+                let op_len = Self::operator_length(&expr[i..]);
+                i += op_len;
+                let abs_offset = expr_offset + start;
+                let (line, col) = Self::offset_to_line_col(template, abs_offset);
+                tokens.push(AbsoluteToken {
+                    line: base_line + line - 1,
+                    start: col,
+                    length: op_len as u32,
+                    token_type: TokenType::Operator as u32,
+                    modifiers: 0,
+                });
+                continue;
+            }
+
+            // Skip other characters (parentheses, brackets, commas, etc.)
+            i += 1;
+        }
+    }
+
+    /// Check if character starts an operator.
+    fn is_operator_start(c: char) -> bool {
+        matches!(
+            c,
+            '+' | '-' | '*' | '/' | '%' | '=' | '!' | '<' | '>' | '&' | '|' | '?' | ':' | '^' | '~'
+        )
+    }
+
+    /// Get the length of an operator at the start of the string.
+    fn operator_length(s: &str) -> usize {
+        let bytes = s.as_bytes();
+        if bytes.len() >= 3 {
+            let three = &s[..3];
+            if matches!(
+                three,
+                "===" | "!==" | ">>>" | "<<=" | ">>=" | "&&=" | "||=" | "??="
+            ) {
+                return 3;
+            }
+        }
+        if bytes.len() >= 2 {
+            let two = &s[..2];
+            if matches!(
+                two,
+                "==" | "!="
+                    | "<="
+                    | ">="
+                    | "&&"
+                    | "||"
+                    | "??"
+                    | "?."
+                    | "++"
+                    | "--"
+                    | "+="
+                    | "-="
+                    | "*="
+                    | "/="
+                    | "%="
+                    | "<<"
+                    | ">>"
+                    | "=>"
+                    | "**"
+            ) {
+                return 2;
+            }
+        }
+        1
+    }
+
+    /// Check if identifier is a JavaScript keyword.
+    fn is_keyword(s: &str) -> bool {
+        matches!(
+            s,
+            "if" | "else"
+                | "for"
+                | "while"
+                | "do"
+                | "switch"
+                | "case"
+                | "break"
+                | "continue"
+                | "return"
+                | "throw"
+                | "try"
+                | "catch"
+                | "finally"
+                | "new"
+                | "delete"
+                | "typeof"
+                | "instanceof"
+                | "in"
+                | "of"
+                | "void"
+                | "this"
+                | "super"
+                | "class"
+                | "extends"
+                | "const"
+                | "let"
+                | "var"
+                | "function"
+                | "async"
+                | "await"
+                | "yield"
+                | "import"
+                | "export"
+                | "default"
+                | "from"
+                | "as"
+        )
+    }
+
+    /// Check if identifier is a boolean or null literal.
+    fn is_boolean_or_null(s: &str) -> bool {
+        matches!(s, "true" | "false" | "null" | "undefined")
     }
 
     /// Check if identifier looks like a property access (preceded by .)
@@ -590,6 +788,7 @@ impl SemanticTokensService {
     }
 
     /// Extract identifiers from an expression.
+    #[cfg(test)]
     fn extract_identifiers(expr: &str) -> Vec<(&str, usize)> {
         let mut identifiers = Vec::new();
         let bytes = expr.as_bytes();
@@ -702,6 +901,7 @@ impl SemanticTokensService {
         c.is_ascii_alphanumeric() || c == '_' || c == '$'
     }
 
+    #[cfg(test)]
     fn is_keyword_or_literal(s: &str) -> bool {
         matches!(
             s,
@@ -1150,5 +1350,107 @@ const count = ref(0)
             // - 'ref' in script
             assert!(!tokens.data.is_empty(), "Should have semantic tokens");
         }
+    }
+
+    #[test]
+    fn test_directive_expression_tokenization() {
+        let template =
+            r#"<div v-if="todoGuards.isActive(todo) || todoGuards.isCompleted(todo)"></div>"#;
+        let mut tokens = Vec::new();
+        SemanticTokensService::collect_directive_expression_tokens(template, 1, &mut tokens);
+
+        // Debug: print all tokens
+        for token in &tokens {
+            eprintln!(
+                "Token: line={}, start={}, length={}, type={}",
+                token.line, token.start, token.length, token.token_type
+            );
+        }
+
+        // Should find tokens for the expression:
+        // - todoGuards (variable)
+        // - isActive (function)
+        // - todo (variable)
+        // - || (operator)
+        // - todoGuards (variable)
+        // - isCompleted (function)
+        // - todo (variable)
+        assert!(
+            tokens.len() >= 7,
+            "Expected at least 7 tokens, got {}",
+            tokens.len()
+        );
+
+        // Check that we have both variable and function tokens
+        let has_variable = tokens
+            .iter()
+            .any(|t| t.token_type == TokenType::Variable as u32);
+        let has_function = tokens
+            .iter()
+            .any(|t| t.token_type == TokenType::Function as u32);
+        let has_operator = tokens
+            .iter()
+            .any(|t| t.token_type == TokenType::Operator as u32);
+
+        assert!(has_variable, "Should have variable tokens");
+        assert!(has_function, "Should have function tokens");
+        assert!(has_operator, "Should have operator tokens");
+    }
+
+    #[test]
+    fn test_tokenize_expression() {
+        let expr = "todoGuards.isActive(todo) || todoGuards.isCompleted(todo)";
+        let template = expr; // Use the expression as the "template" for position calculation
+        let mut tokens = Vec::new();
+        SemanticTokensService::tokenize_expression(expr, template, 0, 1, &mut tokens);
+
+        // Debug: print all tokens
+        for token in &tokens {
+            let token_name = match token.token_type {
+                x if x == TokenType::Variable as u32 => "Variable",
+                x if x == TokenType::Function as u32 => "Function",
+                x if x == TokenType::Property as u32 => "Property",
+                x if x == TokenType::Operator as u32 => "Operator",
+                x if x == TokenType::Keyword as u32 => "Keyword",
+                x if x == TokenType::Number as u32 => "Number",
+                x if x == TokenType::String as u32 => "String",
+                _ => "Unknown",
+            };
+            eprintln!(
+                "Token: start={}, length={}, type={} ({})",
+                token.start, token.length, token.token_type, token_name
+            );
+        }
+
+        // Count token types
+        let var_count = tokens
+            .iter()
+            .filter(|t| t.token_type == TokenType::Variable as u32)
+            .count();
+        let func_count = tokens
+            .iter()
+            .filter(|t| t.token_type == TokenType::Function as u32)
+            .count();
+        let prop_count = tokens
+            .iter()
+            .filter(|t| t.token_type == TokenType::Property as u32)
+            .count();
+        let op_count = tokens
+            .iter()
+            .filter(|t| t.token_type == TokenType::Operator as u32)
+            .count();
+
+        eprintln!(
+            "Variables: {}, Functions: {}, Properties: {}, Operators: {}",
+            var_count, func_count, prop_count, op_count
+        );
+
+        // We expect:
+        // - todoGuards (variable) x2
+        // - isActive (function) - after dot, so might be property
+        // - isCompleted (function) - after dot, so might be property
+        // - todo (variable) x2
+        // - || (operator)
+        assert!(tokens.len() >= 7, "Expected at least 7 tokens");
     }
 }

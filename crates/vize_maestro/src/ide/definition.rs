@@ -81,7 +81,7 @@ impl DefinitionService {
 
                         if bridge.is_initialized() {
                             let _ = bridge
-                                .open_virtual_document(
+                                .open_or_update_virtual_document(
                                     &format!("{}.template.ts", ctx.uri.path()),
                                     &template.content,
                                 )
@@ -138,7 +138,7 @@ impl DefinitionService {
 
                         if bridge.is_initialized() {
                             let _ = bridge
-                                .open_virtual_document(
+                                .open_or_update_virtual_document(
                                     &format!("{}.{}", ctx.uri.path(), suffix),
                                     &script.content,
                                 )

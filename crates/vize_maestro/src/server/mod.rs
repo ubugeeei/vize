@@ -102,6 +102,112 @@ impl MaestroServer {
             },
         ]
     }
+
+    /// Get lint rule documentation for diagnostics at the given position.
+    fn get_lint_hover_at_position(
+        &self,
+        uri: &Url,
+        _content: &str,
+        position: Position,
+    ) -> Option<String> {
+        // Get diagnostics for this document
+        let diagnostics = DiagnosticService::collect(&self.state, uri);
+
+        // Find lint diagnostics at this position
+        let lint_diags: Vec<_> = diagnostics
+            .iter()
+            .filter(|d| {
+                // Check if position is within diagnostic range
+                let in_range = position.line >= d.range.start.line
+                    && position.line <= d.range.end.line
+                    && (position.line != d.range.start.line
+                        || position.character >= d.range.start.character)
+                    && (position.line != d.range.end.line
+                        || position.character <= d.range.end.character);
+
+                // Only include lint diagnostics (from patina)
+                let is_lint = d
+                    .source
+                    .as_ref()
+                    .is_some_and(|s| s == "vize/lint" || s == "vize/musea");
+
+                in_range && is_lint
+            })
+            .collect();
+
+        if lint_diags.is_empty() {
+            return None;
+        }
+
+        // Format lint info as markdown
+        let mut markdown = String::new();
+
+        for diag in lint_diags {
+            let severity_icon = match diag.severity {
+                Some(DiagnosticSeverity::ERROR) => "🔴",
+                Some(DiagnosticSeverity::WARNING) => "🟡",
+                Some(DiagnosticSeverity::INFORMATION) => "🔵",
+                Some(DiagnosticSeverity::HINT) => "💡",
+                _ => "⚪",
+            };
+
+            // Rule name as header
+            if let Some(NumberOrString::String(ref rule)) = diag.code {
+                markdown.push_str(&format!("### {} {}\n\n", severity_icon, rule));
+            }
+
+            // Message (split into message and help if present)
+            let parts: Vec<&str> = diag.message.split("\n\nHelp: ").collect();
+            markdown.push_str(parts[0]);
+            markdown.push_str("\n\n");
+
+            // Help text (if present)
+            if parts.len() > 1 {
+                markdown.push_str(&format!("**Help:** {}\n\n", parts[1]));
+            }
+
+            // Link to documentation
+            if let Some(ref code_desc) = diag.code_description {
+                markdown.push_str(&format!(
+                    "[📖 View rule documentation]({})\n\n",
+                    code_desc.href
+                ));
+            }
+
+            markdown.push_str("---\n\n");
+        }
+
+        // Remove trailing separator
+        if markdown.ends_with("---\n\n") {
+            markdown.truncate(markdown.len() - 5);
+        }
+
+        Some(markdown)
+    }
+
+    /// Merge hover content with lint information.
+    fn merge_hover_with_lint(hover: Option<Hover>, lint_info: String) -> Hover {
+        match hover {
+            Some(mut h) => {
+                // Append lint info to existing hover content
+                if let HoverContents::Markup(ref mut markup) = h.contents {
+                    markup.value.push_str("\n\n---\n\n");
+                    markup.value.push_str(&lint_info);
+                }
+                h
+            }
+            None => {
+                // Create new hover with just lint info
+                Hover {
+                    contents: HoverContents::Markup(MarkupContent {
+                        kind: MarkupKind::Markdown,
+                        value: lint_info,
+                    }),
+                    range: None,
+                }
+            }
+        }
+    }
 }
 
 #[tower_lsp::async_trait]
@@ -208,13 +314,30 @@ impl LanguageServer for MaestroServer {
             crate::utils::position_to_offset_str(&content, position.line, position.character);
 
         // Use IdeContext and HoverService for context-aware hover
+        let mut hover_result: Option<Hover> = None;
+
         if let Some(ctx) = IdeContext::new(&self.state, uri, offset) {
-            if let Some(hover) = HoverService::hover(&ctx) {
-                return Ok(Some(hover));
+            // Try tsgo-based hover first (when native feature is enabled)
+            #[cfg(feature = "native")]
+            {
+                let tsgo_bridge = self.state.get_tsgo_bridge().await;
+                hover_result = HoverService::hover_with_tsgo(&ctx, tsgo_bridge).await;
+            }
+
+            // Fallback to sync hover
+            #[cfg(not(feature = "native"))]
+            {
+                hover_result = HoverService::hover(&ctx);
             }
         }
 
-        Ok(None)
+        // Check for lint diagnostics at this position and add info to hover
+        let lint_hover = self.get_lint_hover_at_position(uri, &content, position);
+        if let Some(lint_info) = lint_hover {
+            hover_result = Some(Self::merge_hover_with_lint(hover_result, lint_info));
+        }
+
+        Ok(hover_result)
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
@@ -262,6 +385,19 @@ impl LanguageServer for MaestroServer {
 
         // Use IdeContext and DefinitionService for go-to-definition
         if let Some(ctx) = IdeContext::new(&self.state, uri, offset) {
+            // Try tsgo-based definition first (when native feature is enabled)
+            #[cfg(feature = "native")]
+            {
+                let tsgo_bridge = self.state.get_tsgo_bridge().await;
+                if let Some(response) =
+                    DefinitionService::definition_with_tsgo(&ctx, tsgo_bridge).await
+                {
+                    return Ok(Some(response));
+                }
+            }
+
+            // Fallback to sync definition
+            #[cfg(not(feature = "native"))]
             if let Some(response) = DefinitionService::definition(&ctx) {
                 return Ok(Some(response));
             }

@@ -81,7 +81,7 @@ impl HoverService {
                         // Open/update virtual document
                         if bridge.is_initialized() {
                             let _ = bridge
-                                .open_virtual_document(
+                                .open_or_update_virtual_document(
                                     &format!("{}.template.ts", ctx.uri.path()),
                                     &template.content,
                                 )
@@ -146,7 +146,7 @@ impl HoverService {
                         // Open/update virtual document
                         if bridge.is_initialized() {
                             let _ = bridge
-                                .open_virtual_document(
+                                .open_or_update_virtual_document(
                                     &format!("{}.{}", ctx.uri.path(), suffix),
                                     &script.content,
                                 )
@@ -253,23 +253,30 @@ impl HoverService {
     #[cfg(feature = "native")]
     fn convert_lsp_hover(lsp_hover: LspHover) -> Hover {
         let contents = match lsp_hover.contents {
-            LspHoverContents::Markup(markup) => HoverContents::Markup(MarkupContent {
-                kind: if markup.kind == "markdown" {
-                    MarkupKind::Markdown
+            LspHoverContents::Markup(markup) => {
+                let value = if markup.kind == "markdown" {
+                    markup.value
                 } else {
-                    MarkupKind::PlainText
-                },
-                value: markup.value,
-            }),
-            LspHoverContents::String(s) => HoverContents::Markup(MarkupContent {
-                kind: MarkupKind::PlainText,
-                value: s,
-            }),
+                    // Wrap plaintext TypeScript type info in a code block for better rendering
+                    Self::wrap_type_info_in_codeblock(&markup.value)
+                };
+                HoverContents::Markup(MarkupContent {
+                    kind: MarkupKind::Markdown,
+                    value,
+                })
+            }
+            LspHoverContents::String(s) => {
+                // Wrap plaintext in a TypeScript code block
+                HoverContents::Markup(MarkupContent {
+                    kind: MarkupKind::Markdown,
+                    value: Self::wrap_type_info_in_codeblock(&s),
+                })
+            }
             LspHoverContents::Array(items) => {
                 let value = items
                     .into_iter()
                     .map(|item| match item {
-                        LspMarkedString::String(s) => s,
+                        LspMarkedString::String(s) => Self::wrap_type_info_in_codeblock(&s),
                         LspMarkedString::LanguageString { language, value } => {
                             format!("```{}\n{}\n```", language, value)
                         }
@@ -295,6 +302,38 @@ impl HoverService {
         });
 
         Hover { contents, range }
+    }
+
+    /// Wrap TypeScript type information in a code block for proper markdown rendering.
+    #[cfg(feature = "native")]
+    fn wrap_type_info_in_codeblock(text: &str) -> String {
+        let text = text.trim();
+        // If already wrapped in code block, return as-is
+        if text.starts_with("```") {
+            return text.to_string();
+        }
+        // Check if this looks like TypeScript type info
+        // Common patterns: (const), (let), (var), (function), (method), (property), type, interface, etc.
+        let looks_like_type_info = text.starts_with('(')
+            || text.starts_with("type ")
+            || text.starts_with("interface ")
+            || text.starts_with("class ")
+            || text.starts_with("enum ")
+            || text.starts_with("function ")
+            || text.starts_with("const ")
+            || text.starts_with("let ")
+            || text.starts_with("var ")
+            || text.starts_with("import ")
+            || text.contains(": ")
+            || text.contains("=>")
+            || text.contains(" | ")
+            || text.contains(" & ");
+
+        if looks_like_type_info {
+            format!("```typescript\n{}\n```", text)
+        } else {
+            text.to_string()
+        }
     }
 
     /// Get hover for template context.

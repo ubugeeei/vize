@@ -190,18 +190,18 @@ impl DiagnosticService {
         // Create virtual document name (used by tsgo bridge to create the full URI)
         let virtual_name = format!("{}.ts", uri.path());
 
-        // Open document in tsgo
-        tracing::info!("opening virtual document: {}", virtual_name);
+        // Open or update document in tsgo (uses didChange if already open)
+        tracing::info!("opening/updating virtual document: {}", virtual_name);
         let virtual_uri = match bridge
-            .open_virtual_document(&virtual_name, virtual_ts)
+            .open_or_update_virtual_document(&virtual_name, virtual_ts)
             .await
         {
             Ok(uri) => {
-                tracing::info!("virtual document opened successfully: {}", uri);
+                tracing::info!("virtual document opened/updated successfully: {}", uri);
                 uri
             }
             Err(e) => {
-                tracing::warn!("failed to open virtual document: {}", e);
+                tracing::warn!("failed to open/update virtual document: {}", e);
                 return vec![];
             }
         };

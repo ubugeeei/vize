@@ -380,6 +380,9 @@ type DiagnosticsCache = Arc<DashMap<String, Vec<LspDiagnostic>>>;
 /// Type alias for shared stdin writer.
 type SharedStdin = Arc<Mutex<Option<BufWriter<TokioChildStdin>>>>;
 
+/// Type alias for open documents tracking (URI -> version).
+type OpenDocuments = Arc<DashMap<String, i32>>;
+
 /// Bridge to tsgo for type checking via LSP.
 pub struct TsgoBridge {
     /// Configuration
@@ -400,6 +403,8 @@ pub struct TsgoBridge {
     cache_stats: CacheStats,
     /// Cached diagnostics by URI (wrapped in Arc for sharing with reader task)
     diagnostics_cache: DiagnosticsCache,
+    /// Tracks open document URIs and their versions
+    open_documents: OpenDocuments,
 }
 
 impl TsgoBridge {
@@ -426,6 +431,7 @@ impl TsgoBridge {
             profiler,
             cache_stats: CacheStats::new(),
             diagnostics_cache: Arc::new(DashMap::new()),
+            open_documents: Arc::new(DashMap::new()),
         }
     }
 
@@ -940,6 +946,9 @@ impl TsgoBridge {
             format!("{}://{}", VIRTUAL_URI_SCHEME, name)
         };
 
+        // Clear cached diagnostics for this URI
+        self.diagnostics_cache.remove(&uri);
+
         let params = json!({
             "textDocument": {
                 "uri": uri,
@@ -952,11 +961,51 @@ impl TsgoBridge {
         self.send_notification("textDocument/didOpen", Some(params))
             .await?;
 
+        // Track this document as open with version 1
+        self.open_documents.insert(uri.clone(), 1);
+
         if let Some(timer) = _timer {
             timer.record(&self.profiler);
         }
 
         Ok(uri)
+    }
+
+    /// Open or update a virtual document. Uses didChange if already open, didOpen otherwise.
+    pub async fn open_or_update_virtual_document(
+        &self,
+        name: &str,
+        content: &str,
+    ) -> Result<String, TsgoBridgeError> {
+        if !self.initialized.load(Ordering::SeqCst) {
+            return Err(TsgoBridgeError::NotInitialized);
+        }
+
+        // Build URI first to check if document is already open
+        let uri = if name.starts_with("file://") || name.starts_with('/') {
+            if name.starts_with("file://") {
+                name.to_string()
+            } else {
+                format!("file://{}", name)
+            }
+        } else {
+            format!("{}://{}", VIRTUAL_URI_SCHEME, name)
+        };
+
+        // Check if document is already open
+        if let Some(mut version_ref) = self.open_documents.get_mut(&uri) {
+            // Document is already open, send didChange with incremented version
+            let new_version = *version_ref + 1;
+            *version_ref = new_version;
+            drop(version_ref); // Release the lock before async call
+
+            self.update_virtual_document(&uri, content, new_version)
+                .await?;
+            Ok(uri)
+        } else {
+            // Document not open, send didOpen
+            self.open_virtual_document(name, content).await
+        }
     }
 
     /// Update a virtual document.
@@ -1001,8 +1050,9 @@ impl TsgoBridge {
             return Err(TsgoBridgeError::NotInitialized);
         }
 
-        // Remove from cache
+        // Remove from cache and open documents tracking
         self.diagnostics_cache.remove(uri);
+        self.open_documents.remove(uri);
 
         let params = json!({
             "textDocument": {

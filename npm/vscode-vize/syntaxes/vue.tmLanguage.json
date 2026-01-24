@@ -310,6 +310,152 @@
         }
       ]
     },
+    "vue-directive-attributes": {
+      "patterns": [
+        {
+          "comment": "v-* directive with double-quoted expression",
+          "begin": "(?<=\\s|^)(v-[a-zA-Z0-9_:-]+)\\s*(=)\\s*(\")",
+          "beginCaptures": {
+            "1": { "name": "keyword.control.directive.vue" },
+            "2": { "name": "punctuation.separator.key-value.html" },
+            "3": { "name": "punctuation.definition.string.begin.html" }
+          },
+          "end": "(\")",
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.string.end.html" }
+          },
+          "contentName": "meta.embedded.expression.vue",
+          "patterns": [
+            { "include": "source.ts" }
+          ]
+        },
+        {
+          "comment": "v-* directive with single-quoted expression",
+          "begin": "(?<=\\s|^)(v-[a-zA-Z0-9_:-]+)\\s*(=)\\s*(')",
+          "beginCaptures": {
+            "1": { "name": "keyword.control.directive.vue" },
+            "2": { "name": "punctuation.separator.key-value.html" },
+            "3": { "name": "punctuation.definition.string.begin.html" }
+          },
+          "end": "(')",
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.string.end.html" }
+          },
+          "contentName": "meta.embedded.expression.vue",
+          "patterns": [
+            { "include": "source.ts" }
+          ]
+        },
+        {
+          "comment": ":prop shorthand with double-quoted expression",
+          "begin": "(?<=\\s|^)(:)([a-zA-Z_][a-zA-Z0-9_.-]*)\\s*(=)\\s*(\")",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.directive.vue" },
+            "2": { "name": "entity.other.attribute-name.binding.vue" },
+            "3": { "name": "punctuation.separator.key-value.html" },
+            "4": { "name": "punctuation.definition.string.begin.html" }
+          },
+          "end": "(\")",
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.string.end.html" }
+          },
+          "contentName": "meta.embedded.expression.vue",
+          "patterns": [
+            { "include": "source.ts" }
+          ]
+        },
+        {
+          "comment": ":prop shorthand with single-quoted expression",
+          "begin": "(?<=\\s|^)(:)([a-zA-Z_][a-zA-Z0-9_.-]*)\\s*(=)\\s*(')",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.directive.vue" },
+            "2": { "name": "entity.other.attribute-name.binding.vue" },
+            "3": { "name": "punctuation.separator.key-value.html" },
+            "4": { "name": "punctuation.definition.string.begin.html" }
+          },
+          "end": "(')",
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.string.end.html" }
+          },
+          "contentName": "meta.embedded.expression.vue",
+          "patterns": [
+            { "include": "source.ts" }
+          ]
+        },
+        {
+          "comment": "@event shorthand with double-quoted expression",
+          "begin": "(?<=\\s|^)(@)([a-zA-Z_][a-zA-Z0-9_.-]*)\\s*(=)\\s*(\")",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.directive.vue" },
+            "2": { "name": "entity.other.attribute-name.event.vue" },
+            "3": { "name": "punctuation.separator.key-value.html" },
+            "4": { "name": "punctuation.definition.string.begin.html" }
+          },
+          "end": "(\")",
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.string.end.html" }
+          },
+          "contentName": "meta.embedded.expression.vue",
+          "patterns": [
+            { "include": "source.ts" }
+          ]
+        },
+        {
+          "comment": "@event shorthand with single-quoted expression",
+          "begin": "(?<=\\s|^)(@)([a-zA-Z_][a-zA-Z0-9_.-]*)\\s*(=)\\s*(')",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.directive.vue" },
+            "2": { "name": "entity.other.attribute-name.event.vue" },
+            "3": { "name": "punctuation.separator.key-value.html" },
+            "4": { "name": "punctuation.definition.string.begin.html" }
+          },
+          "end": "(')",
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.string.end.html" }
+          },
+          "contentName": "meta.embedded.expression.vue",
+          "patterns": [
+            { "include": "source.ts" }
+          ]
+        },
+        {
+          "comment": "#slot shorthand with double-quoted expression",
+          "begin": "(?<=\\s|^)(#)([a-zA-Z_][a-zA-Z0-9_.-]*)\\s*(=)\\s*(\")",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.directive.vue" },
+            "2": { "name": "entity.other.attribute-name.slot.vue" },
+            "3": { "name": "punctuation.separator.key-value.html" },
+            "4": { "name": "punctuation.definition.string.begin.html" }
+          },
+          "end": "(\")",
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.string.end.html" }
+          },
+          "contentName": "meta.embedded.expression.vue",
+          "patterns": [
+            { "include": "source.ts" }
+          ]
+        },
+        {
+          "comment": "#slot shorthand with single-quoted expression",
+          "begin": "(?<=\\s|^)(#)([a-zA-Z_][a-zA-Z0-9_.-]*)\\s*(=)\\s*(')",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.directive.vue" },
+            "2": { "name": "entity.other.attribute-name.slot.vue" },
+            "3": { "name": "punctuation.separator.key-value.html" },
+            "4": { "name": "punctuation.definition.string.begin.html" }
+          },
+          "end": "(')",
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.string.end.html" }
+          },
+          "contentName": "meta.embedded.expression.vue",
+          "patterns": [
+            { "include": "source.ts" }
+          ]
+        }
+      ]
+    },
     "vue-tag-attributes": {
       "patterns": [
         {
@@ -336,6 +482,7 @@
             "1": { "name": "punctuation.definition.tag.end.html" }
           },
           "patterns": [
+            { "include": "#vue-directive-attributes" },
             { "include": "#vue-directives" },
             { "include": "#vue-tag-attributes" }
           ]
