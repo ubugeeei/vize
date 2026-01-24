@@ -78,6 +78,17 @@ impl DefinitionService {
             return Some(def);
         }
 
+        // Check if this is a prop name used directly in template
+        let options = vize_atelier_sfc::SfcParseOptions {
+            filename: ctx.uri.path().to_string(),
+            ..Default::default()
+        };
+        if let Ok(descriptor) = vize_atelier_sfc::parse_sfc(&ctx.content, options) {
+            if let Some(def) = Self::find_prop_definition_by_name(ctx, &descriptor, &word) {
+                return Some(def);
+            }
+        }
+
         // Try tsgo definition
         if let Some(bridge) = tsgo_bridge {
             if let Some(ref virtual_docs) = ctx.virtual_docs {
@@ -496,6 +507,71 @@ impl DefinitionService {
         None
     }
 
+    /// Find definition for a prop name used directly in template.
+    /// Props are available directly in template (e.g., {{ propName }} or :attr="propName")
+    fn find_prop_definition_by_name(
+        ctx: &IdeContext<'_>,
+        descriptor: &vize_atelier_sfc::SfcDescriptor,
+        prop_name: &str,
+    ) -> Option<GotoDefinitionResponse> {
+        let script_setup = descriptor.script_setup.as_ref()?;
+
+        // Analyze script to get prop definitions
+        let mut analyzer = Analyzer::with_options(AnalyzerOptions {
+            analyze_script: true,
+            ..Default::default()
+        });
+        analyzer.analyze_script_setup(&script_setup.content);
+        let croquis = analyzer.finish();
+
+        // Check if this is a prop name
+        let props = croquis.macros.props();
+        let is_prop = props.iter().any(|p| p.name.as_str() == prop_name);
+
+        if !is_prop {
+            return None;
+        }
+
+        // Find the prop in defineProps type definition
+        let content = &script_setup.content;
+        if let Some(define_props_pos) = content.find("defineProps") {
+            let after_define_props = &content[define_props_pos..];
+
+            if let Some(prop_pos) = Self::find_prop_in_define_props(after_define_props, prop_name) {
+                let sfc_offset = script_setup.loc.start + define_props_pos + prop_pos;
+                let (line, character) = Self::offset_to_position(&ctx.content, sfc_offset);
+
+                return Some(GotoDefinitionResponse::Scalar(Location {
+                    uri: ctx.uri.clone(),
+                    range: Range {
+                        start: Position { line, character },
+                        end: Position {
+                            line,
+                            character: character + prop_name.len() as u32,
+                        },
+                    },
+                }));
+            }
+
+            // Fallback: jump to defineProps
+            let sfc_offset = script_setup.loc.start + define_props_pos;
+            let (line, character) = Self::offset_to_position(&ctx.content, sfc_offset);
+
+            return Some(GotoDefinitionResponse::Scalar(Location {
+                uri: ctx.uri.clone(),
+                range: Range {
+                    start: Position { line, character },
+                    end: Position {
+                        line,
+                        character: character + "defineProps".len() as u32,
+                    },
+                },
+            }));
+        }
+
+        None
+    }
+
     /// Find the definition of a component by its tag name.
     fn find_component_definition(
         ctx: &IdeContext<'_>,
@@ -727,6 +803,11 @@ impl DefinitionService {
         };
 
         let descriptor = vize_atelier_sfc::parse_sfc(&ctx.content, options).ok()?;
+
+        // Check if this word is a prop name (props are available directly in template)
+        if let Some(def) = Self::find_prop_definition_by_name(ctx, &descriptor, &word) {
+            return Some(def);
+        }
 
         // Try to find the binding in script setup
         if let Some(ref script_setup) = descriptor.script_setup {
@@ -1388,5 +1469,26 @@ import MyComponent from './MyComponent.vue'
 
         // Verify the offset points to the actual 'data' position
         assert_eq!(&content[loc.offset..loc.offset + 4], "data");
+    }
+
+    #[test]
+    fn test_find_prop_in_define_props() {
+        let content = r#"defineProps<{
+  title: string
+  isSubmitting?: boolean
+  count: number
+}>()"#;
+
+        // Find title
+        let pos = DefinitionService::find_prop_in_define_props(content, "title");
+        assert!(pos.is_some());
+
+        // Find isSubmitting
+        let pos = DefinitionService::find_prop_in_define_props(content, "isSubmitting");
+        assert!(pos.is_some());
+
+        // Non-existent prop
+        let pos = DefinitionService::find_prop_in_define_props(content, "nonExistent");
+        assert!(pos.is_none());
     }
 }

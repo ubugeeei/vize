@@ -742,4 +742,85 @@ impl LanguageServer for MaestroServer {
             Ok(Some(hints))
         }
     }
+
+    async fn folding_range(&self, params: FoldingRangeParams) -> Result<Option<Vec<FoldingRange>>> {
+        let uri = &params.text_document.uri;
+
+        let Some(doc) = self.state.documents.get(uri) else {
+            return Ok(None);
+        };
+
+        let content = doc.text();
+        let mut ranges = Vec::new();
+
+        // Parse SFC to get block ranges
+        let options = vize_atelier_sfc::SfcParseOptions {
+            filename: uri.path().to_string(),
+            ..Default::default()
+        };
+
+        if let Ok(descriptor) = vize_atelier_sfc::parse_sfc(&content, options) {
+            // Template block
+            if let Some(ref template) = descriptor.template {
+                if template.loc.start_line < template.loc.end_line {
+                    ranges.push(FoldingRange {
+                        start_line: template.loc.start_line.saturating_sub(1) as u32,
+                        start_character: None,
+                        end_line: template.loc.end_line.saturating_sub(1) as u32,
+                        end_character: None,
+                        kind: Some(FoldingRangeKind::Region),
+                        collapsed_text: Some("template".to_string()),
+                    });
+                }
+            }
+
+            // Script setup block
+            if let Some(ref script) = descriptor.script_setup {
+                if script.loc.start_line < script.loc.end_line {
+                    ranges.push(FoldingRange {
+                        start_line: script.loc.start_line.saturating_sub(1) as u32,
+                        start_character: None,
+                        end_line: script.loc.end_line.saturating_sub(1) as u32,
+                        end_character: None,
+                        kind: Some(FoldingRangeKind::Region),
+                        collapsed_text: Some("script setup".to_string()),
+                    });
+                }
+            }
+
+            // Script block
+            if let Some(ref script) = descriptor.script {
+                if script.loc.start_line < script.loc.end_line {
+                    ranges.push(FoldingRange {
+                        start_line: script.loc.start_line.saturating_sub(1) as u32,
+                        start_character: None,
+                        end_line: script.loc.end_line.saturating_sub(1) as u32,
+                        end_character: None,
+                        kind: Some(FoldingRangeKind::Region),
+                        collapsed_text: Some("script".to_string()),
+                    });
+                }
+            }
+
+            // Style blocks
+            for style in &descriptor.styles {
+                if style.loc.start_line < style.loc.end_line {
+                    ranges.push(FoldingRange {
+                        start_line: style.loc.start_line.saturating_sub(1) as u32,
+                        start_character: None,
+                        end_line: style.loc.end_line.saturating_sub(1) as u32,
+                        end_character: None,
+                        kind: Some(FoldingRangeKind::Region),
+                        collapsed_text: Some("style".to_string()),
+                    });
+                }
+            }
+        }
+
+        if ranges.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(ranges))
+        }
+    }
 }
