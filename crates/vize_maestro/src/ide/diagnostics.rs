@@ -66,6 +66,8 @@ struct VirtualTsResult {
     /// Line-to-source mappings from @vize-map comments
     /// Index is virtual TS line number (0-indexed), value is source position in SFC
     line_mappings: Vec<Option<SourceMapping>>,
+    /// Number of import lines skipped from user code (to adjust line mapping)
+    skipped_import_lines: u32,
 }
 
 /// Diagnostic service for collecting and aggregating diagnostics.
@@ -336,17 +338,20 @@ impl DiagnosticService {
                     let user_code_offset_end = diag.range.end.line.saturating_sub(user_code_start_line);
 
                     // sfc_script_start_line is 1-indexed, convert to 0-indexed
-                    let start = (sfc_script_start_line.saturating_sub(1)) + user_code_offset;
-                    let end = (sfc_script_start_line.saturating_sub(1)) + user_code_offset_end;
+                    // Add skipped_import_lines to account for import lines that were moved to module scope
+                    let skipped_lines = virtual_result.skipped_import_lines;
+                    let start = (sfc_script_start_line.saturating_sub(1)) + user_code_offset + skipped_lines;
+                    let end = (sfc_script_start_line.saturating_sub(1)) + user_code_offset_end + skipped_lines;
 
                     // Adjust character offset: virtual TS adds 2 spaces of indentation
                     let start_ch = diag.range.start.character.saturating_sub(2);
                     let end_ch = diag.range.end.character.saturating_sub(2);
 
                     tracing::debug!(
-                        "script error: virtual_line={} -> sfc_line={} (message: {})",
+                        "script error: virtual_line={} -> sfc_line={} (skipped_imports={}, message: {})",
                         diag.range.start.line,
                         start,
+                        skipped_lines,
                         &diag.message[..diag.message.len().min(50)]
                     );
                     (start, end, start_ch, end_ch)
@@ -421,6 +426,10 @@ impl DiagnosticService {
             template_offset,
         );
 
+        // Count import lines in script content (these are moved to module scope)
+        // Import lines are skipped from user setup code section
+        let skipped_import_lines = Self::count_import_lines(script_content);
+
         // Find where user code starts in generated virtual TS
         // Look for "// User setup code" comment
         let user_code_start_line = code
@@ -450,7 +459,38 @@ impl DiagnosticService {
             sfc_script_start_line,
             template_scope_start_line,
             line_mappings,
+            skipped_import_lines,
         })
+    }
+
+    /// Count the number of import lines in script content.
+    /// Handles multi-line imports.
+    #[cfg(feature = "native")]
+    fn count_import_lines(script: &str) -> u32 {
+        let lines: Vec<&str> = script.lines().collect();
+        let mut count = 0u32;
+        let mut in_import = false;
+
+        for line in lines {
+            let trimmed = line.trim();
+
+            if trimmed.starts_with("import ") {
+                in_import = true;
+                count += 1;
+                // Check if this is a single-line import
+                if trimmed.ends_with(';') || trimmed.contains(" from ") {
+                    in_import = false;
+                }
+            } else if in_import {
+                count += 1;
+                // Check if this line ends the import
+                if trimmed.ends_with(';') {
+                    in_import = false;
+                }
+            }
+        }
+
+        count
     }
 
     /// Parse @vize-map comments from generated virtual TS code.

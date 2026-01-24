@@ -15,8 +15,8 @@ use tower_lsp::{Client, LanguageServer};
 use crate::document::DocumentStore;
 use crate::ide::{
     CodeActionService, CodeLensService, CompletionService, DefinitionService, DiagnosticService,
-    HoverService, IdeContext, ReferencesService, RenameService, SemanticTokensService,
-    WorkspaceSymbolsService,
+    DocumentLinkService, HoverService, IdeContext, InlayHintService, ReferencesService,
+    RenameService, SemanticTokensService, WorkspaceSymbolsService,
 };
 
 /// The Maestro LSP server.
@@ -368,6 +368,12 @@ impl LanguageServer for MaestroServer {
         }
     }
 
+    async fn completion_resolve(&self, item: CompletionItem) -> Result<CompletionItem> {
+        // Return the item as-is for now
+        // TODO: Add documentation, additional text edits, etc.
+        Ok(item)
+    }
+
     async fn goto_definition(
         &self,
         params: GotoDefinitionParams,
@@ -699,6 +705,41 @@ impl LanguageServer for MaestroServer {
             Ok(None)
         } else {
             Ok(Some(symbols))
+        }
+    }
+
+    async fn document_link(&self, params: DocumentLinkParams) -> Result<Option<Vec<DocumentLink>>> {
+        let uri = &params.text_document.uri;
+
+        let Some(doc) = self.state.documents.get(uri) else {
+            return Ok(None);
+        };
+
+        let content = doc.text();
+        let links = DocumentLinkService::get_links(&content, uri);
+
+        if links.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(links))
+        }
+    }
+
+    async fn inlay_hint(&self, params: InlayHintParams) -> Result<Option<Vec<InlayHint>>> {
+        let uri = &params.text_document.uri;
+        let range = params.range;
+
+        let Some(doc) = self.state.documents.get(uri) else {
+            return Ok(None);
+        };
+
+        let content = doc.text();
+        let hints = InlayHintService::get_hints(&content, uri, range);
+
+        if hints.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(hints))
         }
     }
 }

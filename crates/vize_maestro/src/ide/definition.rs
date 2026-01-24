@@ -68,6 +68,16 @@ impl DefinitionService {
             }
         }
 
+        // Check if this is a props property access (e.g., props.title -> defineProps)
+        if let Some(def) = Self::find_props_property_definition(ctx, &word) {
+            return Some(def);
+        }
+
+        // Check if this is a component attribute (e.g., :disabled -> component's props)
+        if let Some(def) = Self::find_component_prop_definition(ctx) {
+            return Some(def);
+        }
+
         // Try tsgo definition
         if let Some(bridge) = tsgo_bridge {
             if let Some(ref virtual_docs) = ctx.virtual_docs {
@@ -199,6 +209,291 @@ impl DefinitionService {
         } else {
             None
         }
+    }
+
+    /// Find the definition of a props property (e.g., props.title -> defineProps<{ title: ... }>).
+    fn find_props_property_definition(
+        ctx: &IdeContext<'_>,
+        property_name: &str,
+    ) -> Option<GotoDefinitionResponse> {
+        // Check if cursor is after "props." by looking backwards
+        // Find the word start position
+        let mut word_start = ctx.offset;
+        while word_start > 0 && Self::is_word_char(ctx.content.as_bytes()[word_start - 1]) {
+            word_start -= 1;
+        }
+
+        // Check if preceded by "props."
+        if word_start < 6 {
+            return None;
+        }
+
+        let prefix = &ctx.content[word_start.saturating_sub(6)..word_start];
+        if prefix != "props." {
+            return None;
+        }
+
+        // Parse SFC to find defineProps location
+        let options = vize_atelier_sfc::SfcParseOptions {
+            filename: ctx.uri.path().to_string(),
+            ..Default::default()
+        };
+
+        let descriptor = vize_atelier_sfc::parse_sfc(&ctx.content, options).ok()?;
+
+        // Look in script setup for defineProps
+        if let Some(ref script_setup) = descriptor.script_setup {
+            let content = &script_setup.content;
+
+            // Find defineProps call or type
+            // Pattern 1: defineProps<{ propName: Type }>()
+            // Pattern 2: defineProps({ propName: { type: Type } })
+            // Pattern 3: const props = defineProps<{ propName: Type }>()
+
+            // First, try to find the property name in defineProps type argument
+            if let Some(define_props_pos) = content.find("defineProps") {
+                // Try to find the property within the type/object
+                let after_define_props = &content[define_props_pos..];
+
+                // Look for the property name in the type definition
+                if let Some(prop_pos) =
+                    Self::find_prop_in_define_props(after_define_props, property_name)
+                {
+                    let sfc_offset = script_setup.loc.start + define_props_pos + prop_pos;
+                    let (line, character) = Self::offset_to_position(&ctx.content, sfc_offset);
+
+                    return Some(GotoDefinitionResponse::Scalar(Location {
+                        uri: ctx.uri.clone(),
+                        range: Range {
+                            start: Position { line, character },
+                            end: Position {
+                                line,
+                                character: character + property_name.len() as u32,
+                            },
+                        },
+                    }));
+                }
+
+                // Fallback: jump to defineProps call itself
+                let sfc_offset = script_setup.loc.start + define_props_pos;
+                let (line, character) = Self::offset_to_position(&ctx.content, sfc_offset);
+
+                return Some(GotoDefinitionResponse::Scalar(Location {
+                    uri: ctx.uri.clone(),
+                    range: Range {
+                        start: Position { line, character },
+                        end: Position {
+                            line,
+                            character: character + "defineProps".len() as u32,
+                        },
+                    },
+                }));
+            }
+        }
+
+        None
+    }
+
+    /// Find component prop definition from an attribute like :disabled or v-bind:disabled.
+    fn find_component_prop_definition(ctx: &IdeContext<'_>) -> Option<GotoDefinitionResponse> {
+        // Check if cursor is on an attribute name
+        let (attr_name, component_name) = Self::get_attribute_and_component_at_offset(ctx)?;
+
+        // Skip HTML elements
+        if !is_component_tag(&component_name) {
+            return None;
+        }
+
+        // Find the component's import path
+        let import_path = Self::find_import_path(ctx, &component_name)?;
+
+        // Resolve to file path
+        let resolved_path = Self::resolve_import_path(ctx.uri, &import_path)?;
+
+        // Read the component file and find the prop definition
+        let component_content = std::fs::read_to_string(&resolved_path).ok()?;
+
+        // Parse the component to find defineProps
+        let options = vize_atelier_sfc::SfcParseOptions {
+            filename: resolved_path.to_string_lossy().to_string(),
+            ..Default::default()
+        };
+
+        let descriptor = vize_atelier_sfc::parse_sfc(&component_content, options).ok()?;
+
+        // Normalize attribute name (kebab-case to camelCase)
+        let prop_name = Self::kebab_to_camel(&attr_name);
+
+        // Look in script setup for defineProps
+        if let Some(ref script_setup) = descriptor.script_setup {
+            let content = &script_setup.content;
+
+            if let Some(define_props_pos) = content.find("defineProps") {
+                let after_define_props = &content[define_props_pos..];
+
+                // Look for the property name in the type definition
+                if let Some(prop_pos) =
+                    Self::find_prop_in_define_props(after_define_props, &prop_name)
+                {
+                    let sfc_offset = script_setup.loc.start + define_props_pos + prop_pos;
+                    let (line, character) =
+                        Self::offset_to_position(&component_content, sfc_offset);
+
+                    let file_uri = Url::from_file_path(&resolved_path).ok()?;
+                    return Some(GotoDefinitionResponse::Scalar(Location {
+                        uri: file_uri,
+                        range: Range {
+                            start: Position { line, character },
+                            end: Position {
+                                line,
+                                character: character + prop_name.len() as u32,
+                            },
+                        },
+                    }));
+                }
+
+                // Fallback: jump to defineProps
+                let sfc_offset = script_setup.loc.start + define_props_pos;
+                let (line, character) = Self::offset_to_position(&component_content, sfc_offset);
+
+                let file_uri = Url::from_file_path(&resolved_path).ok()?;
+                return Some(GotoDefinitionResponse::Scalar(Location {
+                    uri: file_uri,
+                    range: Range {
+                        start: Position { line, character },
+                        end: Position {
+                            line,
+                            character: character + "defineProps".len() as u32,
+                        },
+                    },
+                }));
+            }
+        }
+
+        None
+    }
+
+    /// Get the attribute name and component name at the cursor position.
+    fn get_attribute_and_component_at_offset(ctx: &IdeContext<'_>) -> Option<(String, String)> {
+        let content = &ctx.content;
+        let offset = ctx.offset;
+
+        // Find the start of the current line or tag
+        let mut tag_start = offset;
+        let mut depth = 0;
+
+        // Scan backwards to find the opening tag
+        while tag_start > 0 {
+            let c = content.as_bytes()[tag_start - 1];
+            if c == b'>' {
+                depth += 1;
+            } else if c == b'<' {
+                if depth == 0 {
+                    break;
+                }
+                depth -= 1;
+            }
+            tag_start -= 1;
+        }
+
+        if tag_start == 0 {
+            return None;
+        }
+
+        // Find the end of the tag (closing >)
+        let tag_end = content[offset..].find('>')? + offset;
+        let tag_content = &content[tag_start..tag_end];
+
+        // Extract tag name
+        let tag_name_end = tag_content.find(|c: char| c.is_whitespace() || c == '>' || c == '/')?;
+        let tag_name = &tag_content[..tag_name_end];
+
+        // Check if cursor is on an attribute
+        let cursor_in_tag = offset - tag_start;
+        let before_cursor = &tag_content[..cursor_in_tag];
+
+        // Find the attribute we're on
+        // Look for patterns: :attr, v-bind:attr, @attr, v-on:attr, attr
+        let attr_start =
+            before_cursor.rfind(|c: char| c.is_whitespace() || c == ':' || c == '@')?;
+        let after_attr_start = &before_cursor[attr_start..].trim_start();
+
+        // Extract attribute name
+        let attr_end = after_attr_start
+            .find(|c: char| c == '=' || c.is_whitespace())
+            .unwrap_or(after_attr_start.len());
+        let mut attr_name = &after_attr_start[..attr_end];
+
+        // Handle directive prefixes
+        if let Some(stripped) = attr_name.strip_prefix(':') {
+            attr_name = stripped;
+        } else if let Some(stripped) = attr_name.strip_prefix("v-bind:") {
+            attr_name = stripped;
+        } else if attr_name.starts_with('@')
+            || attr_name.starts_with("v-on:")
+            || attr_name.starts_with("v-")
+        {
+            // Event handlers and other directives - not props
+            return None;
+        }
+
+        if attr_name.is_empty() {
+            return None;
+        }
+
+        Some((attr_name.to_string(), tag_name.to_string()))
+    }
+
+    /// Convert kebab-case to camelCase.
+    fn kebab_to_camel(s: &str) -> String {
+        let mut result = String::with_capacity(s.len());
+        let mut capitalize_next = false;
+
+        for c in s.chars() {
+            if c == '-' {
+                capitalize_next = true;
+            } else if capitalize_next {
+                result.push(c.to_ascii_uppercase());
+                capitalize_next = false;
+            } else {
+                result.push(c);
+            }
+        }
+
+        result
+    }
+
+    /// Find a property name within defineProps type/object definition.
+    fn find_prop_in_define_props(content: &str, property_name: &str) -> Option<usize> {
+        // Look for patterns like:
+        // - { propName: Type }  (type parameter)
+        // - { propName?: Type } (optional type parameter)
+        // - { propName: { type: ... } } (runtime declaration)
+
+        let patterns = [
+            format!("{}: ", property_name),
+            format!("{}?: ", property_name),
+            format!("{} :", property_name),
+            format!("{}?:", property_name),
+        ];
+
+        for pattern in &patterns {
+            if let Some(pos) = content.find(pattern.as_str()) {
+                // Verify it's within angle brackets or curly braces (inside defineProps)
+                let before = &content[..pos];
+                let open_angle = before.matches('<').count();
+                let close_angle = before.matches('>').count();
+                let open_curly = before.matches('{').count();
+                let close_curly = before.matches('}').count();
+
+                // If we're inside angle brackets or curly braces, this is valid
+                if open_angle > close_angle || open_curly > close_curly {
+                    return Some(pos);
+                }
+            }
+        }
+
+        None
     }
 
     /// Find the definition of a component by its tag name.
@@ -413,6 +708,16 @@ impl DefinitionService {
 
         if word.is_empty() {
             return None;
+        }
+
+        // Check if this is a props property access (e.g., props.title -> defineProps)
+        if let Some(def) = Self::find_props_property_definition(ctx, &word) {
+            return Some(def);
+        }
+
+        // Check if this is a component attribute (e.g., :disabled -> component's props)
+        if let Some(def) = Self::find_component_prop_definition(ctx) {
+            return Some(def);
         }
 
         // Parse SFC to get the actual script content (not virtual code)

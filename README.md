@@ -18,7 +18,8 @@
 
 <p align="center">
   <a href="https://crates.io/crates/vize"><img src="https://img.shields.io/crates/v/vize.svg" alt="crates.io" /></a>
-  <a href="https://www.npmjs.com/package/@vizejs/vite-plugin"><img src="https://img.shields.io/npm/v/@vizejs/vite-plugin.svg" alt="npm" /></a>
+  <a href="https://www.npmjs.com/package/vizejs"><img src="https://img.shields.io/npm/v/vizejs.svg?label=vizejs" alt="npm" /></a>
+  <a href="https://www.npmjs.com/package/@vizejs/vite-plugin"><img src="https://img.shields.io/npm/v/@vizejs/vite-plugin.svg?label=@vizejs/vite-plugin" alt="npm" /></a>
   <a href="https://www.npmjs.com/package/@vizejs/wasm"><img src="https://img.shields.io/npm/v/@vizejs/wasm.svg?label=@vizejs/wasm" alt="npm" /></a>
   <a href="https://github.com/ubugeeei/vize/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" /></a>
 </p>
@@ -98,6 +99,24 @@
   </tr>
 </table>
 
+## npm Packages
+
+| Package | Description |
+|---------|-------------|
+| [vizejs](https://www.npmjs.com/package/vizejs) | Main package with CLI |
+| [@vizejs/native](https://www.npmjs.com/package/@vizejs/native) | Node.js native bindings (NAPI) |
+| [@vizejs/wasm](https://www.npmjs.com/package/@vizejs/wasm) | WASM bindings for browsers |
+| [@vizejs/vite-plugin](https://www.npmjs.com/package/@vizejs/vite-plugin) | Vite plugin for Vue SFC compilation |
+| [@vizejs/vite-plugin-musea](https://www.npmjs.com/package/@vizejs/vite-plugin-musea) | Vite plugin for Musea component gallery |
+| [@vizejs/musea-mcp-server](https://www.npmjs.com/package/@vizejs/musea-mcp-server) | MCP server for AI integration |
+
+## IDE / Editor Support
+
+| Editor | Extension |
+|--------|-----------|
+| VS Code | [Vize](./npm/vscode-vize) - Vue Language Support powered by Vize LSP |
+| VS Code | [Vize Art](./npm/vscode-art) - Syntax highlighting for `*.art.vue` files |
+
 ## Naming Theme
 
 Vize crates are named after **art and sculpture terminology**, reflecting how each component shapes and transforms Vue code:
@@ -128,10 +147,7 @@ Vize crates are named after **art and sculpture terminology**, reflecting how ea
 
 ```bash
 # via npm (recommended)
-npm install -g vize
-
-# via GitHub
-npm install -g github:vizejs/vize
+npm install -g vizejs
 
 # via Cargo
 cargo install vize
@@ -140,11 +156,20 @@ cargo install vize
 ### npm
 
 ```bash
-# WASM (Browser)
+# Main package (includes CLI)
+npm install vizejs
+
+# Native bindings (Node.js)
+npm install @vizejs/native
+
+# WASM bindings (Browser)
 npm install @vizejs/wasm
 
-# Vite Plugin
+# Vite plugin
 npm install @vizejs/vite-plugin
+
+# Musea (component gallery)
+npm install @vizejs/vite-plugin-musea
 ```
 
 ## Quick Start (Development)
@@ -279,6 +304,16 @@ Compiling **15,000 SFC files** (36.9 MB):
 |--|-------------------|------|---------|
 | **Single Thread** | 16.21s | 6.65s | **2.4x** |
 | **Multi Thread** | 4.13s | 498ms | **8.3x** |
+
+## AI Integration (MCP)
+
+Vize provides [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for AI-powered development workflows.
+
+```bash
+npm install @vizejs/musea-mcp-server
+```
+
+The MCP server exposes component information from Musea gallery, enabling AI assistants to understand and work with your Vue components.
 
 ## Internationalization (i18n)
 

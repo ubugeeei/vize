@@ -2,7 +2,16 @@
 
 set -e
 
-echo "🔍 Running pre-commit checks in parallel..."
+# Colors
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+echo -e "${BOLD}Running pre-commit checks in parallel...${RESET}"
 
 # Create temp files for results
 FMT_RESULT=$(mktemp)
@@ -11,37 +20,37 @@ TEST_RESULT=$(mktemp)
 
 # Run all checks in parallel with prefixed output
 (
-    echo "📝 [fmt] Starting format check..."
-    if cargo fmt --all -- --check 2>&1 | sed 's/^/[fmt] /'; then
+    echo -e "${BLUE}[fmt]${RESET} Starting format check..."
+    if cargo fmt --all -- --check 2>&1 | sed "s/^/$(printf "${BLUE}[fmt]${RESET} ")/"; then
         echo "0" > "$FMT_RESULT"
-        echo "📝 [fmt] Done"
+        echo -e "${BLUE}[fmt]${RESET} Done"
     else
         echo "1" > "$FMT_RESULT"
-        echo "📝 [fmt] Failed"
+        echo -e "${BLUE}[fmt]${RESET} ${RED}Failed${RESET}"
     fi
 ) &
 FMT_PID=$!
 
 (
-    echo "📎 [clippy] Starting clippy check..."
-    if cargo clippy --workspace -- -D warnings 2>&1 | sed 's/^/[clippy] /'; then
+    echo -e "${MAGENTA}[clippy]${RESET} Starting clippy check..."
+    if cargo clippy --workspace -- -D warnings 2>&1 | sed "s/^/$(printf "${MAGENTA}[clippy]${RESET} ")/"; then
         echo "0" > "$CLIPPY_RESULT"
-        echo "📎 [clippy] Done"
+        echo -e "${MAGENTA}[clippy]${RESET} Done"
     else
         echo "1" > "$CLIPPY_RESULT"
-        echo "📎 [clippy] Failed"
+        echo -e "${MAGENTA}[clippy]${RESET} ${RED}Failed${RESET}"
     fi
 ) &
 CLIPPY_PID=$!
 
 (
-    echo "🧪 [test] Starting tests..."
-    if cargo test --workspace 2>&1 | sed 's/^/[test] /'; then
+    echo -e "${CYAN}[test]${RESET} Starting tests..."
+    if cargo test --workspace 2>&1 | sed "s/^/$(printf "${CYAN}[test]${RESET} ")/"; then
         echo "0" > "$TEST_RESULT"
-        echo "🧪 [test] Done"
+        echo -e "${CYAN}[test]${RESET} Done"
     else
         echo "1" > "$TEST_RESULT"
-        echo "🧪 [test] Failed"
+        echo -e "${CYAN}[test]${RESET} ${RED}Failed${RESET}"
     fi
 ) &
 TEST_PID=$!
@@ -60,35 +69,35 @@ rm -f "$FMT_RESULT" "$CLIPPY_RESULT" "$TEST_RESULT"
 
 # Report summary
 echo ""
-echo "========================================"
-echo "Summary:"
+echo -e "${BOLD}========================================${RESET}"
+echo -e "${BOLD}Summary:${RESET}"
 FAILED=0
 
 if [ "$FMT_EXIT" = "0" ]; then
-    echo "  ✅ Format OK"
+    echo -e "  ${GREEN}[PASS]${RESET} Format"
 else
-    echo "  ❌ Format check failed"
+    echo -e "  ${RED}[FAIL]${RESET} Format"
     FAILED=1
 fi
 
 if [ "$CLIPPY_EXIT" = "0" ]; then
-    echo "  ✅ Clippy OK"
+    echo -e "  ${GREEN}[PASS]${RESET} Clippy"
 else
-    echo "  ❌ Clippy check failed"
+    echo -e "  ${RED}[FAIL]${RESET} Clippy"
     FAILED=1
 fi
 
 if [ "$TEST_EXIT" = "0" ]; then
-    echo "  ✅ Tests OK"
+    echo -e "  ${GREEN}[PASS]${RESET} Tests"
 else
-    echo "  ❌ Tests failed"
+    echo -e "  ${RED}[FAIL]${RESET} Tests"
     FAILED=1
 fi
-echo "========================================"
+echo -e "${BOLD}========================================${RESET}"
 
 if [ "$FAILED" = "1" ]; then
-    echo "💥 Pre-commit checks failed!"
+    echo -e "${RED}${BOLD}Pre-commit checks failed!${RESET}"
     exit 1
 fi
 
-echo "🎉 All pre-commit checks passed!"
+echo -e "${GREEN}${BOLD}All pre-commit checks passed!${RESET}"

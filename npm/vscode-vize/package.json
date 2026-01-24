@@ -136,6 +136,32 @@
         }
       ]
     },
+"colors": [
+      {
+        "id": "vize.inlayHint.propsForeground",
+        "description": "Foreground color for props destructure inlay hints",
+        "defaults": {
+          "dark": "#6b6b6b",
+          "light": "#a0a0a0",
+          "highContrast": "#888888"
+        }
+      },
+      {
+        "id": "vize.inlayHint.propsBackground",
+        "description": "Background color for props destructure inlay hints",
+        "defaults": {
+          "dark": "#2a2a2a40",
+          "light": "#e8e8e840",
+          "highContrast": "#00000000"
+        }
+      }
+    ],
+    "configurationDefaults": {
+      "workbench.colorCustomizations": {
+        "editorInlayHint.typeForeground": "#6b6b6b",
+        "editorInlayHint.typeBackground": "#2a2a2a40"
+      }
+    },
     "semanticTokenTypes": [
       {
         "id": "vueDirective",
