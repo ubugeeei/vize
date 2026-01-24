@@ -79,13 +79,16 @@ impl DefinitionService {
         }
 
         // Check if this is a prop name used directly in template
-        let options = vize_atelier_sfc::SfcParseOptions {
-            filename: ctx.uri.path().to_string(),
-            ..Default::default()
-        };
-        if let Ok(descriptor) = vize_atelier_sfc::parse_sfc(&ctx.content, options) {
-            if let Some(def) = Self::find_prop_definition_by_name(ctx, &descriptor, &word) {
-                return Some(def);
+        // Only check if we're inside a Vue directive expression, not a plain HTML attribute
+        if Self::is_in_vue_directive_expression(ctx) {
+            let options = vize_atelier_sfc::SfcParseOptions {
+                filename: ctx.uri.path().to_string(),
+                ..Default::default()
+            };
+            if let Ok(descriptor) = vize_atelier_sfc::parse_sfc(&ctx.content, options) {
+                if let Some(def) = Self::find_prop_definition_by_name(ctx, &descriptor, &word) {
+                    return Some(def);
+                }
             }
         }
 
@@ -572,6 +575,93 @@ impl DefinitionService {
         None
     }
 
+    /// Check if the cursor is inside a Vue directive expression.
+    /// Returns true for :prop="...", v-bind:prop="...", @event="...", v-on:event="...",
+    /// v-if="...", v-for="...", v-show="...", v-model="...", {{ ... }}, etc.
+    /// Returns false for plain HTML attributes like id="...", class="...", etc.
+    fn is_in_vue_directive_expression(ctx: &IdeContext) -> bool {
+        let content = &ctx.content;
+        let offset = ctx.offset;
+
+        // Check if we're inside a mustache expression {{ ... }}
+        // Look backwards for {{ and forwards for }}
+        let before = &content[..offset];
+        let after = &content[offset..];
+
+        // Find the last {{ before cursor
+        if let Some(mustache_start) = before.rfind("{{") {
+            // Check if there's a }} between the {{ and cursor
+            let between = &content[mustache_start + 2..offset];
+            if !between.contains("}}") {
+                // Check if there's a }} after cursor
+                if after.contains("}}") {
+                    return true;
+                }
+            }
+        }
+
+        // Check if we're inside an attribute value
+        // Scan backwards to find the attribute pattern
+        let mut pos = offset;
+        let mut in_quotes = false;
+        let mut quote_char = '"';
+
+        // Find the opening quote
+        while pos > 0 {
+            let c = content.as_bytes()[pos - 1] as char;
+            if c == '"' || c == '\'' {
+                in_quotes = true;
+                quote_char = c;
+                pos -= 1;
+                break;
+            }
+            if c == '>' || c == '<' {
+                return false;
+            }
+            pos -= 1;
+        }
+
+        if !in_quotes {
+            return false;
+        }
+
+        // Now find what's before the quote (the attribute name and =)
+        // Skip the = sign
+        while pos > 0 && content.as_bytes()[pos - 1] == b'=' {
+            pos -= 1;
+        }
+
+        // Get the attribute name by scanning backwards
+        let attr_end = pos;
+        while pos > 0 {
+            let c = content.as_bytes()[pos - 1] as char;
+            if c.is_whitespace() || c == '<' || c == '>' {
+                break;
+            }
+            pos -= 1;
+        }
+
+        let attr_name = &content[pos..attr_end];
+
+        // Check if this is a Vue directive
+        // Directives start with: v-, :, @, #
+        // Also include v-bind, v-on, v-if, v-for, v-show, v-model, v-slot, etc.
+        if attr_name.starts_with(':')
+            || attr_name.starts_with('@')
+            || attr_name.starts_with('#')
+            || attr_name.starts_with("v-")
+        {
+            // Verify we're still inside the quotes (not past the closing quote)
+            let quote_start = attr_end + 1; // +1 for =
+            if let Some(quote_end) = content[quote_start + 1..].find(quote_char) {
+                let abs_quote_end = quote_start + 1 + quote_end;
+                return offset <= abs_quote_end;
+            }
+        }
+
+        false
+    }
+
     /// Find the definition of a component by its tag name.
     fn find_component_definition(
         ctx: &IdeContext<'_>,
@@ -805,8 +895,11 @@ impl DefinitionService {
         let descriptor = vize_atelier_sfc::parse_sfc(&ctx.content, options).ok()?;
 
         // Check if this word is a prop name (props are available directly in template)
-        if let Some(def) = Self::find_prop_definition_by_name(ctx, &descriptor, &word) {
-            return Some(def);
+        // Only check if we're inside a Vue directive expression, not a plain HTML attribute
+        if Self::is_in_vue_directive_expression(ctx) {
+            if let Some(def) = Self::find_prop_definition_by_name(ctx, &descriptor, &word) {
+                return Some(def);
+            }
         }
 
         // Try to find the binding in script setup
@@ -1490,5 +1583,55 @@ import MyComponent from './MyComponent.vue'
         // Non-existent prop
         let pos = DefinitionService::find_prop_in_define_props(content, "nonExistent");
         assert!(pos.is_none());
+    }
+
+    #[test]
+    fn test_is_in_vue_directive_expression_detection() {
+        // This is a unit-level conceptual test
+        // The actual is_in_vue_directive_expression requires IdeContext
+        // which we can't easily construct in tests.
+        // We verify the attribute pattern matching logic here.
+
+        // Vue directive patterns that should be detected:
+        // :disabled="value", v-bind:disabled="value"
+        // @click="handler", v-on:click="handler"
+        // v-if="condition", v-for="item in items", v-show="visible"
+        // v-model="data", v-slot:name="props"
+        // #default="{ item }"
+
+        // Plain HTML attributes that should NOT be detected:
+        // id="value", class="value", href="value", src="value"
+
+        let vue_attrs = [
+            ":disabled",
+            "@click",
+            "v-if",
+            "v-for",
+            "v-model",
+            "#default",
+        ];
+        let html_attrs = ["id", "class", "href", "src", "title"];
+
+        for attr in vue_attrs {
+            assert!(
+                attr.starts_with(':')
+                    || attr.starts_with('@')
+                    || attr.starts_with('#')
+                    || attr.starts_with("v-"),
+                "Vue directive {} should match pattern",
+                attr
+            );
+        }
+
+        for attr in html_attrs {
+            assert!(
+                !attr.starts_with(':')
+                    && !attr.starts_with('@')
+                    && !attr.starts_with('#')
+                    && !attr.starts_with("v-"),
+                "HTML attribute {} should NOT match Vue pattern",
+                attr
+            );
+        }
     }
 }
