@@ -129,7 +129,7 @@ impl CandidateList {
 
     /// Get page info (current_page, total_pages).
     pub fn page_info(&self) -> (usize, usize) {
-        let total = (self.candidates.len() + self.page_size - 1) / self.page_size;
+        let total = self.candidates.len().div_ceil(self.page_size);
         let current = self.page_start / self.page_size;
         (current, total)
     }
@@ -192,9 +192,7 @@ impl CandidateList {
 
     /// Update page to show selected item.
     fn update_page(&mut self) {
-        if self.selected < self.page_start {
-            self.page_start = (self.selected / self.page_size) * self.page_size;
-        } else if self.selected >= self.page_start + self.page_size {
+        if self.selected < self.page_start || self.selected >= self.page_start + self.page_size {
             self.page_start = (self.selected / self.page_size) * self.page_size;
         }
     }

@@ -1,5 +1,7 @@
 //! Differential rendering algorithm.
 
+#![allow(dead_code)]
+
 use super::node::{NodeId, RenderNode};
 use super::tree::RenderTree;
 use smallvec::SmallVec;

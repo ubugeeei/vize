@@ -1,7 +1,6 @@
 //! Flexbox style definitions.
 
 use serde::{Deserialize, Serialize};
-use taffy::prelude::*;
 
 /// Flexbox style for layout nodes.
 #[derive(Debug, Clone, Serialize, Deserialize)]

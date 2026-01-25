@@ -2,8 +2,8 @@
 
 use rustc_hash::FxHashMap;
 
-use super::node::{NodeId, NodeKind, RenderNode};
-use crate::layout::{FlexStyle, LayoutEngine, Rect};
+use super::node::{NodeId, RenderNode};
+use crate::layout::{FlexStyle, LayoutEngine};
 
 /// A tree of render nodes.
 pub struct RenderTree {
@@ -250,6 +250,7 @@ impl<'a> Iterator for TreeWalker<'a> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::node::NodeKind;
     use super::*;
 
     #[test]

@@ -216,6 +216,85 @@ mod tests {
     }
 
     #[test]
+    fn test_column_at_index_japanese_only() {
+        // 5 Japanese characters, each width 2
+        let st = SegmentedText::new("あいうえお");
+        assert_eq!(st.grapheme_count, 5);
+        assert_eq!(st.total_width, 10);
+
+        // Cursor positions: 0=before あ, 1=after あ, 2=after い, etc.
+        assert_eq!(st.column_at_index(0), 0);
+        assert_eq!(st.column_at_index(1), 2);
+        assert_eq!(st.column_at_index(2), 4);
+        assert_eq!(st.column_at_index(3), 6);
+        assert_eq!(st.column_at_index(4), 8);
+        assert_eq!(st.column_at_index(5), 10); // after last character
+    }
+
+    #[test]
+    fn test_column_at_index_mixed() {
+        // Mixed ASCII and Japanese: "aあb" = 1 + 2 + 1 = 4 columns
+        let st = SegmentedText::new("aあb");
+        assert_eq!(st.grapheme_count, 3);
+        assert_eq!(st.total_width, 4);
+
+        assert_eq!(st.column_at_index(0), 0); // before 'a'
+        assert_eq!(st.column_at_index(1), 1); // after 'a', before 'あ'
+        assert_eq!(st.column_at_index(2), 3); // after 'あ', before 'b'
+        assert_eq!(st.column_at_index(3), 4); // after 'b'
+    }
+
+    #[test]
+    fn test_slice_columns_japanese() {
+        let st = SegmentedText::new("あいうえお");
+
+        // Slice from column 2 (start of い) to column 8 (end of え)
+        // Should include い, う, え
+        assert_eq!(st.slice_columns(2, 8), "いうえ");
+
+        // Slice from column 0 to 4 should include あ, い
+        assert_eq!(st.slice_columns(0, 4), "あい");
+
+        // Slice starting mid-character (column 1) should still include あ
+        // because あ spans columns 0-1
+        assert_eq!(st.slice_columns(1, 6), "あいう");
+    }
+
+    #[test]
+    fn test_cursor_wrapping_calculation() {
+        // Test cursor position with wrapping
+        let st = SegmentedText::new("あいうえおかきくけこ"); // 10 chars, 20 columns
+        let area_width = 10;
+
+        // Cursor at end of text (after 10 chars)
+        let cursor_idx = 10;
+        let cursor_col = st.column_at_index(cursor_idx);
+        assert_eq!(cursor_col, 20);
+
+        // Calculate wrapped line and column
+        let cursor_line = cursor_col / area_width;
+        let cursor_col_in_line = cursor_col % area_width;
+        assert_eq!(cursor_line, 2);
+        assert_eq!(cursor_col_in_line, 0);
+
+        // Cursor after 5 chars (column 10)
+        let cursor_col = st.column_at_index(5);
+        assert_eq!(cursor_col, 10);
+        let cursor_line = cursor_col / area_width;
+        let cursor_col_in_line = cursor_col % area_width;
+        assert_eq!(cursor_line, 1);
+        assert_eq!(cursor_col_in_line, 0);
+
+        // Cursor after 3 chars (column 6)
+        let cursor_col = st.column_at_index(3);
+        assert_eq!(cursor_col, 6);
+        let cursor_line = cursor_col / area_width;
+        let cursor_col_in_line = cursor_col % area_width;
+        assert_eq!(cursor_line, 0);
+        assert_eq!(cursor_col_in_line, 6);
+    }
+
+    #[test]
     fn test_slice() {
         let st = SegmentedText::new("Hello");
         assert_eq!(st.slice(1, 4), "ell");

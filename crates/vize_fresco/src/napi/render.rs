@@ -125,8 +125,8 @@ pub fn set_cursor_shape(shape: String) -> Result<()> {
 #[napi(js_name = "renderTree")]
 pub fn render_tree(nodes: Vec<RenderNodeNapi>) -> Result<()> {
     use crate::layout::{
-        AlignContent, AlignItems, AlignSelf, Dimension, Display, FlexDirection, FlexStyle,
-        FlexWrap, JustifyContent, LengthPercentageAuto,
+        AlignItems, AlignSelf, Dimension, Display, FlexDirection, FlexWrap, JustifyContent,
+        LengthPercentageAuto,
     };
     use crate::render::{
         Appearance, BorderStyle, InputContent, NodeKind, Painter, RenderNode, RenderTree,
@@ -289,9 +289,9 @@ pub fn render_tree(nodes: Vec<RenderNodeNapi>) -> Result<()> {
                 // Padding
                 if let Some(p) = style.padding {
                     let val = LengthPercentageAuto::Points(p as f32);
-                    flex_style.padding.top = val.clone();
-                    flex_style.padding.right = val.clone();
-                    flex_style.padding.bottom = val.clone();
+                    flex_style.padding.top = val;
+                    flex_style.padding.right = val;
+                    flex_style.padding.bottom = val;
                     flex_style.padding.left = val;
                 }
                 if let Some(p) = style.padding_top {
@@ -310,9 +310,9 @@ pub fn render_tree(nodes: Vec<RenderNodeNapi>) -> Result<()> {
                 // Margin
                 if let Some(m) = style.margin {
                     let val = LengthPercentageAuto::Points(m as f32);
-                    flex_style.margin.top = val.clone();
-                    flex_style.margin.right = val.clone();
-                    flex_style.margin.bottom = val.clone();
+                    flex_style.margin.top = val;
+                    flex_style.margin.right = val;
+                    flex_style.margin.bottom = val;
                     flex_style.margin.left = val;
                 }
                 if let Some(m) = style.margin_top {
@@ -428,7 +428,8 @@ pub fn render_tree(nodes: Vec<RenderNodeNapi>) -> Result<()> {
                         let cursor_col_in_line = cursor_col % area_width;
 
                         let cursor_x = layout.x + cursor_col_in_line as u16;
-                        let cursor_y = layout.y + (cursor_line as u16).min(layout.height.saturating_sub(1));
+                        let cursor_y =
+                            layout.y + (cursor_line as u16).min(layout.height.saturating_sub(1));
                         backend.cursor_mut().move_to(cursor_x, cursor_y);
                         backend
                             .cursor_mut()

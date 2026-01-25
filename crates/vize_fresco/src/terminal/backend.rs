@@ -3,12 +3,10 @@
 use std::io::{self, Write};
 
 use crossterm::{
-    cursor::{Hide, MoveTo, SetCursorStyle, Show},
+    cursor::{Hide, MoveTo, Show},
     event::{DisableMouseCapture, EnableMouseCapture},
     execute, queue,
-    style::{
-        Attribute, Print, SetAttribute, SetBackgroundColor, SetForegroundColor, SetUnderlineColor,
-    },
+    style::{Attribute, Print, SetAttribute, SetBackgroundColor, SetForegroundColor},
     terminal::{
         disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen,
         LeaveAlternateScreen,

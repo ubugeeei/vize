@@ -1,9 +1,8 @@
 //! Text wrapping utilities.
 
-use super::segment::{segment, SegmentedText, TextSegment};
+use super::segment::segment;
 use super::width::TextWidth;
 use compact_str::CompactString;
-use smallvec::SmallVec;
 
 /// Text wrapping mode.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -160,6 +159,7 @@ impl TextWrap {
 }
 
 /// A wrapped line with metadata.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct WrappedLine {
     /// The text content
@@ -170,6 +170,7 @@ pub struct WrappedLine {
     pub is_continuation: bool,
 }
 
+#[allow(dead_code)]
 impl WrappedLine {
     /// Create a new wrapped line.
     pub fn new(content: impl Into<CompactString>, is_continuation: bool) -> Self {

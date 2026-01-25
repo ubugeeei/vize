@@ -2,7 +2,7 @@
 
 use crate::layout::Rect;
 use crate::terminal::{Buffer, Style};
-use crate::text::{SegmentedText, TextWidth, TextWrap, WrapMode};
+use crate::text::{TextWrap, WrapMode};
 
 use super::{BorderStyle, NodeKind, RenderNode, RenderTree};
 
@@ -137,6 +137,7 @@ impl<'a> Painter<'a> {
     }
 
     /// Paint input field with text wrapping support.
+    #[allow(clippy::too_many_arguments)]
     fn paint_input(
         &mut self,
         value: &str,

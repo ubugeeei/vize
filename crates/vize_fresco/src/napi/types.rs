@@ -1,6 +1,5 @@
 //! NAPI type definitions.
 
-use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 
@@ -198,7 +197,7 @@ pub struct TerminalInfoNapi {
 
 impl From<crate::input::Event> for InputEventNapi {
     fn from(event: crate::input::Event) -> Self {
-        use crate::input::{Event, KeyEvent, MouseEvent};
+        use crate::input::Event;
 
         match event {
             Event::Key(key) => {
