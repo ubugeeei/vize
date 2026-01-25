@@ -91,6 +91,45 @@ impl<'a> SfcDescriptor<'a> {
             should_force_reload: self.should_force_reload,
         }
     }
+
+    /// Compute hash of the template block content.
+    /// Returns None if there is no template block.
+    pub fn template_hash(&self) -> Option<String> {
+        self.template
+            .as_ref()
+            .map(|t| vize_carton::hash::content_hash(&t.content))
+    }
+
+    /// Compute hash of all style blocks content.
+    /// Returns None if there are no style blocks.
+    pub fn style_hash(&self) -> Option<String> {
+        if self.styles.is_empty() {
+            return None;
+        }
+        let mut combined = String::new();
+        for style in &self.styles {
+            combined.push_str(&style.content);
+            combined.push('\0'); // Separator
+        }
+        Some(vize_carton::hash::content_hash(&combined))
+    }
+
+    /// Compute hash of the script blocks (script + script_setup) content.
+    /// Returns None if there are no script blocks.
+    pub fn script_hash(&self) -> Option<String> {
+        let script_content = self.script.as_ref().map(|s| s.content.as_ref());
+        let script_setup_content = self.script_setup.as_ref().map(|s| s.content.as_ref());
+
+        match (script_content, script_setup_content) {
+            (None, None) => None,
+            (Some(s), None) => Some(vize_carton::hash::content_hash(s)),
+            (None, Some(ss)) => Some(vize_carton::hash::content_hash(ss)),
+            (Some(s), Some(ss)) => {
+                let combined = format!("{}\0{}", s, ss);
+                Some(vize_carton::hash::content_hash(&combined))
+            }
+        }
+    }
 }
 
 /// Template block

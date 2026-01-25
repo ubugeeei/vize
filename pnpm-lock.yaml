@@ -145,6 +145,9 @@ importers:
       '@vizejs/native':
         specifier: workspace:*
         version: link:../vize-native
+      esbuild:
+        specifier: ^0.24.0
+        version: 0.24.2
       tinyglobby:
         specifier: ^0.2.0
         version: 0.2.15

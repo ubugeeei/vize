@@ -38,6 +38,7 @@ mod vec;
 pub mod dom_tag_config;
 pub mod flags;
 pub mod general;
+pub mod hash;
 pub mod i18n;
 pub mod lsp;
 pub mod profiler;

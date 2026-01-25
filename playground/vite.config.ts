@@ -13,11 +13,8 @@ const USE_VIZE = process.env.USE_VIZE === "true";
 async function getVuePlugin() {
   if (USE_VIZE) {
     try {
-      const { vize } =
-        await import("../npm/vite-plugin-vize/dist/index.js");
-      console.log(
-        "[vite.config] Using Vize for Vue SFC compilation",
-      );
+      const { vize } = await import("../npm/vite-plugin-vize/dist/index.js");
+      console.log("[vite.config] Using Vize for Vue SFC compilation");
       return vize();
     } catch (e) {
       console.warn(

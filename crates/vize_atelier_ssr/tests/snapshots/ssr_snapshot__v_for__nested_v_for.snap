@@ -7,7 +7,7 @@ function ssrRender(_ctx, _push, _parent, _attrs) {
   _ssrRenderList(_ctx.rows, (row) => {
     _push(`<div>`)
     _push(`<!--[-->`)
-    _ssrRenderList(_ctx.row, (col) => {
+    _ssrRenderList(row, (col) => {
       _push(`<span>${_ssrInterpolate(col)}</span>`)
     })
     _push(`<!--]-->`)

@@ -1,6 +1,5 @@
 ---
-source: crates/vue_compiler_sfc/src/snapshot_tests.rs
-assertion_line: 98
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 expression: ts_output
 ---
 import type { RouteLocation } from "vue-router";
@@ -25,7 +24,7 @@ export default defineComponent({
 
 
 return (_ctx, _cache) => {
-  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_ctx.items, (item) => { return (_openBlock(), _createElementBlock("div", { key: item.name }, "\n    " + _toDisplayString(item.label) + "\n  ", 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */))
+  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(__props.items, (item) => { return (_openBlock(), _createElementBlock("div", { key: item.name }, "\n    " + _toDisplayString(item.label) + "\n  ", 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */))
 }
 }
 

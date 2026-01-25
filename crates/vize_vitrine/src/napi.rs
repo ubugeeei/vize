@@ -335,6 +335,53 @@ pub struct BatchCompileResultNapi {
     pub time_ms: f64,
 }
 
+/// Input file for batch compilation with results
+#[napi(object)]
+pub struct BatchFileInputNapi {
+    /// File path
+    pub path: String,
+    /// Source code
+    pub source: String,
+}
+
+/// Per-file result from batch compilation
+#[napi(object)]
+pub struct BatchFileResultNapi {
+    /// File path
+    pub path: String,
+    /// Generated JavaScript code
+    pub code: String,
+    /// Generated CSS (if any)
+    pub css: Option<String>,
+    /// Scope ID for scoped styles
+    pub scope_id: String,
+    /// Whether the file has scoped styles
+    pub has_scoped: bool,
+    /// Compilation errors
+    pub errors: Vec<String>,
+    /// Compilation warnings
+    pub warnings: Vec<String>,
+    /// Hash of template content (for HMR)
+    pub template_hash: Option<String>,
+    /// Hash of style content (for HMR)
+    pub style_hash: Option<String>,
+    /// Hash of script content (for HMR)
+    pub script_hash: Option<String>,
+}
+
+/// Batch compile result with per-file results
+#[napi(object)]
+pub struct BatchCompileResultWithFilesNapi {
+    /// Per-file compilation results
+    pub results: Vec<BatchFileResultNapi>,
+    /// Number of files compiled successfully
+    pub success_count: u32,
+    /// Number of files that failed
+    pub failed_count: u32,
+    /// Compilation time in milliseconds
+    pub time_ms: f64,
+}
+
 /// Batch compile SFC files matching a glob pattern (native multithreading)
 #[napi(js_name = "compileSfcBatch")]
 pub fn compile_sfc_batch(
@@ -458,6 +505,155 @@ pub fn compile_sfc_batch(
         failed: failed.load(Ordering::Relaxed) as u32,
         input_bytes: input_bytes.load(Ordering::Relaxed) as u32,
         output_bytes: output_bytes.load(Ordering::Relaxed) as u32,
+        time_ms: elapsed.as_secs_f64() * 1000.0,
+    })
+}
+
+/// Batch compile SFC files with per-file results (in-memory, native multithreading)
+#[napi(js_name = "compileSfcBatchWithResults")]
+pub fn compile_sfc_batch_with_results(
+    files: Vec<BatchFileInputNapi>,
+    options: Option<BatchCompileOptionsNapi>,
+) -> Result<BatchCompileResultWithFilesNapi> {
+    use std::sync::Mutex;
+    use std::time::Instant;
+    use vize_atelier_sfc::{
+        compile_sfc as sfc_compile, parse_sfc as sfc_parse, ScriptCompileOptions,
+        SfcCompileOptions, SfcParseOptions, StyleCompileOptions, TemplateCompileOptions,
+    };
+
+    let opts = options.unwrap_or_default();
+    let ssr = opts.ssr.unwrap_or(false);
+
+    // Configure thread pool if specified
+    if let Some(threads) = opts.threads {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads as usize)
+            .build_global()
+            .ok(); // Ignore if already configured
+    }
+
+    let results: Mutex<Vec<BatchFileResultNapi>> = Mutex::new(Vec::with_capacity(files.len()));
+    let success_count = AtomicUsize::new(0);
+    let failed_count = AtomicUsize::new(0);
+
+    let start = Instant::now();
+
+    // Compile files in parallel using rayon
+    files.par_iter().for_each(|file| {
+        let filename = &file.path;
+        let source = &file.source;
+
+        // Generate scope ID from filename
+        let scope_id = {
+            use std::collections::hash_map::DefaultHasher;
+            use std::hash::{Hash, Hasher};
+            let mut hasher = DefaultHasher::new();
+            filename.hash(&mut hasher);
+            format!("{:08x}", hasher.finish() & 0xFFFFFFFF)
+        };
+
+        let has_scoped = source.contains("<style") && source.contains("scoped");
+
+        // Parse
+        let parse_opts = SfcParseOptions {
+            filename: filename.clone(),
+            ..Default::default()
+        };
+
+        let descriptor = match sfc_parse(source, parse_opts) {
+            Ok(d) => d,
+            Err(e) => {
+                failed_count.fetch_add(1, Ordering::Relaxed);
+                let mut guard = results.lock().unwrap();
+                guard.push(BatchFileResultNapi {
+                    path: filename.clone(),
+                    code: String::new(),
+                    css: None,
+                    scope_id,
+                    has_scoped,
+                    errors: vec![e.message],
+                    warnings: vec![],
+                    template_hash: None,
+                    style_hash: None,
+                    script_hash: None,
+                });
+                return;
+            }
+        };
+
+        // Compute hashes for HMR
+        let template_hash = descriptor.template_hash();
+        let style_hash = descriptor.style_hash();
+        let script_hash = descriptor.script_hash();
+
+        // Compile
+        let actual_has_scoped = descriptor.styles.iter().any(|s| s.scoped);
+        let compile_opts = SfcCompileOptions {
+            parse: SfcParseOptions {
+                filename: filename.clone(),
+                ..Default::default()
+            },
+            script: ScriptCompileOptions {
+                id: Some(filename.clone()),
+                ..Default::default()
+            },
+            template: TemplateCompileOptions {
+                id: Some(filename.clone()),
+                scoped: actual_has_scoped,
+                ssr,
+                ..Default::default()
+            },
+            style: StyleCompileOptions {
+                id: filename.clone(),
+                scoped: actual_has_scoped,
+                ..Default::default()
+            },
+        };
+
+        match sfc_compile(&descriptor, compile_opts) {
+            Ok(result) => {
+                success_count.fetch_add(1, Ordering::Relaxed);
+                let mut guard = results.lock().unwrap();
+                guard.push(BatchFileResultNapi {
+                    path: filename.clone(),
+                    code: result.code,
+                    css: result.css,
+                    scope_id,
+                    has_scoped: actual_has_scoped,
+                    errors: result.errors.into_iter().map(|e| e.message).collect(),
+                    warnings: result.warnings.into_iter().map(|e| e.message).collect(),
+                    template_hash,
+                    style_hash,
+                    script_hash,
+                });
+            }
+            Err(e) => {
+                failed_count.fetch_add(1, Ordering::Relaxed);
+                let mut guard = results.lock().unwrap();
+                guard.push(BatchFileResultNapi {
+                    path: filename.clone(),
+                    code: String::new(),
+                    css: None,
+                    scope_id,
+                    has_scoped: actual_has_scoped,
+                    errors: vec![e.message],
+                    warnings: vec![],
+                    template_hash,
+                    style_hash,
+                    script_hash,
+                });
+            }
+        }
+    });
+
+    let elapsed = start.elapsed();
+    let final_results = results.into_inner().unwrap();
+
+    Ok(BatchCompileResultWithFilesNapi {
+        results: final_results,
+        success_count: success_count.load(Ordering::Relaxed) as u32,
+        failed_count: failed_count.load(Ordering::Relaxed) as u32,
         time_ms: elapsed.as_secs_f64() * 1000.0,
     })
 }

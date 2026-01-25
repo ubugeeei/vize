@@ -326,13 +326,13 @@ pub fn transform_v_for<'a>(
     let (mut source, value_alias, key_alias, index_alias) =
         parse_v_for_expression(allocator, &exp.content, &exp.loc);
 
-    // Process source expression to add _ctx. prefix if needed
+    // Process source expression with binding-aware identifier prefixing
+    // This ensures imports and refs are correctly handled (e.g., _unref(PRESETS) instead of _ctx.PRESETS)
     if ctx.options.prefix_identifiers || ctx.options.is_ts {
-        use crate::transforms::transform_expression::prefix_identifiers_in_expression;
-        if let ExpressionNode::Simple(ref mut source_exp) = source {
-            let processed = prefix_identifiers_in_expression(&source_exp.content);
-            source_exp.content = processed.into();
-        }
+        use crate::transforms::process_expression;
+        // Process the source expression through the binding-aware transform
+        let processed = process_expression(ctx, &source, false);
+        source = processed;
     }
 
     // Create ForNode children with taken element

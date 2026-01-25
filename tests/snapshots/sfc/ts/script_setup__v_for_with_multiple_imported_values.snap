@@ -1,0 +1,20 @@
+---
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+expression: ts_output
+---
+import { defineComponent } from 'vue'
+import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, createElementVNode as _createElementVNode, renderList as _renderList, toDisplayString as _toDisplayString, unref as _unref } from "vue"
+
+import { ITEMS, CATEGORIES } from './data'
+
+export default defineComponent({
+  name: 'test',
+  setup(__props) {
+
+
+return (_ctx, _cache) => {
+  return (_openBlock(), _createElementBlock("div", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_unref(CATEGORIES), (category) => { return (_openBlock(), _createElementBlock("section", { key: category.id }, [ _createElementVNode("h2", null, _toDisplayString(category.name), 1 /* TEXT */), _createElementVNode("ul", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_unref(ITEMS), (item) => { return (_openBlock(), _createElementBlock("li", { key: item.id }, _toDisplayString(item.name), 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */)) ]) ])) }), 128 /* KEYED_FRAGMENT */)) ]))
+}
+}
+
+})

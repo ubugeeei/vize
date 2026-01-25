@@ -254,23 +254,7 @@ const bindingsBySource = computed(() => {
 const virText = computed(() => analysisResult.value?.vir || '');
 
 // Token types for VIR syntax highlighting
-type VirTokenType =
-  | 'border'      // ╭╰│├└─┌┐ etc.
-  | 'section'     // ■ section headers
-  | 'section-name' // MACROS, BINDINGS, etc.
-  | 'macro'       // @defineProps, @defineEmits
-  | 'type'        // <TypeAnnotation>
-  | 'binding'     // ▸ binding marker
-  | 'identifier'  // variable names
-  | 'tag'         // [SetupRef], [SetupConst]
-  | 'source'      // ref, computed, props
-  | 'arrow'       // →
-  | 'number'      // numbers
-  | 'diagnostic'  // ✗ ⚠ ℹ
-  | 'keyword'     // type:, args:, etc.
-  | 'colon'       // : separator
-  | 'bracket'     // [], {}
-  | 'plain';      // everything else
+type VirTokenType = 'border' | 'section' | 'section-name' | 'macro' | 'type' | 'binding' | 'identifier' | 'tag' | 'source' | 'arrow' | 'number' | 'diagnostic' | 'keyword' | 'colon' | 'bracket' | 'plain';
 
 interface VirToken {
   type: VirTokenType;

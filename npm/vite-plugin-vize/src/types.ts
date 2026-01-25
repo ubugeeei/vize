@@ -92,4 +92,42 @@ export interface CompiledModule {
   css?: string;
   scopeId: string;
   hasScoped: boolean;
+  templateHash?: string;
+  styleHash?: string;
+  scriptHash?: string;
 }
+
+export interface BatchFileInput {
+  path: string;
+  source: string;
+}
+
+export interface BatchFileResult {
+  path: string;
+  code: string;
+  css?: string;
+  scopeId: string;
+  hasScoped: boolean;
+  errors: string[];
+  warnings: string[];
+  templateHash?: string;
+  styleHash?: string;
+  scriptHash?: string;
+}
+
+export interface BatchCompileOptionsNapi {
+  ssr?: boolean;
+  threads?: number;
+}
+
+export interface BatchCompileResultWithFiles {
+  results: BatchFileResult[];
+  successCount: number;
+  failedCount: number;
+  timeMs: number;
+}
+
+export type CompileSfcBatchWithResultsFn = (
+  files: BatchFileInput[],
+  options?: BatchCompileOptionsNapi
+) => BatchCompileResultWithFiles;
