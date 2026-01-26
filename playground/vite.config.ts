@@ -37,7 +37,7 @@ export default defineConfig(async () => {
     plugins: [vuePlugin, wasm(), topLevelAwait()],
     server: {
       port: 5180,
-      strictPort: true,
+      strictPort: false, // Allow fallback to next available port
       headers: {
         "Cross-Origin-Opener-Policy": "same-origin",
         "Cross-Origin-Embedder-Policy": "require-corp",

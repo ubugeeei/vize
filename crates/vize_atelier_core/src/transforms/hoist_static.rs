@@ -326,8 +326,16 @@ fn has_static_props(el: &ElementNode<'_>) -> bool {
     }
 
     for prop in el.props.iter() {
-        if let PropNode::Directive(_) = prop {
-            return false;
+        match prop {
+            PropNode::Directive(_) => {
+                return false;
+            }
+            PropNode::Attribute(attr) => {
+                // `ref` attribute must not be hoisted - it needs runtime resolution
+                if attr.name == "ref" {
+                    return false;
+                }
+            }
         }
     }
 

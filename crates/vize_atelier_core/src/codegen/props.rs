@@ -315,9 +315,15 @@ fn generate_props_object(
                 }
                 ctx.push(": ");
                 if let Some(value) = &attr.value {
-                    ctx.push("\"");
-                    ctx.push(&value.content);
-                    ctx.push("\"");
+                    // `ref` attribute value should be a variable reference, not a string
+                    // This allows template refs to bind to setup() refs
+                    if attr.name == "ref" {
+                        ctx.push(&value.content);
+                    } else {
+                        ctx.push("\"");
+                        ctx.push(&value.content);
+                        ctx.push("\"");
+                    }
                 } else {
                     // Boolean attributes should be empty string, not true
                     ctx.push("\"\"");
