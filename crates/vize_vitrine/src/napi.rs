@@ -146,6 +146,8 @@ pub struct SfcCompileOptionsNapi {
     pub filename: Option<String>,
     pub source_map: Option<bool>,
     pub ssr: Option<bool>,
+    /// Scope ID for scoped CSS (e.g., "data-v-abc123")
+    pub scope_id: Option<String>,
 }
 
 /// SFC compile result for NAPI
@@ -276,6 +278,19 @@ pub fn compile_sfc(
     let has_scoped = descriptor.styles.iter().any(|s| s.scoped);
     // Preserve TypeScript in output - let Vite/esbuild handle TS transformation
     // This avoids issues with OXC transformer incorrectly removing code
+
+    // Create compiler options with scope_id for scoped CSS
+    let template_compiler_options = if has_scoped {
+        opts.scope_id.as_ref().map(|scope_id| {
+            vize_atelier_dom::DomCompilerOptions {
+                scope_id: Some(scope_id.clone().into()),
+                ..Default::default()
+            }
+        })
+    } else {
+        None
+    };
+
     let compile_opts = SfcCompileOptions {
         parse: SfcParseOptions {
             filename: filename.clone(),
@@ -291,6 +306,7 @@ pub fn compile_sfc(
             scoped: has_scoped,
             ssr: opts.ssr.unwrap_or(false),
             is_ts: true, // Preserve TypeScript
+            compiler_options: template_compiler_options,
             ..Default::default()
         },
         style: StyleCompileOptions {
@@ -594,6 +610,16 @@ pub fn compile_sfc_batch_with_results(
         // Compile
         // Preserve TypeScript in output - let Vite/esbuild handle TS transformation
         let actual_has_scoped = descriptor.styles.iter().any(|s| s.scoped);
+        // Create compiler options with scope_id for scoped CSS
+        let template_compiler_options = if actual_has_scoped {
+            Some(vize_atelier_dom::DomCompilerOptions {
+                scope_id: Some(format!("data-v-{}", scope_id).into()),
+                ..Default::default()
+            })
+        } else {
+            None
+        };
+
         let compile_opts = SfcCompileOptions {
             parse: SfcParseOptions {
                 filename: filename.clone(),
@@ -609,6 +635,7 @@ pub fn compile_sfc_batch_with_results(
                 scoped: actual_has_scoped,
                 ssr,
                 is_ts: true, // Preserve TypeScript
+                compiler_options: template_compiler_options,
                 ..Default::default()
             },
             style: StyleCompileOptions {

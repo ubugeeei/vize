@@ -174,8 +174,9 @@ fn generate_for_item_props(
     key_exp: Option<&ExpressionNode<'_>>,
 ) {
     let has_other = has_other_props(el);
+    let scope_id = ctx.options.scope_id.clone();
 
-    if key_exp.is_none() && !has_other {
+    if key_exp.is_none() && !has_other && scope_id.is_none() {
         ctx.push(", null");
         return;
     }
@@ -183,11 +184,21 @@ fn generate_for_item_props(
     ctx.push(", ");
 
     if !has_other {
-        // Only key, no other props
+        // Only key (and optionally scope_id), no other props
         if let Some(key) = key_exp {
             ctx.push("{ key: ");
             generate_expression(ctx, key);
+            if let Some(ref sid) = scope_id {
+                ctx.push(", \"");
+                ctx.push(sid);
+                ctx.push("\": \"\"");
+            }
             ctx.push(" }");
+        } else if let Some(ref sid) = scope_id {
+            // No key, no other props, but has scope_id
+            ctx.push("{ \"");
+            ctx.push(sid);
+            ctx.push("\": \"\" }");
         }
         return;
     }
@@ -210,6 +221,15 @@ fn generate_for_item_props(
             generate_single_prop(ctx, prop);
         }
 
+        // Add scope_id for scoped CSS
+        if let Some(ref sid) = scope_id {
+            ctx.push(",");
+            ctx.newline();
+            ctx.push("\"");
+            ctx.push(sid);
+            ctx.push("\": \"\"");
+        }
+
         ctx.deindent();
         ctx.newline();
         ctx.push("}");
@@ -228,6 +248,17 @@ fn generate_for_item_props(
             generate_single_prop(ctx, prop);
             first = false;
         }
+
+        // Add scope_id for scoped CSS
+        if let Some(ref sid) = scope_id {
+            if !first {
+                ctx.push(",");
+            }
+            ctx.push(" \"");
+            ctx.push(sid);
+            ctx.push("\": \"\"");
+        }
+
         ctx.push(" }");
     }
 }

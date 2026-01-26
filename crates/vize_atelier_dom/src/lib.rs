@@ -137,6 +137,7 @@ pub fn compile_template_with_options<'a>(
     let codegen_opts = CodegenOptions {
         mode: options.mode,
         source_map: options.source_map,
+        scope_id: options.scope_id.clone(),
         ssr: options.ssr,
         is_ts: options.is_ts,
         inline: options.inline,

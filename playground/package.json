@@ -13,6 +13,7 @@
     "build:wasm": "cd .. && cargo build --release -p vize_vitrine --no-default-features --features wasm --target wasm32-unknown-unknown && wasm-bindgen target/wasm32-unknown-unknown/release/vize_vitrine.wasm --out-dir playground/src/wasm --target web"
   },
   "dependencies": {
+    "@mdi/js": "^7.4.47",
     "monaco-editor": "^0.52.0",
     "prettier": "^3.7.4",
     "shiki": "^1.24.0",

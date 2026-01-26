@@ -19,6 +19,15 @@ const VIRTUAL_PREFIX = '\0vize:';
 const VIRTUAL_CSS_MODULE = 'virtual:vize-styles';
 const RESOLVED_CSS_MODULE = '\0vize:all-styles.css';
 
+function createLogger(debug: boolean) {
+  return {
+    log: (...args: unknown[]) => debug && console.log('[vize]', ...args),
+    info: (...args: unknown[]) => console.log('[vize]', ...args), // Always show info
+    warn: (...args: unknown[]) => console.warn('[vize]', ...args),
+    error: (...args: unknown[]) => console.error('[vize]', ...args),
+  };
+}
+
 export function vize(options: VizeOptions = {}): Plugin {
   const cache = new Map<string, CompiledModule>();
   // Map from virtual ID to real file path
@@ -35,6 +44,8 @@ export function vize(options: VizeOptions = {}): Plugin {
   let mergedOptions: VizeOptions;
   let extractCss = false;
 
+  const logger = createLogger(options.debug ?? false);
+
   async function compileAll(): Promise<void> {
     const startTime = performance.now();
     const files = await glob(scanPatterns, {
@@ -43,7 +54,7 @@ export function vize(options: VizeOptions = {}): Plugin {
       absolute: true,
     });
 
-    console.log(`[vize] Pre-compiling ${files.length} Vue files...`);
+    logger.info(`Pre-compiling ${files.length} Vue files...`);
 
     // Read all files
     const fileContents: { path: string; source: string }[] = [];
@@ -52,7 +63,7 @@ export function vize(options: VizeOptions = {}): Plugin {
         const source = fs.readFileSync(file, 'utf-8');
         fileContents.push({ path: file, source });
       } catch (e) {
-        console.error(`[vize] Failed to read ${file}:`, e);
+        logger.error(`Failed to read ${file}:`, e);
       }
     }
 
@@ -71,8 +82,8 @@ export function vize(options: VizeOptions = {}): Plugin {
     }
 
     const elapsed = (performance.now() - startTime).toFixed(2);
-    console.log(
-      `[vize] Pre-compilation complete: ${result.successCount} succeeded, ${result.failedCount} failed (${elapsed}ms, native batch: ${result.timeMs.toFixed(2)}ms)`
+    logger.info(
+      `Pre-compilation complete: ${result.successCount} succeeded, ${result.failedCount} failed (${elapsed}ms, native batch: ${result.timeMs.toFixed(2)}ms)`
     );
   }
 
@@ -115,7 +126,7 @@ export function vize(options: VizeOptions = {}): Plugin {
           configFile: options.configFile,
         });
         if (fileConfig) {
-          console.log('[vize] Loaded config from vize.config file');
+          logger.log('Loaded config from vize.config file');
         }
       }
 
@@ -150,7 +161,7 @@ export function vize(options: VizeOptions = {}): Plugin {
     async buildStart() {
       await compileAll();
       // Debug: log cache keys
-      console.log('[vize] Cache keys:', [...cache.keys()].slice(0, 3));
+      logger.log('Cache keys:', [...cache.keys()].slice(0, 3));
     },
 
     resolveId(id: string, importer?: string) {
@@ -187,7 +198,7 @@ export function vize(options: VizeOptions = {}): Plugin {
 
         // Debug: log all resolution attempts
         const hasCache = cache.has(resolved);
-        console.log(`[vize] resolveId: id=${id}, resolved=${resolved}, hasCache=${hasCache}, importer=${importer ?? 'none'}`);
+        logger.log(`resolveId: id=${id}, resolved=${resolved}, hasCache=${hasCache}, importer=${importer ?? 'none'}`);
 
         // Return virtual module ID if cached
         // Add .ts suffix so Vite transforms TypeScript
@@ -288,8 +299,8 @@ export function vize(options: VizeOptions = {}): Plugin {
             newCompiled
           );
 
-          console.log(
-            `[vize] Re-compiled: ${path.relative(root, file)} (${updateType})`
+          logger.log(
+            `Re-compiled: ${path.relative(root, file)} (${updateType})`
           );
 
           // Find the virtual module for this file
@@ -317,7 +328,7 @@ export function vize(options: VizeOptions = {}): Plugin {
             return [...modules];
           }
         } catch (e) {
-          console.error(`[vize] Re-compilation failed for ${file}:`, e);
+          logger.error(`Re-compilation failed for ${file}:`, e);
         }
       }
     },
@@ -335,8 +346,8 @@ export function vize(options: VizeOptions = {}): Plugin {
           fileName: 'assets/vize-components.css',
           source: allCss,
         });
-        console.log(
-          `[vize] Extracted CSS to assets/vize-components.css (${collectedCss.size} components)`
+        logger.info(
+          `Extracted CSS to assets/vize-components.css (${collectedCss.size} components)`
         );
       }
     },

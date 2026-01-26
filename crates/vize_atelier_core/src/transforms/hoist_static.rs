@@ -156,7 +156,8 @@ fn hoist_static_inner<'a>(
                 } else {
                     // Non-root static elements can be fully hoisted
                     if let TemplateChildNode::Element(el) = &children[i] {
-                        let vnode_call = create_vnode_call_from_element(allocator, el);
+                        let scope_id = ctx.options.scope_id.clone();
+                        let vnode_call = create_vnode_call_from_element(allocator, el, scope_id.as_ref());
                         let hoist_index = ctx.hoist(vnode_call);
                         // Replace with hoisted reference
                         children[i] = TemplateChildNode::Hoisted(hoist_index);
@@ -205,9 +206,10 @@ fn hoist_static_inner<'a>(
 fn create_vnode_call_from_element<'a>(
     allocator: &'a Bump,
     el: &ElementNode<'a>,
+    scope_id: Option<&vize_carton::String>,
 ) -> JsChildNode<'a> {
     let tag = VNodeTag::String(el.tag.clone());
-    let props = create_props_expression(allocator, &el.props);
+    let props = create_props_expression(allocator, &el.props, scope_id);
     let children = create_children_expression(allocator, &el.children);
 
     let vnode_call = VNodeCall {
@@ -230,11 +232,8 @@ fn create_vnode_call_from_element<'a>(
 fn create_props_expression<'a>(
     allocator: &'a Bump,
     props: &[PropNode<'a>],
+    scope_id: Option<&vize_carton::String>,
 ) -> Option<PropsExpression<'a>> {
-    if props.is_empty() {
-        return None;
-    }
-
     // Build object properties from attributes
     let mut obj_props = Vec::new_in(allocator);
 
@@ -257,6 +256,23 @@ fn create_props_expression<'a>(
                 loc: attr.loc.clone(),
             });
         }
+    }
+
+    // Add scope_id attribute for scoped CSS if present
+    if let Some(scope_id) = scope_id {
+        let key = ExpressionNode::Simple(Box::new_in(
+            SimpleExpressionNode::new(scope_id.clone(), true, SourceLocation::STUB),
+            allocator,
+        ));
+        let value = JsChildNode::SimpleExpression(Box::new_in(
+            SimpleExpressionNode::new("", true, SourceLocation::STUB),
+            allocator,
+        ));
+        obj_props.push(Property {
+            key,
+            value,
+            loc: SourceLocation::STUB,
+        });
     }
 
     if obj_props.is_empty() {
@@ -370,6 +386,23 @@ fn hoist_element_props<'a>(
                 loc: attr.loc.clone(),
             });
         }
+    }
+
+    // Add scope_id attribute for scoped CSS if present
+    if let Some(ref scope_id) = ctx.options.scope_id {
+        let key = ExpressionNode::Simple(Box::new_in(
+            SimpleExpressionNode::new(scope_id.clone(), true, SourceLocation::STUB),
+            allocator,
+        ));
+        let value = JsChildNode::SimpleExpression(Box::new_in(
+            SimpleExpressionNode::new("", true, SourceLocation::STUB),
+            allocator,
+        ));
+        obj_props.push(Property {
+            key,
+            value,
+            loc: SourceLocation::STUB,
+        });
     }
 
     if obj_props.is_empty() {

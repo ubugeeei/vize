@@ -157,6 +157,15 @@ pub fn generate_if_branch_component(
         }
     }
 
+    // Add scope_id for scoped CSS
+    if let Some(ref scope_id) = ctx.options.scope_id.clone() {
+        ctx.push(",");
+        ctx.newline();
+        ctx.push("\"");
+        ctx.push(&scope_id);
+        ctx.push("\": \"\"");
+    }
+
     ctx.deindent();
     ctx.newline();
     ctx.push("}))")
@@ -338,6 +347,15 @@ pub fn generate_if_branch_element(
             ctx.newline();
             generate_single_prop_for_if(ctx, prop, static_class, static_style);
         }
+    }
+
+    // Add scope_id for scoped CSS
+    if let Some(ref scope_id) = ctx.options.scope_id.clone() {
+        ctx.push(",");
+        ctx.newline();
+        ctx.push("\"");
+        ctx.push(&scope_id);
+        ctx.push("\": \"\"");
     }
 
     ctx.deindent();

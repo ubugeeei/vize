@@ -85,6 +85,12 @@ export interface VizeOptions {
    * Custom config file path (overrides automatic search)
    */
   configFile?: string;
+
+  /**
+   * Enable debug logging
+   * @default false
+   */
+  debug?: boolean;
 }
 
 export interface CompiledModule {
