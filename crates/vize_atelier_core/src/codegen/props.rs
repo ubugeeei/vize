@@ -241,9 +241,15 @@ fn generate_props_object(
     });
 
     // Check if any v-on has inline handler (not just identifier) or has runtime modifiers
+    // Also check for cached handlers which produce long expressions
     let has_inline_handler = props.iter().any(|p| {
         if let PropNode::Directive(dir) = p {
             if dir.name == "on" {
+                // When cache_handlers is enabled, all handlers produce long expressions
+                // that need multiline formatting
+                if ctx.options.cache_handlers && dir.exp.is_some() {
+                    return true;
+                }
                 // Check for modifiers that will use withModifiers or withKeys (not event option modifiers)
                 let has_runtime_modifier = dir.modifiers.iter().any(|m| {
                     let n = m.content.as_str();
@@ -588,6 +594,22 @@ pub fn generate_directive_prop_with_static(
             let has_system_mods = !system_modifiers.is_empty();
             let has_key_mods = !key_modifiers.is_empty();
 
+            // Check if this handler needs caching
+            // When cache_handlers is true, ALL handlers are cached (including simple identifiers)
+            // Pattern: _cache[n] || (_cache[n] = handler)
+            // Simple identifiers get safety wrapper: (...args) => (_ctx.handler && _ctx.handler(...args))
+            // Inline expressions get: $event => (expression)
+            let needs_cache = ctx.options.cache_handlers && dir.exp.is_some();
+
+            if needs_cache {
+                let cache_index = ctx.next_cache_index();
+                ctx.push("_cache[");
+                ctx.push(&cache_index.to_string());
+                ctx.push("] || (_cache[");
+                ctx.push(&cache_index.to_string());
+                ctx.push("] = ");
+            }
+
             if has_key_mods {
                 ctx.use_helper(RuntimeHelper::WithKeys);
                 ctx.push("_withKeys(");
@@ -600,7 +622,7 @@ pub fn generate_directive_prop_with_static(
 
             // Generate the actual handler
             if let Some(exp) = &dir.exp {
-                generate_event_handler(ctx, exp);
+                generate_event_handler(ctx, exp, needs_cache);
             } else {
                 ctx.push("() => {}");
             }
@@ -631,6 +653,11 @@ pub fn generate_directive_prop_with_static(
                     ctx.push("\"");
                 }
                 ctx.push("])");
+            }
+
+            // Close cache wrapper
+            if needs_cache {
+                ctx.push(")");
             }
         }
         "model" => {

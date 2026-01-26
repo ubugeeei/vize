@@ -197,3 +197,37 @@ input = '<MyComponent @update="onUpdate" />'
 [[cases]]
 name = "component native event"
 input = '<MyComponent @click.native="onClick" />'
+
+# =============================================================================
+# Cache handlers
+# =============================================================================
+
+[[cases]]
+name = "inline handler (cacheHandlers)"
+input = '<button @click="count++"></button>'
+[cases.options]
+cacheHandlers = true
+
+[[cases]]
+name = "inline statement (cacheHandlers)"
+input = '<button @click="count = count + 1"></button>'
+[cases.options]
+cacheHandlers = true
+
+[[cases]]
+name = "method call (cacheHandlers)"
+input = '<button @click="handler()"></button>'
+[cases.options]
+cacheHandlers = true
+
+[[cases]]
+name = "handler reference (cacheHandlers)"
+input = '<button @click="handler"></button>'
+[cases.options]
+cacheHandlers = true
+
+[[cases]]
+name = "multiple cached handlers"
+input = '<button @click="count++" @mouseenter="hover = true"></button>'
+[cases.options]
+cacheHandlers = true

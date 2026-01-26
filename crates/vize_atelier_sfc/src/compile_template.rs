@@ -32,9 +32,11 @@ pub(crate) fn compile_template_block(
     dom_opts.is_ts = is_ts;
 
     // For script setup, use inline mode (render function inside setup return)
+    // Also enable cache_handlers to stabilize inline event handler references
     if bindings.is_some() {
         dom_opts.inline = true;
         dom_opts.hoist_static = true;
+        dom_opts.cache_handlers = true;
     }
 
     // Pass binding metadata from script setup to template compiler

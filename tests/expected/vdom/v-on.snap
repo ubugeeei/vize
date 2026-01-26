@@ -536,3 +536,74 @@ export function render(_ctx, _cache) {
 
   return (_openBlock(), _createBlock(_component_MyComponent, { onClick: _ctx.onClick }, null, 8 /* PROPS */, ["onClick"]))
 }
+
+===
+name: inline handler (cacheHandlers)
+options: cacheHandlers
+--- INPUT ---
+<button @click="count++"></button>
+--- OUTPUT ---
+import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+export function render(_ctx, _cache) {
+  return (_openBlock(), _createElementBlock("button", {
+    onClick: _cache[0] || (_cache[0] = $event => (_ctx.count++))
+  }))
+}
+
+===
+name: inline statement (cacheHandlers)
+options: cacheHandlers
+--- INPUT ---
+<button @click="count = count + 1"></button>
+--- OUTPUT ---
+import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+export function render(_ctx, _cache) {
+  return (_openBlock(), _createElementBlock("button", {
+    onClick: _cache[0] || (_cache[0] = $event => (_ctx.count = _ctx.count + 1))
+  }))
+}
+
+===
+name: method call (cacheHandlers)
+options: cacheHandlers
+--- INPUT ---
+<button @click="handler()"></button>
+--- OUTPUT ---
+import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+export function render(_ctx, _cache) {
+  return (_openBlock(), _createElementBlock("button", {
+    onClick: _cache[0] || (_cache[0] = $event => (_ctx.handler()))
+  }))
+}
+
+===
+name: handler reference (cacheHandlers)
+options: cacheHandlers
+--- INPUT ---
+<button @click="handler"></button>
+--- OUTPUT ---
+import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+export function render(_ctx, _cache) {
+  return (_openBlock(), _createElementBlock("button", {
+    onClick: _cache[0] || (_cache[0] = (...args) => (_ctx.handler && _ctx.handler(...args)))
+  }))
+}
+
+===
+name: multiple cached handlers
+options: cacheHandlers
+--- INPUT ---
+<button @click="count++" @mouseenter="hover = true"></button>
+--- OUTPUT ---
+import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+export function render(_ctx, _cache) {
+  return (_openBlock(), _createElementBlock("button", {
+    onClick: _cache[0] || (_cache[0] = $event => (_ctx.count++)),
+    onMouseenter: _cache[1] || (_cache[1] = $event => (_ctx.hover = true))
+  }, null, 32 /* NEED_HYDRATION */))
+}

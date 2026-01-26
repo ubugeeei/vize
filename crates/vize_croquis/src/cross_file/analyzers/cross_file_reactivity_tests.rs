@@ -215,7 +215,7 @@ fn test_snapshot_reactivity_flows() {
         if let Some(ref reason) = flow.loss_reason {
             output.push_str(&format!("Loss Reason: {:?}\n", reason));
         }
-        output.push_str("\n");
+        output.push('\n');
     }
 
     assert_snapshot!(output);

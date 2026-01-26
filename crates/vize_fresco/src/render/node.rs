@@ -340,7 +340,7 @@ mod tests {
 
     #[test]
     fn test_border_chars() {
-        let (h, v, tl, tr, bl, br) = BorderStyle::Single.chars();
+        let (h, v, tl, _tr, _bl, _br) = BorderStyle::Single.chars();
         assert_eq!(h, "─");
         assert_eq!(v, "│");
         assert_eq!(tl, "┌");

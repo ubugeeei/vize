@@ -342,8 +342,11 @@ pub fn generate_v_once_element(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
         }
 
         // v-once still needs patch flag for dynamic bindings (class/style)
-        let (patch_flag, _) =
-            calculate_element_patch_info(el, ctx.options.binding_metadata.as_ref());
+        let (patch_flag, _) = calculate_element_patch_info(
+            el,
+            ctx.options.binding_metadata.as_ref(),
+            ctx.options.cache_handlers,
+        );
         if let Some(flag) = patch_flag {
             // Only emit CLASS/STYLE flags for v-once, ignore PROPS
             let filtered_flag = flag & (2 | 4); // CLASS | STYLE
@@ -568,8 +571,11 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             ctx.push("\"");
 
             // Calculate patch flag and dynamic props
-            let (patch_flag, dynamic_props) =
-                calculate_element_patch_info(el, ctx.options.binding_metadata.as_ref());
+            let (patch_flag, dynamic_props) = calculate_element_patch_info(
+                el,
+                ctx.options.binding_metadata.as_ref(),
+                ctx.options.cache_handlers,
+            );
             let has_patch_info = patch_flag.is_some() || dynamic_props.is_some();
 
             // Generate props (only if there are renderable props, not just v-show)
@@ -705,8 +711,11 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             }
 
             // Calculate patch flag and dynamic props for component
-            let (mut patch_flag, dynamic_props) =
-                calculate_element_patch_info(el, ctx.options.binding_metadata.as_ref());
+            let (mut patch_flag, dynamic_props) = calculate_element_patch_info(
+                el,
+                ctx.options.binding_metadata.as_ref(),
+                ctx.options.cache_handlers,
+            );
 
             // For components with slot children, remove TEXT flag (1) since text is inside slot
             if has_slot_children(el) {
@@ -847,8 +856,11 @@ pub fn generate_element(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             ctx.push("\"");
 
             // Calculate patch flag for v-show (NEED_PATCH)
-            let (patch_flag, _) =
-                calculate_element_patch_info(el, ctx.options.binding_metadata.as_ref());
+            let (patch_flag, _) = calculate_element_patch_info(
+                el,
+                ctx.options.binding_metadata.as_ref(),
+                ctx.options.cache_handlers,
+            );
             let has_patch_info = patch_flag.is_some();
 
             // Generate props (only if there are renderable props, not just v-show)

@@ -176,6 +176,7 @@ pub fn compile_vdom(input: &str, options: &TestOptions) -> String {
     let codegen_opts = CodegenOptions {
         mode: CodegenMode::Module,
         ssr: options.ssr.unwrap_or(false),
+        cache_handlers: options.cache_handlers.unwrap_or(false),
         ..Default::default()
     };
     let result = generate(&root, codegen_opts);

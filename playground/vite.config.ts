@@ -35,6 +35,8 @@ export default defineConfig(async () => {
     base: process.env.CI ? "/play/" : "/",
     plugins: [vuePlugin, wasm(), topLevelAwait()],
     server: {
+      port: 5180,
+      strictPort: true,
       headers: {
         "Cross-Origin-Opener-Policy": "same-origin",
         "Cross-Origin-Embedder-Policy": "require-corp",

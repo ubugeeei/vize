@@ -15,7 +15,7 @@ export default defineComponent({
 const localItems = ref(['a', 'b', 'c'])
 
 return (_ctx, _cache) => {
-  return (_openBlock(), _createElementBlock("div", null, [ _createElementVNode("select", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_unref(OPTIONS), (opt) => { return (_openBlock(), _createElementBlock("option", { key: opt.value }, _toDisplayString(opt.label), 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */)) ]), _createElementVNode("ul", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(localItems.value, (item) => { return (_openBlock(), _createElementBlock("li", { key: item }, _toDisplayString(item), 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */)) ]) ]))
+  return (_openBlock(), _createElementBlock("div", null, [ _createElementVNode("select", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_unref(OPTIONS), (opt) => { return (_openBlock(), _createElementBlock("option", { key: opt.value, value: opt.value }, _toDisplayString(opt.label), 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */)) ]), _createElementVNode("ul", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(localItems.value, (item) => { return (_openBlock(), _createElementBlock("li", { key: item }, _toDisplayString(item), 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */)) ]) ]))
 }
 }
 

@@ -3,10 +3,8 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 use vize_fresco::layout::{FlexStyle, LayoutEngine};
-use vize_fresco::terminal::cell::Style;
-use vize_fresco::terminal::Buffer;
-use vize_fresco::text::width::TextWidth;
-use vize_fresco::text::wrap::{TextWrap, WrapMode};
+use vize_fresco::terminal::{Buffer, Style};
+use vize_fresco::text::{TextWidth, TextWrap, WrapMode};
 
 fn benchmark_buffer_set_string(c: &mut Criterion) {
     let mut buffer = Buffer::new(80, 24);
