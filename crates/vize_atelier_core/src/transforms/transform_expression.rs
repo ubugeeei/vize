@@ -540,7 +540,7 @@ impl<'a, 'ctx> Visit<'_> for IdentifierCollector<'a, 'ctx> {
     }
 
     fn visit_member_expression(&mut self, expr: &oxc_ast_types::MemberExpression<'_>) {
-        // Visit the object part normally
+        // Visit the object part, but skip .value addition if already accessing .value
         match expr {
             oxc_ast_types::MemberExpression::ComputedMemberExpression(computed) => {
                 self.visit_expression(&computed.object);
@@ -548,6 +548,22 @@ impl<'a, 'ctx> Visit<'_> for IdentifierCollector<'a, 'ctx> {
                 self.visit_expression(&computed.expression);
             }
             oxc_ast_types::MemberExpression::StaticMemberExpression(static_expr) => {
+                // If this is `ref.value`, don't add another .value to the ref object
+                let property_name = static_expr.property.name.as_str();
+                if property_name == "value" {
+                    // Check if object is a simple identifier that is a ref
+                    if let oxc_ast_types::Expression::Identifier(ident) = &static_expr.object {
+                        let name = ident.name.as_str();
+                        if self.is_ref_binding(name) {
+                            // Skip adding .value - it's already accessed via .value
+                            // But still add _ctx. prefix if needed
+                            if let Some(prefix) = get_identifier_prefix(name, self.ctx) {
+                                self.rewrites.insert((ident.span.start as usize, prefix));
+                            }
+                            return;
+                        }
+                    }
+                }
                 self.visit_expression(&static_expr.object);
                 // Don't visit the property - it's a static name, not a reference
             }
