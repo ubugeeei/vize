@@ -535,7 +535,7 @@ fn test_snapshot_severity_levels() {
         output.push_str(&std::format!("is_warning: {}\n", diag.is_warning()));
         output.push_str("\nMarkdown:\n");
         output.push_str(&diag.to_markdown());
-        output.push_str("\n");
+        output.push('\n');
     }
 
     assert_snapshot!(output);

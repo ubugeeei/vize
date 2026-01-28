@@ -2,20 +2,18 @@
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 expression: ts_output
 ---
-import { defineComponent, PropType } from 'vue'
+import { defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
 
 
 export default defineComponent({
   name: 'test',
-  props: {
-    variant: { type: Object as PropType<ButtonVariant>, required: true },
-  },
   setup(__props) {
 
+const status: Status = 'loading';
 
 return (_ctx, _cache) => {
-  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(__props.variant.type), 1 /* TEXT */))
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(status)))
 }
 }
 

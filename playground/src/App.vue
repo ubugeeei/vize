@@ -26,8 +26,6 @@ import * as parserTypescript from "prettier/plugins/typescript";
 import * as parserCss from "prettier/plugins/postcss";
 import ts from "typescript";
 
-const ああああ: number = "";
-
 // Main tab for switching between Atelier, Patina, Canon, Croquis, CrossFile, Musea, and Glyph
 type MainTab = "atelier" | "patina" | "canon" | "croquis" | "cross-file" | "musea" | "glyph";
 const validTabs: MainTab[] = [
@@ -80,14 +78,7 @@ function mapToObject(value: unknown): unknown {
   return value;
 }
 
-type TabType =
-  | "code"
-  | "ast"
-  | "bindings"
-  | "tokens"
-  | "helpers"
-  | "sfc"
-  | "css";
+type TabType = "code" | "ast" | "bindings" | "tokens" | "helpers" | "sfc" | "css";
 
 // State
 const inputMode = ref<InputMode>("sfc");

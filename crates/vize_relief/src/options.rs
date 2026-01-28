@@ -247,6 +247,8 @@ pub struct CodegenOptions {
     pub inline: bool,
     /// Binding metadata from script setup
     pub binding_metadata: Option<BindingMetadata>,
+    /// Whether to cache inline event handlers
+    pub cache_handlers: bool,
 }
 
 impl Default for CodegenOptions {
@@ -264,6 +266,7 @@ impl Default for CodegenOptions {
             is_ts: false,
             inline: false,
             binding_metadata: None,
+            cache_handlers: false,
         }
     }
 }

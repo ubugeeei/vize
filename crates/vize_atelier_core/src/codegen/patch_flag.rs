@@ -55,6 +55,7 @@ fn is_const_handler(expr: &ExpressionNode<'_>, bindings: Option<&BindingMetadata
 pub fn calculate_element_patch_info(
     el: &ElementNode<'_>,
     bindings: Option<&BindingMetadata>,
+    cache_handlers: bool,
 ) -> (Option<i32>, Option<Vec<String>>) {
     let mut flag: i32 = 0;
     // Pre-allocate with small capacity - most elements have few dynamic props
@@ -187,7 +188,13 @@ pub fn calculate_element_patch_info(
                                     false
                                 };
 
-                                if !handler_is_const {
+                                // Check if the handler will be cached
+                                // When cache_handlers is true, ALL handlers are cached (including simple identifiers)
+                                // Cached handlers become stable references, so no PROPS flag needed
+                                let handler_is_cached = cache_handlers && dir.exp.is_some();
+
+                                // Only add PROPS flag if handler is neither const nor cached
+                                if !handler_is_const && !handler_is_cached {
                                     flag |= 8; // PROPS
                                     dynamic_props.push(event_name.clone());
                                 }
@@ -220,11 +227,10 @@ pub fn calculate_element_patch_info(
                                     && !has_middle_modifier;
                                 let is_component_event = el.tag_type == ElementType::Component;
 
-                                if !is_simple_click
-                                    && !is_vmodel_update
-                                    && !is_component_event
-                                    && !handler_is_const
-                                {
+                                // NEED_HYDRATION is needed for non-click/dblclick events
+                                // This tells Vue to properly hydrate event listeners during SSR
+                                // Note: NEED_HYDRATION is added regardless of caching status
+                                if !is_simple_click && !is_vmodel_update && !is_component_event {
                                     flag |= 32; // NEED_HYDRATION
                                 }
                             }

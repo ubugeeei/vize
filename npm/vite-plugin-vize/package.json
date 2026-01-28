@@ -43,6 +43,7 @@
   "dependencies": {
     "@vizejs/native": "workspace:*",
     "vizejs": "workspace:*",
-    "tinyglobby": "^0.2.0"
+    "tinyglobby": "^0.2.0",
+    "esbuild": "^0.24.0"
   }
 }

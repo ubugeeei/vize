@@ -1,0 +1,23 @@
+---
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+expression: ts_output
+---
+import { defineComponent } from 'vue'
+import { openBlock as _openBlock, createBlock as _createBlock } from "vue"
+
+import { ref } from 'vue';
+import Dialog from './Dialog.vue';
+
+export default defineComponent({
+  name: 'test',
+  setup(__props) {
+
+const isOpen = ref(false);
+const formValue = ref('');
+
+return (_ctx, _cache) => {
+  return (_openBlock(), _createBlock(Dialog, { modelValue: isOpen.value, "onUpdate:modelValue": $event => ((isOpen.value) = $event), value: formValue.value, "onUpdate:value": $event => ((formValue.value) = $event) }, null, 8 /* PROPS */, ["modelValue", "onUpdate:modelValue", "value", "onUpdate:value"]))
+}
+}
+
+})

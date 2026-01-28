@@ -8,16 +8,14 @@ import topLevelAwait from "vite-plugin-top-level-await";
 // In development, try to use Vize for testing
 // FIXME: Temporarily disabled Vize due to template literal compilation bug
 // Set USE_VIZE=true env var to enable Vize compiler
-const USE_VIZE = process.env.USE_VIZE === "true";
+// const USE_VIZE = process.env.USE_VIZE === "true";
+const USE_VIZE = true;
 
 async function getVuePlugin() {
   if (USE_VIZE) {
     try {
-      const { vize } =
-        await import("../npm/vite-plugin-vize/dist/index.js");
-      console.log(
-        "[vite.config] Using Vize for Vue SFC compilation",
-      );
+      const { vize } = await import("../npm/vite-plugin-vize/dist/index.js");
+      console.log("[vite.config] Using Vize for Vue SFC compilation");
       return vize();
     } catch (e) {
       console.warn(
@@ -38,6 +36,8 @@ export default defineConfig(async () => {
     base: process.env.CI ? "/play/" : "/",
     plugins: [vuePlugin, wasm(), topLevelAwait()],
     server: {
+      port: 5180,
+      strictPort: false, // Allow fallback to next available port
       headers: {
         "Cross-Origin-Opener-Policy": "same-origin",
         "Cross-Origin-Embedder-Policy": "require-corp",

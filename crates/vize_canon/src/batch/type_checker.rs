@@ -77,6 +77,10 @@ impl BatchTypeChecker {
         for entry in walkdir::WalkDir::new(&project_root)
             .into_iter()
             .filter_entry(|e| {
+                // Don't filter the root directory itself
+                if e.path() == project_root {
+                    return true;
+                }
                 // Skip node_modules and hidden directories
                 let name = e.file_name().to_string_lossy();
                 !name.starts_with('.') && name != "node_modules"

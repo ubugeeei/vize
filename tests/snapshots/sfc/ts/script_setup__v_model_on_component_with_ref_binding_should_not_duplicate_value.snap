@@ -1,0 +1,22 @@
+---
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+expression: ts_output
+---
+import { defineComponent } from 'vue'
+import { openBlock as _openBlock, createBlock as _createBlock } from "vue"
+
+import { ref } from 'vue';
+import MyInput from './MyInput.vue';
+
+export default defineComponent({
+  name: 'test',
+  setup(__props) {
+
+const message = ref('hello');
+
+return (_ctx, _cache) => {
+  return (_openBlock(), _createBlock(MyInput, { modelValue: message.value, "onUpdate:modelValue": $event => ((message.value) = $event) }, null, 8 /* PROPS */, ["modelValue", "onUpdate:modelValue"]))
+}
+}
+
+})

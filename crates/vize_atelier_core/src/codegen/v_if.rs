@@ -5,8 +5,9 @@ use crate::ast::*;
 use super::children::generate_children;
 use super::context::CodegenContext;
 use super::expression::generate_expression;
-use super::helpers::escape_js_string;
+use super::helpers::{escape_js_string, is_valid_js_identifier};
 use super::node::generate_node;
+use super::props::generate_directive_prop_with_static;
 
 /// Generate if node
 pub fn generate_if(ctx: &mut CodegenContext, if_node: &IfNode<'_>) {
@@ -75,7 +76,12 @@ pub fn generate_if_branch(
                     // Template with single child -> unwrap to single element
                     if el.children.len() == 1 {
                         if let TemplateChildNode::Element(inner) = &el.children[0] {
-                            generate_if_branch_element(ctx, inner, branch, branch_index);
+                            // Check if inner element is a component
+                            if inner.tag_type == ElementType::Component {
+                                generate_if_branch_component(ctx, inner, branch, branch_index);
+                            } else {
+                                generate_if_branch_element(ctx, inner, branch, branch_index);
+                            }
                             return;
                         }
                     }
@@ -83,27 +89,7 @@ pub fn generate_if_branch(
                     generate_if_branch_template_fragment(ctx, &el.children, branch, branch_index);
                 } else if el.tag_type == ElementType::Component {
                     // Component
-                    ctx.use_helper(RuntimeHelper::CreateBlock);
-                    ctx.push("(");
-                    ctx.push(ctx.helper(RuntimeHelper::OpenBlock));
-                    ctx.push("(), ");
-                    ctx.push(ctx.helper(RuntimeHelper::CreateBlock));
-                    ctx.push("(");
-                    // Generate component name
-                    // In inline mode, components are directly in scope (imported at module level)
-                    // In function mode, use $setup.ComponentName to access setup bindings
-                    if ctx.is_component_in_bindings(&el.tag) {
-                        if !ctx.options.inline {
-                            ctx.push("$setup.");
-                        }
-                        ctx.push(el.tag.as_str());
-                    } else {
-                        let component_name = format!("_component_{}", el.tag.as_str());
-                        ctx.push(&component_name);
-                    }
-                    ctx.push(", { key: ");
-                    generate_if_branch_key(ctx, branch, branch_index);
-                    ctx.push(" }))");
+                    generate_if_branch_component(ctx, el, branch, branch_index);
                 } else {
                     // Regular element
                     generate_if_branch_element(ctx, el, branch, branch_index);
@@ -117,6 +103,208 @@ pub fn generate_if_branch(
     } else {
         // Multiple children - wrap in fragment
         generate_if_branch_fragment(ctx, branch, branch_index);
+    }
+}
+
+/// Generate component for if branch
+pub fn generate_if_branch_component(
+    ctx: &mut CodegenContext,
+    el: &ElementNode<'_>,
+    branch: &IfBranchNode<'_>,
+    branch_index: usize,
+) {
+    ctx.use_helper(RuntimeHelper::CreateBlock);
+    ctx.push("(");
+    ctx.push(ctx.helper(RuntimeHelper::OpenBlock));
+    ctx.push("(), ");
+    ctx.push(ctx.helper(RuntimeHelper::CreateBlock));
+    ctx.push("(");
+    // Generate component name
+    // In inline mode, components are directly in scope (imported at module level)
+    // In function mode, use $setup.ComponentName to access setup bindings
+    if ctx.is_component_in_bindings(&el.tag) {
+        if !ctx.options.inline {
+            ctx.push("$setup.");
+        }
+        ctx.push(el.tag.as_str());
+    } else {
+        let component_name = format!("_component_{}", el.tag.as_str());
+        ctx.push(&component_name);
+    }
+
+    // Check if component has props
+    let has_other = has_other_props_for_if(el);
+    ctx.push(", {");
+    ctx.indent();
+    ctx.newline();
+    ctx.push("key: ");
+    generate_if_branch_key(ctx, branch, branch_index);
+
+    // Extract static class/style for merging with dynamic bindings
+    let (static_class, static_style) = extract_static_class_style(el);
+    let has_dyn_class = has_dynamic_class(el);
+    let has_dyn_style = has_dynamic_style(el);
+
+    // Add other props if any
+    if has_other {
+        for prop in el.props.iter() {
+            if should_skip_prop_for_if(prop, has_dyn_class, has_dyn_style) {
+                continue;
+            }
+            ctx.push(",");
+            ctx.newline();
+            generate_single_prop_for_if(ctx, prop, static_class, static_style);
+        }
+    }
+
+    // Add scope_id for scoped CSS
+    if let Some(ref scope_id) = ctx.options.scope_id.clone() {
+        ctx.push(",");
+        ctx.newline();
+        ctx.push("\"");
+        ctx.push(&scope_id);
+        ctx.push("\": \"\"");
+    }
+
+    ctx.deindent();
+    ctx.newline();
+    ctx.push("}))")
+}
+
+/// Check if element has props besides the key (for v-if branch elements)
+fn has_other_props_for_if(el: &ElementNode<'_>) -> bool {
+    el.props.iter().any(|p| match p {
+        PropNode::Attribute(_) => true,
+        PropNode::Directive(dir) => {
+            // Skip key binding (handled separately)
+            if dir.name == "bind" {
+                if let Some(ExpressionNode::Simple(arg)) = &dir.arg {
+                    if arg.content == "key" {
+                        return false;
+                    }
+                }
+            }
+            // Skip v-if/v-else-if/v-else directives (handled by parent)
+            if matches!(dir.name.as_str(), "if" | "else-if" | "else") {
+                return false;
+            }
+            true
+        }
+    })
+}
+
+/// Check if prop should be skipped for v-if branch element
+fn should_skip_prop_for_if(
+    p: &PropNode<'_>,
+    has_dynamic_class: bool,
+    has_dynamic_style: bool,
+) -> bool {
+    match p {
+        PropNode::Attribute(attr) => {
+            // Skip static class if there's a dynamic :class (will be merged)
+            if attr.name == "class" && has_dynamic_class {
+                return true;
+            }
+            // Skip static style if there's a dynamic :style (will be merged)
+            if attr.name == "style" && has_dynamic_style {
+                return true;
+            }
+            false
+        }
+        PropNode::Directive(dir) => {
+            if dir.name == "bind" {
+                if let Some(ExpressionNode::Simple(arg)) = &dir.arg {
+                    if arg.content == "key" {
+                        return true;
+                    }
+                }
+            }
+            // Skip v-if/v-else-if/v-else directives
+            if matches!(dir.name.as_str(), "if" | "else-if" | "else") {
+                return true;
+            }
+            false
+        }
+    }
+}
+
+/// Extract static class and style values from element props
+fn extract_static_class_style<'a>(el: &'a ElementNode<'_>) -> (Option<&'a str>, Option<&'a str>) {
+    let mut static_class = None;
+    let mut static_style = None;
+    for prop in el.props.iter() {
+        if let PropNode::Attribute(attr) = prop {
+            if attr.name == "class" {
+                if let Some(val) = &attr.value {
+                    static_class = Some(val.content.as_str());
+                }
+            } else if attr.name == "style" {
+                if let Some(val) = &attr.value {
+                    static_style = Some(val.content.as_str());
+                }
+            }
+        }
+    }
+    (static_class, static_style)
+}
+
+/// Check if element has dynamic :class binding
+fn has_dynamic_class(el: &ElementNode<'_>) -> bool {
+    el.props.iter().any(|p| {
+        if let PropNode::Directive(dir) = p {
+            if dir.name == "bind" {
+                if let Some(ExpressionNode::Simple(arg)) = &dir.arg {
+                    return arg.content == "class";
+                }
+            }
+        }
+        false
+    })
+}
+
+/// Check if element has dynamic :style binding
+fn has_dynamic_style(el: &ElementNode<'_>) -> bool {
+    el.props.iter().any(|p| {
+        if let PropNode::Directive(dir) = p {
+            if dir.name == "bind" {
+                if let Some(ExpressionNode::Simple(arg)) = &dir.arg {
+                    return arg.content == "style";
+                }
+            }
+        }
+        false
+    })
+}
+
+/// Generate a single prop for v-if branch element
+fn generate_single_prop_for_if(
+    ctx: &mut CodegenContext,
+    prop: &PropNode<'_>,
+    static_class: Option<&str>,
+    static_style: Option<&str>,
+) {
+    match prop {
+        PropNode::Attribute(attr) => {
+            let needs_quotes = !is_valid_js_identifier(&attr.name);
+            if needs_quotes {
+                ctx.push("\"");
+            }
+            ctx.push(&attr.name);
+            if needs_quotes {
+                ctx.push("\"");
+            }
+            ctx.push(": ");
+            if let Some(value) = &attr.value {
+                ctx.push("\"");
+                ctx.push(&escape_js_string(value.content.as_str()));
+                ctx.push("\"");
+            } else {
+                ctx.push("\"\"");
+            }
+        }
+        PropNode::Directive(dir) => {
+            generate_directive_prop_with_static(ctx, dir, static_class, static_style);
+        }
     }
 }
 
@@ -134,9 +322,45 @@ pub fn generate_if_branch_element(
     ctx.push(ctx.helper(RuntimeHelper::CreateElementBlock));
     ctx.push("(\"");
     ctx.push(el.tag.as_str());
-    ctx.push("\", { key: ");
+    ctx.push("\"");
+
+    // Extract static class/style for merging with dynamic bindings
+    let (static_class, static_style) = extract_static_class_style(el);
+    let has_dyn_class = has_dynamic_class(el);
+    let has_dyn_style = has_dynamic_style(el);
+
+    // Generate props with key and all other props
+    let has_other = has_other_props_for_if(el);
+    ctx.push(", {");
+    ctx.indent();
+    ctx.newline();
+    ctx.push("key: ");
     generate_if_branch_key(ctx, branch, branch_index);
-    ctx.push(" }");
+
+    // Add other props
+    if has_other {
+        for prop in el.props.iter() {
+            if should_skip_prop_for_if(prop, has_dyn_class, has_dyn_style) {
+                continue;
+            }
+            ctx.push(",");
+            ctx.newline();
+            generate_single_prop_for_if(ctx, prop, static_class, static_style);
+        }
+    }
+
+    // Add scope_id for scoped CSS
+    if let Some(ref scope_id) = ctx.options.scope_id.clone() {
+        ctx.push(",");
+        ctx.newline();
+        ctx.push("\"");
+        ctx.push(&scope_id);
+        ctx.push("\": \"\"");
+    }
+
+    ctx.deindent();
+    ctx.newline();
+    ctx.push("}");
 
     // Generate children if any
     if !el.children.is_empty() {

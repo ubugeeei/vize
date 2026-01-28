@@ -1,5 +1,6 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 106
 expression: ts_output
 ---
 import { defineComponent } from 'vue'
@@ -16,7 +17,7 @@ export default defineComponent({
 const mode = ref<'a' | 'b'>('a');
 
 return (_ctx, _cache) => {
-  return (_openBlock(), _createElementBlock("div", null, [ (true) ? (_openBlock(), _createElementBlock(_Fragment, { key: 0 }, [ (true) ? (_openBlock(), _createElementBlock("div", { key: 0 }, [ _createElementVNode("button", { class: _normalizeClass({ active: mode.value === 'a' }), onClick: $event => (mode.value = 'b') }, "Test", 10 /* CLASS, PROPS */) ])) : (false) ? (_openBlock(), _createElementBlock("div", { key: 1 }, [ _hoisted_1 ])) : _createCommentVNode("v-if", true) ], 64 /* STABLE_FRAGMENT */)) : _createCommentVNode("v-if", true) ]))
+  return (_openBlock(), _createElementBlock("div", null, [ (true) ? (_openBlock(), _createElementBlock(_Fragment, { key: 0 }, [ (true) ? (_openBlock(), _createElementBlock("div", { key: 0 }, [ _createElementVNode("button", { class: _normalizeClass({ active: mode.value === 'a' }), onClick: $event => (mode.value = 'b') }, "Test", 10 /* CLASS, PROPS */, ["onClick"]) ])) : (false) ? (_openBlock(), _createElementBlock("div", { key: 1 }, [ _hoisted_1 ])) : _createCommentVNode("v-if", true) ], 64 /* STABLE_FRAGMENT */)) : _createCommentVNode("v-if", true) ]))
 }
 }
 

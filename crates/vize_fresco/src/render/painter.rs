@@ -202,7 +202,6 @@ impl<'a> Painter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::terminal::Color;
 
     #[test]
     fn test_paint_text() {

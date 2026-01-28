@@ -127,6 +127,170 @@ pub fn generate_for(ctx: &mut CodegenContext, for_node: &ForNode<'_>) {
     ctx.push(" */))");
 }
 
+/// Check if element has props besides the key
+fn has_other_props(el: &ElementNode<'_>) -> bool {
+    el.props.iter().any(|p| match p {
+        PropNode::Attribute(_) => true,
+        PropNode::Directive(dir) => {
+            // Skip key binding (already handled separately)
+            if dir.name == "bind" {
+                if let Some(ExpressionNode::Simple(arg)) = &dir.arg {
+                    if arg.content == "key" {
+                        return false;
+                    }
+                }
+            }
+            // Skip v-for directive (handled by parent)
+            if dir.name == "for" {
+                return false;
+            }
+            true
+        }
+    })
+}
+
+/// Check if prop should be skipped for v-for item (key binding and v-for directive)
+fn should_skip_prop(p: &PropNode<'_>) -> bool {
+    if let PropNode::Directive(dir) = p {
+        if dir.name == "bind" {
+            if let Some(ExpressionNode::Simple(arg)) = &dir.arg {
+                if arg.content == "key" {
+                    return true;
+                }
+            }
+        }
+        // Skip v-for directive
+        if dir.name == "for" {
+            return true;
+        }
+    }
+    false
+}
+
+/// Generate props for v-for item, including key and all other props
+fn generate_for_item_props(
+    ctx: &mut CodegenContext,
+    el: &ElementNode<'_>,
+    key_exp: Option<&ExpressionNode<'_>>,
+) {
+    let has_other = has_other_props(el);
+    let scope_id = ctx.options.scope_id.clone();
+
+    if key_exp.is_none() && !has_other && scope_id.is_none() {
+        ctx.push(", null");
+        return;
+    }
+
+    ctx.push(", ");
+
+    if !has_other {
+        // Only key (and optionally scope_id), no other props
+        if let Some(key) = key_exp {
+            ctx.push("{ key: ");
+            generate_expression(ctx, key);
+            if let Some(ref sid) = scope_id {
+                ctx.push(", \"");
+                ctx.push(sid);
+                ctx.push("\": \"\"");
+            }
+            ctx.push(" }");
+        } else if let Some(ref sid) = scope_id {
+            // No key, no other props, but has scope_id
+            ctx.push("{ \"");
+            ctx.push(sid);
+            ctx.push("\": \"\" }");
+        }
+        return;
+    }
+
+    if let Some(key) = key_exp {
+        // Merge key with other props - generate as object with key first
+        ctx.push("{");
+        ctx.indent();
+        ctx.newline();
+        ctx.push("key: ");
+        generate_expression(ctx, key);
+
+        // Add other props inline (skipping key binding and v-for)
+        for prop in el.props.iter() {
+            if should_skip_prop(prop) {
+                continue;
+            }
+            ctx.push(",");
+            ctx.newline();
+            generate_single_prop(ctx, prop);
+        }
+
+        // Add scope_id for scoped CSS
+        if let Some(ref sid) = scope_id {
+            ctx.push(",");
+            ctx.newline();
+            ctx.push("\"");
+            ctx.push(sid);
+            ctx.push("\": \"\"");
+        }
+
+        ctx.deindent();
+        ctx.newline();
+        ctx.push("}");
+    } else {
+        // No key, generate props directly (skipping v-for directive)
+        ctx.push("{");
+        let mut first = true;
+        for prop in el.props.iter() {
+            if should_skip_prop(prop) {
+                continue;
+            }
+            if !first {
+                ctx.push(",");
+            }
+            ctx.push(" ");
+            generate_single_prop(ctx, prop);
+            first = false;
+        }
+
+        // Add scope_id for scoped CSS
+        if let Some(ref sid) = scope_id {
+            if !first {
+                ctx.push(",");
+            }
+            ctx.push(" \"");
+            ctx.push(sid);
+            ctx.push("\": \"\"");
+        }
+
+        ctx.push(" }");
+    }
+}
+
+/// Generate a single prop (attribute or directive)
+fn generate_single_prop(ctx: &mut CodegenContext, prop: &PropNode<'_>) {
+    match prop {
+        PropNode::Attribute(attr) => {
+            // Keys need quotes if they contain special characters (like hyphens)
+            let needs_quotes = !super::helpers::is_valid_js_identifier(&attr.name);
+            if needs_quotes {
+                ctx.push("\"");
+            }
+            ctx.push(&attr.name);
+            if needs_quotes {
+                ctx.push("\"");
+            }
+            ctx.push(": ");
+            if let Some(value) = &attr.value {
+                ctx.push("\"");
+                ctx.push(&value.content);
+                ctx.push("\"");
+            } else {
+                ctx.push("\"\"");
+            }
+        }
+        PropNode::Directive(dir) => {
+            super::props::generate_directive_prop_with_static(ctx, dir, None, None);
+        }
+    }
+}
+
 /// Generate item for v-for (as block, not regular vnode)
 pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>, is_stable: bool) {
     match node {
@@ -152,14 +316,8 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
                 ctx.push(&el.tag);
                 ctx.push("\"");
 
-                // Props with key
-                if let Some(key) = key_exp {
-                    ctx.push(", { key: ");
-                    generate_expression(ctx, key);
-                    ctx.push(" }");
-                } else if !el.children.is_empty() {
-                    ctx.push(", null");
-                }
+                // Props with key and all other props
+                generate_for_item_props(ctx, el, key_exp);
 
                 // Children
                 if !el.children.is_empty() {
@@ -221,31 +379,8 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
                     ctx.push("\"");
                 }
 
-                // Props with key (inline for simple identifiers, multiline for complex)
-                if let Some(key) = key_exp {
-                    let is_simple_key = if let ExpressionNode::Simple(exp) = key {
-                        !exp.content.contains('.')
-                    } else {
-                        false
-                    };
-
-                    if is_simple_key {
-                        ctx.push(", { key: ");
-                        generate_expression(ctx, key);
-                        ctx.push(" }");
-                    } else {
-                        ctx.push(", {");
-                        ctx.indent();
-                        ctx.newline();
-                        ctx.push("key: ");
-                        generate_expression(ctx, key);
-                        ctx.deindent();
-                        ctx.newline();
-                        ctx.push("}");
-                    }
-                } else if !el.children.is_empty() || is_template {
-                    ctx.push(", null");
-                }
+                // Props with key and all other props
+                generate_for_item_props(ctx, el, key_exp);
 
                 // Children
                 if !el.children.is_empty() {

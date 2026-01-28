@@ -19,6 +19,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 once_cell = { workspace = true }
 smallvec = { workspace = true }
+xxhash-rust = { workspace = true }
 
 [features]
 default = []

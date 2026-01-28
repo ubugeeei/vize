@@ -3,6 +3,21 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import MonacoEditor from './MonacoEditor.vue';
 import type { Diagnostic } from './MonacoEditor.vue';
 import type { WasmModule, CroquisResult, CrossFileResult, CrossFileInput, CrossFileOptions as WasmCrossFileOptions } from '../wasm/index';
+import {
+  mdiDiamond,
+  mdiFlash,
+  mdiAlert,
+  mdiArrowTopRight,
+  mdiFileTree,
+  mdiArrowDown,
+  mdiLanguageTypescript,
+  mdiVuejs,
+  mdiFile,
+  mdiClose,
+  mdiInformation,
+  mdiCheck,
+  mdiLightbulbOn,
+} from '@mdi/js';
 
 const props = defineProps<{
   compiler: WasmModule | null;
@@ -22,7 +37,7 @@ const PRESETS: Preset[] = [
     id: 'default',
     name: 'Overview',
     description: 'General cross-file analysis patterns',
-    icon: '◈',
+    icon: mdiDiamond,
     files: {
       'App.vue': `<script setup lang="ts">
 import { provide, ref } from 'vue'
@@ -124,7 +139,7 @@ function handleClick(item: { id: number; name: string }) {
     id: 'reactivity-loss',
     name: 'Reactivity Loss',
     description: 'Patterns that break Vue reactivity',
-    icon: '⚡',
+    icon: mdiFlash,
     files: {
       'App.vue': `<script setup lang="ts">
 import { reactive, ref, provide } from 'vue'
@@ -295,7 +310,7 @@ logUser(user)
     id: 'setup-context',
     name: 'Setup Context',
     description: 'Vue APIs called outside setup (CSRP/Memory Leak)',
-    icon: '⚠',
+    icon: mdiAlert,
     files: {
       'App.vue': `<script setup lang="ts">
 import ComponentWithLeaks from './ComponentWithLeaks.vue'
@@ -438,7 +453,7 @@ export function createGlobalState() {
     id: 'reference-escape',
     name: 'Reference Escape',
     description: 'Reactive references escaping scope (Rust-like tracking)',
-    icon: '↗',
+    icon: mdiArrowTopRight,
     files: {
       'App.vue': `<script setup lang="ts">
 import { reactive, ref, provide } from 'vue'
@@ -612,7 +627,7 @@ onUnmounted(() => {
     id: 'provide-inject',
     name: 'Provide/Inject Tree',
     description: 'Complex dependency injection patterns',
-    icon: '🌳',
+    icon: mdiFileTree,
     files: {
       'App.vue': `<script setup lang="ts">
 import { provide, ref, reactive, readonly } from 'vue'
@@ -754,7 +769,7 @@ const themeClass = computed(() => theme?.isDark.value ? 'dark-mode' : 'light-mod
     id: 'fallthrough-attrs',
     name: 'Fallthrough Attrs',
     description: '$attrs, useAttrs(), and inheritAttrs patterns',
-    icon: '⬇',
+    icon: mdiArrowDown,
     files: {
       'App.vue': `<script setup lang="ts">
 import BaseButton from './BaseButton.vue'
@@ -1008,7 +1023,7 @@ const currentDiagnostics = computed((): Diagnostic[] => {
   return crossFileIssues.value
     .filter(issue => issue.file === activeFile.value)
     .map(issue => ({
-      message: `[${issue.code}] ${issue.message}${issue.suggestion ? `\n\n💡 ${issue.suggestion}` : ''}`,
+      message: `[${issue.code}] ${issue.message}${issue.suggestion ? `\n\nTip: ${issue.suggestion}` : ''}`,
       startLine: issue.line,
       startColumn: issue.column,
       endLine: issue.endLine,
@@ -2108,13 +2123,13 @@ function selectIssue(issue: CrossFileIssue) {
 }
 
 function getFileIcon(filename: string): string {
-  if (filename.endsWith('.vue')) return '◇';
-  if (filename.endsWith('.ts')) return '⬡';
-  return '◆';
+  if (filename.endsWith('.vue')) return mdiVuejs;
+  if (filename.endsWith('.ts')) return mdiLanguageTypescript;
+  return mdiFile;
 }
 
 function getSeverityIcon(severity: string): string {
-  return severity === 'error' ? '✕' : severity === 'warning' ? '⚠' : 'ℹ';
+  return severity === 'error' ? mdiClose : severity === 'warning' ? mdiAlert : mdiInformation;
 }
 
 function getTypeLabel(type: string): string {
@@ -2181,7 +2196,7 @@ onMounted(() => {
             @click="selectPreset(preset.id)"
             :title="preset.description"
           >
-            <span class="preset-icon">{{ preset.icon }}</span>
+            <svg class="preset-icon" viewBox="0 0 24 24"><path :d="preset.icon" fill="currentColor" /></svg>
             <span class="preset-name">{{ preset.name }}</span>
           </button>
         </div>
@@ -2202,7 +2217,7 @@ onMounted(() => {
             :class="['file-item', { active: activeFile === name, 'has-errors': issuesByFile[name]?.some(i => i.severity === 'error'), 'has-warnings': issuesByFile[name]?.some(i => i.severity === 'warning') }]"
             @click="activeFile = name"
           >
-            <span class="file-icon">{{ getFileIcon(name) }}</span>
+            <svg class="file-icon" viewBox="0 0 24 24"><path :d="getFileIcon(name)" fill="currentColor" /></svg>
             <span class="file-name">{{ name }}</span>
             <span v-if="issuesByFile[name]?.length" class="file-badge" :class="issuesByFile[name].some(i => i.severity === 'error') ? 'error' : 'warning'">
               {{ issuesByFile[name].length }}
@@ -2276,7 +2291,7 @@ onMounted(() => {
             :class="['editor-tab', { active: activeFile === name }]"
             @click="activeFile = name"
           >
-            <span class="tab-icon">{{ getFileIcon(name) }}</span>
+            <svg class="tab-icon" viewBox="0 0 24 24"><path :d="getFileIcon(name)" fill="currentColor" /></svg>
             {{ name }}
             <span v-if="issuesByFile[name]?.length" class="tab-badge" :class="issuesByFile[name].some(i => i.severity === 'error') ? 'error' : 'warning'">
               {{ issuesByFile[name].length }}
@@ -2312,7 +2327,7 @@ onMounted(() => {
       </div>
 
       <div v-if="crossFileIssues.length === 0" class="diagnostics-empty">
-        <span class="empty-icon">✓</span>
+        <svg class="empty-icon" viewBox="0 0 24 24"><path :d="mdiCheck" fill="currentColor" /></svg>
         <span>No issues detected</span>
       </div>
 
@@ -2331,7 +2346,7 @@ onMounted(() => {
               @click="selectIssue(issue)"
             >
               <div class="issue-header">
-                <span class="severity-icon">{{ getSeverityIcon(issue.severity) }}</span>
+                <svg class="severity-icon" viewBox="0 0 24 24"><path :d="getSeverityIcon(issue.severity)" fill="currentColor" /></svg>
                 <span class="issue-code">{{ issue.code }}</span>
                 <span class="issue-location">{{ issue.file }}:{{ issue.line }}</span>
               </div>
@@ -2486,7 +2501,8 @@ onMounted(() => {
 }
 
 .preset-icon {
-  font-size: 12px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
 }
 
@@ -2552,8 +2568,10 @@ onMounted(() => {
 .file-item.has-warnings .file-icon { color: #f59e0b; }
 
 .file-icon {
-  font-size: 10px;
+  width: 12px;
+  height: 12px;
   color: var(--accent-rust);
+  flex-shrink: 0;
 }
 
 .file-name {
@@ -2731,8 +2749,10 @@ onMounted(() => {
 }
 
 .tab-icon {
-  font-size: 10px;
+  width: 12px;
+  height: 12px;
   color: var(--accent-rust);
+  flex-shrink: 0;
 }
 
 .tab-badge {
@@ -2835,7 +2855,8 @@ onMounted(() => {
 }
 
 .empty-icon {
-  font-size: 24px;
+  width: 24px;
+  height: 24px;
 }
 
 .diagnostics-list {
@@ -2908,7 +2929,9 @@ onMounted(() => {
 }
 
 .severity-icon {
-  font-size: 10px;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
 }
 
 .issue-card.error .severity-icon { color: #ef4444; }

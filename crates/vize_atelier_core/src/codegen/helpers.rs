@@ -2,10 +2,72 @@
 
 use crate::ast::RuntimeHelper;
 
+/// Decode HTML entities (numeric character references) in a string
+/// Supports &#xHHHH; (hex) and &#NNNN; (decimal) formats
+pub fn decode_html_entities(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if c == '&' && chars.peek() == Some(&'#') {
+            chars.next(); // consume '#'
+            let is_hex = chars.peek() == Some(&'x') || chars.peek() == Some(&'X');
+            if is_hex {
+                chars.next(); // consume 'x' or 'X'
+            }
+
+            let mut num_str = String::new();
+            while let Some(&ch) = chars.peek() {
+                if ch == ';' {
+                    chars.next(); // consume ';'
+                    break;
+                }
+                let is_valid_char =
+                    (is_hex && ch.is_ascii_hexdigit()) || (!is_hex && ch.is_ascii_digit());
+                if is_valid_char {
+                    num_str.push(ch);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+
+            if !num_str.is_empty() {
+                let codepoint = if is_hex {
+                    u32::from_str_radix(&num_str, 16).ok()
+                } else {
+                    num_str.parse::<u32>().ok()
+                };
+
+                if let Some(cp) = codepoint {
+                    if let Some(decoded_char) = char::from_u32(cp) {
+                        result.push(decoded_char);
+                        continue;
+                    }
+                }
+            }
+
+            // If decoding failed, output the original sequence
+            result.push('&');
+            result.push('#');
+            if is_hex {
+                result.push('x');
+            }
+            result.push_str(&num_str);
+        } else {
+            result.push(c);
+        }
+    }
+
+    result
+}
+
 /// Escape a string for use in JavaScript string literals
 pub fn escape_js_string(s: &str) -> String {
-    let mut result = String::with_capacity(s.len());
-    for c in s.chars() {
+    // First decode HTML entities, then escape for JS
+    let decoded = decode_html_entities(s);
+    let mut result = String::with_capacity(decoded.len());
+    for c in decoded.chars() {
         match c {
             '\\' => result.push_str("\\\\"),
             '"' => result.push_str("\\\""),

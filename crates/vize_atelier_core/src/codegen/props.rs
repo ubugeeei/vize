@@ -79,8 +79,18 @@ fn generate_von_object_exp(ctx: &mut CodegenContext, props: &[PropNode<'_>]) {
 
 /// Generate props object
 pub fn generate_props(ctx: &mut CodegenContext, props: &[PropNode<'_>]) {
+    // Clone scope_id to avoid borrow checker issues
+    let scope_id = ctx.options.scope_id.clone();
+
+    // If no props but we have scope_id, generate object with just scope_id
     if props.is_empty() {
-        ctx.push("null");
+        if let Some(ref sid) = scope_id {
+            ctx.push("{ \"");
+            ctx.push(sid);
+            ctx.push("\": \"\" }");
+        } else {
+            ctx.push("null");
+        }
         return;
     }
 
@@ -114,28 +124,68 @@ pub fn generate_props(ctx: &mut CodegenContext, props: &[PropNode<'_>]) {
                 first_merge_arg = false;
             }
 
-            // Add other props as object
+            // Add other props as object (includes scope_id)
             if has_other {
                 if !first_merge_arg {
                     ctx.push(", ");
                 }
                 generate_props_object(ctx, props, true);
+            } else if let Some(ref sid) = scope_id {
+                // No other props but we have scope_id, add it as separate object
+                if !first_merge_arg {
+                    ctx.push(", ");
+                }
+                ctx.push("{ \"");
+                ctx.push(sid);
+                ctx.push("\": \"\" }");
             }
 
             ctx.push(")");
         } else if has_vbind_obj {
-            // v-bind="attrs" alone: _normalizeProps(_guardReactiveProps(_ctx.attrs))
-            ctx.use_helper(RuntimeHelper::NormalizeProps);
-            ctx.use_helper(RuntimeHelper::GuardReactiveProps);
-            ctx.push(ctx.helper(RuntimeHelper::NormalizeProps));
-            ctx.push("(");
-            ctx.push(ctx.helper(RuntimeHelper::GuardReactiveProps));
-            ctx.push("(");
-            generate_vbind_object_exp(ctx, props);
-            ctx.push("))");
+            // v-bind="attrs" alone
+            // If we have scope_id, we need to merge it with the bound object
+            if let Some(ref sid) = scope_id {
+                // _mergeProps(_normalizeProps(_guardReactiveProps(obj)), { "data-v-xxx": "" })
+                ctx.use_helper(RuntimeHelper::MergeProps);
+                ctx.use_helper(RuntimeHelper::NormalizeProps);
+                ctx.use_helper(RuntimeHelper::GuardReactiveProps);
+                ctx.push(ctx.helper(RuntimeHelper::MergeProps));
+                ctx.push("(");
+                ctx.push(ctx.helper(RuntimeHelper::NormalizeProps));
+                ctx.push("(");
+                ctx.push(ctx.helper(RuntimeHelper::GuardReactiveProps));
+                ctx.push("(");
+                generate_vbind_object_exp(ctx, props);
+                ctx.push(")), { \"");
+                ctx.push(sid);
+                ctx.push("\": \"\" })");
+            } else {
+                // _normalizeProps(_guardReactiveProps(_ctx.attrs))
+                ctx.use_helper(RuntimeHelper::NormalizeProps);
+                ctx.use_helper(RuntimeHelper::GuardReactiveProps);
+                ctx.push(ctx.helper(RuntimeHelper::NormalizeProps));
+                ctx.push("(");
+                ctx.push(ctx.helper(RuntimeHelper::GuardReactiveProps));
+                ctx.push("(");
+                generate_vbind_object_exp(ctx, props);
+                ctx.push("))");
+            }
         } else {
-            // v-on="handlers" alone: _toHandlers(_ctx.handlers)
-            generate_von_object_exp(ctx, props);
+            // v-on="handlers" alone
+            // If we have scope_id, we need to merge it with the handlers
+            if let Some(ref sid) = scope_id {
+                // _mergeProps(_toHandlers(handlers, true), { "data-v-xxx": "" })
+                ctx.use_helper(RuntimeHelper::MergeProps);
+                ctx.push(ctx.helper(RuntimeHelper::MergeProps));
+                ctx.push("(");
+                generate_von_object_exp(ctx, props);
+                ctx.push(", { \"");
+                ctx.push(sid);
+                ctx.push("\": \"\" })");
+            } else {
+                // _toHandlers(_ctx.handlers)
+                generate_von_object_exp(ctx, props);
+            }
         }
         return;
     }
@@ -162,6 +212,9 @@ fn generate_props_object(
     props: &[PropNode<'_>],
     skip_object_spreads: bool,
 ) {
+    // Clone scope_id to avoid borrow checker issues
+    let scope_id = ctx.options.scope_id.clone();
+
     // Check for static class/style that need to be merged with dynamic
     let static_class = props.iter().find_map(|p| {
         if let PropNode::Attribute(attr) = p {
@@ -207,7 +260,8 @@ fn generate_props_object(
     let skip_static_class = static_class.is_some() && has_dynamic_class;
     let skip_static_style = static_style.is_some() && has_dynamic_style;
 
-    // Count visible props (attributes + supported directives)
+    // Count visible props (attributes + supported directives + scope_id if present)
+    let has_scope_id = scope_id.is_some();
     let visible_count = props
         .iter()
         .filter(|p| match p {
@@ -222,7 +276,8 @@ fn generate_props_object(
             }
             PropNode::Directive(dir) => is_supported_directive(dir),
         })
-        .count();
+        .count()
+        + if has_scope_id { 1 } else { 0 };
 
     // Check if any prop requires a normalizer (class/style bindings) or uses helper functions (v-text)
     let has_normalizer = props.iter().any(|p| {
@@ -241,9 +296,15 @@ fn generate_props_object(
     });
 
     // Check if any v-on has inline handler (not just identifier) or has runtime modifiers
+    // Also check for cached handlers which produce long expressions
     let has_inline_handler = props.iter().any(|p| {
         if let PropNode::Directive(dir) = p {
             if dir.name == "on" {
+                // When cache_handlers is enabled, all handlers produce long expressions
+                // that need multiline formatting
+                if ctx.options.cache_handlers && dir.exp.is_some() {
+                    return true;
+                }
                 // Check for modifiers that will use withModifiers or withKeys (not event option modifiers)
                 let has_runtime_modifier = dir.modifiers.iter().any(|m| {
                     let n = m.content.as_str();
@@ -309,9 +370,15 @@ fn generate_props_object(
                 }
                 ctx.push(": ");
                 if let Some(value) = &attr.value {
-                    ctx.push("\"");
-                    ctx.push(&value.content);
-                    ctx.push("\"");
+                    // `ref` attribute value should be a variable reference, not a string
+                    // This allows template refs to bind to setup() refs
+                    if attr.name == "ref" {
+                        ctx.push(&value.content);
+                    } else {
+                        ctx.push("\"");
+                        ctx.push(&value.content);
+                        ctx.push("\"");
+                    }
                 } else {
                     // Boolean attributes should be empty string, not true
                     ctx.push("\"\"");
@@ -342,6 +409,21 @@ fn generate_props_object(
                 // as they cause syntax errors with trailing commas
             }
         }
+    }
+
+    // Add scope_id attribute for scoped CSS
+    if let Some(ref sid) = scope_id {
+        if !first {
+            ctx.push(",");
+        }
+        if multiline {
+            ctx.newline();
+        } else if !first {
+            ctx.push(" ");
+        }
+        ctx.push("\"");
+        ctx.push(sid);
+        ctx.push("\": \"\"");
     }
 
     if multiline {
@@ -588,6 +670,22 @@ pub fn generate_directive_prop_with_static(
             let has_system_mods = !system_modifiers.is_empty();
             let has_key_mods = !key_modifiers.is_empty();
 
+            // Check if this handler needs caching
+            // When cache_handlers is true, ALL handlers are cached (including simple identifiers)
+            // Pattern: _cache[n] || (_cache[n] = handler)
+            // Simple identifiers get safety wrapper: (...args) => (_ctx.handler && _ctx.handler(...args))
+            // Inline expressions get: $event => (expression)
+            let needs_cache = ctx.options.cache_handlers && dir.exp.is_some();
+
+            if needs_cache {
+                let cache_index = ctx.next_cache_index();
+                ctx.push("_cache[");
+                ctx.push(&cache_index.to_string());
+                ctx.push("] || (_cache[");
+                ctx.push(&cache_index.to_string());
+                ctx.push("] = ");
+            }
+
             if has_key_mods {
                 ctx.use_helper(RuntimeHelper::WithKeys);
                 ctx.push("_withKeys(");
@@ -600,7 +698,7 @@ pub fn generate_directive_prop_with_static(
 
             // Generate the actual handler
             if let Some(exp) = &dir.exp {
-                generate_event_handler(ctx, exp);
+                generate_event_handler(ctx, exp, needs_cache);
             } else {
                 ctx.push("() => {}");
             }
@@ -631,6 +729,11 @@ pub fn generate_directive_prop_with_static(
                     ctx.push("\"");
                 }
                 ctx.push("])");
+            }
+
+            // Close cache wrapper
+            if needs_cache {
+                ctx.push(")");
             }
         }
         "model" => {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted } from 'vue';
 import MonacoEditor from './MonacoEditor.vue';
+import type { Diagnostic } from './MonacoEditor.vue';
 import type { WasmModule, AnalysisResult, BindingDisplay, BindingSource, ScopeDisplay } from '../wasm/index';
 
 const props = defineProps<{
@@ -239,6 +240,32 @@ const invalidExports = computed(() => summary.value?.invalidExports || []);
 const diagnostics = computed(() => analysisResult.value?.diagnostics || []);
 const stats = computed(() => summary.value?.stats);
 
+// Convert character offset to line/column (1-based for Monaco)
+function offsetToLineColumn(content: string, offset: number): { line: number; column: number } {
+  const beforeOffset = content.substring(0, offset);
+  const lines = beforeOffset.split('\n');
+  return {
+    line: lines.length,
+    column: lines[lines.length - 1].length + 1,
+  };
+}
+
+// Monaco-compatible diagnostics (converted from offset-based to line/column)
+const monacoDiagnostics = computed<Diagnostic[]>(() => {
+  return diagnostics.value.map(d => {
+    const start = offsetToLineColumn(source.value, d.start);
+    const end = offsetToLineColumn(source.value, d.end);
+    return {
+      message: d.message,
+      startLine: start.line,
+      startColumn: start.column,
+      endLine: end.line,
+      endColumn: end.column,
+      severity: d.severity === 'hint' ? 'info' : d.severity as 'error' | 'warning' | 'info',
+    };
+  });
+});
+
 // Group bindings by source
 const bindingsBySource = computed(() => {
   const groups: Record<string, BindingDisplay[]> = {};
@@ -254,23 +281,7 @@ const bindingsBySource = computed(() => {
 const virText = computed(() => analysisResult.value?.vir || '');
 
 // Token types for VIR syntax highlighting
-type VirTokenType =
-  | 'border'      // ╭╰│├└─┌┐ etc.
-  | 'section'     // ■ section headers
-  | 'section-name' // MACROS, BINDINGS, etc.
-  | 'macro'       // @defineProps, @defineEmits
-  | 'type'        // <TypeAnnotation>
-  | 'binding'     // ▸ binding marker
-  | 'identifier'  // variable names
-  | 'tag'         // [SetupRef], [SetupConst]
-  | 'source'      // ref, computed, props
-  | 'arrow'       // →
-  | 'number'      // numbers
-  | 'diagnostic'  // ✗ ⚠ ℹ
-  | 'keyword'     // type:, args:, etc.
-  | 'colon'       // : separator
-  | 'bracket'     // [], {}
-  | 'plain';      // everything else
+type VirTokenType = 'border' | 'section' | 'section-name' | 'macro' | 'type' | 'binding' | 'identifier' | 'tag' | 'source' | 'arrow' | 'number' | 'diagnostic' | 'keyword' | 'colon' | 'bracket' | 'plain';
 
 interface VirToken {
   type: VirTokenType;
@@ -614,6 +625,7 @@ function getScopeColorClass(kind: string): string {
           v-model="source"
           language="vue"
           :scopes="showScopeVisualization ? scopeDecorations : []"
+          :diagnostics="monacoDiagnostics"
         />
       </div>
     </div>

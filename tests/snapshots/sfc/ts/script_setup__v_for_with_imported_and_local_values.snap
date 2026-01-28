@@ -1,0 +1,22 @@
+---
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+expression: ts_output
+---
+import { defineComponent } from 'vue'
+import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, createElementVNode as _createElementVNode, renderList as _renderList, toDisplayString as _toDisplayString, unref as _unref } from "vue"
+
+import { ref } from 'vue'
+import { OPTIONS } from './options'
+
+export default defineComponent({
+  name: 'test',
+  setup(__props) {
+
+const localItems = ref(['a', 'b', 'c'])
+
+return (_ctx, _cache) => {
+  return (_openBlock(), _createElementBlock("div", null, [ _createElementVNode("select", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_unref(OPTIONS), (opt) => { return (_openBlock(), _createElementBlock("option", { key: opt.value, value: opt.value }, _toDisplayString(opt.label), 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */)) ]), _createElementVNode("ul", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(localItems.value, (item) => { return (_openBlock(), _createElementBlock("li", { key: item }, _toDisplayString(item), 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */)) ]) ]))
+}
+}
+
+})

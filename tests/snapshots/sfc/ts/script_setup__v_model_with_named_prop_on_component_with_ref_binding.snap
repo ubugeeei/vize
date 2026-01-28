@@ -1,0 +1,23 @@
+---
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+expression: ts_output
+---
+import { defineComponent } from 'vue'
+import { openBlock as _openBlock, createBlock as _createBlock } from "vue"
+
+import { ref } from 'vue';
+import MyEditor from './MyEditor.vue';
+
+export default defineComponent({
+  name: 'test',
+  setup(__props) {
+
+const content = ref('');
+const title = ref('Untitled');
+
+return (_ctx, _cache) => {
+  return (_openBlock(), _createBlock(MyEditor, { modelValue: content.value, "onUpdate:modelValue": $event => ((content.value) = $event), title: title.value, "onUpdate:title": $event => ((title.value) = $event) }, null, 8 /* PROPS */, ["modelValue", "onUpdate:modelValue", "title", "onUpdate:title"]))
+}
+}
+
+})

@@ -1093,3 +1093,162 @@ const codeViewMode = ref<'ts' | 'js'>('ts');
   </div>
 </template>
 """
+
+# =============================================================================
+# v-for with imported values (regression test for binding fix)
+# =============================================================================
+
+[[cases]]
+name = "v-for with imported values should use _unref"
+input = """
+<script setup lang="ts">
+import { PRESETS } from './constants'
+</script>
+
+<template>
+  <div v-for="preset in PRESETS" :key="preset.name">
+    {{ preset.label }}
+  </div>
+</template>
+"""
+
+[[cases]]
+name = "v-for with multiple imported values"
+input = """
+<script setup lang="ts">
+import { ITEMS, CATEGORIES } from './data'
+</script>
+
+<template>
+  <div>
+    <section v-for="category in CATEGORIES" :key="category.id">
+      <h2>{{ category.name }}</h2>
+      <ul>
+        <li v-for="item in ITEMS" :key="item.id">{{ item.name }}</li>
+      </ul>
+    </section>
+  </div>
+</template>
+"""
+
+[[cases]]
+name = "v-for with imported and local values"
+input = """
+<script setup lang="ts">
+import { ref } from 'vue'
+import { OPTIONS } from './options'
+const localItems = ref(['a', 'b', 'c'])
+</script>
+
+<template>
+  <div>
+    <select>
+      <option v-for="opt in OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+    </select>
+    <ul>
+      <li v-for="item in localItems" :key="item">{{ item }}</li>
+    </ul>
+  </div>
+</template>
+"""
+
+# =============================================================================
+# v-model on components with ref bindings (regression test)
+# =============================================================================
+
+[[cases]]
+name = "v-model on component with ref binding should not duplicate .value"
+input = """
+<script setup lang="ts">
+import { ref } from 'vue';
+import MyInput from './MyInput.vue';
+const message = ref('hello');
+</script>
+
+<template>
+  <MyInput v-model="message" />
+</template>
+"""
+
+[[cases]]
+name = "v-model with named prop on component with ref binding"
+input = """
+<script setup lang="ts">
+import { ref } from 'vue';
+import MyEditor from './MyEditor.vue';
+const content = ref('');
+const title = ref('Untitled');
+</script>
+
+<template>
+  <MyEditor v-model="content" v-model:title="title" />
+</template>
+"""
+
+[[cases]]
+name = "multiple v-model bindings on component with refs"
+input = """
+<script setup lang="ts">
+import { ref } from 'vue';
+import Dialog from './Dialog.vue';
+const isOpen = ref(false);
+const formValue = ref('');
+</script>
+
+<template>
+  <Dialog v-model="isOpen" v-model:value="formValue" />
+</template>
+"""
+
+# =============================================================================
+# Multiline type definitions (regression tests)
+# =============================================================================
+
+[[cases]]
+name = "multiline union type definition"
+input = """
+<script setup lang="ts">
+type ButtonVariant =
+  | { type: 'link'; href: string }
+  | { type: 'button'; onClick: () => void };
+
+const variant: ButtonVariant = { type: 'link', href: '/home' };
+</script>
+
+<template>
+  <div>{{ variant.type }}</div>
+</template>
+"""
+
+[[cases]]
+name = "multiline intersection type definition"
+input = """
+<script setup lang="ts">
+type Combined =
+  & { name: string }
+  & { age: number };
+
+const data: Combined = { name: 'test', age: 10 };
+</script>
+
+<template>
+  <div>{{ data.name }} - {{ data.age }}</div>
+</template>
+"""
+
+[[cases]]
+name = "multiline string union type definition"
+input = """
+<script setup lang="ts">
+type Status =
+  | 'loading'
+  | 'success'
+  | 'error';
+
+const status: Status = 'loading';
+</script>
+
+<template>
+  <div>{{ status }}</div>
+</template>
+"""

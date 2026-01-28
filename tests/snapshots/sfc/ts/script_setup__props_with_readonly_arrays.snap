@@ -1,5 +1,5 @@
 ---
-source: crates/vue_compiler_sfc/src/snapshot_tests.rs
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 expression: ts_output
 ---
 import { defineComponent, PropType } from 'vue'
@@ -15,7 +15,7 @@ export default defineComponent({
 
 
 return (_ctx, _cache) => {
-  return (_openBlock(), _createElementBlock("select", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_ctx.options, (opt) => { return (_openBlock(), _createElementBlock("option", { key: opt.value }, _toDisplayString(opt.label), 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */)) ]))
+  return (_openBlock(), _createElementBlock("select", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(__props.options, (opt) => { return (_openBlock(), _createElementBlock("option", { key: opt.value, value: opt.value }, _toDisplayString(opt.label), 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */)) ]))
 }
 }
 

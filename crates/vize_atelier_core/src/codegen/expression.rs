@@ -67,9 +67,52 @@ pub fn is_simple_member_expression(s: &str) -> bool {
     false
 }
 
+/// Check if an event handler expression is an inline handler
+/// Inline handlers are expressions that are NOT simple identifiers or member expressions
+/// Note: This is kept for potential future use (e.g., optimizations)
+#[allow(dead_code)]
+pub fn is_inline_handler(exp: &ExpressionNode<'_>) -> bool {
+    match exp {
+        ExpressionNode::Simple(simple) => {
+            if simple.is_static {
+                return false;
+            }
+
+            // Use the ORIGINAL source expression, not the transformed content
+            // During transform phase, inline handlers like "count++" get wrapped as
+            // "$event => (count.value++)" which would incorrectly be detected as "already arrow function"
+            let content = simple.loc.source.as_str();
+
+            // Already an arrow function or function expression - not inline
+            if content.contains("=>") || content.trim().starts_with("function") {
+                return false;
+            }
+
+            // Simple identifier or member expression - not inline (method reference)
+            if crate::transforms::is_simple_identifier(content)
+                || is_simple_member_expression(content)
+            {
+                return false;
+            }
+
+            // Everything else is an inline handler (needs caching)
+            true
+        }
+        ExpressionNode::Compound(_) => {
+            // Compound expressions are typically inline
+            true
+        }
+    }
+}
+
 /// Generate event handler expression
 /// Wraps inline expressions in arrow functions, strips TypeScript, and prefixes identifiers
-pub fn generate_event_handler(ctx: &mut CodegenContext, exp: &ExpressionNode<'_>) {
+/// When `for_caching` is true, simple identifiers are wrapped with safety check
+pub fn generate_event_handler(
+    ctx: &mut CodegenContext,
+    exp: &ExpressionNode<'_>,
+    for_caching: bool,
+) {
     match exp {
         ExpressionNode::Simple(simple) => {
             if simple.is_static {
@@ -102,12 +145,22 @@ pub fn generate_event_handler(ctx: &mut CodegenContext, exp: &ExpressionNode<'_>
             }
 
             // Check if it's a simple identifier or member expression (method name/reference)
-            // _ctx.handler, handler, $setup.handler should all be used directly
+            // _ctx.handler, handler, $setup.handler
             if crate::transforms::is_simple_identifier(&processed)
                 || is_simple_member_expression(&processed)
             {
-                // Simple identifier or member access: use directly (Vue doesn't wrap method references)
-                ctx.push(&processed);
+                if for_caching {
+                    // When caching, wrap simple identifiers with safety check:
+                    // (...args) => (_ctx.handler && _ctx.handler(...args))
+                    ctx.push("(...args) => (");
+                    ctx.push(&processed);
+                    ctx.push(" && ");
+                    ctx.push(&processed);
+                    ctx.push("(...args))");
+                } else {
+                    // Not caching: use directly
+                    ctx.push(&processed);
+                }
                 return;
             }
 

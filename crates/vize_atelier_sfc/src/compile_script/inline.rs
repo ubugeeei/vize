@@ -350,8 +350,15 @@ pub fn compile_script_setup_inline(
             ts_type_depth -= trimmed.matches('>').count() as i32;
             ts_type_depth += trimmed.matches('(').count() as i32;
             ts_type_depth -= trimmed.matches(')').count() as i32;
-            // Type declaration ends when balanced and ends with semicolon or newline with no continuation
+            // Type declaration ends when balanced and NOT a continuation line
+            // A line that starts with | or & is a union/intersection continuation
+            let is_union_continuation = trimmed.starts_with('|') || trimmed.starts_with('&');
+            // Type declaration ends when:
+            // - brackets/parens are balanced (depth <= 0)
+            // - line is NOT a continuation (doesn't start with | or &)
+            // - line ends with semicolon, OR ends without continuation chars
             if ts_type_depth <= 0
+                && !is_union_continuation
                 && (trimmed.ends_with(';')
                     || (!trimmed.ends_with('|')
                         && !trimmed.ends_with('&')
