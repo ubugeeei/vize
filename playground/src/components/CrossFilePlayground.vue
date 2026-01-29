@@ -936,13 +936,14 @@ const currentPresetData = computed(() => PRESETS.find(p => p.id === currentPrese
 const files = ref<Record<string, string>>({ ...currentPresetData.value.files });
 const activeFile = ref<string>(Object.keys(currentPresetData.value.files)[0]);
 
+// Monaco editor ref (for direct setValue calls - vite-plugin-vize workaround)
+const monacoEditorRef = ref<InstanceType<typeof MonacoEditor> | null>(null);
+
 // File names array for v-for (workaround for vite-plugin-vize object iteration issue)
 // Using ref + watch instead of computed to ensure reactivity works correctly
 const fileNames = ref<string[]>(Object.keys(files.value));
 watch(files, (newFiles) => {
-  const keys = Object.keys(newFiles);
-  console.log('[CF] files changed, keys:', keys, 'typeof keys[0]:', typeof keys[0]);
-  fileNames.value = keys;
+  fileNames.value = Object.keys(newFiles);
 }, { deep: true });
 const croquisResults = ref<Record<string, CroquisResult | null>>({});
 const crossFileIssues = ref<CrossFileIssue[]>([]);
@@ -1023,11 +1024,18 @@ interface CrossFileIssue {
   suggestion?: string;
 }
 
-// === Computed ===
-const currentSource = computed({
-  get: () => files.value[activeFile.value] || '',
-  set: (val) => { files.value[activeFile.value] = val; }
-});
+// === Source State (workaround for vite-plugin-vize reactivity issue) ===
+const currentSource = ref(files.value[activeFile.value] || '');
+
+// Sync currentSource when activeFile changes
+watch(activeFile, (newFile) => {
+  currentSource.value = files.value[newFile] || '';
+}, { immediate: false });
+
+// Sync files when currentSource changes (for editor input)
+watch(currentSource, (newSource) => {
+  files.value[activeFile.value] = newSource;
+}, { immediate: false });
 
 const currentDiagnostics = computed((): Diagnostic[] => {
   return crossFileIssues.value
@@ -1321,7 +1329,6 @@ async function analyzeAll() {
         const source = files.value[diag.file] || '';
         const loc = offsetToLineColumn(source, diag.offset);
         const endLoc = offsetToLineColumn(source, diag.endOffset);
-        console.log(`[DEBUG] ${diag.file}: offset=${diag.offset}-${diag.endOffset}, line=${loc.line}, col=${loc.column}, code=${diag.code}, msg=${diag.message.slice(0,50)}, suggestion=${diag.suggestion}`);
 
         issues.push({
           id: `issue-${++issueIdCounter}`,
@@ -2132,6 +2139,20 @@ function selectPreset(presetId: string) {
 function selectIssue(issue: CrossFileIssue) {
   selectedIssue.value = issue;
   activeFile.value = issue.file;
+  // Workaround: directly update currentSource (vite-plugin-vize watch issue)
+  const newSource = files.value[issue.file] || '';
+  currentSource.value = newSource;
+  // Workaround: directly call Monaco setValue (vite-plugin-vize v-model issue)
+  monacoEditorRef.value?.setValue(newSource);
+}
+
+function selectFile(name: string) {
+  activeFile.value = name;
+  // Workaround: directly update currentSource (vite-plugin-vize watch issue)
+  const newSource = files.value[name] || '';
+  currentSource.value = newSource;
+  // Workaround: directly call Monaco setValue (vite-plugin-vize v-model issue)
+  monacoEditorRef.value?.setValue(newSource);
 }
 
 function getFileIcon(filename: string): string {
@@ -2260,12 +2281,12 @@ onUnmounted(() => {
             v-for="name in fileNames"
             :key="name"
             :class="['file-item', { active: activeFile === name, 'has-errors': issuesByFile[name]?.some(i => i.severity === 'error'), 'has-warnings': issuesByFile[name]?.some(i => i.severity === 'warning') }]"
-            @click="activeFile = name"
+            @click="selectFile(name)"
           >
             <svg class="file-icon" viewBox="0 0 24 24"><path :d="getFileIcon(name)" fill="currentColor" /></svg>
             <span class="file-name">{{ name }}</span>
             <span v-if="issuesByFile[name]?.length" class="file-badge" :class="issuesByFile[name].some(i => i.severity === 'error') ? 'error' : 'warning'">
-              {{ issuesByFile[name].length }}
+              <span class="badge-count">{{ issuesByFile[name].length }}</span>
             </span>
             <button v-if="fileNames.length > 1" @click.stop="removeFile(name)" class="file-delete">×</button>
           </div>
@@ -2282,7 +2303,7 @@ onUnmounted(() => {
             <div v-if="deps.length" class="dep-arrows">
               <div v-for="dep in deps" :key="dep" class="dep-edge">
                 <span class="dep-arrow">→</span>
-                <span class="dep-target" @click="activeFile = dep">{{ dep }}</span>
+                <span class="dep-target" @click="selectFile(dep)">{{ dep }}</span>
               </div>
             </div>
           </div>
@@ -2334,12 +2355,12 @@ onUnmounted(() => {
             v-for="name in fileNames"
             :key="name"
             :class="['editor-tab', { active: activeFile === name }]"
-            @click="activeFile = name"
+            @click="selectFile(name)"
           >
             <svg class="tab-icon" viewBox="0 0 24 24"><path :d="getFileIcon(name)" fill="currentColor" /></svg>
             <span class="tab-name">{{ name }}</span>
             <span v-if="issuesByFile[name]?.length" class="tab-badge" :class="issuesByFile[name].some(i => i.severity === 'error') ? 'error' : 'warning'">
-              {{ issuesByFile[name].length }}
+              <span class="badge-count">{{ issuesByFile[name].length }}</span>
             </span>
           </button>
         </div>
@@ -2350,6 +2371,7 @@ onUnmounted(() => {
       </div>
       <div class="editor-content">
         <MonacoEditor
+          ref="monacoEditorRef"
           v-model="currentSource"
           :language="editorLanguage"
           :diagnostics="currentDiagnostics"

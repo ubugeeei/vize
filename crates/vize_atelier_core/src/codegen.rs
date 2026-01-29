@@ -160,7 +160,9 @@ fn generate_function_signature(ctx: &mut CodegenContext) {
                 // Module mode: include $props and $setup when binding_metadata is present
                 // This is needed when script setup is used with non-inline template
                 if ctx.options.binding_metadata.is_some() {
-                    ctx.push("export function render(_ctx, _cache, $props, $setup, $data, $options) {");
+                    ctx.push(
+                        "export function render(_ctx, _cache, $props, $setup, $data, $options) {",
+                    );
                 } else {
                     ctx.push("export function render(_ctx, _cache) {");
                 }

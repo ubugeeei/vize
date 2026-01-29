@@ -664,7 +664,6 @@ fn get_identifier_prefix(name: &str, ctx: &TransformContext<'_>) -> Option<&'sta
     Some("_ctx.")
 }
 
-
 /// Check if a simple identifier is a ref binding in inline mode
 fn is_ref_binding_simple(name: &str, ctx: &TransformContext<'_>) -> bool {
     if ctx.options.inline {

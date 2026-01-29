@@ -281,12 +281,12 @@ pub fn compile_sfc(
 
     // Create compiler options with scope_id for scoped CSS
     let template_compiler_options = if has_scoped {
-        opts.scope_id.as_ref().map(|scope_id| {
-            vize_atelier_dom::DomCompilerOptions {
+        opts.scope_id
+            .as_ref()
+            .map(|scope_id| vize_atelier_dom::DomCompilerOptions {
                 scope_id: Some(scope_id.clone().into()),
                 ..Default::default()
-            }
-        })
+            })
     } else {
         None
     };

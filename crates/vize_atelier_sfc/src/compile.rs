@@ -214,7 +214,10 @@ pub fn compile_sfc(
 
     // Debug: log bindings for MonacoEditor
     if filename.contains("MonacoEditor") {
-        eprintln!("[vize debug] MonacoEditor bindings: {:?}", script_bindings.bindings.keys().collect::<Vec<_>>());
+        eprintln!(
+            "[vize debug] MonacoEditor bindings: {:?}",
+            script_bindings.bindings.keys().collect::<Vec<_>>()
+        );
     }
 
     // Compile template with bindings (if present) to get the render function

@@ -353,16 +353,9 @@ watch(() => props.language, (newLanguage) => {
 
 // Apply diagnostics to editor
 function applyDiagnostics(diagnostics: Diagnostic[] | undefined) {
-  console.log('[Monaco] applyDiagnostics called, count:', diagnostics?.length ?? 0);
-  if (!editorInstance.value) {
-    console.log('[Monaco] No editor instance');
-    return;
-  }
+  if (!editorInstance.value) return;
   const model = editorInstance.value.getModel();
-  if (!model) {
-    console.log('[Monaco] No model');
-    return;
-  }
+  if (!model) return;
 
   if (!diagnostics || diagnostics.length === 0) {
     monaco.editor.setModelMarkers(model, 'vize', []);
@@ -382,7 +375,6 @@ function applyDiagnostics(diagnostics: Diagnostic[] | undefined) {
     endColumn: d.endColumn ?? d.startColumn + 1,
   }));
 
-  console.log('[Monaco] Setting markers:', markers.length, 'markers for model:', model.uri.toString());
   monaco.editor.setModelMarkers(model, 'vize', markers);
 }
 
@@ -391,9 +383,17 @@ watch(() => props.diagnostics, (diagnostics) => {
   applyDiagnostics(diagnostics);
 }, { immediate: true, deep: true });
 
-// Expose applyDiagnostics for direct calls (workaround for vite-plugin-vize reactivity issue)
+// Set editor value programmatically (workaround for vite-plugin-vize v-model issue)
+function setValue(value: string) {
+  if (editorInstance.value) {
+    editorInstance.value.setValue(value);
+  }
+}
+
+// Expose methods for direct calls (workaround for vite-plugin-vize reactivity issue)
 defineExpose({
   applyDiagnostics,
+  setValue,
 });
 
 // Scope decoration IDs

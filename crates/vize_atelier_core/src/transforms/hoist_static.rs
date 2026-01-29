@@ -157,7 +157,8 @@ fn hoist_static_inner<'a>(
                     // Non-root static elements can be fully hoisted
                     if let TemplateChildNode::Element(el) = &children[i] {
                         let scope_id = ctx.options.scope_id.clone();
-                        let vnode_call = create_vnode_call_from_element(allocator, el, scope_id.as_ref());
+                        let vnode_call =
+                            create_vnode_call_from_element(allocator, el, scope_id.as_ref());
                         let hoist_index = ctx.hoist(vnode_call);
                         // Replace with hoisted reference
                         children[i] = TemplateChildNode::Hoisted(hoist_index);

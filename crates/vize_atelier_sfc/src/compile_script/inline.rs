@@ -24,8 +24,17 @@ fn is_runtime_safe_ts_type(ts_type: &str) -> bool {
     // Primitive types
     if matches!(
         ts_type,
-        "string" | "number" | "boolean" | "null" | "undefined" | "any" | "unknown" | "never"
-            | "void" | "bigint" | "symbol"
+        "string"
+            | "number"
+            | "boolean"
+            | "null"
+            | "undefined"
+            | "any"
+            | "unknown"
+            | "never"
+            | "void"
+            | "bigint"
+            | "symbol"
     ) {
         return true;
     }
@@ -81,7 +90,9 @@ fn is_runtime_safe_ts_type(ts_type: &str) -> bool {
 
     // Union types - check all parts
     if ts_type.contains('|') {
-        return ts_type.split('|').all(|part| is_runtime_safe_ts_type(part.trim()));
+        return ts_type
+            .split('|')
+            .all(|part| is_runtime_safe_ts_type(part.trim()));
     }
 
     // Record<K, V> - generic but safe
