@@ -4755,3 +4755,8 @@ export function isWasmLoaded(): boolean {
 export function isUsingMock(): boolean {
   return usingMock;
 }
+
+// Get the current WASM module (if loaded)
+export function getWasm(): WasmModule | null {
+  return wasmModule;
+}

@@ -604,9 +604,14 @@ watch(
 
 // Lifecycle
 onMounted(async () => {
-  compiler.value = await loadWasm();
-  wasmStatus.value = isUsingMock() ? "mock" : "ready";
-  compile();
+  try {
+    const loaded = await loadWasm();
+    compiler.value = loaded;
+    wasmStatus.value = isUsingMock() ? "mock" : "ready";
+    compile();
+  } catch (e) {
+    console.error('Failed to load WASM:', e);
+  }
 });
 </script>
 

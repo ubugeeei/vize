@@ -273,6 +273,11 @@ export function vize(options: VizeOptions = {}): Plugin {
             fs.writeFileSync('/tmp/monaco-compiled.ts', compiled.code);
             logger.log(`MonacoEditor compiled code written to /tmp/monaco-compiled.ts`);
           }
+          // Debug: log PatinaPlayground compilation
+          if (realPath.includes('PatinaPlayground')) {
+            fs.writeFileSync('/tmp/patina-compiled.ts', output);
+            logger.log(`PatinaPlayground compiled code written to /tmp/patina-compiled.ts`);
+          }
           return {
             code: output,
             map: null,

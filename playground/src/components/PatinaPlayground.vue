@@ -3,6 +3,7 @@ import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import MonacoEditor from './MonacoEditor.vue';
 import * as monaco from 'monaco-editor';
 import type { WasmModule, LintResult, LintDiagnostic, LintRule, LocaleInfo } from '../wasm/index';
+import { getWasm } from '../wasm/index';
 
 interface Diagnostic {
   message: string;
@@ -108,6 +109,9 @@ const rules = ref<LintRule[]>([]);
 const error = ref<string | null>(null);
 const activeTab = ref<'diagnostics' | 'rules'>('diagnostics');
 const lintTime = ref<number | null>(null);
+
+// Ref to MonacoEditor for direct method calls (workaround for vite-plugin-vize reactivity issue)
+const editorRef = ref<InstanceType<typeof MonacoEditor> | null>(null);
 
 // Rule configuration state
 const enabledRules = ref<Set<string>>(new Set());
@@ -295,13 +299,14 @@ const filteredRules = computed(() => {
 });
 
 async function lint() {
-  if (!props.compiler) return;
+  const compiler = getWasm();
+  if (!compiler) return;
 
   const startTime = performance.now();
   error.value = null;
 
   try {
-    const result = props.compiler.lintSfc(source.value, {
+    const result = compiler.lintSfc(source.value, {
       filename: 'example.vue',
       enabledRules: Array.from(enabledRules.value),
       severityOverrides: Object.fromEntries(severityOverrides.value),
@@ -309,17 +314,32 @@ async function lint() {
     });
     lintResult.value = result;
     lintTime.value = performance.now() - startTime;
+
+    // Directly apply diagnostics to editor (workaround for vite-plugin-vize reactivity issue)
+    // Use nextTick to ensure computed is updated
+    const diags = result?.diagnostics?.map(d => ({
+      message: d.message,
+      help: d.help,
+      startLine: d.location.start.line,
+      startColumn: d.location.start.column,
+      endLine: d.location.end?.line ?? d.location.start.line,
+      endColumn: d.location.end?.column ?? d.location.start.column + 1,
+      severity: d.severity,
+    })) ?? [];
+    editorRef.value?.applyDiagnostics(diags);
   } catch (e) {
+    console.error('[Patina] lintSfc error:', e);
     error.value = e instanceof Error ? e.message : String(e);
     lintResult.value = null;
   }
 }
 
 function loadRules() {
-  if (!props.compiler) return;
+  const compiler = getWasm();
+  if (!compiler) return;
 
   try {
-    rules.value = props.compiler.getLintRules();
+    rules.value = compiler.getLintRules();
     initializeRuleState();
   } catch (e) {
     console.error('Failed to load rules:', e);
@@ -533,26 +553,50 @@ watch(
   { immediate: true }
 );
 
-watch(
-  () => props.compiler,
-  () => {
-    if (props.compiler) {
-      lint();
-      loadRules();
+// Workaround for vite-plugin-vize prop reactivity issue
+// Use getWasm() directly instead of props since prop updates aren't detected
+let hasCompilerInitialized = false;
+let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+function tryInitialize() {
+  const compiler = getWasm();
+  if (compiler && !hasCompilerInitialized) {
+    hasCompilerInitialized = true;
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
     }
+    lint();
+    loadRules();
   }
-);
+}
 
 onMounted(() => {
   loadLocaleConfig();
   loadRuleConfig();
   registerHoverProvider();
-  if (props.compiler) {
-    loadRules();
+
+  // Try to initialize immediately if compiler is available
+  tryInitialize();
+
+  // If not, poll for it
+  if (!hasCompilerInitialized) {
+    pollInterval = setInterval(tryInitialize, 100);
+    // Stop polling after 10 seconds
+    setTimeout(() => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    }, 10000);
   }
 });
 
 onUnmounted(() => {
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
   if (hoverProviderDisposable) {
     hoverProviderDisposable.dispose();
     hoverProviderDisposable = null;
@@ -573,7 +617,7 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="editor-container">
-        <MonacoEditor v-model="source" language="vue" :diagnostics="diagnostics" />
+        <MonacoEditor ref="editorRef" v-model="source" language="vue" :diagnostics="diagnostics" />
       </div>
     </div>
 

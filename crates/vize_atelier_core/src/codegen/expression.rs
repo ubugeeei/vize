@@ -152,6 +152,7 @@ fn prefix_identifiers_with_context(content: &str, ctx: &CodegenContext) -> Strin
 
 /// Generate a simple expression (like an identifier) with appropriate prefix
 /// Used for ref attribute values that need $setup. prefix in function mode
+#[allow(dead_code)]
 pub fn generate_simple_expression_with_prefix(ctx: &CodegenContext, content: &str) -> String {
     prefix_identifiers_with_context(content, ctx)
 }
