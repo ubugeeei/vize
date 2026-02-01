@@ -295,6 +295,9 @@ importers:
       '@vue/test-utils':
         specifier: ^2.4.6
         version: 2.4.6
+      playwright:
+        specifier: ^1.50.0
+        version: 1.57.0
       vite:
         specifier: ^8.0.0-beta.0
         version: 8.0.0-beta.11(@types/node@22.19.3)(esbuild@0.27.2)(jiti@2.6.1)(tsx@4.21.0)
