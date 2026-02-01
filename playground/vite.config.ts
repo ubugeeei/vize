@@ -1,7 +1,5 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
-import wasm from "vite-plugin-wasm";
-import topLevelAwait from "vite-plugin-top-level-await";
 
 // Toggle between @vitejs/plugin-vue and vite-plugin-vize
 // In CI (production build), use official Vue compiler for stability
@@ -14,9 +12,9 @@ const USE_VIZE = true;
 async function getVuePlugin() {
   if (USE_VIZE) {
     try {
-      const { vize } = await import("../npm/vite-plugin-vize/dist/index.js");
+      const { vize } = await import("@vizejs/vite-plugin");
       console.log("[vite.config] Using Vize for Vue SFC compilation");
-      return vize({ debug: true });
+      return vize();
     } catch (e) {
       console.warn(
         "[vite.config] Failed to load Vize, falling back to @vitejs/plugin-vue:",
@@ -34,7 +32,7 @@ export default defineConfig(async () => {
 
   return {
     base: process.env.CI ? "/play/" : "/",
-    plugins: [vuePlugin, wasm(), topLevelAwait()],
+    plugins: [vuePlugin],
     server: {
       port: 5180,
       strictPort: false, // Allow fallback to next available port

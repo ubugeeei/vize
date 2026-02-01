@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import * as esbuild from 'esbuild'
+import { transform } from 'oxc-transform'
 import type { VizeConfig, LoadConfigOptions } from './types.js'
 
 const CONFIG_FILE_NAMES = [
@@ -100,20 +100,17 @@ async function loadConfigFile(filePath: string): Promise<VizeConfig> {
 }
 
 /**
- * Load TypeScript config file using esbuild
+ * Load TypeScript config file using oxc-transform
  */
 async function loadTypeScriptConfig(filePath: string): Promise<VizeConfig> {
-  const result = await esbuild.build({
-    entryPoints: [filePath],
-    bundle: true,
-    write: false,
-    format: 'esm',
-    platform: 'node',
-    target: 'node18',
-    packages: 'external',
+  const source = fs.readFileSync(filePath, 'utf-8')
+  const result = transform(filePath, source, {
+    typescript: {
+      onlyRemoveTypeImports: true,
+    },
   })
 
-  const code = result.outputFiles[0].text
+  const code = result.code
 
   // Write to temp file and import
   const tempFile = filePath.replace(/\.m?ts$/, '.temp.mjs')

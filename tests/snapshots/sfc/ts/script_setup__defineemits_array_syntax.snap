@@ -1,25 +1,34 @@
 ---
-source: crates/vue_compiler_sfc/src/snapshot_tests.rs
-assertion_line: 98
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 106
 expression: ts_output
 ---
-import { defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
 
-
-export default defineComponent({
-  name: 'test',
+import { defineComponent as _defineComponent } from "vue";
+const __sfc__ = /*@__PURE__*/ _defineComponent({
+  __name: "test",
   emits: ["update", "change"],
-  setup(__props, { emit: __emit }) {
+  setup(__props, { expose: __expose, emit: __emit }) {
+    const emit = __emit;
+    function onClick() {
+      emit("update", 1);
+    }
+    const __returned__ = {
+      emit,
+      onClick
+    };
+    Object.defineProperty(__returned__, "__isScriptSetup", {
+      enumerable: false,
+      value: true
+    });
+    return __returned__;
+  }
+});
 
-const emit = __emit
-function onClick() {
-  emit('update', 1)
+export function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (_openBlock(), _createElementBlock("button", { onClick: $setup.onClick }, "Click", 8 /* PROPS */, ["onClick"]))
 }
 
-return (_ctx, _cache) => {
-  return (_openBlock(), _createElementBlock("button", { onClick: onClick }, "Click"))
-}
-}
-
-})
+__sfc__.render = render
+export default __sfc__

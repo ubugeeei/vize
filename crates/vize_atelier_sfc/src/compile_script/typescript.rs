@@ -36,11 +36,10 @@ pub fn transform_typescript_to_js(code: &str) -> String {
     let (symbols, scopes) = semantic_ret.semantic.into_symbol_table_and_scope_tree();
 
     // Transform TypeScript to JavaScript
-    // Use only_remove_type_imports to preserve component imports that appear "unused"
-    // but are actually used by the template
+    // Strip all TypeScript syntax including type parameters (generics)
     let transform_options = TransformOptions {
         typescript: TypeScriptOptions {
-            only_remove_type_imports: true,
+            only_remove_type_imports: false,
             ..Default::default()
         },
         ..Default::default()

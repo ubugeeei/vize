@@ -183,8 +183,8 @@
   },
   "scripts": {
     "vscode:prepublish": "pnpm run build",
-    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
-    "watch": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --watch",
+    "build": "tsdown",
+    "watch": "tsdown --watch",
     "lint": "eslint src --ext ts",
     "typecheck": "tsc --noEmit",
     "package": "vsce package --no-dependencies",
@@ -194,7 +194,7 @@
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.75.0",
     "@vscode/vsce": "^3.3.2",
-    "esbuild": "^0.25.0",
+    "tsdown": "^0.4.0",
     "typescript": "^5.7.0"
   },
   "dependencies": {

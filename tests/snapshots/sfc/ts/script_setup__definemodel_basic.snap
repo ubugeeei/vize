@@ -1,26 +1,34 @@
 ---
-source: crates/vue_compiler_sfc/src/snapshot_tests.rs
-assertion_line: 98
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 106
 expression: ts_output
 ---
-import { useModel as _useModel } from 'vue'
-import { defineComponent, PropType } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, withDirectives as _withDirectives, unref as _unref, vModelText as _vModelText } from "vue"
 
-
-export default defineComponent({
-  name: 'test',
-  props: {
-    modelValue: {},
-  },
+import { defineComponent as _defineComponent } from "vue";
+import { useModel as _useModel } from "vue";
+const __sfc__ = /*@__PURE__*/ _defineComponent({
+  __name: "test",
+  props: { "modelValue": {} },
   emits: ["update:modelValue"],
-  setup(__props) {
+  setup(__props, { expose: __expose, emit: __emit }) {
+    const model = _useModel(__props, "modelValue");
+    const __returned__ = { model };
+    Object.defineProperty(__returned__, "__isScriptSetup", {
+      enumerable: false,
+      value: true
+    });
+    return __returned__;
+  }
+});
 
-const model = _useModel(__props, "modelValue")
-
-return (_ctx, _cache) => {
-  return _withDirectives((_openBlock(), _createElementBlock("input", { "onUpdate:modelValue": $event => ((_unref(model)) = $event) }, null, 8 /* PROPS */, ["onUpdate:modelValue"])), [ [_vModelText, _unref(model)] ])
+export function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return _withDirectives((_openBlock(), _createElementBlock("input", {
+    "onUpdate:modelValue": $event => ((_unref($setup.model)) = $event)
+  }, null, 8 /* PROPS */, ["onUpdate:modelValue"])), [
+    [_vModelText, _unref($setup.model)]
+  ])
 }
-}
 
-})
+__sfc__.render = render
+export default __sfc__

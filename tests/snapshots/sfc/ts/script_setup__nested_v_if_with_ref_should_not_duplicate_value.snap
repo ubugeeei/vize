@@ -3,22 +3,52 @@ source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 assertion_line: 106
 expression: ts_output
 ---
-import { defineComponent } from 'vue'
 import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, createElementVNode as _createElementVNode, createCommentVNode as _createCommentVNode, normalizeClass as _normalizeClass } from "vue"
 
-import { ref } from 'vue';
+import { defineComponent as _defineComponent } from "vue";
+import { ref } from "vue";
+const __sfc__ = /*@__PURE__*/ _defineComponent({
+  __name: "test",
+  setup(__props, { expose: __expose, emit: __emit }) {
+    const mode = ref("a");
+    const __returned__ = {
+      mode,
+      ref
+    };
+    Object.defineProperty(__returned__, "__isScriptSetup", {
+      enumerable: false,
+      value: true
+    });
+    return __returned__;
+  }
+});
 
 const _hoisted_1 = /*#__PURE__*/ _createElementVNode("span", null, "Alt")
 
-export default defineComponent({
-  name: 'test',
-  setup(__props) {
-
-const mode = ref<'a' | 'b'>('a');
-
-return (_ctx, _cache) => {
-  return (_openBlock(), _createElementBlock("div", null, [ (true) ? (_openBlock(), _createElementBlock(_Fragment, { key: 0 }, [ (true) ? (_openBlock(), _createElementBlock("div", { key: 0 }, [ _createElementVNode("button", { class: _normalizeClass({ active: mode.value === 'a' }), onClick: $event => (mode.value = 'b') }, "Test", 10 /* CLASS, PROPS */, ["onClick"]) ])) : (false) ? (_openBlock(), _createElementBlock("div", { key: 1 }, [ _hoisted_1 ])) : _createCommentVNode("v-if", true) ], 64 /* STABLE_FRAGMENT */)) : _createCommentVNode("v-if", true) ]))
+export function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (_openBlock(), _createElementBlock("div", null, [
+    (true)
+      ? (_openBlock(), _createElementBlock(_Fragment, { key: 0 }, [
+        (true)
+          ? (_openBlock(), _createElementBlock("div", {
+            key: 0
+          }, [
+            _createElementVNode("button", {
+              class: _normalizeClass({ active: $setup.mode === 'a' }),
+              onClick: $event => ($setup.mode = 'b')
+            }, "Test", 10 /* CLASS, PROPS */, ["onClick"])
+          ]))
+          : (false)
+            ? (_openBlock(), _createElementBlock("div", {
+              key: 1
+            }, [
+              _hoisted_1
+            ]))
+          : _createCommentVNode("v-if", true)
+      ], 64 /* STABLE_FRAGMENT */))
+      : _createCommentVNode("v-if", true)
+  ]))
 }
-}
 
-})
+__sfc__.render = render
+export default __sfc__

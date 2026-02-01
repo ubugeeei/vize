@@ -1,27 +1,37 @@
 ---
-source: crates/vue_compiler_sfc/src/snapshot_tests.rs
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 106
 expression: ts_output
 ---
-import { defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString, unref as _unref } from "vue"
 
+import { defineComponent as _defineComponent } from "vue";
+const __sfc__ = /*@__PURE__*/ _defineComponent({
+  __name: "test",
+  setup(__props, { expose: __expose, emit: __emit }) {
+    const defaultLayout = {
+      name: "default",
+      columns: 12
+    };
+    const secondLayout = {
+      name: "secondary",
+      columns: 6
+    };
+    const __returned__ = {
+      defaultLayout,
+      secondLayout
+    };
+    Object.defineProperty(__returned__, "__isScriptSetup", {
+      enumerable: false,
+      value: true
+    });
+    return __returned__;
+  }
+});
 
-export default defineComponent({
-  name: 'test',
-  setup(__props) {
-
-const defaultLayout: LayoutConfig = {
-  name: "default",
-  columns: 12,
-};
-const secondLayout: LayoutConfig = {
-  name: "secondary",
-  columns: 6,
-};
-
-return (_ctx, _cache) => {
-  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(_unref(defaultLayout).name) + " " + _toDisplayString(_unref(secondLayout).columns), 1 /* TEXT */))
+export function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(_unref($setup.defaultLayout).name) + " " + _toDisplayString(_unref($setup.secondLayout).columns), 1 /* TEXT */))
 }
-}
 
-})
+__sfc__.render = render
+export default __sfc__

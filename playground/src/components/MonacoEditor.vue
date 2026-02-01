@@ -488,10 +488,9 @@ function getOverviewRulerColor(kind: string): string {
 </template>
 
 <style scoped>
-.monaco-container {
-  width: 100%;
-  height: 100%;
-}
+/* NOTE: Main .monaco-container styles are in styles.css (global)
+   due to Vize compiler not extracting scoped styles in production builds.
+   See: styles.css -> Monaco Container section */
 </style>
 
 <!-- Global styles for Monaco decorations (must not be scoped) -->
