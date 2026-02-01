@@ -31,7 +31,9 @@ pub fn apply_scoped_css(css: &str, scope_id: &str) -> String {
     let mut in_string = false;
     let mut string_char = '"';
     let mut in_comment = false;
+    let mut in_at_rule = false; // Track if we're in an at-rule header
     let mut brace_depth = 0;
+    let mut at_rule_depth = 0; // Track nested at-rule depth
     let mut last_selector_end = 0;
     let mut current = String::new();
 
@@ -50,7 +52,7 @@ pub fn apply_scoped_css(css: &str, scope_id: &str) -> String {
             if c == string_char && !current.ends_with("\\\"") && !current.ends_with("\\'") {
                 in_string = false;
             }
-            if !in_selector {
+            if !in_selector && !in_at_rule {
                 output.push(c);
             }
             continue;
@@ -60,7 +62,7 @@ pub fn apply_scoped_css(css: &str, scope_id: &str) -> String {
             '"' | '\'' => {
                 in_string = true;
                 string_char = c;
-                if !in_selector {
+                if !in_selector && !in_at_rule {
                     output.push(c);
                 }
             }
@@ -70,8 +72,24 @@ pub fn apply_scoped_css(css: &str, scope_id: &str) -> String {
             }
             '{' => {
                 brace_depth += 1;
-                if in_selector && brace_depth == 1 {
-                    // End of selector, apply scope
+                if in_at_rule {
+                    // End of at-rule header (e.g., @media (...) {)
+                    let at_rule_part = &current[last_selector_end..current.len() - 1];
+                    output.push_str(at_rule_part.trim());
+                    output.push('{');
+                    in_at_rule = false;
+                    at_rule_depth = brace_depth;
+                    in_selector = true;
+                    last_selector_end = current.len();
+                } else if in_selector && brace_depth == 1 {
+                    // End of selector at root level, apply scope
+                    let selector_part = &current[last_selector_end..current.len() - 1];
+                    output.push_str(&scope_selector(selector_part.trim(), &attr_selector));
+                    output.push('{');
+                    in_selector = false;
+                    last_selector_end = current.len();
+                } else if in_selector && at_rule_depth > 0 && brace_depth > at_rule_depth {
+                    // End of selector inside at-rule (e.g., inside @media), apply scope
                     let selector_part = &current[last_selector_end..current.len() - 1];
                     output.push_str(&scope_selector(selector_part.trim(), &attr_selector));
                     output.push('{');
@@ -86,15 +104,21 @@ pub fn apply_scoped_css(css: &str, scope_id: &str) -> String {
                 output.push(c);
                 if brace_depth == 0 {
                     in_selector = true;
+                    at_rule_depth = 0;
+                    last_selector_end = current.len();
+                } else if at_rule_depth > 0 && brace_depth >= at_rule_depth {
+                    // Inside at-rule, back to selector mode for next rule
+                    in_selector = true;
                     last_selector_end = current.len();
                 }
             }
-            '@' => {
-                // Handle at-rules
-                output.push(c);
+            '@' if in_selector => {
+                // Start of at-rule (e.g., @media, @keyframes, @supports)
+                in_at_rule = true;
+                in_selector = false;
             }
-            _ if in_selector => {
-                // Still building selector
+            _ if in_selector || in_at_rule => {
+                // Still building selector or at-rule header
             }
             _ => {
                 output.push(c);
@@ -302,5 +326,51 @@ mod tests {
         let css = ".foo { color: v-bind(color); background: v-bind('bgColor'); }";
         let vars = extract_css_vars(css);
         assert_eq!(vars, vec!["color", "bgColor"]);
+    }
+
+    #[test]
+    fn test_scope_media_query() {
+        let css = "@media (max-width: 768px) { .foo { color: red; } }";
+        let result = apply_scoped_css(css, "data-v-123");
+        // @media rule should not have scope, but selectors inside should
+        assert!(
+            result.contains("@media (max-width: 768px)"),
+            "Should preserve media query. Got: {}",
+            result
+        );
+        assert!(
+            result.contains(".foo[data-v-123]"),
+            "Should scope selector inside media query. Got: {}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_scope_media_query_with_comment() {
+        let css = "/* Mobile responsive */\n@media (max-width: 768px) {\n  .glyph-playground {\n    grid-template-columns: 1fr;\n  }\n}";
+        let result = apply_scoped_css(css, "data-v-123");
+        // Should not produce invalid CSS like @media...[data-v-123]
+        assert!(
+            !result.contains("@media (max-width: 768px)[data-v-123]"),
+            "Should not scope the media query itself. Got: {}",
+            result
+        );
+        assert!(
+            result.contains(".glyph-playground[data-v-123]"),
+            "Should scope selector inside media query. Got: {}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_scope_keyframes() {
+        let css = "@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }";
+        let result = apply_scoped_css(css, "data-v-123");
+        // @keyframes should not have its contents scoped (from/to are not selectors)
+        assert!(
+            result.contains("@keyframes spin"),
+            "Should preserve keyframes. Got: {}",
+            result
+        );
     }
 }

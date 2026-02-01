@@ -1,23 +1,41 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 106
 expression: ts_output
 ---
-import { defineComponent } from 'vue'
 import { openBlock as _openBlock, createBlock as _createBlock } from "vue"
 
-import { ref } from 'vue';
-import MyEditor from './MyEditor.vue';
+import { defineComponent as _defineComponent } from "vue";
+import { ref } from "vue";
+import MyEditor from "./MyEditor.vue";
+const __sfc__ = /*@__PURE__*/ _defineComponent({
+  __name: "test",
+  setup(__props, { expose: __expose, emit: __emit }) {
+    __expose();
+    const content = ref("");
+    const title = ref("Untitled");
+    const __returned__ = {
+      MyEditor,
+      content,
+      ref,
+      title
+    };
+    Object.defineProperty(__returned__, "__isScriptSetup", {
+      enumerable: false,
+      value: true
+    });
+    return __returned__;
+  }
+});
 
-export default defineComponent({
-  name: 'test',
-  setup(__props) {
-
-const content = ref('');
-const title = ref('Untitled');
-
-return (_ctx, _cache) => {
-  return (_openBlock(), _createBlock(MyEditor, { modelValue: content.value, "onUpdate:modelValue": $event => ((content.value) = $event), title: title.value, "onUpdate:title": $event => ((title.value) = $event) }, null, 8 /* PROPS */, ["modelValue", "onUpdate:modelValue", "title", "onUpdate:title"]))
+export function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (_openBlock(), _createBlock($setup.MyEditor, {
+    modelValue: $setup.content,
+    "onUpdate:modelValue": $event => (($setup.content) = $event),
+    title: $setup.title,
+    "onUpdate:title": $event => (($setup.title) = $event)
+  }, null, 8 /* PROPS */, ["modelValue", "onUpdate:modelValue", "title", "onUpdate:title"]))
 }
-}
 
-})
+__sfc__.render = render
+export default __sfc__

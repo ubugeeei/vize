@@ -1,6 +1,8 @@
 import { createApp } from 'vue';
 import App from './App.vue';
 import './styles.css';
+// Import vize component styles (extracted CSS in production)
+import 'virtual:vize-styles';
 
 // Monaco Editor worker configuration for Vite
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';

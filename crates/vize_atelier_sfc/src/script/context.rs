@@ -241,13 +241,18 @@ impl ScriptCompileContext {
     fn process_statement(&mut self, stmt: &Statement<'_>, source: &str) {
         match stmt {
             Statement::ImportDeclaration(import_decl) => {
+                // Skip type-only import declarations: import type { ... } from '...'
+                if import_decl.import_kind.is_type() {
+                    return;
+                }
+
                 // Process imports - add them to bindings so template knows about them
                 if let Some(specifiers) = &import_decl.specifiers {
                     for specifier in specifiers.iter() {
                         match specifier {
                             oxc_ast::ast::ImportDeclarationSpecifier::ImportSpecifier(spec) => {
                                 // Named import: import { foo } from 'bar'
-                                // Skip type-only imports
+                                // Skip type-only imports: import { type Foo } from 'bar'
                                 if !spec.import_kind.is_type() {
                                     let name = spec.local.name.to_string();
                                     // Imports are treated as setup-maybe-ref since we don't know their type

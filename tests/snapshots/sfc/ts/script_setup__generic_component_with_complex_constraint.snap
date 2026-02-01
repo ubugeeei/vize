@@ -1,25 +1,46 @@
 ---
-source: crates/vue_compiler_sfc/src/snapshot_tests.rs
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 106
 expression: ts_output
 ---
-import { defineComponent, PropType } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, renderSlot as _renderSlot, withModifiers as _withModifiers } from "vue"
 
-import { ref } from 'vue'
-
-export default defineComponent({
-  name: 'test',
+import { defineComponent as _defineComponent } from "vue";
+import { ref } from "vue";
+const __sfc__ = /*@__PURE__*/ _defineComponent({
+  __name: "test",
   props: {
-    initialState: { type: Object as PropType<FormShape>, required: true },
-    onSubmit: { type: Object as PropType<(data: FormShape) => void>, required: true },
+    initialState: {
+      type: Object,
+      required: true
+    },
+    onSubmit: {
+      type: Object,
+      required: true
+    }
   },
-  setup(__props) {
+  setup(__props, { expose: __expose, emit: __emit }) {
+    __expose();
+    const formData = ref(null);
+    const __returned__ = {
+      formData,
+      ref
+    };
+    Object.defineProperty(__returned__, "__isScriptSetup", {
+      enumerable: false,
+      value: true
+    });
+    return __returned__;
+  }
+});
 
-const formData = ref<FormShape | null>(null)
-
-return (_ctx, _cache) => {
-  return (_openBlock(), _createElementBlock("form", { onSubmit: _withModifiers(() => {}, ["prevent"]) }, [ _renderSlot(_ctx.$slots, "default", { data: formData.value }) ], 40 /* PROPS, NEED_HYDRATION */, ["onSubmit"]))
+export function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (_openBlock(), _createElementBlock("form", {
+    onSubmit: _withModifiers(() => {}, ["prevent"])
+  }, [
+    _renderSlot(_ctx.$slots, "default", { data: $setup.formData })
+  ], 40 /* PROPS, NEED_HYDRATION */, ["onSubmit"]))
 }
-}
 
-})
+__sfc__.render = render
+export default __sfc__

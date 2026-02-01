@@ -33,7 +33,7 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "esbuild": "^0.24.0"
+    "oxc-transform": "^0.56.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

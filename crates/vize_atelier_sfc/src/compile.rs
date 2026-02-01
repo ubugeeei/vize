@@ -212,14 +212,6 @@ pub fn compile_sfc(
     ctx.analyze();
     let script_bindings = ctx.bindings.clone();
 
-    // Debug: log bindings for MonacoEditor
-    if filename.contains("MonacoEditor") {
-        eprintln!(
-            "[vize debug] MonacoEditor bindings: {:?}",
-            script_bindings.bindings.keys().collect::<Vec<_>>()
-        );
-    }
-
     // Compile template with bindings (if present) to get the render function
     let template_result = if let Some(template) = &descriptor.template {
         if is_vapor {
@@ -842,13 +834,14 @@ var c = 3
         );
 
         // Check that let/var variables are wrapped with _unref
+        // In function mode, setup bindings use $setup. prefix
         assert!(
-            result.code.contains("_unref(b)"),
+            result.code.contains("_unref($setup.b)"),
             "b should be wrapped with _unref. Got:\n{}",
             result.code
         );
         assert!(
-            result.code.contains("_unref(c)"),
+            result.code.contains("_unref($setup.c)"),
             "c should be wrapped with _unref. Got:\n{}",
             result.code
         );

@@ -907,25 +907,12 @@ pub fn compile_script_setup_inline(
     let output_str = unsafe { String::from_utf8_unchecked(output.into_iter().collect()) };
 
     // Transform TypeScript to JavaScript
-    // is_ts here indicates whether to preserve TypeScript output (true) or transpile to JS (false)
-    // When is_ts = false, we always run the transform to strip any TypeScript syntax
-    // When is_ts = true, we keep the code as-is (preserve TypeScript)
-    let transformed_code = if is_ts {
-        // Preserve TypeScript output - no transformation
-        output_str
-    } else {
-        // Transpile to JavaScript - always run transform to strip TypeScript syntax
-        transform_typescript_to_js(&output_str)
-    };
+    // Always transpile to JavaScript for browser compatibility
+    let transformed_code = transform_typescript_to_js(&output_str);
 
-    // Prepend preserved normal script content
-    // If transpiling to JS (is_ts = false), also transform the normal script content
+    // Prepend preserved normal script content (also transformed)
     let final_code = if let Some(normal_script) = preserved_normal_script {
-        let transformed_normal = if is_ts {
-            normal_script
-        } else {
-            transform_typescript_to_js(&normal_script)
-        };
+        let transformed_normal = transform_typescript_to_js(&normal_script);
         format!("{}\n\n{}", transformed_normal, transformed_code)
     } else {
         transformed_code

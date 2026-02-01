@@ -27,7 +27,7 @@ pub fn compile_script_setup(
     content: &str,
     component_name: &str,
     is_vapor: bool,
-    is_ts: bool,
+    _is_ts: bool,
     template_content: Option<&str>,
 ) -> Result<ScriptCompileResult, SfcError> {
     let mut ctx = ScriptCompileContext::new(content);
@@ -345,11 +345,13 @@ pub fn compile_script_setup(
         }
     }
 
-    // Add Vapor-specific import
+    // Add Vapor-specific import or defineComponent import
     if is_vapor {
         output.extend_from_slice(
             b"import { defineVaporComponent as _defineVaporComponent } from 'vue'\n",
         );
+    } else {
+        output.extend_from_slice(b"import { defineComponent as _defineComponent } from 'vue'\n");
     }
 
     // Add mergeDefaults import if props destructure has defaults
@@ -362,6 +364,12 @@ pub fn compile_script_setup(
             .unwrap_or(false);
     if needs_merge_defaults {
         output.extend_from_slice(b"import { mergeDefaults as _mergeDefaults } from 'vue'\n");
+    }
+
+    // Add useModel import if defineModel was used
+    let has_define_model = !ctx.macros.define_models.is_empty();
+    if has_define_model {
+        output.extend_from_slice(b"import { useModel as _useModel } from 'vue'\n");
     }
 
     // Output imports (filtering out type-only imports)
@@ -384,7 +392,7 @@ pub fn compile_script_setup(
     if is_vapor {
         output.extend_from_slice(b"const __sfc__ = /*@__PURE__*/_defineVaporComponent({\n");
     } else {
-        output.extend_from_slice(b"const __sfc__ = {\n");
+        output.extend_from_slice(b"const __sfc__ = /*@__PURE__*/_defineComponent({\n");
     }
     output.extend_from_slice(b"  __name: '");
     output.extend_from_slice(component_name.as_bytes());
@@ -463,24 +471,73 @@ pub fn compile_script_setup(
         }
     }
 
-    // Emits definition if defineEmits was used
+    // Collect model names for props and emits
+    let model_names: Vec<String> = ctx
+        .macros
+        .define_models
+        .iter()
+        .map(|m| {
+            if m.args.is_empty() {
+                "modelValue".to_string()
+            } else {
+                let args_trimmed = m.args.trim();
+                if args_trimmed.starts_with('\'') || args_trimmed.starts_with('"') {
+                    let quote_char = args_trimmed.chars().next().unwrap();
+                    if let Some(end_pos) = args_trimmed[1..].find(quote_char) {
+                        args_trimmed[1..end_pos + 1].to_string()
+                    } else {
+                        "modelValue".to_string()
+                    }
+                } else {
+                    "modelValue".to_string()
+                }
+            }
+        })
+        .collect();
+
+    // Add model props if defineModel was used (and no defineProps)
+    if !model_names.is_empty() && ctx.macros.define_props.is_none() && !has_props_destructure {
+        output.extend_from_slice(b"  props: {\n");
+        for model_name in &model_names {
+            output.extend_from_slice(b"    \"");
+            output.extend_from_slice(model_name.as_bytes());
+            output.extend_from_slice(b"\": {},\n");
+        }
+        output.extend_from_slice(b"  },\n");
+    }
+
+    // Emits definition - combine defineEmits and defineModel
+    let mut all_emits: Vec<String> = Vec::new();
+
+    // Add emits from defineEmits
     if let Some(ref emits_macro) = ctx.macros.define_emits {
         if let Some(ref type_args) = emits_macro.type_args {
-            // Extract emit names from type
             let emit_names = extract_emit_names_from_type(type_args);
-            if !emit_names.is_empty() {
-                output.extend_from_slice(b"  emits: [");
-                for (i, name) in emit_names.iter().enumerate() {
-                    if i > 0 {
-                        output.extend_from_slice(b", ");
-                    }
-                    output.push(b'"');
-                    output.extend_from_slice(name.as_bytes());
-                    output.push(b'"');
-                }
-                output.extend_from_slice(b"],\n");
-            }
+            all_emits.extend(emit_names);
         } else if !emits_macro.args.is_empty() {
+            // Runtime args - we'll output separately
+        }
+    }
+
+    // Add update:modelValue emits from defineModel
+    for model_name in &model_names {
+        all_emits.push(format!("update:{}", model_name));
+    }
+
+    // Output emits
+    if !all_emits.is_empty() {
+        output.extend_from_slice(b"  emits: [");
+        for (i, name) in all_emits.iter().enumerate() {
+            if i > 0 {
+                output.extend_from_slice(b", ");
+            }
+            output.push(b'"');
+            output.extend_from_slice(name.as_bytes());
+            output.push(b'"');
+        }
+        output.extend_from_slice(b"],\n");
+    } else if let Some(ref emits_macro) = ctx.macros.define_emits {
+        if !emits_macro.args.is_empty() {
             output.extend_from_slice(b"  emits: ");
             output.extend_from_slice(emits_macro.args.as_bytes());
             output.extend_from_slice(b",\n");
@@ -490,7 +547,8 @@ pub fn compile_script_setup(
     // Setup function
     output.extend_from_slice(b"  setup(__props, { expose: __expose, emit: __emit }) {\n");
 
-    // defineExpose: transform to __expose(...)
+    // Always call __expose() - Vue runtime requires this for proper component initialization
+    // If defineExpose has args, use those; otherwise call with no args
     if let Some(ref expose_macro) = ctx.macros.define_expose {
         // args contains the argument content (e.g., "{ foo, bar }")
         let args = expose_macro.args.trim();
@@ -501,6 +559,9 @@ pub fn compile_script_setup(
             output.extend_from_slice(args.as_bytes());
             output.extend_from_slice(b");\n");
         }
+    } else {
+        // No defineExpose, but still need to call __expose() for Vue runtime
+        output.extend_from_slice(b"  __expose();\n");
     }
 
     // Collect emit binding name for inclusion in __returned__
@@ -529,6 +590,39 @@ pub fn compile_script_setup(
                 output.extend_from_slice(b" = __props\n");
                 props_binding_names.insert(binding_name.clone());
             }
+        }
+    }
+
+    // defineModel bindings: const model = _useModel(__props, 'modelValue')
+    // Collect model binding names for __returned__
+    let mut model_binding_names: Vec<String> = Vec::new();
+    for model_call in &ctx.macros.define_models {
+        if let Some(ref binding_name) = model_call.binding_name {
+            // Extract model name from args (first string argument) or default to "modelValue"
+            let model_name = if model_call.args.is_empty() {
+                "modelValue".to_string()
+            } else {
+                // Try to extract the first string argument (e.g., 'title' from defineModel('title'))
+                let args_trimmed = model_call.args.trim();
+                if args_trimmed.starts_with('\'') || args_trimmed.starts_with('"') {
+                    // Extract string content
+                    let quote_char = args_trimmed.chars().next().unwrap();
+                    if let Some(end_pos) = args_trimmed[1..].find(quote_char) {
+                        args_trimmed[1..end_pos + 1].to_string()
+                    } else {
+                        "modelValue".to_string()
+                    }
+                } else {
+                    "modelValue".to_string()
+                }
+            };
+
+            output.extend_from_slice(b"  const ");
+            output.extend_from_slice(binding_name.as_bytes());
+            output.extend_from_slice(b" = _useModel(__props, \"");
+            output.extend_from_slice(model_name.as_bytes());
+            output.extend_from_slice(b"\")\n");
+            model_binding_names.push(binding_name.clone());
         }
     }
 
@@ -678,18 +772,15 @@ pub fn compile_script_setup(
     if is_vapor {
         output.extend_from_slice(b"});\n"); // Close _defineVaporComponent(
     } else {
-        output.extend_from_slice(b"};\n");
+        output.extend_from_slice(b"});\n"); // Close _defineComponent(
     }
 
     // Convert arena Vec<u8> to String - SAFETY: we only push valid UTF-8
     let output_str = unsafe { String::from_utf8_unchecked(output.into_iter().collect()) };
 
-    // Transform TypeScript to JavaScript using OXC if lang="ts"
-    let final_code = if is_ts {
-        transform_typescript_to_js(&output_str)
-    } else {
-        output_str
-    };
+    // Transform TypeScript to JavaScript using OXC
+    // Always transpile to JavaScript for browser compatibility
+    let final_code = transform_typescript_to_js(&output_str);
 
     Ok(ScriptCompileResult {
         code: final_code,

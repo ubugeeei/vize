@@ -215,6 +215,14 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
+}
+
+.editor-container {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+  position: relative;
 }
 
 .input-panel {
@@ -298,10 +306,7 @@
 }
 
 /* Editor */
-.editor-container {
-  flex: 1;
-  overflow: hidden;
-}
+/* Note: .editor-container is defined in .panel section above with min-height: 0 */
 
 /* Output */
 .output-content {
@@ -694,6 +699,18 @@
 
 .monaco-editor {
   padding-top: 0 !important;
+}
+
+/* Monaco Container - moved from scoped styles due to Vize compiler issue */
+.monaco-container {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 /* Responsive */

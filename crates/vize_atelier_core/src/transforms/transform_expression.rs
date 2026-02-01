@@ -500,17 +500,16 @@ impl<'a, 'ctx> IdentifierCollector<'a, 'ctx> {
             return false;
         }
 
-        // Check if this is an inline mode let/maybe-ref binding
-        if self.ctx.options.inline {
-            if let Some(bindings) = &self.ctx.options.binding_metadata {
-                if let Some(binding_type) = bindings.bindings.get(name) {
-                    // SetupLet and SetupMaybeRef need _unref()
-                    return matches!(
-                        binding_type,
-                        crate::options::BindingType::SetupLet
-                            | crate::options::BindingType::SetupMaybeRef
-                    );
-                }
+        // Check if this is a let/maybe-ref binding that needs _unref()
+        // This applies in both inline and function modes
+        if let Some(bindings) = &self.ctx.options.binding_metadata {
+            if let Some(binding_type) = bindings.bindings.get(name) {
+                // SetupLet and SetupMaybeRef need _unref()
+                return matches!(
+                    binding_type,
+                    crate::options::BindingType::SetupLet
+                        | crate::options::BindingType::SetupMaybeRef
+                );
             }
         }
         false
@@ -525,14 +524,25 @@ impl<'a, 'ctx> Visit<'_> for IdentifierCollector<'a, 'ctx> {
             return;
         }
 
+        let needs_unref = self.needs_unref(name);
+
         if let Some(prefix) = get_identifier_prefix(name, self.ctx) {
-            self.rewrites.insert((ident.span.start as usize, prefix));
+            // In function mode, SetupLet bindings need both $setup. prefix and _unref() wrapper
+            // Result: _unref($setup.b) instead of just $setup.b
+            if needs_unref && prefix == "$setup." {
+                self.rewrites
+                    .insert((ident.span.start as usize, "_unref($setup."));
+                self.suffix_rewrites.push((ident.span.end as usize, ")"));
+                self.used_unref = true;
+            } else {
+                self.rewrites.insert((ident.span.start as usize, prefix));
+            }
         } else if self.is_ref_binding(name) {
             // Add .value suffix for refs in inline mode
             self.suffix_rewrites
                 .push((ident.span.end as usize, ".value"));
-        } else if self.needs_unref(name) {
-            // Wrap with _unref() for let/var bindings
+        } else if needs_unref {
+            // Wrap with _unref() for let/var bindings (inline mode)
             self.rewrites.insert((ident.span.start as usize, "_unref("));
             self.suffix_rewrites.push((ident.span.end as usize, ")"));
             self.used_unref = true;

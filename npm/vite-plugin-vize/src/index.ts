@@ -1,7 +1,6 @@
 import type { Plugin, ResolvedConfig, ViteDevServer, HmrContext } from 'vite';
 import path from 'node:path';
 import fs from 'node:fs';
-import { transform as esbuildTransform } from 'esbuild';
 import { glob } from 'tinyglobby';
 
 import type { VizeOptions, CompiledModule } from './types.js';
@@ -22,7 +21,7 @@ const RESOLVED_CSS_MODULE = '\0vize:all-styles.css';
 function createLogger(debug: boolean) {
   return {
     log: (...args: unknown[]) => debug && console.log('[vize]', ...args),
-    info: (...args: unknown[]) => console.log('[vize]', ...args), // Always show info
+    info: (...args: unknown[]) => console.log('[vize]', ...args),
     warn: (...args: unknown[]) => console.warn('[vize]', ...args),
     error: (...args: unknown[]) => console.error('[vize]', ...args),
   };
@@ -114,6 +113,34 @@ export function vize(options: VizeOptions = {}): Plugin {
   return {
     name: 'vite-plugin-vize',
     enforce: 'pre',
+
+    config() {
+      // Configure esbuild plugin to handle vize virtual modules
+      // Vize uses virtual modules with \0 prefix which esbuild's dep scanner can't handle
+      return {
+        optimizeDeps: {
+          esbuildOptions: {
+            plugins: [
+              {
+                name: 'vize-virtual-module-handler',
+                setup(build) {
+                  // Mark virtual modules as external
+                  build.onResolve({ filter: /^\0vize:/ }, (args) => ({
+                    path: args.path,
+                    external: true,
+                  }));
+                  // Handle .vue imports
+                  build.onResolve({ filter: /\.vue$/ }, (args) => ({
+                    path: args.path,
+                    external: true,
+                  }));
+                },
+              },
+            ],
+          },
+        },
+      };
+    },
 
     async configResolved(resolvedConfig: ResolvedConfig) {
       root = options.root ?? resolvedConfig.root;
@@ -262,22 +289,6 @@ export function vize(options: VizeOptions = {}): Plugin {
             isDev: server !== null,
             extractCss,
           });
-          // Debug: log App compilation
-          if (realPath.includes('App.vue')) {
-            fs.writeFileSync('/tmp/app-compiled-before.ts', compiled.code);
-            fs.writeFileSync('/tmp/app-compiled-after.ts', output);
-            logger.log(`App.vue compiled code written to /tmp/app-compiled-*.ts`);
-          }
-          // Debug: log Monaco compilation
-          if (realPath.includes('MonacoEditor')) {
-            fs.writeFileSync('/tmp/monaco-compiled.ts', compiled.code);
-            logger.log(`MonacoEditor compiled code written to /tmp/monaco-compiled.ts`);
-          }
-          // Debug: log PatinaPlayground compilation
-          if (realPath.includes('PatinaPlayground')) {
-            fs.writeFileSync('/tmp/patina-compiled.ts', output);
-            logger.log(`PatinaPlayground compiled code written to /tmp/patina-compiled.ts`);
-          }
           return {
             code: output,
             map: null,
@@ -285,22 +296,6 @@ export function vize(options: VizeOptions = {}): Plugin {
         }
       }
 
-      return null;
-    },
-
-    async transform(code: string, id: string) {
-      // Transform TypeScript in virtual Vue modules
-      if (id.startsWith(VIRTUAL_PREFIX) && id.endsWith('.ts')) {
-        const result = await esbuildTransform(code, {
-          loader: 'ts',
-          target: 'esnext',
-          sourcemap: mergedOptions.sourceMap ?? !isProduction,
-        });
-        return {
-          code: result.code,
-          map: result.map || null,
-        };
-      }
       return null;
     },
 
@@ -380,7 +375,7 @@ export function vize(options: VizeOptions = {}): Plugin {
           fileName: 'assets/vize-components.css',
           source: allCss,
         });
-        logger.info(
+        logger.log(
           `Extracted CSS to assets/vize-components.css (${collectedCss.size} components)`
         );
       }
