@@ -99,7 +99,8 @@ const count = ref(0)
         // __expose is only called if defineExpose is used (not in this test)
         // Should have __returned__
         assert!(
-            result.code.contains("const __returned__ =") || result.code.contains("__returned__ = {"),
+            result.code.contains("const __returned__ =")
+                || result.code.contains("__returned__ = {"),
             "Should have __returned__"
         );
     }
@@ -164,7 +165,9 @@ function onClick() {
         );
         // emits definition should be present (may be formatted differently by OXC)
         assert!(
-            result.code.contains("emits:") && result.code.contains("click") && result.code.contains("update"),
+            result.code.contains("emits:")
+                && result.code.contains("click")
+                && result.code.contains("update"),
             "Should have emits definition. Got:\n{}",
             result.code
         );

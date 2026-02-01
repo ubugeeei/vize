@@ -351,9 +351,7 @@ pub fn compile_script_setup(
             b"import { defineVaporComponent as _defineVaporComponent } from 'vue'\n",
         );
     } else {
-        output.extend_from_slice(
-            b"import { defineComponent as _defineComponent } from 'vue'\n",
-        );
+        output.extend_from_slice(b"import { defineComponent as _defineComponent } from 'vue'\n");
     }
 
     // Add mergeDefaults import if props destructure has defaults

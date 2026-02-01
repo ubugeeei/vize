@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount, shallowMount } from '@vue/test-utils'
-import { h, defineComponent } from 'vue'
+import { h, defineComponent, createApp } from 'vue'
 import Button from './components/Button.vue'
 
 describe('Component Test', () => {
@@ -13,6 +13,20 @@ describe('Component Test', () => {
     const wrapper = mount(SimpleComp)
     expect(wrapper.text()).toBe('Hello')
     wrapper.unmount()
+  })
+
+  it('should render Button with createApp', () => {
+    // Test without @vue/test-utils
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+
+    const app = createApp(Button)
+    const instance = app.mount(container)
+
+    expect(container.querySelector('button')).not.toBeNull()
+
+    app.unmount()
+    document.body.removeChild(container)
   })
 
   it('should mount Button without slot', () => {
