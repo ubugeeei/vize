@@ -124,7 +124,8 @@ jobs:
           key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
 
       - name: Install Playwright browsers
-        run: npx playwright install chromium
+        working-directory: playground
+        run: npx playwright install chromium --with-deps
 
       - name: Run playground tests
         working-directory: playground

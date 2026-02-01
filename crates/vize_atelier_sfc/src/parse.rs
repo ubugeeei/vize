@@ -454,7 +454,7 @@ fn parse_block_fast<'a>(
         return None;
     }
 
-    // Script/style blocks: use static closing tags with memchr
+    // Script/style blocks: use static closing tags
     let closing_tag = if tag_name.eq_ignore_ascii_case(TAG_SCRIPT) {
         CLOSING_SCRIPT
     } else if tag_name.eq_ignore_ascii_case(TAG_STYLE) {
@@ -472,39 +472,165 @@ fn parse_block_fast<'a>(
         );
     };
 
-    // Fast path for script/style using memchr
+    // For script blocks, we need to be aware of string literals to avoid
+    // matching closing tags inside strings like: const x = `</script>`
+    let is_script = tag_name.eq_ignore_ascii_case(TAG_SCRIPT);
+
+    // Track the previous non-whitespace character to determine string context
+    let mut prev_significant_char: u8 = b'\n'; // Start as if at beginning of line
+
     while pos < len {
-        if let Some(lt_offset) = memchr(b'<', &bytes[pos..]) {
-            // Count newlines in skipped content
-            for &b in &bytes[pos..pos + lt_offset] {
-                if b == b'\n' {
-                    line += 1;
-                    last_newline = pos + lt_offset;
+        let b = bytes[pos];
+
+        if b == b'\n' {
+            line += 1;
+            last_newline = pos;
+            prev_significant_char = b'\n';
+            pos += 1;
+            continue;
+        }
+
+        // Skip whitespace but don't update prev_significant_char
+        if b == b' ' || b == b'\t' || b == b'\r' {
+            pos += 1;
+            continue;
+        }
+
+        // For script blocks, skip over comments and string literals
+        if is_script {
+            // Check for single-line comment
+            if b == b'/' && pos + 1 < len && bytes[pos + 1] == b'/' {
+                // Skip to end of line
+                pos += 2;
+                while pos < len && bytes[pos] != b'\n' {
+                    pos += 1;
+                }
+                continue;
+            }
+
+            // Check for multi-line comment
+            if b == b'/' && pos + 1 < len && bytes[pos + 1] == b'*' {
+                pos += 2;
+                while pos + 1 < len {
+                    if bytes[pos] == b'\n' {
+                        line += 1;
+                        last_newline = pos;
+                    }
+                    if bytes[pos] == b'*' && bytes[pos + 1] == b'/' {
+                        pos += 2;
+                        break;
+                    }
+                    pos += 1;
+                }
+                continue;
+            }
+
+            // Check for string literals (', ", `)
+            // Only treat as string if in a context where strings are expected
+            // (after =, (, [, ,, :, {, or at start of expression)
+            // This avoids treating quotes inside regex literals as strings
+            if b == b'\'' || b == b'"' || b == b'`' {
+                let is_string_context = matches!(
+                    prev_significant_char,
+                    b'=' | b'('
+                        | b'['
+                        | b','
+                        | b':'
+                        | b'{'
+                        | b';'
+                        | b'\n'
+                        | b'?'
+                        | b'&'
+                        | b'|'
+                        | b'+'
+                        | b'-'
+                        | b'*'
+                        | b'!'
+                        | b'>'
+                        | b'<'
+                        | b'%'
+                        | b'^'
+                );
+
+                if is_string_context {
+                    let quote = b;
+                    pos += 1;
+
+                    while pos < len {
+                        let c = bytes[pos];
+
+                        if c == b'\n' {
+                            line += 1;
+                            last_newline = pos;
+                        }
+
+                        // Handle escape sequences
+                        if c == b'\\' && pos + 1 < len {
+                            pos += 2; // Skip escaped character
+                            continue;
+                        }
+
+                        // Handle template literal expressions ${...}
+                        if quote == b'`' && c == b'$' && pos + 1 < len && bytes[pos + 1] == b'{' {
+                            pos += 2;
+                            let mut brace_depth = 1;
+                            while pos < len && brace_depth > 0 {
+                                let inner = bytes[pos];
+                                if inner == b'\n' {
+                                    line += 1;
+                                    last_newline = pos;
+                                }
+                                if inner == b'{' {
+                                    brace_depth += 1;
+                                } else if inner == b'}' {
+                                    brace_depth -= 1;
+                                } else if inner == b'\\' && pos + 1 < len {
+                                    pos += 1; // Skip escape in template expression
+                                }
+                                pos += 1;
+                            }
+                            continue;
+                        }
+
+                        // End of string
+                        if c == quote {
+                            pos += 1;
+                            break;
+                        }
+
+                        // For non-template strings, newline ends the string (syntax error, but handle gracefully)
+                        if quote != b'`' && c == b'\n' {
+                            break;
+                        }
+
+                        pos += 1;
+                    }
+                    prev_significant_char = quote; // String ended with quote
+                    continue;
                 }
             }
-            pos += lt_offset;
-
-            // Check for closing tag
-            if starts_with_bytes(&bytes[pos..], closing_tag) {
-                let content_end = pos;
-                let end_pos = pos + closing_tag.len();
-                let col = pos - last_newline + closing_tag.len();
-                let content = Cow::Borrowed(&source[content_start..content_end]);
-                return Some((
-                    tag_name,
-                    attrs,
-                    content,
-                    content_start,
-                    content_end,
-                    end_pos,
-                    line,
-                    col,
-                ));
-            }
-            pos += 1;
-        } else {
-            break;
         }
+
+        // Check for closing tag
+        if b == b'<' && starts_with_bytes(&bytes[pos..], closing_tag) {
+            let content_end = pos;
+            let end_pos = pos + closing_tag.len();
+            let col = pos - last_newline + closing_tag.len();
+            let content = Cow::Borrowed(&source[content_start..content_end]);
+            return Some((
+                tag_name,
+                attrs,
+                content,
+                content_start,
+                content_end,
+                end_pos,
+                line,
+                col,
+            ));
+        }
+
+        prev_significant_char = b;
+        pos += 1;
     }
 
     None
@@ -691,99 +817,272 @@ const count = ref(0)
             Cow::Owned(_) => panic!("Expected Cow::Borrowed, got Cow::Owned"),
         }
     }
-}
-
-#[cfg(test)]
-mod parse_tests {
-    use super::*;
 
     #[test]
-    fn test_croquis_playground_parse() {
-        let source =
-            std::fs::read_to_string("../../playground/src/components/CroquisPlayground.vue")
-                .unwrap();
-        println!("Source length: {}", source.len());
+    fn test_closing_template_tag_with_whitespace() {
+        // Test that closing </template> tag with whitespace before '>' is handled correctly
+        let source = r#"<script setup>
+const x = 1
+</script>
 
-        let result = parse_sfc(&source, SfcParseOptions::default());
-        match result {
-            Ok(desc) => {
-                println!("Parse successful!");
-                if let Some(ref script_setup) = desc.script_setup {
-                    println!(
-                        "Script setup: tag offset {}..{}",
-                        script_setup.loc.tag_start, script_setup.loc.tag_end
-                    );
-                    println!(
-                        "Script setup content offset {}..{}",
-                        script_setup.loc.start, script_setup.loc.end
-                    );
-                    println!(
-                        "Script setup first 50 chars: {:?}",
-                        script_setup.content.chars().take(50).collect::<String>()
-                    );
-                }
-                if let Some(ref template) = desc.template {
-                    println!(
-                        "Template: tag offset {}..{}",
-                        template.loc.tag_start, template.loc.tag_end
-                    );
-                    println!(
-                        "Template content offset {}..{}",
-                        template.loc.start, template.loc.end
-                    );
-                    println!(
-                        "Template content first 100 chars: {:?}",
-                        template.content.chars().take(100).collect::<String>()
-                    );
-                }
-            }
-            Err(e) => {
-                panic!("Parse error: {:?}", e);
-            }
-        }
+<template
+  ><div>Hello</div></template
+>"#;
+        let result = parse_sfc(source, Default::default()).unwrap();
+
+        assert!(result.template.is_some());
+        let template = result.template.unwrap();
+        assert_eq!(template.content, "<div>Hello</div>");
     }
+
+    #[test]
+    fn test_closing_template_tag_with_newline() {
+        // Test that closing </template> tag with newline before '>' is handled correctly
+        // This pattern appears in some Vue files with specific formatting
+        let source = r#"<template>
+  <div>Content</div>
+</template
+>
+
+<style>
+.foo {}
+</style>"#;
+        let result = parse_sfc(source, Default::default()).unwrap();
+
+        assert!(result.template.is_some());
+        let template = result.template.unwrap();
+        assert!(template.content.contains("<div>Content</div>"));
+
+        assert_eq!(result.styles.len(), 1);
+    }
+
+    #[test]
+    fn test_nested_template_in_string_literal() {
+        // Test that embedded <template> tags inside string literals don't confuse the parser
+        let source = r#"<script setup lang="ts">
+const code = `<template>
+  <div>Nested</div>
+</template>`
+</script>
+
+<template>
+  <div>{{ code }}</div>
+</template>"#;
+        let result = parse_sfc(source, Default::default()).unwrap();
+
+        assert!(result.script_setup.is_some());
+        assert!(result.template.is_some());
+
+        let template = result.template.unwrap();
+        // The main template should be the one at depth 0, not the one in the string
+        assert!(template.content.contains("{{ code }}"));
+    }
+
+    #[test]
+    fn test_template_with_v_slot_syntax() {
+        // Test that <template v-slot> and <template #name> are handled as nested, not root
+        let source = r#"<template>
+  <MyComponent>
+    <template #header>Header</template>
+    <template v-slot:footer>Footer</template>
+  </MyComponent>
+</template>"#;
+        let result = parse_sfc(source, Default::default()).unwrap();
+
+        assert!(result.template.is_some());
+        let template = result.template.unwrap();
+        // Should contain the nested templates as content
+        assert!(template.content.contains("<template #header>"));
+        assert!(template.content.contains("<template v-slot:footer>"));
+    }
+
+    #[test]
+    fn test_multiline_closing_tag_complex() {
+        // Test complex case with multiple blocks and multiline closing tags
+        let source = r#"<script setup>
+const x = `</template>`  // embedded in string
+</script>
+
+<template
+><div class="container">
+    <template v-if="show">
+      Content
+    </template
+    ><template v-else>
+      Other
+    </template>
+  </div></template
+>
+
+<style scoped>
+.container {}
+</style>"#;
+        let result = parse_sfc(source, Default::default()).unwrap();
+
+        assert!(result.script_setup.is_some());
+        assert!(result.template.is_some());
+        assert_eq!(result.styles.len(), 1);
+        assert!(result.styles[0].scoped);
+
+        let template = result.template.unwrap();
+        assert!(template.content.contains("<div class=\"container\">"));
+        assert!(template.content.contains("<template v-if=\"show\">"));
+        assert!(template.content.contains("<template v-else>"));
+    }
+
+    #[test]
+    fn test_script_with_embedded_closing_tag_in_template_literal() {
+        // Test that </script> inside a template literal doesn't end the script block
+        let source = r#"<script setup lang="ts">
+const code = `<script setup>
+console.log('hello')
+</script>`
+const x = 1
+</script>
+
+<template>
+  <div>{{ code }}</div>
+</template>"#;
+        let result = parse_sfc(source, Default::default()).unwrap();
+
+        assert!(result.script_setup.is_some());
+        let script = result.script_setup.unwrap();
+        // The script content should include everything up to the real </script>
+        assert!(script.content.contains("const code = `<script setup>"));
+        assert!(script.content.contains("</script>`"));
+        assert!(script.content.contains("const x = 1"));
+    }
+
+    #[test]
+    fn test_script_with_embedded_closing_tag_in_single_quote() {
+        // Test that </script> inside a single-quoted string doesn't end the script block
+        let source = r#"<script setup>
+const tag = '</script>'
+const y = 2
+</script>"#;
+        let result = parse_sfc(source, Default::default()).unwrap();
+
+        assert!(result.script_setup.is_some());
+        let script = result.script_setup.unwrap();
+        assert!(script.content.contains("const tag = '</script>'"));
+        assert!(script.content.contains("const y = 2"));
+    }
+
+    #[test]
+    fn test_script_with_embedded_closing_tag_in_double_quote() {
+        // Test that </script> inside a double-quoted string doesn't end the script block
+        let source = r#"<script setup>
+const tag = "</script>"
+const z = 3
+</script>"#;
+        let result = parse_sfc(source, Default::default()).unwrap();
+
+        assert!(result.script_setup.is_some());
+        let script = result.script_setup.unwrap();
+        assert!(script.content.contains(r#"const tag = "</script>""#));
+        assert!(script.content.contains("const z = 3"));
+    }
+
+    #[test]
+    fn test_script_with_embedded_closing_tag_in_comment() {
+        // Test that </script> inside comments doesn't end the script block
+        let source = r#"<script setup>
+// This is a comment: </script>
+const a = 1
+/* Multi-line comment
+   </script>
+*/
+const b = 2
+</script>"#;
+        let result = parse_sfc(source, Default::default()).unwrap();
+
+        assert!(result.script_setup.is_some());
+        let script = result.script_setup.unwrap();
+        assert!(script.content.contains("// This is a comment: </script>"));
+        assert!(script.content.contains("const a = 1"));
+        assert!(script.content.contains("</script>"));
+        assert!(script.content.contains("const b = 2"));
+    }
+
+    #[test]
+    fn test_script_with_template_literal_expression() {
+        // Test that template literal with ${} expressions is handled correctly
+        let source = r#"<script setup>
+const name = 'world'
+const code = `Hello ${name}! </script> ${1 + 2}`
+const c = 3
+</script>"#;
+        let result = parse_sfc(source, Default::default()).unwrap();
+
+        assert!(result.script_setup.is_some());
+        let script = result.script_setup.unwrap();
+        assert!(script
+            .content
+            .contains("const code = `Hello ${name}! </script> ${1 + 2}`"));
+        assert!(script.content.contains("const c = 3"));
+    }
+
+    #[test]
+    fn test_script_with_escaped_quotes() {
+        // Test that escaped quotes in strings are handled correctly
+        let source = r#"<script setup>
+const str1 = "He said \"</script>\""
+const str2 = 'It\'s </script> here'
+const str3 = `Template \` </script> \``
+const d = 4
+</script>"#;
+        let result = parse_sfc(source, Default::default()).unwrap();
+
+        assert!(result.script_setup.is_some());
+        let script = result.script_setup.unwrap();
+        assert!(script.content.contains("const d = 4"));
+    }
+
+    #[test]
+    fn test_script_with_regex_containing_quotes() {
+        // Test that regex literals containing quotes don't confuse the parser
+        // This is important for Monaco editor tokenizer patterns like: [/`[^`]*`/, "string"]
+        let source = r#"<script setup>
+const tokenizer = {
+  root: [
+    [/<script[^>]*>/, "tag"],
+    [/"[^"]*"/, "string"],
+    [/'[^']*'/, "string"],
+    [/`[^`]*`/, "string"],
+  ]
 }
+const e = 5
+</script>
 
-#[test]
-fn test_croquis_debug() {
-    let source =
-        std::fs::read_to_string("../../playground/src/components/CroquisPlayground.vue").unwrap();
-    println!("Source length: {}", source.len());
+<template>
+  <div>Test</div>
+</template>"#;
+        let result = parse_sfc(source, Default::default()).unwrap();
 
-    // Find all <template tags manually
-    let mut pos = 0;
-    let mut template_positions = vec![];
-    while let Some(idx) = source[pos..].find("<template") {
-        let actual_pos = pos + idx;
-        let context: String = source.chars().skip(actual_pos).take(50).collect();
-        template_positions.push((actual_pos, context));
-        pos = actual_pos + 1;
+        assert!(result.script_setup.is_some());
+        let script = result.script_setup.unwrap();
+        assert!(script.content.contains("const tokenizer"));
+        assert!(script.content.contains(r#"[/`[^`]*`/, "string"]"#));
+        assert!(script.content.contains("const e = 5"));
+
+        assert!(result.template.is_some());
+        let template = result.template.unwrap();
+        assert!(template.content.contains("<div>Test</div>"));
     }
 
-    println!("\nAll <template positions:");
-    for (p, ctx) in &template_positions {
-        println!("  {}: {:?}", p, ctx);
-    }
+    #[test]
+    fn test_script_with_division_operator() {
+        // Test that division operator doesn't interfere with string detection
+        let source = r#"<script setup>
+const x = 10 / 2
+const y = "test"
+const z = x / y
+</script>"#;
+        let result = parse_sfc(source, Default::default()).unwrap();
 
-    let result = parse_sfc(&source, SfcParseOptions::default());
-    match result {
-        Ok(desc) => {
-            if let Some(ref template) = desc.template {
-                println!("\nParsed template tag_start: {}", template.loc.tag_start);
-                let ctx: String = source
-                    .chars()
-                    .skip(template.loc.tag_start)
-                    .take(50)
-                    .collect();
-                println!("Content at tag_start: {:?}", ctx);
-            }
-            for (i, style) in desc.styles.iter().enumerate() {
-                println!(
-                    "Style {}: tag offset {}..{}",
-                    i, style.loc.tag_start, style.loc.tag_end
-                );
-            }
-        }
-        Err(e) => panic!("{:?}", e),
+        assert!(result.script_setup.is_some());
+        let script = result.script_setup.unwrap();
+        assert!(script.content.contains("const x = 10 / 2"));
+        assert!(script.content.contains(r#"const y = "test""#));
     }
 }

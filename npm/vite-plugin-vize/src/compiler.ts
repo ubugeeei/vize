@@ -22,7 +22,9 @@ export function loadNative(): CompileSfcFn {
     compileSfc = native.compileSfc;
     return compileSfc!;
   } catch (e) {
-    throw new Error(`Failed to load @vizejs/native. Make sure it's installed and built:\n${String(e)}`);
+    throw new Error(
+      `Failed to load @vizejs/native. Make sure it's installed and built:\n${String(e)}`,
+    );
   }
 }
 
@@ -34,7 +36,9 @@ export function loadNativeBatch(): CompileSfcBatchWithResultsFn {
     compileSfcBatchWithResults = native.compileSfcBatchWithResults;
     return compileSfcBatchWithResults!;
   } catch (e) {
-    throw new Error(`Failed to load @vizejs/native. Make sure it's installed and built:\n${String(e)}`);
+    throw new Error(
+      `Failed to load @vizejs/native. Make sure it's installed and built:\n${String(e)}`,
+    );
   }
 }
 

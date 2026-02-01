@@ -100,7 +100,9 @@ function loadNative(): NativeBinding {
     native = require("@vizejs/native") as NativeBinding;
     return native;
   } catch (e) {
-    throw new Error(`Failed to load @vizejs/native. Make sure it's installed and built:\n${String(e)}`);
+    throw new Error(
+      `Failed to load @vizejs/native. Make sure it's installed and built:\n${String(e)}`,
+    );
   }
 }
 

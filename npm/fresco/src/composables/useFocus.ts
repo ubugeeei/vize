@@ -2,14 +2,7 @@
  * useFocus - Focus management composable
  */
 
-import {
-  ref,
-  computed,
-  provide,
-  inject,
-  type InjectionKey,
-  type Ref,
-} from "@vue/runtime-core";
+import { ref, computed, provide, inject, type InjectionKey, type Ref } from "@vue/runtime-core";
 
 const FOCUS_KEY: InjectionKey<FocusManager> = Symbol("fresco-focus");
 
