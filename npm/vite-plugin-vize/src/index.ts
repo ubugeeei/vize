@@ -13,6 +13,7 @@ export type { VizeOptions, CompiledModule };
 // Re-export config utilities from vizejs
 export { defineConfig, loadConfig } from "vizejs";
 export type { VizeConfig, LoadConfigOptions } from "vizejs";
+import type { VizeConfig } from "vizejs";
 
 const VIRTUAL_PREFIX = "\0vize:";
 const VIRTUAL_CSS_MODULE = "virtual:vize-styles";
@@ -130,7 +131,7 @@ export function vize(options: VizeOptions = {}): Plugin {
       extractCss = isProduction; // Extract CSS in production by default
 
       // Load config file if enabled
-      let fileConfig: import("vizejs").VizeConfig | null = null;
+      let fileConfig: VizeConfig | null = null;
       if (options.configMode !== false) {
         const { loadConfig } = await import("vizejs");
         fileConfig = await loadConfig(root, {

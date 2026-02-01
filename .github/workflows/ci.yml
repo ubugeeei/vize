@@ -117,6 +117,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Build npm packages
+        run: pnpm -r --filter './npm/*' run build
+
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
