@@ -10,6 +10,7 @@ import { defineComponent as _defineComponent } from 'vue'
 const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
+  __expose();
   const user = await fetchUser()
   const posts = await fetchPosts(user.id)
   const __returned__ = { posts, user }

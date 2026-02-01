@@ -10,6 +10,7 @@ import { reactive } from "vue";
 const __sfc__ = /*@__PURE__*/ _defineComponent({
   __name: "test",
   setup(__props, { expose: __expose, emit: __emit }) {
+    __expose();
     const state = reactive({ count: 0 });
     const __returned__ = {
       reactive,

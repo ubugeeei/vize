@@ -10,6 +10,7 @@ import { ref, watch, watchEffect } from "vue";
 const __sfc__ = /*@__PURE__*/ _defineComponent({
   __name: "test",
   setup(__props, { expose: __expose, emit: __emit }) {
+    __expose();
     const count = ref(0);
     watch(count, (n) => console.log(n));
     watchEffect(() => console.log(count.value));

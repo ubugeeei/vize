@@ -9,6 +9,7 @@ import { defineComponent as _defineComponent } from "vue";
 const __sfc__ = /*@__PURE__*/ _defineComponent({
   __name: "test",
   setup(__props, { expose: __expose, emit: __emit }) {
+    __expose();
     const emit = __emit;
     const __returned__ = { emit };
     Object.defineProperty(__returned__, "__isScriptSetup", {

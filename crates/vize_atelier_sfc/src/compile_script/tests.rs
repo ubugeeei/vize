@@ -443,16 +443,48 @@ defineExpose({ count, reset })
 
     #[test]
     fn test_compile_script_setup_without_define_expose() {
+        // Test that __expose() is always called, even without defineExpose.
+        // This matches the official Vue compiler behavior, which is required for
+        // proper component initialization with @vue/test-utils.
         let content = r#"
 import { ref } from 'vue'
 const count = ref(0)
 "#;
         let result = compile_script_setup(content, "Test", false, false, None).unwrap();
 
-        // __expose should NOT be called if defineExpose is not used
+        println!("Output without defineExpose:\n{}", result.code);
+
+        // __expose() should always be called for proper Vue runtime initialization
         assert!(
-            !result.code.contains("__expose("),
-            "Should not have __expose call without defineExpose"
+            result.code.contains("__expose()"),
+            "Should have __expose() call even without defineExpose. Got:\n{}",
+            result.code
+        );
+    }
+
+    #[test]
+    fn test_compile_script_setup_with_empty_define_expose() {
+        // Test that defineExpose() (empty) is handled correctly
+        let content = r#"
+import { ref } from 'vue'
+const count = ref(0)
+defineExpose()
+"#;
+        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+
+        println!("Output with empty defineExpose:\n{}", result.code);
+
+        // Should have __expose() call
+        assert!(
+            result.code.contains("__expose()"),
+            "Should have __expose() call for empty defineExpose. Got:\n{}",
+            result.code
+        );
+
+        // defineExpose should be removed
+        assert!(
+            !result.code.contains("defineExpose"),
+            "defineExpose should be removed from setup"
         );
     }
 

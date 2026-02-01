@@ -11,6 +11,7 @@ import MyEditor from "./MyEditor.vue";
 const __sfc__ = /*@__PURE__*/ _defineComponent({
   __name: "test",
   setup(__props, { expose: __expose, emit: __emit }) {
+    __expose();
     const content = ref("");
     const title = ref("Untitled");
     const __returned__ = {

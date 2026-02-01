@@ -10,6 +10,7 @@ import { ref } from "vue";
 const __sfc__ = /*@__PURE__*/ _defineComponent({
   __name: "test",
   setup(__props, { expose: __expose, emit: __emit }) {
+    __expose();
     const count = ref(0);
     const increment = () => count.value++;
     const __returned__ = {

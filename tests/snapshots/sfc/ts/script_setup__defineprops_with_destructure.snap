@@ -11,6 +11,7 @@ const __sfc__ = /*@__PURE__*/ _defineComponent({
   __name: "test",
   props: /*@__PURE__*/ _mergeDefaults(["msg", "count"], { count: 0 }),
   setup(__props, { expose: __expose, emit: __emit }) {
+    __expose();
     const __returned__ = {};
     Object.defineProperty(__returned__, "__isScriptSetup", {
       enumerable: false,

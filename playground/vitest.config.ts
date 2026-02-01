@@ -22,10 +22,7 @@ export default defineConfig(async () => {
   return {
     plugins: [vuePlugin],
     resolve: {
-      dedupe: ["vue", "@vue/runtime-core", "@vue/runtime-dom", "@vue/reactivity"],
-    },
-    optimizeDeps: {
-      exclude: ["vue", "@vue/runtime-core", "@vue/runtime-dom", "@vue/reactivity"],
+      dedupe: ["vue"],
     },
     test: {
       browser: {

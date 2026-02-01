@@ -20,6 +20,7 @@ import { defineComponent as _defineComponent } from 'vue'
 const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
+  __expose();
     __props.items: Array<TabItem>;
   }>();
   const __returned__ = {  }

@@ -17,6 +17,7 @@ const __sfc__ = /*@__PURE__*/_defineComponent({
   color: "primary"
 }),
   setup(__props, { expose: __expose, emit: __emit }) {
+  __expose();
     __props.color?: "primary" | "success" | "inactive";
     __props.appearance?: "filled" | "outlined";
   }>();

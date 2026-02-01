@@ -12,6 +12,7 @@ const __sfc__ = /*@__PURE__*/ _defineComponent({
   props: { "modelValue": {} },
   emits: ["update:modelValue"],
   setup(__props, { expose: __expose, emit: __emit }) {
+    __expose();
     const count = _useModel(__props, "modelValue");
     const __returned__ = { count };
     Object.defineProperty(__returned__, "__isScriptSetup", {

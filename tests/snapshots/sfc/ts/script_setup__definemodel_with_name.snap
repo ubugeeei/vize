@@ -12,6 +12,7 @@ const __sfc__ = /*@__PURE__*/ _defineComponent({
   props: { "title": {} },
   emits: ["update:title"],
   setup(__props, { expose: __expose, emit: __emit }) {
+    __expose();
     const title = _useModel(__props, "title");
     const __returned__ = { title };
     Object.defineProperty(__returned__, "__isScriptSetup", {

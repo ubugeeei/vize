@@ -11,6 +11,7 @@ import { ref } from 'vue'
 const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
+  __expose();
   const count = ref(0)
   await new Promise(r => setTimeout(r, 100))
   count.value = 1

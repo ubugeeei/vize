@@ -10,6 +10,7 @@ import { defineComponent as _defineComponent } from 'vue'
 const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
+  __expose();
   const data = await fetch('/api').then(r => r.json())
   const __returned__ = { data }
   Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
