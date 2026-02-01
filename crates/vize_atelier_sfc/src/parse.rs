@@ -9,7 +9,6 @@ use std::borrow::Cow;
 use vize_carton::FxHashMap;
 
 // Static closing tags for fast comparison (avoid format!)
-const CLOSING_TEMPLATE: &[u8] = b"</template>";
 const CLOSING_SCRIPT: &[u8] = b"</script>";
 const CLOSING_STYLE: &[u8] = b"</style>";
 
@@ -362,6 +361,32 @@ fn parse_block_fast<'a>(
         // Template block: handle nested template tags
         let mut depth = 1;
 
+        // Check for closing template tag, handling whitespace before the closing '>'
+        // This handles cases like:
+        //   </template>       - normal
+        //   </template\n   >  - closing '>' on next line
+        fn is_closing_template_tag(bytes: &[u8], pos: usize, len: usize) -> Option<usize> {
+            // Check if we have "</template" (without the final ">")
+            const CLOSING_TAG_PREFIX: &[u8] = b"</template";
+            if pos + CLOSING_TAG_PREFIX.len() > len {
+                return None;
+            }
+            if !bytes[pos..pos + CLOSING_TAG_PREFIX.len()].eq_ignore_ascii_case(CLOSING_TAG_PREFIX)
+            {
+                return None;
+            }
+            // Find the closing '>' allowing whitespace
+            let mut check_pos = pos + CLOSING_TAG_PREFIX.len();
+            while check_pos < len {
+                match bytes[check_pos] {
+                    b'>' => return Some(check_pos + 1), // Return position after '>'
+                    b' ' | b'\t' | b'\n' | b'\r' => check_pos += 1,
+                    _ => return None, // Invalid character in closing tag
+                }
+            }
+            None
+        }
+
         while pos < len {
             if bytes[pos] == b'\n' {
                 line += 1;
@@ -370,12 +395,12 @@ fn parse_block_fast<'a>(
 
             if bytes[pos] == b'<' {
                 // Check for closing tag using byte comparison
-                if starts_with_bytes(&bytes[pos..], CLOSING_TEMPLATE) {
+                if let Some(end_tag_pos) = is_closing_template_tag(bytes, pos, len) {
                     depth -= 1;
                     if depth == 0 {
                         let content_end = pos;
-                        let end_pos = pos + CLOSING_TEMPLATE.len();
-                        let col = pos - last_newline + CLOSING_TEMPLATE.len();
+                        let end_pos = end_tag_pos;
+                        let col = pos - last_newline + (end_pos - pos);
                         let content = Cow::Borrowed(&source[content_start..content_end]);
                         return Some((
                             tag_name,
@@ -388,7 +413,7 @@ fn parse_block_fast<'a>(
                             col,
                         ));
                     }
-                    pos += CLOSING_TEMPLATE.len();
+                    pos = end_tag_pos;
                     continue;
                 }
 
@@ -665,5 +690,100 @@ const count = ref(0)
             }
             Cow::Owned(_) => panic!("Expected Cow::Borrowed, got Cow::Owned"),
         }
+    }
+}
+
+#[cfg(test)]
+mod parse_tests {
+    use super::*;
+
+    #[test]
+    fn test_croquis_playground_parse() {
+        let source =
+            std::fs::read_to_string("../../playground/src/components/CroquisPlayground.vue")
+                .unwrap();
+        println!("Source length: {}", source.len());
+
+        let result = parse_sfc(&source, SfcParseOptions::default());
+        match result {
+            Ok(desc) => {
+                println!("Parse successful!");
+                if let Some(ref script_setup) = desc.script_setup {
+                    println!(
+                        "Script setup: tag offset {}..{}",
+                        script_setup.loc.tag_start, script_setup.loc.tag_end
+                    );
+                    println!(
+                        "Script setup content offset {}..{}",
+                        script_setup.loc.start, script_setup.loc.end
+                    );
+                    println!(
+                        "Script setup first 50 chars: {:?}",
+                        script_setup.content.chars().take(50).collect::<String>()
+                    );
+                }
+                if let Some(ref template) = desc.template {
+                    println!(
+                        "Template: tag offset {}..{}",
+                        template.loc.tag_start, template.loc.tag_end
+                    );
+                    println!(
+                        "Template content offset {}..{}",
+                        template.loc.start, template.loc.end
+                    );
+                    println!(
+                        "Template content first 100 chars: {:?}",
+                        template.content.chars().take(100).collect::<String>()
+                    );
+                }
+            }
+            Err(e) => {
+                panic!("Parse error: {:?}", e);
+            }
+        }
+    }
+}
+
+#[test]
+fn test_croquis_debug() {
+    let source =
+        std::fs::read_to_string("../../playground/src/components/CroquisPlayground.vue").unwrap();
+    println!("Source length: {}", source.len());
+
+    // Find all <template tags manually
+    let mut pos = 0;
+    let mut template_positions = vec![];
+    while let Some(idx) = source[pos..].find("<template") {
+        let actual_pos = pos + idx;
+        let context: String = source.chars().skip(actual_pos).take(50).collect();
+        template_positions.push((actual_pos, context));
+        pos = actual_pos + 1;
+    }
+
+    println!("\nAll <template positions:");
+    for (p, ctx) in &template_positions {
+        println!("  {}: {:?}", p, ctx);
+    }
+
+    let result = parse_sfc(&source, SfcParseOptions::default());
+    match result {
+        Ok(desc) => {
+            if let Some(ref template) = desc.template {
+                println!("\nParsed template tag_start: {}", template.loc.tag_start);
+                let ctx: String = source
+                    .chars()
+                    .skip(template.loc.tag_start)
+                    .take(50)
+                    .collect();
+                println!("Content at tag_start: {:?}", ctx);
+            }
+            for (i, style) in desc.styles.iter().enumerate() {
+                println!(
+                    "Style {}: tag offset {}..{}",
+                    i, style.loc.tag_start, style.loc.tag_end
+                );
+            }
+        }
+        Err(e) => panic!("{:?}", e),
     }
 }

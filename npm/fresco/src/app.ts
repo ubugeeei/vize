@@ -3,12 +3,7 @@
  */
 
 import { type Component, type App as VueApp, ref, type Ref } from "@vue/runtime-core";
-import {
-  createRenderer,
-  treeToRenderNodes,
-  type FrescoElement,
-  type FrescoNode,
-} from "./renderer.js";
+import { createRenderer, treeToRenderNodes, type FrescoElement } from "./renderer.js";
 
 // Event types
 export interface KeyEvent {
@@ -75,7 +70,7 @@ export interface App {
  * Create a Fresco TUI app
  */
 export function createApp(rootComponent: Component, options: AppOptions = {}): App {
-  const { mouse = false, exitOnCtrlC = true, onError, debug = false } = options;
+  const { mouse = false, exitOnCtrlC = true, onError } = options;
 
   let vueApp: VueApp | null = null;
   let rootElement: FrescoElement | null = null;
@@ -130,7 +125,7 @@ export function createApp(rootComponent: Component, options: AppOptions = {}): A
     needsRender = true;
 
     // Start event loop
-    eventLoop();
+    void eventLoop();
   }
 
   async function unmount() {

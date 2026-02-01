@@ -31,7 +31,7 @@ function decrement(){count.value--}
 watch(count,(newVal,oldVal)=>{
 console.log(\`Count changed from \${oldVal} to \${newVal}\`)
 })
-<\/script>
+<` + `/script>
 
 <style scoped>
 .container{padding:20px;background:#f0f0f0}

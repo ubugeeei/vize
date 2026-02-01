@@ -4,7 +4,7 @@
  * Run with: npx tsx examples/demo.ts
  */
 
-import { h, ref, defineComponent, computed } from '@vue/runtime-core';
+import { h, ref, defineComponent } from '@vue/runtime-core';
 import {
   createApp,
   Box,
@@ -27,7 +27,7 @@ const Demo = defineComponent({
     const progress = ref(0);
 
     // Simulate progress
-    const interval = setInterval(() => {
+    setInterval(() => {
       progress.value = (progress.value + 5) % 105;
     }, 200);
 
@@ -146,7 +146,7 @@ const app = createApp(Demo, {
   exitOnCtrlC: true,
 });
 
-app.mount();
-app.waitUntilExit().then(() => {
+void app.mount();
+void app.waitUntilExit().then(() => {
   console.log('Demo ended');
 });

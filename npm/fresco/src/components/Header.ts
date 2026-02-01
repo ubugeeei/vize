@@ -2,7 +2,7 @@
  * Header Component - Application header
  */
 
-import { defineComponent, h, type PropType, type VNode } from "@vue/runtime-core";
+import { defineComponent, h, type VNode } from "@vue/runtime-core";
 
 export interface HeaderProps {
   /** Header title */

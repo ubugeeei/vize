@@ -2,8 +2,8 @@
  * useInput - Input handling composable
  */
 
-import { ref, watch, isRef, unref, type Ref } from "@vue/runtime-core";
-import { lastKeyEvent, type KeyEvent } from "../app.js";
+import { ref, watch, isRef, type Ref } from "@vue/runtime-core";
+import { lastKeyEvent } from "../app.js";
 
 export interface KeyHandler {
   (key: string, modifiers: { ctrl: boolean; alt: boolean; shift: boolean }): void;

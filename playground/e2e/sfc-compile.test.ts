@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { loadWasm, getWasm, type WasmModule } from '../src/wasm/index'
+import { loadWasm, type WasmModule } from '../src/wasm/index'
 
 describe('SFC Compilation', () => {
   let wasm: WasmModule | null = null

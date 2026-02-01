@@ -31,6 +31,6 @@ app.mount().then(() => {
   console.error('Mount error:', err);
 });
 
-app.waitUntilExit().then(() => {
+void app.waitUntilExit().then(() => {
   console.log('Goodbye!');
 });

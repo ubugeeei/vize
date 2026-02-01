@@ -2,7 +2,7 @@
  * Text Component - Text display
  */
 
-import { defineComponent, h, type PropType } from "@vue/runtime-core";
+import { defineComponent, h } from "@vue/runtime-core";
 
 export interface TextProps {
   /** Text content (alternative to slot) */

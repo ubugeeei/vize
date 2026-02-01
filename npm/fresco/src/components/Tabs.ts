@@ -57,14 +57,9 @@ export const Tabs = defineComponent({
     },
   },
   emits: ["update:modelValue", "change"],
-  setup(props, { slots, emit }) {
-    const selectTab = (key: string) => {
-      const tab = props.tabs.find((t) => t.key === key);
-      if (tab && !tab.disabled) {
-        emit("update:modelValue", key);
-        emit("change", key);
-      }
-    };
+  setup(props, { slots, emit: _emit }) {
+    // Note: selectTab is designed for keyboard event handlers
+    // It is currently not wired up but kept for future use
 
     return () => {
       // Tab bar

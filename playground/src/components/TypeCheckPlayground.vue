@@ -247,7 +247,7 @@ const message = ref('Hello')
 function increment() {
   count.value++
 }
-<\/script>
+<` + `/script>
 
 <template>
   <div class="container">
@@ -293,7 +293,7 @@ function reset() {
   localCount.value = 0
   emit('reset')
 }
-<\/script>
+<` + `/script>
 
 <template>
   <div class="container">

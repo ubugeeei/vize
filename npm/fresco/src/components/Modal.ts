@@ -51,7 +51,7 @@ export const Modal = defineComponent({
     bg: String,
   },
   emits: ["close"],
-  setup(props, { slots, emit }) {
+  setup(props, { slots, emit: _emit }) {
     return () => {
       if (!props.visible) {
         return null;

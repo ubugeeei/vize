@@ -338,7 +338,7 @@ export function vize(options: VizeOptions = {}): Plugin {
     },
 
     // Production CSS extraction
-    generateBundle(_, bundle) {
+    generateBundle(_, _bundle) {
       if (!extractCss || collectedCss.size === 0) {
         return;
       }

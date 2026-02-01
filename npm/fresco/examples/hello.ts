@@ -31,10 +31,10 @@ const app = createApp(App, {
   exitOnCtrlC: true,
 });
 
-app.mount().then(() => {
+void app.mount().then(() => {
   console.log('App mounted');
 });
 
-app.waitUntilExit().then(() => {
+void app.waitUntilExit().then(() => {
   console.log('Goodbye!');
 });

@@ -177,10 +177,12 @@ export function treeToRenderNodes(root: FrescoNode): Array<{
       renderNode.wrap = Boolean(node.props.wrap);
     }
     if (node.props.value !== undefined) {
-      renderNode.value = String(node.props.value);
+      const v = node.props.value;
+      renderNode.value = typeof v === "string" || typeof v === "number" ? String(v) : "";
     }
     if (node.props.placeholder !== undefined) {
-      renderNode.placeholder = String(node.props.placeholder);
+      const p = node.props.placeholder;
+      renderNode.placeholder = typeof p === "string" || typeof p === "number" ? String(p) : "";
     }
     if (node.props.focused !== undefined) {
       renderNode.focused = Boolean(node.props.focused);
@@ -192,7 +194,8 @@ export function treeToRenderNodes(root: FrescoNode): Array<{
       renderNode.mask = Boolean(node.props.mask);
     }
     if (node.props.border !== undefined) {
-      renderNode.border = String(node.props.border);
+      const b = node.props.border;
+      renderNode.border = typeof b === "string" ? b : "";
     }
 
     // Extract style - only include defined values
@@ -209,12 +212,30 @@ export function treeToRenderNodes(root: FrescoNode): Array<{
       if (s.alignContent !== undefined) style.alignContent = s.alignContent;
       if (s.flexGrow !== undefined) style.flexGrow = s.flexGrow;
       if (s.flexShrink !== undefined) style.flexShrink = s.flexShrink;
-      if (s.width !== undefined) style.width = String(s.width);
-      if (s.height !== undefined) style.height = String(s.height);
-      if (s.minWidth !== undefined) style.minWidth = String(s.minWidth);
-      if (s.minHeight !== undefined) style.minHeight = String(s.minHeight);
-      if (s.maxWidth !== undefined) style.maxWidth = String(s.maxWidth);
-      if (s.maxHeight !== undefined) style.maxHeight = String(s.maxHeight);
+      if (s.width !== undefined && (typeof s.width === "string" || typeof s.width === "number"))
+        style.width = String(s.width);
+      if (s.height !== undefined && (typeof s.height === "string" || typeof s.height === "number"))
+        style.height = String(s.height);
+      if (
+        s.minWidth !== undefined &&
+        (typeof s.minWidth === "string" || typeof s.minWidth === "number")
+      )
+        style.minWidth = String(s.minWidth);
+      if (
+        s.minHeight !== undefined &&
+        (typeof s.minHeight === "string" || typeof s.minHeight === "number")
+      )
+        style.minHeight = String(s.minHeight);
+      if (
+        s.maxWidth !== undefined &&
+        (typeof s.maxWidth === "string" || typeof s.maxWidth === "number")
+      )
+        style.maxWidth = String(s.maxWidth);
+      if (
+        s.maxHeight !== undefined &&
+        (typeof s.maxHeight === "string" || typeof s.maxHeight === "number")
+      )
+        style.maxHeight = String(s.maxHeight);
       if (s.padding !== undefined) style.padding = s.padding;
       if (s.paddingTop !== undefined) style.paddingTop = s.paddingTop;
       if (s.paddingRight !== undefined) style.paddingRight = s.paddingRight;

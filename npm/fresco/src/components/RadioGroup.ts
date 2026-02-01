@@ -57,7 +57,7 @@ export const RadioGroup = defineComponent({
     },
   },
   emits: ["update:modelValue", "change"],
-  setup(props, { emit }) {
+  setup(props, { emit: _emit }) {
     return () => {
       const children = props.options.map((option, index) => {
         const isSelected = option.value === props.modelValue;

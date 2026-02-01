@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { mount, VueWrapper } from '@vue/test-utils'
 import { h, defineComponent, ref, onMounted, onUnmounted, Suspense } from 'vue'
 import Button from '../src/components/Button.vue'

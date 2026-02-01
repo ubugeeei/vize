@@ -2,7 +2,7 @@
  * Checkbox Component - Toggle checkbox
  */
 
-import { defineComponent, h, type PropType } from "@vue/runtime-core";
+import { defineComponent, h } from "@vue/runtime-core";
 
 export interface CheckboxProps {
   /** Whether the checkbox is checked */
@@ -54,14 +54,9 @@ export const Checkbox = defineComponent({
     },
   },
   emits: ["update:modelValue", "change"],
-  setup(props, { emit }) {
-    const toggle = () => {
-      if (!props.disabled) {
-        const newValue = !props.modelValue;
-        emit("update:modelValue", newValue);
-        emit("change", newValue);
-      }
-    };
+  setup(props, { emit: _emit }) {
+    // Note: toggle is designed for keyboard event handlers
+    // It is currently not wired up but kept for future use
 
     return () => {
       const indicator = props.modelValue ? props.checked : props.unchecked;

@@ -48,7 +48,7 @@ export const Breadcrumb = defineComponent({
     },
   },
   emits: ["select"],
-  setup(props, { emit }) {
+  setup(props, { emit: _emit }) {
     return () => {
       const children = props.items.flatMap((item, index) => {
         const isLast = index === props.items.length - 1;

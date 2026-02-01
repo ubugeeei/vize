@@ -74,7 +74,7 @@ export const Tree = defineComponent({
     },
   },
   emits: ["select", "toggle"],
-  setup(props, { emit }) {
+  setup(props, { emit: _emit }) {
     const renderNode = (
       node: TreeNode,
       depth: number,

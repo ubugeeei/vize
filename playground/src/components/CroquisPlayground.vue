@@ -24,7 +24,7 @@ export default {
   name: 'DemoComponent',
   inheritAttrs: false,
 }
-<\/script>
+<` + `/script>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
@@ -90,7 +90,7 @@ function reset() {
 const items = ref([1, 2, 3, 4, 5])
 const evenItems = computed(() => items.value.filter((item) => item % 2 === 0))
 const mappedItems = computed(() => items.value.map((item) => item * 2))
-<\/script>
+<` + `/script>
 
 <template>
   <div class="container">
@@ -444,7 +444,7 @@ function tokenizeVirLine(line: string): VirToken[] {
     }
 
     // Brackets and braces
-    const bracketMatch = remaining.match(/^[\[\]{}()]/);
+    const bracketMatch = remaining.match(/^[[\]{}()]/);
     if (bracketMatch) {
       tokens.push({ type: "bracket", text: bracketMatch[0] });
       remaining = remaining.slice(bracketMatch[0].length);

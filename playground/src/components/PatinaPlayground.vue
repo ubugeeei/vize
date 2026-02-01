@@ -39,7 +39,7 @@ const products = ref([
 
 const htmlContent = '<b>Hello</b>'
 const handleClick = () => {}
-<\/script>
+<` + `/script>
 
 <template>
   <div class="container">

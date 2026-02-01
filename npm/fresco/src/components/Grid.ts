@@ -2,7 +2,7 @@
  * Grid Component - Grid layout helper
  */
 
-import { defineComponent, h, type PropType, type VNode } from "@vue/runtime-core";
+import { defineComponent, h, type VNode } from "@vue/runtime-core";
 
 export interface GridProps {
   /** Number of columns */

@@ -2,7 +2,7 @@
  * Link Component - Clickable/styled link
  */
 
-import { defineComponent, h, type PropType } from "@vue/runtime-core";
+import { defineComponent, h } from "@vue/runtime-core";
 
 export interface LinkProps {
   /** Link text */
@@ -39,7 +39,7 @@ export const Link = defineComponent({
     },
   },
   emits: ["click"],
-  setup(props, { emit }) {
+  setup(props, { emit: _emit }) {
     return () => {
       const parts = [
         h(

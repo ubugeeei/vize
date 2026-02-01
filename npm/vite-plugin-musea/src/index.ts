@@ -100,7 +100,7 @@ function loadNative(): NativeBinding {
     native = require("@vizejs/native") as NativeBinding;
     return native;
   } catch (e) {
-    throw new Error(`Failed to load @vizejs/native. Make sure it's installed and built:\n${e}`);
+    throw new Error(`Failed to load @vizejs/native. Make sure it's installed and built:\n${String(e)}`);
   }
 }
 
@@ -154,7 +154,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
       });
 
       // Preview module route - serves the JavaScript module for a specific variant
-      devServer.middlewares.use(`${basePath}/preview-module`, async (req, res, next) => {
+      devServer.middlewares.use(`${basePath}/preview-module`, async (req, res, _next) => {
         const url = new URL(req.url || "", `http://localhost`);
         const artPath = url.searchParams.get("art");
         const variantName = url.searchParams.get("variant");
@@ -193,7 +193,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
             res.end(result.code);
             return;
           }
-        } catch (_e) {
+        } catch {
           // Fall through to manual response
         }
 
@@ -204,7 +204,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
       });
 
       // VRT preview route - renders a single variant for screenshot
-      devServer.middlewares.use(`${basePath}/preview`, async (req, res, next) => {
+      devServer.middlewares.use(`${basePath}/preview`, async (req, res, _next) => {
         const url = new URL(req.url || "", `http://localhost`);
         const artPath = url.searchParams.get("art");
         const variantName = url.searchParams.get("variant");
@@ -1436,7 +1436,6 @@ function escapeTemplate(str: string): string {
 }
 
 function generatePreviewHtml(art: ArtFileInfo, variant: ArtVariant, basePath: string): string {
-  const variantComponentName = toPascalCase(variant.name);
   // Create a unique module URL for each variant to avoid caching issues
   const previewModuleUrl = `${basePath}/preview-module?art=${encodeURIComponent(art.path)}&variant=${encodeURIComponent(variant.name)}`;
 

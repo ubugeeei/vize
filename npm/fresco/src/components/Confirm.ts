@@ -2,7 +2,7 @@
  * Confirm Component - Confirmation dialog
  */
 
-import { defineComponent, h, ref, type PropType } from "@vue/runtime-core";
+import { defineComponent, h, ref } from "@vue/runtime-core";
 
 export interface ConfirmProps {
   /** Confirmation message */
@@ -54,21 +54,13 @@ export const Confirm = defineComponent({
     },
   },
   emits: ["confirm", "cancel", "select"],
-  setup(props, { emit }) {
+  setup(props, { emit: _emit }) {
     const isConfirmSelected = ref(props.defaultConfirm);
 
-    const toggle = () => {
-      isConfirmSelected.value = !isConfirmSelected.value;
-    };
-
-    const confirm = () => {
-      if (isConfirmSelected.value) {
-        emit("confirm");
-      } else {
-        emit("cancel");
-      }
-      emit("select", isConfirmSelected.value);
-    };
+    // Note: toggle and confirm are designed for keyboard event handlers
+    // They are currently not wired up but kept for future use
+    // const toggle = () => { isConfirmSelected.value = !isConfirmSelected.value; };
+    // const confirm = () => { ... };
 
     return () => {
       return h(

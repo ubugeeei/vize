@@ -17,7 +17,6 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { MuseaVrtRunner, generateVrtReport, generateVrtJsonReport } from "./vrt.js";
 import type { ArtFileInfo, VrtOptions } from "./types.js";
 

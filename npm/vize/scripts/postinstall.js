@@ -4,7 +4,6 @@ import { createWriteStream, chmodSync, existsSync, mkdirSync, unlinkSync } from 
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { pipeline } from "stream/promises";
-import { createGunzip } from "zlib";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageJson = await import("../package.json", { with: { type: "json" } });
@@ -130,9 +129,9 @@ async function extractTarGz(archivePath, destDir, binaryName) {
   }
 }
 
-async function extractZip(archivePath, destDir, binaryName) {
+async function extractZip(archivePath, destDir, _binaryName) {
   const { execSync } = await import("child_process");
   execSync(`unzip -o "${archivePath}" -d "${destDir}"`, { stdio: "inherit" });
 }
 
-main();
+void main();

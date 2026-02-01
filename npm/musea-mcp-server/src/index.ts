@@ -68,7 +68,7 @@ function loadNative(): NativeBinding {
     native = require("@vizejs/native") as NativeBinding;
     return native;
   } catch (e) {
-    throw new Error(`Failed to load @vizejs/native. Make sure it's installed: ${e}`);
+    throw new Error(`Failed to load @vizejs/native. Make sure it's installed: ${String(e)}`);
   }
 }
 
@@ -206,7 +206,7 @@ export function createMuseaServer(config: {
         ],
       };
     } catch (e) {
-      throw new McpError(ErrorCode.InternalError, `Failed to read art file: ${e}`);
+      throw new McpError(ErrorCode.InternalError, `Failed to read art file: ${String(e)}`);
     }
   });
 

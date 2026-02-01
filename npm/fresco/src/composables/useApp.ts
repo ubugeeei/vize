@@ -30,7 +30,7 @@ export function createAppContext(): UseAppReturn {
   const isRunning = ref(true);
 
   // These would be connected to actual app instance
-  const exit = (code = 0) => {
+  const exit = (_code = 0) => {
     isRunning.value = false;
     // In real implementation, trigger app exit
   };

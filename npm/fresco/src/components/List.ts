@@ -60,7 +60,7 @@ export const List = defineComponent({
     selectedBg: String,
   },
   emits: ["update:modelValue", "select"],
-  setup(props, { emit }) {
+  setup(props, { emit: _emit }) {
     const scrollOffset = ref(0);
     const highlightedIndex = ref(0);
 

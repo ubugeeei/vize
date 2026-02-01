@@ -2,7 +2,7 @@
  * Menu Component - Command menu/palette
  */
 
-import { defineComponent, h, ref, computed, type PropType, type VNode } from "@vue/runtime-core";
+import { defineComponent, h, type PropType, type VNode } from "@vue/runtime-core";
 
 export interface MenuItem {
   key: string;
@@ -63,7 +63,7 @@ export const Menu = defineComponent({
     },
   },
   emits: ["select"],
-  setup(props, { emit }) {
+  setup(props, { emit: _emit }) {
     return () => {
       const children: VNode[] = [];
 

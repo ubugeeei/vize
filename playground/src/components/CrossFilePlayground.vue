@@ -58,7 +58,7 @@ provide('user', { name: 'John', id: 1 })
 function handleUpdate(value: number) {
   console.log('Updated:', value)
 }
-<\/script>
+<` + `/script>
 
 <template>
   <div id="app" class="app-container">
@@ -91,7 +91,7 @@ const width = ref(0)
 onMounted(() => {
   width.value = window.innerWidth
 })
-<\/script>
+<` + `/script>
 
 <template>
   <div :class="['parent', theme]">
@@ -126,7 +126,7 @@ const items = ref([
 function handleClick(item: { id: number; name: string }) {
   emit('change', item.id)
 }
-<\/script>
+<` + `/script>
 
 <template>
   <!-- ISSUE: Multiple root elements without v-bind="$attrs" -->
@@ -175,7 +175,7 @@ const countRef = ref(10)
 const primitiveValue = countRef.value  // ❌ Just a number, not reactive
 
 provide('state', state)
-<\/script>
+<` + `/script>
 
 <template>
   <div>
@@ -210,7 +210,7 @@ const { user } = toRefs(state as any)
 
 // Use computed for derived values
 const displayName = computed(() => state.user.name.toUpperCase())
-<\/script>
+<` + `/script>
 
 <template>
   <div>
@@ -253,7 +253,7 @@ const { username, email } = userStore
 
 // ✓ Actions can be destructured directly (they're just functions)
 // const { updateUser } = userStore
-<\/script>
+<` + `/script>
 
 <template>
   <div>
@@ -302,7 +302,7 @@ const deepCopy = structuredClone(toRaw(user))
 
 // ✓ Pass reactive object directly
 logUser(user)
-<\/script>
+<` + `/script>
 
 <template>
   <div>
@@ -322,7 +322,7 @@ logUser(user)
       "App.vue": `<script setup lang="ts">
 import ComponentWithLeaks from './ComponentWithLeaks.vue'
 import SafeComponent from './SafeComponent.vue'
-<\/script>
+<` + `/script>
 
 <template>
   <div>
@@ -337,7 +337,7 @@ import SafeComponent from './SafeComponent.vue'
       "ComponentWithLeaks.vue": `<script setup lang="ts">
 import { ref, watch, onMounted, computed, provide, inject } from 'vue'
 import { createGlobalState } from './utils/state'
-<\/script>
+<` + `/script>
 
 <script lang="ts">
 // ⚠️ WARNING: Module-level Vue APIs cause issues!
@@ -367,7 +367,7 @@ const doubledCounter = computed(() => globalCounter.value * 2)
 export default {
   name: 'ComponentWithLeaks'
 }
-<\/script>
+<` + `/script>
 
 <template>
   <div class="warning-box">
@@ -410,7 +410,7 @@ onUnmounted(() => {
 function increment() {
   counter.value++
 }
-<\/script>
+<` + `/script>
 
 <template>
   <div class="safe-box">
@@ -488,7 +488,7 @@ provide('state', state)
 function addItem(item: string) {
   state.items.push(item)
 }
-<\/script>
+<` + `/script>
 
 <template>
   <div>
@@ -533,7 +533,7 @@ function setupListener() {
 import { computed, readonly } from 'vue'
 const userName = computed(() => props.state.user.name)
 const readonlyState = readonly(props.state)  // Prevent accidental mutations
-<\/script>
+<` + `/script>
 
 <template>
   <div>
@@ -619,7 +619,7 @@ function setupExternalListener() {
 onUnmounted(() => {
   cleanupFn?.()
 })
-<\/script>
+<` + `/script>
 
 <template>
   <div>
@@ -657,7 +657,7 @@ provide('legacyData', { foo: 'bar' })
 
 // ❌ Provide without consumer
 provide('unusedKey', 'this is never injected')
-<\/script>
+<` + `/script>
 
 <template>
   <div>
@@ -698,7 +698,7 @@ provide('cssVars', computed(() => ({
   '--bg-color': isDark.value ? '#1a1a1a' : '#ffffff',
   '--text-color': isDark.value ? '#ffffff' : '#1a1a1a',
 })))
-<\/script>
+<` + `/script>
 
 <template>
   <div :class="['theme-provider', theme]">
@@ -732,7 +732,7 @@ const legacyData = inject('legacyData') as { foo: string }
 
 // ❌ Destructuring inject loses reactivity!
 const { foo } = inject('legacyData') as { foo: string }
-<\/script>
+<` + `/script>
 
 <template>
   <div class="settings-panel">
@@ -760,7 +760,7 @@ const greeting = computed(() => {
 })
 
 const themeClass = computed(() => theme?.isDark.value ? 'dark-mode' : 'light-mode')
-<\/script>
+<` + `/script>
 
 <template>
   <div :class="['deep-child', themeClass]">
@@ -782,7 +782,7 @@ const themeClass = computed(() => theme?.isDark.value ? 'dark-mode' : 'light-mod
 import BaseButton from './BaseButton.vue'
 import MultiRootComponent from './MultiRootComponent.vue'
 import UseAttrsComponent from './UseAttrsComponent.vue'
-<\/script>
+<` + `/script>
 
 <template>
   <div>
@@ -818,7 +818,7 @@ import UseAttrsComponent from './UseAttrsComponent.vue'
 defineProps<{
   variant?: 'primary' | 'secondary'
 }>()
-<\/script>
+<` + `/script>
 
 <template>
   <!-- ✓ $attrs (class, style, listeners) auto-applied to single root -->
@@ -830,7 +830,7 @@ defineProps<{
       "MultiRootComponent.vue": `<script setup lang="ts">
 // ❌ Multiple root elements - $attrs not auto-applied!
 // Need to explicitly bind $attrs to intended element
-<\/script>
+<` + `/script>
 
 <template>
   <!-- ❌ Which element gets class="passed-class"? Neither! -->
@@ -847,7 +847,7 @@ defineProps<{
 
       "MultiRootFixed.vue": `<script setup lang="ts">
 // ✓ Multiple roots with explicit $attrs binding
-<\/script>
+<` + `/script>
 
 <template>
   <header class="header">
@@ -873,7 +873,7 @@ const customAttr = computed(() => attrs['custom-attr'])
 
 // ❌ useAttrs() called but attrs not bound in template!
 // This means passed attributes are lost
-<\/script>
+<` + `/script>
 
 <template>
   <div>
@@ -893,7 +893,7 @@ const filteredAttrs = computed(() => {
   const { class: _, ...rest } = attrs
   return rest
 })
-<\/script>
+<` + `/script>
 
 <template>
   <!-- ✓ Explicitly bind attrs -->
@@ -909,7 +909,7 @@ const filteredAttrs = computed(() => {
 defineOptions({
   inheritAttrs: false
 })
-<\/script>
+<` + `/script>
 
 <template>
   <div class="wrapper">
@@ -924,7 +924,7 @@ defineOptions({
 defineOptions({
   inheritAttrs: false
 })
-<\/script>
+<` + `/script>
 
 <template>
   <div class="wrapper">
@@ -2182,7 +2182,7 @@ function analyzeSSRBoundary(): CrossFileIssue[] {
   ];
 
   for (const [filename, source] of Object.entries(files.value)) {
-    const scriptMatch = source.match(/<script[^>]*>([^]*?)<\/script>/);
+    const scriptMatch = source.match(new RegExp("<script[^>]*>([^]*?)<" + "/script>"));
     if (!scriptMatch) continue;
 
     const script = scriptMatch[1];
@@ -2264,7 +2264,7 @@ function addFile() {
   const name = prompt("Enter file name (e.g., NewComponent.vue)");
   if (name && !files.value[name]) {
     files.value[name] =
-      `<script setup lang="ts">\n// ${name}\n<\/script>\n\n<template>\n  <div></div>\n</template>`;
+      "<script setup lang=\"ts\">\n// " + name + "\n<" + "/script>\n\n<template>\n  <div></div>\n</template>";
     activeFile.value = name;
   }
 }

@@ -69,7 +69,12 @@ export const Table = defineComponent({
   },
   setup(props) {
     const formatCell = (value: unknown, width?: number | string): string => {
-      const str = String(value ?? "");
+      const str =
+        typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+          ? String(value)
+          : value == null
+            ? ""
+            : JSON.stringify(value);
       if (typeof width === "number" && str.length < width) {
         return str.padEnd(width);
       }

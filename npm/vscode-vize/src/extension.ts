@@ -84,8 +84,8 @@ export async function activate(context: ExtensionContext): Promise<void> {
     await client.start();
     outputChannel.appendLine("Vize language server started successfully");
   } catch (error) {
-    outputChannel.appendLine(`Failed to start language server: ${error}`);
-    window.showErrorMessage(`Vize: Failed to start language server: ${error}`);
+    outputChannel.appendLine(`Failed to start language server: ${String(error)}`);
+    window.showErrorMessage(`Vize: Failed to start language server: ${String(error)}`);
   }
 
   context.subscriptions.push(client);

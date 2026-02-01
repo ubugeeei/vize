@@ -2,7 +2,7 @@
  * Box Component - Container with flexbox layout
  */
 
-import { defineComponent, h, type PropType, type VNode } from "@vue/runtime-core";
+import { defineComponent, h, type PropType } from "@vue/runtime-core";
 
 export interface BoxProps {
   /** Flex direction */

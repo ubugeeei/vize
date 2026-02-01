@@ -19,7 +19,7 @@ const props = defineProps<{
 
 const ART_PRESET = `<script setup lang="ts">
 import Button from './Button.vue'
-<\/script>
+<` + `/script>
 
 <art
   title="Button"
@@ -73,7 +73,7 @@ import Button from './Button.vue'
   --font-size-md: 14px;
   --font-size-lg: 16px;
 }
-<\/style>
+<` + `/style>
 `;
 
 const source = ref(ART_PRESET);
@@ -133,7 +133,7 @@ const designTokens = computed((): DesignToken[] => {
     }
   } else {
     // Fallback: extract style content directly from source
-    const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/g;
+    const styleRegex = new RegExp("<style[^>]*>([\\s\\S]*?)</style>", "g");
     let styleMatch;
     while ((styleMatch = styleRegex.exec(source.value)) !== null) {
       styleContent += styleMatch[1] + "\n";

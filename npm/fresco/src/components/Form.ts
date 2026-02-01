@@ -61,7 +61,7 @@ export const Form = defineComponent({
     return () => {
       const children: VNode[] = [];
 
-      props.fields.forEach((field, index) => {
+      props.fields.forEach((field, _index) => {
         const labelContent = [
           h(
             "text",

@@ -865,7 +865,6 @@ export function generateVrtJsonReport(results: VrtResult[], summary: VrtSummary)
  */
 async function readPng(filepath: string): Promise<PNG> {
   return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
     fs.createReadStream(filepath)
       .pipe(new PNG())
       .on("parsed", function (this: PNG) {
