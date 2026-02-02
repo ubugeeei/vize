@@ -6,6 +6,7 @@ use super::children::generate_children;
 use super::context::CodegenContext;
 use super::element::{generate_vshow_closing, has_vshow_directive};
 use super::expression::generate_expression;
+use super::helpers::escape_js_string;
 use super::node::generate_node;
 
 /// Check if source is a numeric literal (for v-for range)
@@ -279,7 +280,7 @@ fn generate_single_prop(ctx: &mut CodegenContext, prop: &PropNode<'_>) {
             ctx.push(": ");
             if let Some(value) = &attr.value {
                 ctx.push("\"");
-                ctx.push(&value.content);
+                ctx.push(&escape_js_string(&value.content));
                 ctx.push("\"");
             } else {
                 ctx.push("\"\"");

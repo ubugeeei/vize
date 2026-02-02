@@ -4,7 +4,7 @@ use crate::ast::*;
 
 use super::context::CodegenContext;
 use super::expression::{generate_event_handler, generate_expression};
-use super::helpers::{camelize, capitalize_first, is_valid_js_identifier};
+use super::helpers::{camelize, capitalize_first, escape_js_string, is_valid_js_identifier};
 
 /// Check if there's a v-bind without argument (object spread)
 fn has_vbind_object(props: &[PropNode<'_>]) -> bool {
@@ -374,7 +374,7 @@ fn generate_props_object(
                     // Vue's runtime will look up the ref by name from $setup
                     // In inline mode, refs would be accessed directly
                     ctx.push("\"");
-                    ctx.push(&value.content);
+                    ctx.push(&escape_js_string(&value.content));
                     ctx.push("\"");
                 } else {
                     // Boolean attributes should be empty string, not true

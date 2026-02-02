@@ -602,4 +602,67 @@ mod tests {
             result.code
         );
     }
+
+    #[test]
+    fn test_codegen_escape_newline_in_attribute() {
+        // Attribute values containing newlines should be properly escaped
+        let result = compile!(r#"<div style="
+            color: red;
+            background: blue;
+        "></div>"#);
+        // Should have properly escaped newlines
+        assert!(
+            result.code.contains("\\n"),
+            "Should escape newlines in attribute values. Got:\n{}",
+            result.code
+        );
+        // Should NOT have raw newlines inside string literals
+        assert!(
+            !result.code.contains("style: \"\n"),
+            "Should not have raw newlines in string. Got:\n{}",
+            result.code
+        );
+    }
+
+    #[test]
+    fn test_codegen_escape_special_chars_in_attribute() {
+        // Attribute values should escape backslashes and quotes
+        let result = compile!(r#"<div data-value="line1\nline2"></div>"#);
+        // Backslash should be escaped
+        assert!(
+            result.code.contains(r#"\\n"#),
+            "Should escape backslashes in attribute values. Got:\n{}",
+            result.code
+        );
+    }
+
+    #[test]
+    fn test_codegen_escape_multiline_style_attribute() {
+        // Complex multiline style attribute (real-world case from Discord issue)
+        let result = compile!(r#"<div style="
+            display: flex;
+            flex-direction: column;
+        "></div>"#);
+        // Should produce valid JavaScript
+        assert!(
+            result.code.contains("style:"),
+            "Should have style property. Got:\n{}",
+            result.code
+        );
+        // All newlines should be escaped
+        let style_start = result.code.find("style:").unwrap_or(0);
+        let code_after_style = &result.code[style_start..];
+        // Find the string value - should not contain raw newlines
+        if let Some(quote_pos) = code_after_style.find('"') {
+            let remaining = &code_after_style[quote_pos + 1..];
+            if let Some(end_quote) = remaining.find('"') {
+                let style_value = &remaining[..end_quote];
+                assert!(
+                    !style_value.contains('\n'),
+                    "Style value should not contain raw newlines. Got:\n{}",
+                    style_value
+                );
+            }
+        }
+    }
 }

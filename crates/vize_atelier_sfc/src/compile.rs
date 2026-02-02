@@ -95,8 +95,23 @@ pub fn compile_sfc(
     if has_script && !has_script_setup {
         let script = descriptor.script.as_ref().unwrap();
 
+        // Check if source script is TypeScript
+        let source_is_ts = script
+            .lang
+            .as_ref()
+            .is_some_and(|l| l == "ts" || l == "tsx");
+
         // Rewrite `export default` to `const _sfc_main = ...`
-        let (rewritten_script, _has_default) = rewrite_default(&script.content, "_sfc_main", is_ts);
+        // Parse as TypeScript if source is TypeScript
+        let (rewritten_script, _has_default) =
+            rewrite_default(&script.content, "_sfc_main", source_is_ts);
+
+        // Transpile TypeScript to JavaScript if needed
+        let final_script = if source_is_ts && !is_ts {
+            crate::compile_script::typescript::transform_typescript_to_js(&rewritten_script)
+        } else {
+            rewritten_script
+        };
 
         // Compile template if present
         if has_template {
@@ -126,7 +141,7 @@ pub fn compile_sfc(
                     if !template_imports.is_empty() {
                         code.push('\n');
                     }
-                    code.push_str(&rewritten_script);
+                    code.push_str(&final_script);
                     code.push('\n');
 
                     // Add hoisted declarations
@@ -152,7 +167,7 @@ pub fn compile_sfc(
             }
         } else {
             // No template - just output rewritten script and export
-            code.push_str(&rewritten_script);
+            code.push_str(&final_script);
             code.push_str("\nexport default _sfc_main\n");
         }
 
@@ -1027,6 +1042,132 @@ const title = defineModel('title')
         assert!(
             result.code.contains("update:title"),
             "Should have update:title emit. Got:\n{}",
+            result.code
+        );
+    }
+
+    #[test]
+    fn test_non_script_setup_typescript_transpiled() {
+        // Non-script-setup SFC with lang="ts" should be transpiled to JavaScript
+        let source = r#"<script lang="ts">
+interface Props {
+    name: string;
+    count?: number;
+}
+
+export default {
+    name: 'MyComponent',
+    props: {
+        name: String,
+        count: Number
+    } as Props,
+    setup(props: Props) {
+        const message: string = `Hello, ${props.name}!`;
+        return { message };
+    }
+}
+</script>
+
+<template>
+    <div>{{ message }}</div>
+</template>"#;
+
+        let descriptor =
+            parse_sfc(source, SfcParseOptions::default()).expect("Failed to parse SFC");
+
+        // Compile with is_ts = false to get JavaScript output
+        let opts = SfcCompileOptions {
+            script: ScriptCompileOptions {
+                is_ts: false,
+                ..Default::default()
+            },
+            template: TemplateCompileOptions {
+                is_ts: false,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let result = compile_sfc(&descriptor, opts).expect("Failed to compile SFC");
+
+        eprintln!("=== Non-script-setup TS output ===\n{}", result.code);
+
+        // Should NOT contain TypeScript interface
+        assert!(
+            !result.code.contains("interface Props"),
+            "Should strip interface. Got:\n{}",
+            result.code
+        );
+
+        // Should NOT contain type annotations
+        assert!(
+            !result.code.contains(": string"),
+            "Should strip type annotations. Got:\n{}",
+            result.code
+        );
+        assert!(
+            !result.code.contains(": Props"),
+            "Should strip Props type annotation. Got:\n{}",
+            result.code
+        );
+        assert!(
+            !result.code.contains("as Props"),
+            "Should strip 'as Props' assertion. Got:\n{}",
+            result.code
+        );
+
+        // Should still contain the component logic
+        assert!(
+            result.code.contains("name: 'MyComponent'") || result.code.contains("name: \"MyComponent\""),
+            "Should have component name. Got:\n{}",
+            result.code
+        );
+        assert!(
+            result.code.contains("setup(props)") || result.code.contains("setup: function"),
+            "Should have setup function without type annotation. Got:\n{}",
+            result.code
+        );
+    }
+
+    #[test]
+    fn test_non_script_setup_typescript_preserved_when_is_ts() {
+        // Non-script-setup SFC with lang="ts" and is_ts=true should preserve TypeScript
+        let source = r#"<script lang="ts">
+interface Props {
+    name: string;
+}
+
+export default {
+    props: {} as Props
+}
+</script>
+
+<template>
+    <div></div>
+</template>"#;
+
+        let descriptor =
+            parse_sfc(source, SfcParseOptions::default()).expect("Failed to parse SFC");
+
+        // Compile with is_ts = true to preserve TypeScript
+        let opts = SfcCompileOptions {
+            script: ScriptCompileOptions {
+                is_ts: true,
+                ..Default::default()
+            },
+            template: TemplateCompileOptions {
+                is_ts: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let result = compile_sfc(&descriptor, opts).expect("Failed to compile SFC");
+
+        eprintln!("=== Non-script-setup TS preserved output ===\n{}", result.code);
+
+        // Should still contain TypeScript syntax when is_ts = true
+        assert!(
+            result.code.contains("interface Props") || result.code.contains("as Props"),
+            "Should preserve TypeScript when is_ts = true. Got:\n{}",
             result.code
         );
     }
