@@ -1,17 +1,10 @@
 import { defineConfig } from 'vite';
-import vue from '@vitejs/plugin-vue';
+import { vize } from '@vizejs/vite-plugin';
 import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [
-    vue({
-      template: {
-        compilerOptions: {
-          // Treat fresco elements as custom elements
-          isCustomElement: (tag) => ['box', 'text', 'input'].includes(tag),
-        },
-      },
-    }),
+    vize(),
   ],
   resolve: {
     alias: {

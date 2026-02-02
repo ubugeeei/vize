@@ -111,18 +111,11 @@ export default defineComponent({
 
 ```ts
 // vite.config.ts
-import vue from '@vitejs/plugin-vue';
+import { vize } from '@vizejs/vite-plugin';
 
 export default defineConfig({
   plugins: [
-    vue({
-      template: {
-        compilerOptions: {
-          // box, text, input を Fresco 要素として扱う
-          isCustomElement: (tag) => ['box', 'text', 'input'].includes(tag),
-        },
-      },
-    }),
+    vize(),
   ],
   resolve: {
     alias: {

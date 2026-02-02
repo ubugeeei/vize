@@ -1,10 +1,10 @@
 import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
+import { vize } from '@vizejs/vite-plugin'
 import { musea } from '@vizejs/vite-plugin-musea'
 
 export default defineConfig({
   plugins: [
-    vue(),
+    vize(),
     musea({
       include: ['src/**/*.art.vue'],
       basePath: '/__musea__',

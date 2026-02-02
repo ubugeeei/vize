@@ -12,7 +12,7 @@
     "@vue/runtime-core": "^3.5.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.0.0",
+    "@vizejs/vite-plugin": "workspace:*",
     "vite": "^5.0.0",
     "vite-node": "^2.0.0",
     "vue": "^3.5.0"
