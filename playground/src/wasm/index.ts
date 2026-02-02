@@ -1343,8 +1343,6 @@ function createMockModule(): WasmModule {
         const setupStart = source.indexOf(scriptSetupMatch[0]);
         const setupEnd = setupStart + scriptSetupMatch[0].length;
         const setupContent = scriptSetupMatch[1];
-        // Use stripped content for detection to avoid matching commented code
-        const strippedSetupContent = stripComments(setupContent);
         // contentStart is where the actual script content begins (after the opening tag)
         const contentStart = setupStart + scriptSetupMatch[0].indexOf('>') + 1;
 
@@ -3069,7 +3067,7 @@ function createMockModule(): WasmModule {
       }
 
       // Track braces for indentation
-      const openBraces = (trimmed.match(/[{([\[]/g) || []).length;
+      const openBraces = (trimmed.match(/[{([]/g) || []).length;
       const closeBraces = (trimmed.match(/[})\]]/g) || []).length;
 
       // Decrease indent for closing braces at start
@@ -3732,8 +3730,6 @@ function createMockModule(): WasmModule {
         const setupStart = source.indexOf(scriptSetupMatch[0]);
         const setupEnd = setupStart + scriptSetupMatch[0].length;
         const setupContent = scriptSetupMatch[1];
-        // Use stripped content for detection to avoid matching commented code
-        const strippedSetupContent = stripComments(setupContent);
         // Calculate the actual content start (after the opening tag)
         const contentStart = setupStart + scriptSetupMatch[0].indexOf('>') + 1;
 
