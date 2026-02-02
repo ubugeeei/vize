@@ -214,6 +214,15 @@
   overflow: hidden;
 }
 
+/* Full-width playgrounds */
+.cross-file-playground,
+.patina-playground,
+.croquis-playground,
+.typecheck-playground,
+.musea-playground {
+  grid-column: 1 / -1;
+}
+
 .panel {
   display: flex;
   flex-direction: column;

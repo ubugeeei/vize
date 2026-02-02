@@ -529,6 +529,9 @@ fn parse_block_fast<'a>(
             // Only treat as string if in a context where strings are expected
             // (after =, (, [, ,, :, {, or at start of expression)
             // This avoids treating quotes inside regex literals as strings
+            //
+            // For backticks specifically, also allow after alphanumeric characters
+            // to handle tagged templates (e.g., html`...`) and keywords (e.g., return `...`)
             if b == b'\'' || b == b'"' || b == b'`' {
                 let is_string_context = matches!(
                     prev_significant_char,
@@ -550,7 +553,10 @@ fn parse_block_fast<'a>(
                         | b'<'
                         | b'%'
                         | b'^'
-                );
+                ) || (b == b'`'
+                    && (prev_significant_char.is_ascii_alphanumeric()
+                        || prev_significant_char == b'_'
+                        || prev_significant_char == b')'));
 
                 if is_string_context {
                     let quote = b;
@@ -1084,5 +1090,68 @@ const z = x / y
         let script = result.script_setup.unwrap();
         assert!(script.content.contains("const x = 10 / 2"));
         assert!(script.content.contains(r#"const y = "test""#));
+    }
+
+    #[test]
+    fn test_script_with_tagged_template_literal() {
+        // Test that tagged template literals (e.g., html`...`) are handled correctly
+        // The backtick after an identifier should still be treated as a string start
+        let source = r#"<script setup>
+const tag = html`<span style="color: red">Hello</span>`
+const result = css`
+  .container {
+    color: blue;
+  }
+`
+const x = 1
+</script>"#;
+        let result = parse_sfc(source, Default::default()).unwrap();
+
+        assert!(result.script_setup.is_some());
+        let script = result.script_setup.unwrap();
+        assert!(script.content.contains("html`<span"));
+        assert!(script.content.contains("css`"));
+        assert!(script.content.contains("const x = 1"));
+    }
+
+    #[test]
+    fn test_script_with_keyword_template_literal() {
+        // Test that template literals after keywords (return, throw) are handled correctly
+        // This pattern is common: return `<span>${x}</span>`
+        let source = r#"<script setup>
+function render() {
+  const x = 'test'
+  return `<span>${x}</span>`
+}
+
+function throwError() {
+  throw `Error: </script>`
+}
+const y = 2
+</script>"#;
+        let result = parse_sfc(source, Default::default()).unwrap();
+
+        assert!(result.script_setup.is_some());
+        let script = result.script_setup.unwrap();
+        assert!(script.content.contains("return `<span>"));
+        assert!(script.content.contains("throw `Error: </script>`"));
+        assert!(script.content.contains("const y = 2"));
+    }
+
+    #[test]
+    fn test_script_with_method_call_template_literal() {
+        // Test that template literals after method calls (e.g., foo()`...`) are handled
+        let source = r#"<script setup>
+const result = getTemplate()`<div>${content}</div>`
+const arr = items.map((x) => `<li>${x}</li>`)
+const z = 3
+</script>"#;
+        let result = parse_sfc(source, Default::default()).unwrap();
+
+        assert!(result.script_setup.is_some());
+        let script = result.script_setup.unwrap();
+        assert!(script.content.contains(r#"getTemplate()`<div>"#));
+        assert!(script.content.contains(r#"`<li>${x}</li>`"#));
+        assert!(script.content.contains("const z = 3"));
     }
 }

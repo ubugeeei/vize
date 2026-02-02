@@ -18,6 +18,7 @@ import {
   mdiInformation,
   mdiCheck,
   mdiLightbulbOn,
+  mdiAlert,
 } from "@mdi/js";
 import { PRESETS, type Preset } from "./presets/crossfile";
 
@@ -2147,6 +2148,7 @@ onUnmounted(() => {
 .editor-content {
   flex: 1;
   min-height: 0;
+  position: relative;
 }
 
 /* === Diagnostics Pane === */
