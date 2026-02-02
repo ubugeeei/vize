@@ -1353,7 +1353,10 @@ function addFile() {
   const name = prompt("Enter file name (e.g., NewComponent.vue)");
   if (name && !files.value[name]) {
     files.value[name] =
-      "<script setup lang=\"ts\">\n// " + name + "\n<" + "/script>\n\n<template>\n  <div></div>\n</template>";
+      '<script setup lang="ts">\n// ' +
+      name +
+      "\n<" +
+      "/script>\n\n<template>\n  <div></div>\n</template>";
     activeFile.value = name;
   }
 }
