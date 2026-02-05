@@ -64,7 +64,7 @@ pub fn generate_v_memo_wrapper(deps: &str) -> String {
     out.push_str("_withMemo([");
     out.push_str(deps);
     out.push_str("], () => ");
-    out.into()
+    out
 }
 
 /// Generate memo check code
@@ -75,7 +75,7 @@ pub fn generate_memo_check(deps: &str, cache_index: usize) -> String {
     out.push_str(", [");
     out.push_str(deps);
     out.push_str("])");
-    out.into()
+    out
 }
 
 #[cfg(test)]

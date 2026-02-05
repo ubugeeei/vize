@@ -104,7 +104,7 @@ pub fn create_on_name(event: &str) -> String {
     let mut result = String::with_capacity(2 + cap.len());
     result.push_str("on");
     result.push_str(&cap);
-    result.into()
+    result
 }
 
 #[cfg(test)]

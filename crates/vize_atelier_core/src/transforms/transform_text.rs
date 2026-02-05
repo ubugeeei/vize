@@ -148,14 +148,14 @@ impl TextPart {
                 out.push('"');
                 out.push_str(&escaped);
                 out.push('"');
-                out.into()
+                out
             }
             TextPart::Dynamic(s) => {
                 let mut out = String::with_capacity(s.len() + 18);
                 out.push_str("_toDisplayString(");
                 out.push_str(s);
                 out.push(')');
-                out.into()
+                out
             }
         }
     }

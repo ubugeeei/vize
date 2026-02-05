@@ -93,7 +93,7 @@ pub fn build_props<'a>(
                                 let mut name = String::with_capacity(2 + cap.len());
                                 name.push_str("on");
                                 name.push_str(&cap);
-                                dynamic_prop_names.push(name.into());
+                                dynamic_prop_names.push(name);
                             }
                         }
                     }
@@ -152,7 +152,6 @@ pub fn build_element_codegen<'a>(
                 name.push('"');
                 name
             }
-            .into()
         }
         ElementType::Component => {
             ctx.helper(RuntimeHelper::CreateVNode);
@@ -163,7 +162,6 @@ pub fn build_element_codegen<'a>(
                 name.push_str(&el.tag);
                 name
             }
-            .into()
         }
         _ => return None,
     };
