@@ -1,5 +1,6 @@
 pub mod build;
 pub mod check;
+#[cfg(unix)]
 pub mod check_server;
 pub mod fmt;
 pub mod ide;

@@ -61,7 +61,7 @@ pub mod tsgo_bridge;
 #[cfg(feature = "native")]
 pub mod lsp_client;
 
-#[cfg(feature = "native")]
+#[cfg(all(feature = "native", unix))]
 pub mod tsgo_server;
 
 #[cfg(feature = "native")]
@@ -113,7 +113,7 @@ pub use typecheck_service::{
     SfcTypeCheckResult as TsgoTypeCheckResult, TypeCheckService, TypeCheckServiceOptions,
 };
 
-#[cfg(feature = "native")]
+#[cfg(all(feature = "native", unix))]
 pub use tsgo_server::{
     CheckParams, CheckResult as TsgoServerCheckResult, Diagnostic as TsgoServerDiagnostic,
     JsonRpcError, JsonRpcRequest, JsonRpcResponse, ServerConfig, TsgoServer,

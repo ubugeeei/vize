@@ -156,6 +156,7 @@ jobs:
     name: Release @vizejs/native to npm
     runs-on: ubuntu-latest
     needs: build-native
+    environment: npm
     permissions:
       contents: read
       id-token: write
@@ -192,6 +193,9 @@ jobs:
       - name: List packages
         run: ls -la npm/vize-native/npm/
 
+      - name: Install npm with OIDC support
+        run: npm install -g npm@latest
+
       - name: Publish
         working-directory: npm/vize-native
         run: pnpm publish --provenance --access public --no-git-checks
@@ -200,6 +204,7 @@ jobs:
   release-npm-wasm:
     name: Release @vizejs/wasm to npm
     runs-on: ubuntu-latest
+    environment: npm
     permissions:
       contents: read
       id-token: write
@@ -233,6 +238,9 @@ jobs:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
 
+      - name: Install npm with OIDC support
+        run: npm install -g npm@latest
+
       - name: Publish @vizejs/wasm
         working-directory: npm/vize-wasm
         run: pnpm publish --provenance --access public --no-git-checks
@@ -242,6 +250,7 @@ jobs:
     name: Release @vizejs/vite-plugin to npm
     runs-on: ubuntu-latest
     needs: release-npm-native
+    environment: npm
     permissions:
       contents: read
       id-token: write
@@ -263,6 +272,9 @@ jobs:
 
       - name: Build vite-plugin
         run: pnpm -C npm/vite-plugin-vize build
+
+      - name: Install npm with OIDC support
+        run: npm install -g npm@latest
 
       - name: Publish @vizejs/vite-plugin
         working-directory: npm/vite-plugin-vize
@@ -292,43 +304,43 @@ jobs:
         run: |
           # Publish in dependency order with delays for index updates
           echo "Publishing vize_carton..."
-          cargo publish -p vize_carton && sleep 30
+          cargo publish -p vize_carton && sleep 60
 
           echo "Publishing vize_relief..."
-          cargo publish -p vize_relief && sleep 30
+          cargo publish -p vize_relief && sleep 60
 
           echo "Publishing vize_armature..."
-          cargo publish -p vize_armature && sleep 30
+          cargo publish -p vize_armature && sleep 60
 
           echo "Publishing vize_atelier_core..."
-          cargo publish -p vize_atelier_core && sleep 30
+          cargo publish -p vize_atelier_core && sleep 60
 
           echo "Publishing vize_atelier_dom..."
-          cargo publish -p vize_atelier_dom && sleep 30
+          cargo publish -p vize_atelier_dom && sleep 60
 
           echo "Publishing vize_atelier_vapor..."
-          cargo publish -p vize_atelier_vapor && sleep 30
+          cargo publish -p vize_atelier_vapor && sleep 60
 
           echo "Publishing vize_atelier_sfc..."
-          cargo publish -p vize_atelier_sfc && sleep 30
+          cargo publish -p vize_atelier_sfc && sleep 60
 
           echo "Publishing vize_glyph..."
-          cargo publish -p vize_glyph && sleep 30
+          cargo publish -p vize_glyph && sleep 60
 
           echo "Publishing vize_patina..."
-          cargo publish -p vize_patina && sleep 30
+          cargo publish -p vize_patina && sleep 60
 
           echo "Publishing vize_canon..."
-          cargo publish -p vize_canon && sleep 30
+          cargo publish -p vize_canon && sleep 60
 
           echo "Publishing vize_musea..."
-          cargo publish -p vize_musea && sleep 30
+          cargo publish -p vize_musea && sleep 60
 
           echo "Publishing vize_maestro..."
-          cargo publish -p vize_maestro && sleep 30
+          cargo publish -p vize_maestro && sleep 60
 
           echo "Publishing vize_vitrine..."
-          cargo publish -p vize_vitrine && sleep 30
+          cargo publish -p vize_vitrine && sleep 60
 
           echo "Publishing vize (CLI)..."
           cargo publish -p vize
@@ -366,6 +378,7 @@ jobs:
     name: Release vize CLI to npm
     runs-on: ubuntu-latest
     needs: create-github-release
+    environment: npm
     permissions:
       contents: read
       id-token: write
@@ -380,6 +393,9 @@ jobs:
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
+
+      - name: Install npm with OIDC support
+        run: npm install -g npm@latest
 
       - name: Publish vize CLI package
         working-directory: npm/vize

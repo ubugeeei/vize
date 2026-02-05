@@ -42,7 +42,8 @@ enum Commands {
     /// Type check Vue SFC files
     Check(commands::check::CheckArgs),
 
-    /// Start type check JSON-RPC server
+    /// Start type check JSON-RPC server (Unix only)
+    #[cfg(unix)]
     CheckServer(commands::check_server::CheckServerArgs),
 
     /// Start component gallery server
@@ -64,6 +65,7 @@ fn main() {
         Some(Commands::Fmt(args)) => commands::fmt::run(args),
         Some(Commands::Lint(args)) => commands::lint::run(args),
         Some(Commands::Check(args)) => commands::check::run(args),
+        #[cfg(unix)]
         Some(Commands::CheckServer(args)) => commands::check_server::run(args),
         Some(Commands::Musea(args)) => commands::musea::run(args),
         Some(Commands::Lsp(args)) => commands::lsp::run(args),
