@@ -21,7 +21,7 @@ const __sfc__ = /*@__PURE__*/_defineComponent({
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
   return (_openBlock(), _createBlock($setup.MyList, null, {
-    default: _withCtx(({ item }) => [
+    "item-header": _withCtx(({ item }) => [
       _createElementVNode("div", null, _toDisplayString(_ctx.item.title), 1 /* TEXT */)
     ]),
     _: 1 /* STABLE */

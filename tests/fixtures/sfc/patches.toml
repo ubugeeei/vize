@@ -164,8 +164,10 @@ import MyList from './MyList.vue'
 </script>
 
 <template>
-  <MyList v-slot:item-header=\"{ item }\">
-    <div>{{ item.title }}</div>
+  <MyList>
+    <template #item-header=\"{ item }\">
+      <div>{{ item.title }}</div>
+    </template>
   </MyList>
 </template>
 """
