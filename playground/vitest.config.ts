@@ -7,6 +7,9 @@ export default defineConfig({
   resolve: {
     dedupe: ["vue"],
   },
+  optimizeDeps: {
+    include: ["vue", "@vue/test-utils"],
+  },
   test: {
     browser: {
       enabled: true,

@@ -116,13 +116,30 @@ export function vize(options: VizeOptions = {}): Plugin {
 
     config() {
       // Exclude virtual modules and .vue files from dependency optimization
-      // Vize uses virtual modules with \0 prefix that shouldn't be pre-bundled
+      // Vize resolves .vue files to virtual modules with \0 prefix,
+      // which causes esbuild (Vite 6) / rolldown (Vite 8) dep scanning to fail
+      // because they try to read the \0-prefixed path as a real file.
       return {
         optimizeDeps: {
+          // Ensure vue is always pre-optimized so dep scan failures
+          // for .vue virtual modules don't cause mid-serve reloads
+          include: ["vue"],
           exclude: ["virtual:vize-styles"],
-          // Prevent rolldown from trying to scan .vue files
-          // which would cause issues with our virtual module prefix
-          // Note: Vite 8 uses rolldownOptions instead of esbuildOptions
+          // Vite 6: prevent esbuild dep scanner from processing .vue files
+          esbuildOptions: {
+            plugins: [
+              {
+                name: "vize-externalize-vue",
+                setup(build) {
+                  build.onResolve({ filter: /\.vue$/ }, (args) => ({
+                    path: args.path,
+                    external: true,
+                  }));
+                },
+              },
+            ],
+          },
+          // Vite 8: prevent rolldown from processing .vue files
           rolldownOptions: {
             external: [/\.vue$/],
           },
