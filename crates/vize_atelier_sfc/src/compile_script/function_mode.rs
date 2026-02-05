@@ -309,32 +309,31 @@ pub fn compile_script_setup(
         // Detect TypeScript type alias start
         if outside_template_literal
             && (trimmed.starts_with("type ") || trimmed.starts_with("export type "))
+            && is_typescript_type_alias(trimmed)
         {
-            if is_typescript_type_alias(trimmed) {
-                // Check if it's a single-line type
-                let has_equals = trimmed.contains('=');
-                if has_equals {
-                    ts_type_depth = trimmed.matches('{').count() as i32
-                        - trimmed.matches('}').count() as i32
-                        + trimmed.matches('<').count() as i32
-                        - trimmed.matches('>').count() as i32
-                        + trimmed.matches('(').count() as i32
-                        - trimmed.matches(')').count() as i32;
-                    if ts_type_depth <= 0
-                        && (trimmed.ends_with(';')
-                            || (!trimmed.ends_with('|')
-                                && !trimmed.ends_with('&')
-                                && !trimmed.ends_with(',')
-                                && !trimmed.ends_with('{')
-                                && !trimmed.ends_with('=')))
-                    {
-                        // Single line type, just skip
-                        continue;
-                    }
-                    in_ts_type = true;
+            // Check if it's a single-line type
+            let has_equals = trimmed.contains('=');
+            if has_equals {
+                ts_type_depth = trimmed.matches('{').count() as i32
+                    - trimmed.matches('}').count() as i32
+                    + trimmed.matches('<').count() as i32
+                    - trimmed.matches('>').count() as i32
+                    + trimmed.matches('(').count() as i32
+                    - trimmed.matches(')').count() as i32;
+                if ts_type_depth <= 0
+                    && (trimmed.ends_with(';')
+                        || (!trimmed.ends_with('|')
+                            && !trimmed.ends_with('&')
+                            && !trimmed.ends_with(',')
+                            && !trimmed.ends_with('{')
+                            && !trimmed.ends_with('=')))
+                {
+                    // Single line type, just skip
+                    continue;
                 }
-                continue;
+                in_ts_type = true;
             }
+            continue;
         }
 
         if !trimmed.is_empty() {
@@ -880,10 +879,10 @@ fn is_typescript_type_alias(line: &str) -> bool {
 
     let rest = trimmed[prefix.len()..].trim_start();
     let mut chars = rest.chars();
-    match chars.next() {
-        Some(c) if c.is_ascii_alphabetic() || c == '_' || c == '$' => true,
-        _ => false,
-    }
+    matches!(
+        chars.next(),
+        Some(c) if c.is_ascii_alphabetic() || c == '_' || c == '$'
+    )
 }
 
 /// Detect top-level await in setup code (ignores awaits inside nested functions).
@@ -1100,10 +1099,8 @@ fn dedupe_imports(imports: &[String]) -> Vec<String> {
             }
         }
 
-        if !handled {
-            if seen_specifiers.insert(trimmed.to_string()) {
-                result.push(trimmed.to_string() + "\n");
-            }
+        if !handled && seen_specifiers.insert(trimmed.to_string()) {
+            result.push(trimmed.to_string() + "\n");
         }
     }
 
