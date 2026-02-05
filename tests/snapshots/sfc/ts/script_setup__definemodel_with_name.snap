@@ -25,7 +25,7 @@ const __sfc__ = /*@__PURE__*/ _defineComponent({
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
   return _withDirectives((_openBlock(), _createElementBlock("input", {
-    "onUpdate:modelValue": $event => ((_unref($setup.title)) = $event)
+    "onUpdate:modelValue": $event => (($setup.title.value) = $event)
   }, null, 8 /* PROPS */, ["onUpdate:modelValue"])), [
     [_vModelText, _unref($setup.title)]
   ])

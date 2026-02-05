@@ -5,11 +5,15 @@ use crate::options::BindingType;
 use vize_croquis::builtins::is_global_allowed;
 
 use super::context::CodegenContext;
+use super::helpers::escape_js_string;
 
 /// Prefix identifiers in expression with appropriate prefix based on binding metadata
 /// This is a context-aware version that uses $setup. for setup bindings in function mode
 fn prefix_identifiers_with_context(content: &str, ctx: &CodegenContext) -> String {
     use oxc_allocator::Allocator as OxcAllocator;
+    use oxc_ast::visit::walk::{
+        walk_assignment_expression, walk_object_property, walk_update_expression,
+    };
     use oxc_ast::visit::Visit;
     use oxc_parser::Parser;
     use oxc_span::SourceType;
@@ -28,11 +32,13 @@ fn prefix_identifiers_with_context(content: &str, ctx: &CodegenContext) -> Strin
             // Collect identifiers and their positions
             let mut rewrites: Vec<(usize, usize, String)> = Vec::new();
             let mut local_vars: FxHashSet<String> = FxHashSet::default();
+            let mut assignment_targets: FxHashSet<usize> = FxHashSet::default();
 
             // Visitor to collect identifiers
             struct IdentifierVisitor<'a, 'b> {
                 rewrites: &'a mut Vec<(usize, usize, String)>,
                 local_vars: &'a mut FxHashSet<String>,
+                assignment_targets: &'a mut FxHashSet<usize>,
                 ctx: &'b CodegenContext,
                 offset: u32,
             }
@@ -59,10 +65,16 @@ fn prefix_identifiers_with_context(content: &str, ctx: &CodegenContext) -> Strin
                         return;
                     }
 
+                    let is_assignment_target = self
+                        .assignment_targets
+                        .contains(&(ident.span.start as usize));
+
                     // Determine prefix based on binding metadata
+                    let mut binding_type: Option<BindingType> = None;
                     let prefix = if let Some(ref metadata) = self.ctx.options.binding_metadata {
-                        if let Some(binding_type) = metadata.bindings.get(name) {
-                            match binding_type {
+                        if let Some(binding) = metadata.bindings.get(name) {
+                            binding_type = Some(*binding);
+                            match binding {
                                 BindingType::Props | BindingType::PropsAliased => "$props.",
                                 _ => {
                                     // In inline mode, no prefix
@@ -81,12 +93,92 @@ fn prefix_identifiers_with_context(content: &str, ctx: &CodegenContext) -> Strin
                         "_ctx."
                     };
 
+                    if is_assignment_target {
+                        let needs_value = matches!(
+                            binding_type,
+                            Some(BindingType::SetupLet | BindingType::SetupMaybeRef)
+                        );
+                        let replacement = if needs_value {
+                            format!("{}{}.value", prefix, name)
+                        } else if !prefix.is_empty() {
+                            format!("{}{}", prefix, name)
+                        } else {
+                            name.to_string()
+                        };
+                        if replacement != name {
+                            let start = (ident.span.start - self.offset) as usize;
+                            let end = (ident.span.end - self.offset) as usize;
+                            self.rewrites.push((start, end, replacement));
+                        }
+                        return;
+                    }
+
                     if !prefix.is_empty() {
                         let start = (ident.span.start - self.offset) as usize;
                         let end = (ident.span.end - self.offset) as usize;
                         self.rewrites
                             .push((start, end, format!("{}{}", prefix, name)));
                     }
+                }
+
+                fn visit_assignment_expression(
+                    &mut self,
+                    expr: &oxc_ast::ast::AssignmentExpression<'_>,
+                ) {
+                    self.collect_assignment_targets(&expr.left);
+                    walk_assignment_expression(self, expr);
+                }
+
+                fn visit_update_expression(&mut self, expr: &oxc_ast::ast::UpdateExpression<'_>) {
+                    self.collect_simple_assignment_targets(&expr.argument);
+                    walk_update_expression(self, expr);
+                }
+
+                fn visit_object_property(&mut self, prop: &oxc_ast::ast::ObjectProperty<'_>) {
+                    if prop.shorthand {
+                        if let oxc_ast::ast::PropertyKey::StaticIdentifier(ident) = &prop.key {
+                            let name = ident.name.as_str();
+
+                            // Skip if local variable, global, or slot param
+                            if self.local_vars.contains(name)
+                                || is_global_allowed(name)
+                                || self.ctx.is_slot_param(name)
+                            {
+                                return;
+                            }
+
+                            let prefix = if let Some(ref metadata) =
+                                self.ctx.options.binding_metadata
+                            {
+                                if let Some(binding_type) = metadata.bindings.get(name) {
+                                    match binding_type {
+                                        BindingType::Props | BindingType::PropsAliased => "$props.",
+                                        _ => {
+                                            if self.ctx.options.inline {
+                                                ""
+                                            } else {
+                                                "$setup."
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    "_ctx."
+                                }
+                            } else {
+                                "_ctx."
+                            };
+
+                            if !prefix.is_empty() {
+                                let start = (prop.span.start - self.offset) as usize;
+                                let end = (prop.span.end - self.offset) as usize;
+                                let replacement = format!("{}: {}{}", name, prefix, name);
+                                self.rewrites.push((start, end, replacement));
+                                return;
+                            }
+                        }
+                    }
+
+                    walk_object_property(self, prop);
                 }
 
                 fn visit_variable_declarator(
@@ -122,9 +214,121 @@ fn prefix_identifiers_with_context(content: &str, ctx: &CodegenContext) -> Strin
                 }
             }
 
+            impl<'a, 'b> IdentifierVisitor<'a, 'b> {
+                fn collect_assignment_targets(
+                    &mut self,
+                    target: &oxc_ast::ast::AssignmentTarget<'_>,
+                ) {
+                    use oxc_ast::ast::{AssignmentTarget, AssignmentTargetProperty};
+
+                    match target {
+                        AssignmentTarget::AssignmentTargetIdentifier(ident) => {
+                            self.assignment_targets.insert(ident.span.start as usize);
+                        }
+                        AssignmentTarget::ObjectAssignmentTarget(obj) => {
+                            for prop in &obj.properties {
+                                match prop {
+                                    AssignmentTargetProperty::AssignmentTargetPropertyIdentifier(
+                                        prop_ident,
+                                    ) => {
+                                        self.assignment_targets
+                                            .insert(prop_ident.binding.span.start as usize);
+                                    }
+                                    AssignmentTargetProperty::AssignmentTargetPropertyProperty(
+                                        prop_prop,
+                                    ) => {
+                                        self.collect_assignment_targets_maybe_default(
+                                            &prop_prop.binding,
+                                        );
+                                    }
+                                }
+                            }
+                            if let Some(rest) = &obj.rest {
+                                self.collect_assignment_targets(&rest.target);
+                            }
+                        }
+                        AssignmentTarget::ArrayAssignmentTarget(arr) => {
+                            for elem in &arr.elements {
+                                if let Some(elem) = elem {
+                                    self.collect_assignment_targets_maybe_default(elem);
+                                }
+                            }
+                            if let Some(rest) = &arr.rest {
+                                self.collect_assignment_targets(&rest.target);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                fn collect_assignment_targets_maybe_default(
+                    &mut self,
+                    target: &oxc_ast::ast::AssignmentTargetMaybeDefault<'_>,
+                ) {
+                    use oxc_ast::ast::{AssignmentTargetMaybeDefault, AssignmentTargetProperty};
+
+                    match target {
+                        AssignmentTargetMaybeDefault::AssignmentTargetWithDefault(def) => {
+                            self.collect_assignment_targets(&def.binding);
+                        }
+                        AssignmentTargetMaybeDefault::AssignmentTargetIdentifier(ident) => {
+                            self.assignment_targets.insert(ident.span.start as usize);
+                        }
+                        AssignmentTargetMaybeDefault::ObjectAssignmentTarget(obj) => {
+                            for prop in &obj.properties {
+                                match prop {
+                                    AssignmentTargetProperty::AssignmentTargetPropertyIdentifier(
+                                        prop_ident,
+                                    ) => {
+                                        self.assignment_targets
+                                            .insert(prop_ident.binding.span.start as usize);
+                                    }
+                                    AssignmentTargetProperty::AssignmentTargetPropertyProperty(
+                                        prop_prop,
+                                    ) => {
+                                        self.collect_assignment_targets_maybe_default(
+                                            &prop_prop.binding,
+                                        );
+                                    }
+                                }
+                            }
+                            if let Some(rest) = &obj.rest {
+                                self.collect_assignment_targets(&rest.target);
+                            }
+                        }
+                        AssignmentTargetMaybeDefault::ArrayAssignmentTarget(arr) => {
+                            for elem in &arr.elements {
+                                if let Some(elem) = elem {
+                                    self.collect_assignment_targets_maybe_default(elem);
+                                }
+                            }
+                            if let Some(rest) = &arr.rest {
+                                self.collect_assignment_targets(&rest.target);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                fn collect_simple_assignment_targets(
+                    &mut self,
+                    target: &oxc_ast::ast::SimpleAssignmentTarget<'_>,
+                ) {
+                    use oxc_ast::ast::SimpleAssignmentTarget;
+
+                    match target {
+                        SimpleAssignmentTarget::AssignmentTargetIdentifier(ident) => {
+                            self.assignment_targets.insert(ident.span.start as usize);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
             let mut visitor = IdentifierVisitor {
                 rewrites: &mut rewrites,
                 local_vars: &mut local_vars,
+                assignment_targets: &mut assignment_targets,
                 ctx,
                 offset: 1, // Account for the '(' we added
             };
@@ -186,7 +390,7 @@ pub fn generate_expression(ctx: &mut CodegenContext, expr: &ExpressionNode<'_>) 
 pub fn generate_simple_expression(ctx: &mut CodegenContext, exp: &SimpleExpressionNode<'_>) {
     if exp.is_static {
         ctx.push("\"");
-        ctx.push(&exp.content);
+        ctx.push(&escape_js_string(exp.content.as_str()));
         ctx.push("\"");
     } else {
         // Strip TypeScript if needed
@@ -340,5 +544,70 @@ pub fn generate_event_handler(
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{generate_simple_expression, generate_simple_expression_with_prefix};
+    use crate::ast::{SimpleExpressionNode, SourceLocation};
+    use crate::codegen::context::CodegenContext;
+    use crate::options::{BindingMetadata, BindingType, CodegenOptions};
+    use vize_carton::FxHashMap;
+
+    #[test]
+    fn test_shorthand_property_expansion() {
+        let mut bindings = FxHashMap::default();
+        bindings.insert("foo".into(), BindingType::SetupConst);
+        let metadata = BindingMetadata {
+            bindings,
+            props_aliases: FxHashMap::default(),
+            is_script_setup: true,
+        };
+
+        let mut options = CodegenOptions::default();
+        options.inline = false;
+        options.binding_metadata = Some(metadata);
+
+        let ctx = CodegenContext::new(options);
+        let result = generate_simple_expression_with_prefix(&ctx, "{ foo }");
+        assert!(result.contains("foo: $setup.foo"), "Got: {}", result);
+    }
+
+    #[test]
+    fn test_assignment_setup_let_adds_value() {
+        let mut bindings = FxHashMap::default();
+        bindings.insert("count".into(), BindingType::SetupLet);
+        let metadata = BindingMetadata {
+            bindings,
+            props_aliases: FxHashMap::default(),
+            is_script_setup: true,
+        };
+
+        let mut options = CodegenOptions::default();
+        options.inline = false;
+        options.binding_metadata = Some(metadata);
+
+        let ctx = CodegenContext::new(options);
+        let result = generate_simple_expression_with_prefix(&ctx, "count = count + 1");
+        assert!(result.contains("count.value"), "Got: {}", result);
+    }
+
+    #[test]
+    fn test_static_string_escaping() {
+        let mut ctx = CodegenContext::new(CodegenOptions::default());
+        let exp = SimpleExpressionNode::new("Line 1\nLine 2", true, SourceLocation::STUB);
+        generate_simple_expression(&mut ctx, &exp);
+        let output = ctx.into_code();
+        assert!(
+            output.contains("\\n"),
+            "Expected newline to be escaped. Got: {}",
+            output
+        );
+        assert!(
+            !output.contains("Line 1\nLine 2"),
+            "Expected raw newline to be escaped. Got: {}",
+            output
+        );
     }
 }

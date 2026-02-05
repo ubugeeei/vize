@@ -535,4 +535,98 @@ const getNumberOfTeachers = (
             result.code
         );
     }
+
+    #[test]
+    fn test_props_destructure_type_based_defaults() {
+        let content = r#"
+const { color = "primary" } = defineProps<{
+  color?: "primary" | "secondary";
+}>();
+"#;
+        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        assert!(
+            result.code.contains("_mergeDefaults(")
+                && result.code.contains("color")
+                && result.code.contains(": {}"),
+            "Expected mergeDefaults with runtime props. Got:\n{}",
+            result.code
+        );
+    }
+
+    #[test]
+    fn test_duplicate_imports_filtered() {
+        let content = r#"
+import { ref } from 'vue'
+import { ref } from 'vue'
+const count = ref(0)
+"#;
+        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let import_ref_lines = result
+            .code
+            .lines()
+            .filter(|line| {
+                line.contains("import {") && line.contains("ref") && line.contains("vue")
+            })
+            .count();
+        assert_eq!(
+            import_ref_lines, 1,
+            "Expected duplicate ref import to be filtered. Got:\n{}",
+            result.code
+        );
+    }
+
+    #[test]
+    fn test_async_setup_detection() {
+        let content = r#"
+const response = await fetch('/api/data')
+const data = await response.json()
+"#;
+        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        assert!(
+            result.code.contains("async setup("),
+            "Expected async setup when top-level await is present. Got:\n{}",
+            result.code
+        );
+    }
+
+    #[test]
+    fn test_await_in_string_literal_does_not_trigger_async() {
+        let content = r#"
+const msg = "await should not trigger async"
+"#;
+        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        assert!(
+            !result.code.contains("async setup("),
+            "Did not expect async setup for await in string literal. Got:\n{}",
+            result.code
+        );
+    }
+
+    #[test]
+    fn test_type_comparison_not_stripped() {
+        let content = r#"
+const props = defineProps(['type'])
+const isButton = props.type === 'button'
+"#;
+        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        assert!(
+            result.code.contains("type === 'button'")
+                || result.code.contains("type === \"button\""),
+            "Expected type comparison to remain. Got:\n{}",
+            result.code
+        );
+    }
+
+    #[test]
+    fn test_generic_function_call_stripped() {
+        let content = r#"
+const store = useStore<RootState>()
+"#;
+        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        assert!(
+            !result.code.contains("<RootState>"),
+            "Expected generic type arguments to be stripped. Got:\n{}",
+            result.code
+        );
+    }
 }

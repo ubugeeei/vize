@@ -357,10 +357,17 @@ impl ScriptCompileContext {
                             // Handle destructuring like: const { prop1, prop2 } = defineProps()
                             let mut is_props_destructure = false;
                             if let Some(init) = &decl.init {
-                                if let Some((macro_name, _)) = extract_macro_from_expr(init, source)
+                                if let Some((macro_name, macro_call)) =
+                                    extract_macro_from_expr(init, source)
                                 {
                                     if macro_name == "defineProps" {
                                         is_props_destructure = true;
+
+                                        // Register defineProps macro (for type args / runtime props)
+                                        self.extract_props_bindings(&macro_call);
+                                        self.macros.define_props = Some(macro_call.clone());
+                                        self.has_define_props_call = true;
+
                                         // Use the proper process_props_destructure function
                                         let (destructure, binding_metadata, props_aliases) =
                                             process_props_destructure(obj_pat, source);

@@ -5,6 +5,9 @@
 
 use oxc_allocator::Allocator as OxcAllocator;
 use oxc_ast::ast as oxc_ast_types;
+use oxc_ast::visit::walk::{
+    walk_assignment_expression, walk_object_property, walk_update_expression,
+};
 use oxc_ast::Visit;
 use oxc_codegen::Codegen;
 use oxc_parser::Parser;
@@ -12,6 +15,8 @@ use oxc_semantic::SemanticBuilder;
 use oxc_span::SourceType;
 use oxc_transformer::{TransformOptions, Transformer};
 use vize_carton::{Box, Bump, FxHashSet, String};
+
+use std::string::String as StdString;
 use vize_croquis::builtins::is_global_allowed;
 
 use crate::ast::{CompoundExpressionNode, ConstantType, ExpressionNode, SimpleExpressionNode};
@@ -87,7 +92,7 @@ pub fn process_expression<'a>(
 
 /// Result of expression rewriting
 struct RewriteResult {
-    code: std::string::String,
+    code: StdString,
     used_unref: bool,
 }
 
@@ -123,15 +128,15 @@ fn rewrite_expression(
 
             // Combine prefix rewrites (from HashSet) with suffix rewrites
             // Each rewrite is (position, prefix, suffix)
-            let mut all_rewrites: Vec<(usize, &str, &str)> = collector
+            let mut all_rewrites: Vec<(usize, StdString, StdString)> = collector
                 .rewrites
                 .into_iter()
-                .map(|(pos, prefix)| (pos, prefix, ""))
+                .map(|(pos, prefix)| (pos, prefix, StdString::new()))
                 .collect();
 
             // Add suffix rewrites (suffixes come after the identifier)
             for (pos, suffix) in collector.suffix_rewrites {
-                all_rewrites.push((pos, "", suffix));
+                all_rewrites.push((pos, StdString::new(), suffix));
             }
 
             // Sort by position descending so we can replace from end to start
@@ -145,11 +150,11 @@ fn rewrite_expression(
                 if adjusted_pos <= result.len() {
                     if !suffix.is_empty() {
                         // Insert suffix at the end of identifier
-                        result.insert_str(adjusted_pos, suffix);
+                        result.insert_str(adjusted_pos, &suffix);
                     }
                     if !prefix.is_empty() {
                         // Insert prefix at the start of identifier
-                        result.insert_str(adjusted_pos, prefix);
+                        result.insert_str(adjusted_pos, &prefix);
                     }
                 }
             }
@@ -185,9 +190,19 @@ fn rewrite_expression(
 fn needs_typescript_stripping(content: &str) -> bool {
     // Quick check for common TypeScript patterns
     // - " as " is TypeScript type assertion
-    // - We avoid checking ": " as it's also used in object literals
-    // - Generic types like "Array<string>" - but we need to be careful not to match comparison operators
-    content.contains(" as ")
+    // - Arrow function params with types: (x: number) => ...
+    // - Generic calls like useStore<RootState>()
+    if content.contains(" as ") {
+        return true;
+    }
+
+    if content.contains("=>") && content.contains(':') {
+        return true;
+    }
+
+    // Heuristic for generic type parameters or assertions.
+    // We allow false positives because the TS transformer is idempotent for valid JS.
+    content.contains('<') && content.contains('>')
 }
 
 /// Strip TypeScript type annotations from an expression
@@ -242,7 +257,7 @@ pub fn strip_typescript_from_expression(content: &str) -> std::string::String {
     if let Some(start) = js_code.find(prefix) {
         let expr_start = start + prefix.len();
         // Find the semicolon at the end
-        if let Some(end) = js_code[expr_start..].find(';') {
+        if let Some(end) = js_code[expr_start..].rfind(';') {
             let expr = &js_code[expr_start..expr_start + end];
             // Remove surrounding parentheses if present
             let expr = expr.trim();
@@ -272,7 +287,7 @@ pub fn prefix_identifiers_in_expression(content: &str) -> std::string::String {
         Ok(expr) => {
             // Collect identifiers and their positions
             let mut rewrites: Vec<(usize, usize, std::string::String)> = Vec::new();
-            let mut local_vars: FxHashSet<std::string::String> = FxHashSet::default();
+            let mut local_vars: FxHashSet<StdString> = FxHashSet::default();
 
             collect_identifiers_for_prefix(&expr, &mut rewrites, &mut local_vars, content);
 
@@ -300,7 +315,7 @@ pub fn prefix_identifiers_in_expression(content: &str) -> std::string::String {
 fn collect_identifiers_for_prefix(
     expr: &oxc_ast::ast::Expression<'_>,
     rewrites: &mut Vec<(usize, usize, std::string::String)>,
-    local_vars: &mut FxHashSet<std::string::String>,
+    local_vars: &mut FxHashSet<StdString>,
     _original: &str,
 ) {
     use oxc_ast::ast::Expression;
@@ -427,7 +442,7 @@ fn collect_identifiers_for_prefix(
 /// Collect binding names from a pattern
 fn collect_binding_names(
     pattern: &oxc_ast::ast::BindingPattern<'_>,
-    local_vars: &mut FxHashSet<std::string::String>,
+    local_vars: &mut FxHashSet<StdString>,
 ) {
     match &pattern.kind {
         oxc_ast::ast::BindingPatternKind::BindingIdentifier(id) => {
@@ -453,11 +468,13 @@ fn collect_binding_names(
 struct IdentifierCollector<'a, 'ctx> {
     ctx: &'a TransformContext<'ctx>,
     /// Identifiers that are being declared (e.g., in arrow function params)
-    local_scope: FxHashSet<String>,
+    local_scope: FxHashSet<StdString>,
     /// (position, prefix) pairs for rewrites
-    rewrites: FxHashSet<(usize, &'static str)>,
+    rewrites: FxHashSet<(usize, StdString)>,
     /// (position, suffix) pairs for suffix rewrites (e.g., .value for refs)
-    suffix_rewrites: Vec<(usize, &'static str)>,
+    suffix_rewrites: Vec<(usize, StdString)>,
+    /// Assignment target identifier positions (for .value on LHS)
+    assignment_targets: FxHashSet<usize>,
     /// Whether _unref helper was used
     used_unref: bool,
 }
@@ -469,6 +486,7 @@ impl<'a, 'ctx> IdentifierCollector<'a, 'ctx> {
             local_scope: FxHashSet::default(),
             rewrites: FxHashSet::default(),
             suffix_rewrites: Vec::new(),
+            assignment_targets: FxHashSet::default(),
             used_unref: false,
         }
     }
@@ -525,26 +543,45 @@ impl<'a, 'ctx> Visit<'_> for IdentifierCollector<'a, 'ctx> {
         }
 
         let needs_unref = self.needs_unref(name);
+        let is_assignment_target = self
+            .assignment_targets
+            .contains(&(ident.span.start as usize));
+
+        if is_assignment_target {
+            if let Some(prefix) = get_identifier_prefix(name, self.ctx) {
+                self.rewrites
+                    .insert((ident.span.start as usize, prefix.to_string()));
+            }
+            if self.is_ref_binding(name) || needs_unref {
+                self.suffix_rewrites
+                    .push((ident.span.end as usize, ".value".to_string()));
+            }
+            return;
+        }
 
         if let Some(prefix) = get_identifier_prefix(name, self.ctx) {
             // In function mode, SetupLet bindings need both $setup. prefix and _unref() wrapper
             // Result: _unref($setup.b) instead of just $setup.b
             if needs_unref && prefix == "$setup." {
                 self.rewrites
-                    .insert((ident.span.start as usize, "_unref($setup."));
-                self.suffix_rewrites.push((ident.span.end as usize, ")"));
+                    .insert((ident.span.start as usize, "_unref($setup.".to_string()));
+                self.suffix_rewrites
+                    .push((ident.span.end as usize, ")".to_string()));
                 self.used_unref = true;
             } else {
-                self.rewrites.insert((ident.span.start as usize, prefix));
+                self.rewrites
+                    .insert((ident.span.start as usize, prefix.to_string()));
             }
         } else if self.is_ref_binding(name) {
             // Add .value suffix for refs in inline mode
             self.suffix_rewrites
-                .push((ident.span.end as usize, ".value"));
+                .push((ident.span.end as usize, ".value".to_string()));
         } else if needs_unref {
             // Wrap with _unref() for let/var bindings (inline mode)
-            self.rewrites.insert((ident.span.start as usize, "_unref("));
-            self.suffix_rewrites.push((ident.span.end as usize, ")"));
+            self.rewrites
+                .insert((ident.span.start as usize, "_unref(".to_string()));
+            self.suffix_rewrites
+                .push((ident.span.end as usize, ")".to_string()));
             self.used_unref = true;
         }
     }
@@ -568,7 +605,8 @@ impl<'a, 'ctx> Visit<'_> for IdentifierCollector<'a, 'ctx> {
                             // Skip adding .value - it's already accessed via .value
                             // But still add _ctx. prefix if needed
                             if let Some(prefix) = get_identifier_prefix(name, self.ctx) {
-                                self.rewrites.insert((ident.span.start as usize, prefix));
+                                self.rewrites
+                                    .insert((ident.span.start as usize, prefix.to_string()));
                             }
                             return;
                         }
@@ -596,13 +634,47 @@ impl<'a, 'ctx> Visit<'_> for IdentifierCollector<'a, 'ctx> {
         // Visit body
         self.visit_function_body(&arrow.body);
     }
+
+    fn visit_assignment_expression(&mut self, expr: &oxc_ast_types::AssignmentExpression<'_>) {
+        self.collect_assignment_targets(&expr.left);
+        walk_assignment_expression(self, expr);
+    }
+
+    fn visit_update_expression(&mut self, expr: &oxc_ast_types::UpdateExpression<'_>) {
+        self.collect_simple_assignment_targets(&expr.argument);
+        walk_update_expression(self, expr);
+    }
+
+    fn visit_object_property(&mut self, prop: &oxc_ast_types::ObjectProperty<'_>) {
+        if prop.shorthand {
+            if let oxc_ast_types::PropertyKey::StaticIdentifier(ident) = &prop.key {
+                let name = ident.name.as_str();
+                if self.local_scope.contains(name) || is_global_allowed(name) {
+                    return;
+                }
+                if self.ctx.is_in_scope(name) {
+                    return;
+                }
+
+                if let Some(prefix) = get_identifier_prefix(name, self.ctx) {
+                    if !prefix.is_empty() {
+                        let suffix = format!(": {}{}", prefix, name);
+                        self.suffix_rewrites.push((ident.span.end as usize, suffix));
+                        return;
+                    }
+                }
+            }
+        }
+
+        walk_object_property(self, prop);
+    }
 }
 
 impl<'a, 'ctx> IdentifierCollector<'a, 'ctx> {
     fn collect_binding_pattern(&mut self, pattern: &oxc_ast_types::BindingPattern<'_>) {
         match &pattern.kind {
             oxc_ast_types::BindingPatternKind::BindingIdentifier(id) => {
-                self.local_scope.insert(id.name.to_string().into());
+                self.local_scope.insert(id.name.to_string());
             }
             oxc_ast_types::BindingPatternKind::ObjectPattern(obj) => {
                 for prop in &obj.properties {
@@ -623,6 +695,104 @@ impl<'a, 'ctx> IdentifierCollector<'a, 'ctx> {
             oxc_ast_types::BindingPatternKind::AssignmentPattern(assign) => {
                 self.collect_binding_pattern(&assign.left);
             }
+        }
+    }
+
+    fn collect_assignment_targets(&mut self, target: &oxc_ast_types::AssignmentTarget<'_>) {
+        use oxc_ast_types::{AssignmentTarget, AssignmentTargetProperty};
+
+        match target {
+            AssignmentTarget::AssignmentTargetIdentifier(ident) => {
+                self.assignment_targets.insert(ident.span.start as usize);
+            }
+            AssignmentTarget::ObjectAssignmentTarget(obj) => {
+                for prop in &obj.properties {
+                    match prop {
+                        AssignmentTargetProperty::AssignmentTargetPropertyIdentifier(
+                            prop_ident,
+                        ) => {
+                            self.assignment_targets
+                                .insert(prop_ident.binding.span.start as usize);
+                        }
+                        AssignmentTargetProperty::AssignmentTargetPropertyProperty(prop_prop) => {
+                            self.collect_assignment_targets_maybe_default(&prop_prop.binding);
+                        }
+                    }
+                }
+                if let Some(rest) = &obj.rest {
+                    self.collect_assignment_targets(&rest.target);
+                }
+            }
+            AssignmentTarget::ArrayAssignmentTarget(arr) => {
+                for elem in &arr.elements {
+                    if let Some(elem) = elem {
+                        self.collect_assignment_targets_maybe_default(elem);
+                    }
+                }
+                if let Some(rest) = &arr.rest {
+                    self.collect_assignment_targets(&rest.target);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn collect_assignment_targets_maybe_default(
+        &mut self,
+        target: &oxc_ast_types::AssignmentTargetMaybeDefault<'_>,
+    ) {
+        use oxc_ast_types::{AssignmentTargetMaybeDefault, AssignmentTargetProperty};
+
+        match target {
+            AssignmentTargetMaybeDefault::AssignmentTargetWithDefault(def) => {
+                self.collect_assignment_targets(&def.binding);
+            }
+            AssignmentTargetMaybeDefault::AssignmentTargetIdentifier(ident) => {
+                self.assignment_targets.insert(ident.span.start as usize);
+            }
+            AssignmentTargetMaybeDefault::ObjectAssignmentTarget(obj) => {
+                for prop in &obj.properties {
+                    match prop {
+                        AssignmentTargetProperty::AssignmentTargetPropertyIdentifier(
+                            prop_ident,
+                        ) => {
+                            self.assignment_targets
+                                .insert(prop_ident.binding.span.start as usize);
+                        }
+                        AssignmentTargetProperty::AssignmentTargetPropertyProperty(prop_prop) => {
+                            self.collect_assignment_targets_maybe_default(&prop_prop.binding);
+                        }
+                    }
+                }
+                if let Some(rest) = &obj.rest {
+                    self.collect_assignment_targets(&rest.target);
+                }
+            }
+            AssignmentTargetMaybeDefault::ArrayAssignmentTarget(arr) => {
+                for elem in &arr.elements {
+                    if let Some(elem) = elem {
+                        self.collect_assignment_targets_maybe_default(elem);
+                    }
+                }
+                if let Some(rest) = &arr.rest {
+                    self.collect_assignment_targets(&rest.target);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn collect_simple_assignment_targets(
+        &mut self,
+        target: &oxc_ast_types::SimpleAssignmentTarget<'_>,
+    ) {
+        use oxc_ast_types::SimpleAssignmentTarget;
+
+        match target {
+            SimpleAssignmentTarget::AssignmentTargetIdentifier(ident) => {
+                self.assignment_targets.insert(ident.span.start as usize);
+            }
+            _ => {}
         }
     }
 }
@@ -928,6 +1098,32 @@ mod tests {
         assert!(
             result.contains("$event.target"),
             "Should contain event target"
+        );
+
+        // Arrow function with typed params in template expressions
+        let result = strip_typescript_from_expression("items.filter((x: number) => x > 1)");
+        assert!(
+            !result.contains(": number"),
+            "Expected type annotation removed, got: {}",
+            result
+        );
+
+        // Generic function call stripping
+        let result = strip_typescript_from_expression("useStore<RootState>()");
+        assert!(
+            !result.contains("<RootState>"),
+            "Expected generic type removed, got: {}",
+            result
+        );
+
+        // Multiline arrow function should not be truncated at first semicolon
+        let result = strip_typescript_from_expression(
+            "(() => {\n  const a = 1;\n  const b = 2;\n  return a + b;\n}) as any",
+        );
+        assert!(
+            result.contains("const b = 2"),
+            "Expected full arrow function body, got: {}",
+            result
         );
     }
 }

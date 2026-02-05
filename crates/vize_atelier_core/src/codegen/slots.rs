@@ -6,6 +6,7 @@ use crate::ast::*;
 use crate::transforms::v_slot::{collect_slots, get_slot_name, has_v_slot};
 
 use super::context::CodegenContext;
+use super::helpers::{escape_js_string, is_valid_js_identifier};
 use super::node::generate_node;
 
 /// Get slot props expression as raw source (not transformed)
@@ -173,7 +174,13 @@ pub fn generate_slots(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
                             ctx.push(&slot_name);
                             ctx.push("]");
                         } else {
-                            ctx.push(&slot_name);
+                            if is_valid_js_identifier(&slot_name) {
+                                ctx.push(&slot_name);
+                            } else {
+                                ctx.push("\"");
+                                ctx.push(&escape_js_string(&slot_name));
+                                ctx.push("\"");
+                            }
                         }
 
                         if slot_name.as_str() == "default" {
@@ -394,4 +401,16 @@ fn strip_ctx_prefix_for_slot_params(ctx: &CodegenContext, content: &str) -> std:
         result = result.replace(&prefixed, param);
     }
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_valid_js_identifier;
+
+    #[test]
+    fn test_slot_name_identifier_check() {
+        assert!(is_valid_js_identifier("header"));
+        assert!(!is_valid_js_identifier("item-header"));
+        assert!(!is_valid_js_identifier("item header"));
+    }
 }

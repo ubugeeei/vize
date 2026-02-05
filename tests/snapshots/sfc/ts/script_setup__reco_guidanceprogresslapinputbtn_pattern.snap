@@ -32,7 +32,7 @@ const __sfc__ = /*@__PURE__*/ _defineComponent({
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
   return (_openBlock(), _createElementBlock("button", {
-    class: _normalizeClass([{ $props.disabled }, $setup.lapClass]),
+    class: _normalizeClass([{ disabled: $props.disabled }, $setup.lapClass]),
     disabled: $props.disabled,
     onClick: _withModifiers(() => {}, ["prevent"])
   }, "\n    " + _toDisplayString($props.guidanceProgress.progressUnit.value) + "\n  ", 11 /* TEXT, CLASS, PROPS */, ["disabled", "onClick"]))

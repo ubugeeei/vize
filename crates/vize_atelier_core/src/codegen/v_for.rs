@@ -164,6 +164,10 @@ fn should_skip_prop(p: &PropNode<'_>) -> bool {
         if dir.name == "for" {
             return true;
         }
+        // Skip custom/unsupported directives (handled via withDirectives)
+        if !super::props::is_supported_directive(dir) {
+            return true;
+        }
     }
     false
 }
@@ -426,5 +430,30 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
             }
         }
         _ => generate_node(ctx, node),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::parse;
+    use bumpalo::Bump;
+
+    #[test]
+    fn test_should_skip_custom_directive() {
+        let allocator = Bump::new();
+        let (root, _) = parse(
+            &allocator,
+            r#"<div v-for=\"item in items\" v-click-outside=\"close\"></div>"#,
+        );
+
+        if let TemplateChildNode::Element(el) = &root.children[0] {
+            let custom_prop = el.props.iter().find(|p| match p {
+                PropNode::Directive(dir) => dir.name == "click-outside",
+                _ => false,
+            });
+            assert!(custom_prop.is_some());
+            assert!(should_skip_prop(custom_prop.unwrap()));
+        }
     }
 }

@@ -5,6 +5,13 @@
 
 use std::collections::HashSet;
 
+use oxc_allocator::Allocator;
+use oxc_ast::ast::{ImportDeclarationSpecifier, Statement};
+use oxc_ast::visit::walk::{walk_arrow_function_expression, walk_for_of_statement, walk_function};
+use oxc_ast::Visit;
+use oxc_parser::Parser;
+use oxc_span::SourceType;
+use oxc_syntax::scope::ScopeFlags;
 use vize_carton::Bump;
 
 use crate::script::{
@@ -303,29 +310,31 @@ pub fn compile_script_setup(
         if outside_template_literal
             && (trimmed.starts_with("type ") || trimmed.starts_with("export type "))
         {
-            // Check if it's a single-line type
-            let has_equals = trimmed.contains('=');
-            if has_equals {
-                ts_type_depth = trimmed.matches('{').count() as i32
-                    - trimmed.matches('}').count() as i32
-                    + trimmed.matches('<').count() as i32
-                    - trimmed.matches('>').count() as i32
-                    + trimmed.matches('(').count() as i32
-                    - trimmed.matches(')').count() as i32;
-                if ts_type_depth <= 0
-                    && (trimmed.ends_with(';')
-                        || (!trimmed.ends_with('|')
-                            && !trimmed.ends_with('&')
-                            && !trimmed.ends_with(',')
-                            && !trimmed.ends_with('{')
-                            && !trimmed.ends_with('=')))
-                {
-                    // Single line type, just skip
-                    continue;
+            if is_typescript_type_alias(trimmed) {
+                // Check if it's a single-line type
+                let has_equals = trimmed.contains('=');
+                if has_equals {
+                    ts_type_depth = trimmed.matches('{').count() as i32
+                        - trimmed.matches('}').count() as i32
+                        + trimmed.matches('<').count() as i32
+                        - trimmed.matches('>').count() as i32
+                        + trimmed.matches('(').count() as i32
+                        - trimmed.matches(')').count() as i32;
+                    if ts_type_depth <= 0
+                        && (trimmed.ends_with(';')
+                            || (!trimmed.ends_with('|')
+                                && !trimmed.ends_with('&')
+                                && !trimmed.ends_with(',')
+                                && !trimmed.ends_with('{')
+                                && !trimmed.ends_with('=')))
+                    {
+                        // Single line type, just skip
+                        continue;
+                    }
+                    in_ts_type = true;
                 }
-                in_ts_type = true;
+                continue;
             }
-            continue;
         }
 
         if !trimmed.is_empty() {
@@ -372,13 +381,10 @@ pub fn compile_script_setup(
         output.extend_from_slice(b"import { useModel as _useModel } from 'vue'\n");
     }
 
-    // Output imports (filtering out type-only imports)
-    for import in &imports {
-        if let Some(processed) = process_import_for_types(import) {
-            if !processed.is_empty() {
-                output.extend_from_slice(processed.as_bytes());
-            }
-        }
+    // Output imports (filtering out type-only imports + dedupe)
+    let deduped_imports = dedupe_imports(&imports);
+    for import in &deduped_imports {
+        output.extend_from_slice(import.as_bytes());
     }
 
     output.push(b'\n');
@@ -406,14 +412,35 @@ pub fn compile_script_setup(
         let has_defaults = destructure.bindings.values().any(|b| b.default.is_some());
 
         if has_defaults {
-            // Use mergeDefaults format: _mergeDefaults(['prop1', 'prop2'], { prop2: default })
-            // Get the original props argument from defineProps
-            let original_props = ctx
-                .macros
-                .define_props
-                .as_ref()
-                .map(|p| p.args.as_str())
-                .unwrap_or("[]");
+            // Use mergeDefaults format: _mergeDefaults(runtimeProps, { prop2: default })
+            // Get the original props argument from defineProps (or generate from type args)
+            let original_props: String = if let Some(ref props_macro) = ctx.macros.define_props {
+                if let Some(ref type_args) = props_macro.type_args {
+                    let prop_types = extract_prop_types_from_type(type_args);
+                    if prop_types.is_empty() {
+                        "{}".to_string()
+                    } else {
+                        let mut names: Vec<_> = prop_types.keys().collect();
+                        names.sort();
+                        let mut s = String::from("{ ");
+                        for (i, name) in names.iter().enumerate() {
+                            if i > 0 {
+                                s.push_str(", ");
+                            }
+                            s.push_str(name);
+                            s.push_str(": {}");
+                        }
+                        s.push_str(" }");
+                        s
+                    }
+                } else if !props_macro.args.is_empty() {
+                    props_macro.args.clone()
+                } else {
+                    "[]".to_string()
+                }
+            } else {
+                "[]".to_string()
+            };
 
             output.extend_from_slice(b"  props: /*@__PURE__*/_mergeDefaults(");
             output.extend_from_slice(original_props.as_bytes());
@@ -544,8 +571,16 @@ pub fn compile_script_setup(
         }
     }
 
+    // Prepare setup code and detect top-level await (async setup)
+    let setup_code = setup_lines.join("\n");
+    let has_top_level_await = contains_top_level_await(&setup_code, _is_ts);
+
     // Setup function
-    output.extend_from_slice(b"  setup(__props, { expose: __expose, emit: __emit }) {\n");
+    if has_top_level_await {
+        output.extend_from_slice(b"  async setup(__props, { expose: __expose, emit: __emit }) {\n");
+    } else {
+        output.extend_from_slice(b"  setup(__props, { expose: __expose, emit: __emit }) {\n");
+    }
 
     // Always call __expose() - Vue runtime requires this for proper component initialization
     // If defineExpose has args, use those; otherwise call with no args
@@ -627,7 +662,6 @@ pub fn compile_script_setup(
     }
 
     // Output setup code, transforming props destructure references
-    let setup_code = setup_lines.join("\n");
 
     // Debug: Log props destructure status
     #[cfg(debug_assertions)]
@@ -761,8 +795,19 @@ pub fn compile_script_setup(
     all_bindings.sort();
     all_bindings.dedup();
 
+    let returned_props: Vec<String> = all_bindings
+        .iter()
+        .map(|name| {
+            if is_reserved_word(name) {
+                format!("\"{}\": {}", name, name)
+            } else {
+                name.clone()
+            }
+        })
+        .collect();
+
     output.extend_from_slice(b"  const __returned__ = { ");
-    output.extend_from_slice(all_bindings.join(", ").as_bytes());
+    output.extend_from_slice(returned_props.join(", ").as_bytes());
     output.extend_from_slice(b" }\n");
     output.extend_from_slice(b"  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })\n");
     output.extend_from_slice(b"  return __returned__\n");
@@ -817,4 +862,247 @@ fn count_unescaped_backticks(line: &str) -> i32 {
     }
 
     count
+}
+
+/// Check if a line starts a TypeScript type alias declaration.
+fn is_typescript_type_alias(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    let prefix = if trimmed.starts_with("export type ") {
+        "export type "
+    } else if trimmed.starts_with("type ") {
+        "type "
+    } else {
+        return false;
+    };
+
+    let rest = trimmed[prefix.len()..].trim_start();
+    let mut chars = rest.chars();
+    match chars.next() {
+        Some(c) if c.is_ascii_alphabetic() || c == '_' || c == '$' => true,
+        _ => false,
+    }
+}
+
+/// Detect top-level await in setup code (ignores awaits inside nested functions).
+fn contains_top_level_await(code: &str, is_ts: bool) -> bool {
+    let allocator = Allocator::default();
+    let source_type = if is_ts {
+        SourceType::ts()
+    } else {
+        SourceType::default()
+    };
+
+    let wrapped = format!("async function __temp__() {{\n{}\n}}", code);
+    let parser = Parser::new(&allocator, &wrapped, source_type);
+    let parse_result = parser.parse();
+
+    if !parse_result.errors.is_empty() {
+        return false;
+    }
+
+    #[derive(Default)]
+    struct TopLevelAwaitVisitor {
+        depth: usize,
+        found: bool,
+    }
+
+    impl<'a> Visit<'a> for TopLevelAwaitVisitor {
+        fn visit_function(&mut self, it: &oxc_ast::ast::Function<'a>, flags: ScopeFlags) {
+            self.depth += 1;
+            walk_function(self, it, flags);
+            self.depth = self.depth.saturating_sub(1);
+        }
+
+        fn visit_arrow_function_expression(
+            &mut self,
+            it: &oxc_ast::ast::ArrowFunctionExpression<'a>,
+        ) {
+            self.depth += 1;
+            walk_arrow_function_expression(self, it);
+            self.depth = self.depth.saturating_sub(1);
+        }
+
+        fn visit_await_expression(&mut self, _it: &oxc_ast::ast::AwaitExpression<'a>) {
+            if self.depth == 1 {
+                self.found = true;
+            }
+        }
+
+        fn visit_for_of_statement(&mut self, it: &oxc_ast::ast::ForOfStatement<'a>) {
+            if self.depth == 1 && it.r#await {
+                self.found = true;
+            }
+            walk_for_of_statement(self, it);
+        }
+    }
+
+    let mut visitor = TopLevelAwaitVisitor::default();
+    visitor.visit_program(&parse_result.program);
+    visitor.found
+}
+
+/// Check if an identifier is a JavaScript reserved word (avoid shorthand).
+fn is_reserved_word(name: &str) -> bool {
+    matches!(
+        name,
+        "await"
+            | "break"
+            | "case"
+            | "catch"
+            | "class"
+            | "const"
+            | "continue"
+            | "debugger"
+            | "default"
+            | "delete"
+            | "do"
+            | "else"
+            | "enum"
+            | "export"
+            | "extends"
+            | "false"
+            | "finally"
+            | "for"
+            | "function"
+            | "if"
+            | "import"
+            | "in"
+            | "instanceof"
+            | "new"
+            | "null"
+            | "return"
+            | "super"
+            | "switch"
+            | "this"
+            | "throw"
+            | "true"
+            | "try"
+            | "typeof"
+            | "var"
+            | "void"
+            | "while"
+            | "with"
+            | "yield"
+            | "let"
+            | "static"
+            | "implements"
+            | "interface"
+            | "package"
+            | "private"
+            | "protected"
+            | "public"
+    )
+}
+
+/// Deduplicate imports by removing duplicate specifiers from the same source.
+/// This avoids "Identifier has already been declared" errors.
+fn dedupe_imports(imports: &[String]) -> Vec<String> {
+    let mut result: Vec<String> = Vec::new();
+    let mut seen_specifiers: HashSet<String> = HashSet::new();
+
+    for import in imports {
+        let Some(processed) = process_import_for_types(import) else {
+            continue;
+        };
+        let trimmed = processed.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        let allocator = Allocator::default();
+        let parser = Parser::new(&allocator, trimmed, SourceType::ts());
+        let parse_result = parser.parse();
+
+        if !parse_result.errors.is_empty() {
+            if seen_specifiers.insert(trimmed.to_string()) {
+                result.push(trimmed.to_string() + "\n");
+            }
+            continue;
+        }
+
+        let mut handled = false;
+
+        for stmt in &parse_result.program.body {
+            if let Statement::ImportDeclaration(decl) = stmt {
+                let source = decl.source.value.as_str();
+
+                if decl.specifiers.is_none() {
+                    // Side-effect import: import 'module';
+                    let key = format!("{}::side-effect", source);
+                    if seen_specifiers.insert(key) {
+                        result.push(format!("import '{}'\n", source));
+                    }
+                    handled = true;
+                    break;
+                }
+
+                let mut default_spec: Option<String> = None;
+                let mut namespace_spec: Option<String> = None;
+                let mut named_specs: Vec<String> = Vec::new();
+
+                if let Some(specifiers) = &decl.specifiers {
+                    for spec in specifiers {
+                        match spec {
+                            ImportDeclarationSpecifier::ImportSpecifier(s) => {
+                                let local = s.local.name.as_str();
+                                let key = format!("{}::{}", source, local);
+                                if !seen_specifiers.insert(key) {
+                                    continue;
+                                }
+
+                                let imported = s.imported.name().as_str();
+                                if imported == local {
+                                    named_specs.push(imported.to_string());
+                                } else {
+                                    named_specs.push(format!("{} as {}", imported, local));
+                                }
+                            }
+                            ImportDeclarationSpecifier::ImportDefaultSpecifier(s) => {
+                                let local = s.local.name.as_str();
+                                let key = format!("{}::{}", source, local);
+                                if seen_specifiers.insert(key) {
+                                    default_spec = Some(local.to_string());
+                                }
+                            }
+                            ImportDeclarationSpecifier::ImportNamespaceSpecifier(s) => {
+                                let local = s.local.name.as_str();
+                                let key = format!("{}::{}", source, local);
+                                if seen_specifiers.insert(key) {
+                                    namespace_spec = Some(local.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if default_spec.is_none() && namespace_spec.is_none() && named_specs.is_empty() {
+                    handled = true;
+                    break;
+                }
+
+                let mut parts: Vec<String> = Vec::new();
+                if let Some(def) = default_spec {
+                    parts.push(def);
+                }
+                if let Some(ns) = namespace_spec {
+                    parts.push(format!("* as {}", ns));
+                }
+                if !named_specs.is_empty() {
+                    parts.push(format!("{{ {} }}", named_specs.join(", ")));
+                }
+
+                result.push(format!("import {} from '{}'\n", parts.join(", "), source));
+                handled = true;
+                break;
+            }
+        }
+
+        if !handled {
+            if seen_specifiers.insert(trimmed.to_string()) {
+                result.push(trimmed.to_string() + "\n");
+            }
+        }
+    }
+
+    result
 }

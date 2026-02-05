@@ -5,9 +5,10 @@ use crate::ast::*;
 use super::children::generate_children;
 use super::context::CodegenContext;
 use super::expression::generate_expression;
-use super::helpers::{escape_js_string, is_valid_js_identifier};
+use super::helpers::{camelize, capitalize_first, escape_js_string, is_valid_js_identifier};
 use super::node::generate_node;
 use super::props::generate_directive_prop_with_static;
+use vize_carton::FxHashSet;
 
 /// Generate if node
 pub fn generate_if(ctx: &mut CodegenContext, if_node: &IfNode<'_>) {
@@ -132,65 +133,63 @@ pub fn generate_if_branch_component(
         ctx.push(&component_name);
     }
 
-    // Check if component has props
-    let has_other = has_other_props_for_if(el);
-    ctx.push(", {");
-    ctx.indent();
-    ctx.newline();
-    ctx.push("key: ");
-    generate_if_branch_key(ctx, branch, branch_index);
-
     // Extract static class/style for merging with dynamic bindings
     let (static_class, static_style) = extract_static_class_style(el);
     let has_dyn_class = has_dynamic_class(el);
     let has_dyn_style = has_dynamic_style(el);
 
-    // Add other props if any
-    if has_other {
+    // Check if component has v-bind spread
+    let has_vbind_spread = has_vbind_spread(el);
+    if has_vbind_spread {
+        ctx.use_helper(RuntimeHelper::MergeProps);
+        ctx.push(", ");
+        ctx.push(ctx.helper(RuntimeHelper::MergeProps));
+        ctx.push("(");
+
+        let mut first_merge_arg = true;
         for prop in el.props.iter() {
-            if should_skip_prop_for_if(prop, has_dyn_class, has_dyn_style) {
-                continue;
-            }
-            ctx.push(",");
-            ctx.newline();
-            generate_single_prop_for_if(ctx, prop, static_class, static_style);
-        }
-    }
-
-    // Add scope_id for scoped CSS
-    if let Some(ref scope_id) = ctx.options.scope_id.clone() {
-        ctx.push(",");
-        ctx.newline();
-        ctx.push("\"");
-        ctx.push(scope_id);
-        ctx.push("\": \"\"");
-    }
-
-    ctx.deindent();
-    ctx.newline();
-    ctx.push("}))")
-}
-
-/// Check if element has props besides the key (for v-if branch elements)
-fn has_other_props_for_if(el: &ElementNode<'_>) -> bool {
-    el.props.iter().any(|p| match p {
-        PropNode::Attribute(_) => true,
-        PropNode::Directive(dir) => {
-            // Skip key binding (handled separately)
-            if dir.name == "bind" {
-                if let Some(ExpressionNode::Simple(arg)) = &dir.arg {
-                    if arg.content == "key" {
-                        return false;
+            if let PropNode::Directive(dir) = prop {
+                if dir.name == "bind" && dir.arg.is_none() {
+                    if let Some(exp) = &dir.exp {
+                        if !first_merge_arg {
+                            ctx.push(", ");
+                        }
+                        generate_expression(ctx, exp);
+                        first_merge_arg = false;
                     }
                 }
             }
-            // Skip v-if/v-else-if/v-else directives (handled by parent)
-            if matches!(dir.name.as_str(), "if" | "else-if" | "else") {
-                return false;
-            }
-            true
         }
-    })
+
+        if !first_merge_arg {
+            ctx.push(", ");
+        }
+        generate_if_branch_props_object(
+            ctx,
+            el,
+            branch,
+            branch_index,
+            static_class,
+            static_style,
+            has_dyn_class,
+            has_dyn_style,
+        );
+        ctx.push(")");
+    } else {
+        ctx.push(", ");
+        generate_if_branch_props_object(
+            ctx,
+            el,
+            branch,
+            branch_index,
+            static_class,
+            static_style,
+            has_dyn_class,
+            has_dyn_style,
+        );
+    }
+
+    ctx.push("}))")
 }
 
 /// Check if prop should be skipped for v-if branch element
@@ -329,38 +328,57 @@ pub fn generate_if_branch_element(
     let has_dyn_class = has_dynamic_class(el);
     let has_dyn_style = has_dynamic_style(el);
 
-    // Generate props with key and all other props
-    let has_other = has_other_props_for_if(el);
-    ctx.push(", {");
-    ctx.indent();
-    ctx.newline();
-    ctx.push("key: ");
-    generate_if_branch_key(ctx, branch, branch_index);
+    // Generate props with key and all other props (handle v-bind spreads)
+    let has_vbind_spread = has_vbind_spread(el);
+    if has_vbind_spread {
+        ctx.use_helper(RuntimeHelper::MergeProps);
+        ctx.push(", ");
+        ctx.push(ctx.helper(RuntimeHelper::MergeProps));
+        ctx.push("(");
 
-    // Add other props
-    if has_other {
+        // Add all v-bind spreads
+        let mut first_merge_arg = true;
         for prop in el.props.iter() {
-            if should_skip_prop_for_if(prop, has_dyn_class, has_dyn_style) {
-                continue;
+            if let PropNode::Directive(dir) = prop {
+                if dir.name == "bind" && dir.arg.is_none() {
+                    if let Some(exp) = &dir.exp {
+                        if !first_merge_arg {
+                            ctx.push(", ");
+                        }
+                        generate_expression(ctx, exp);
+                        first_merge_arg = false;
+                    }
+                }
             }
-            ctx.push(",");
-            ctx.newline();
-            generate_single_prop_for_if(ctx, prop, static_class, static_style);
         }
-    }
 
-    // Add scope_id for scoped CSS
-    if let Some(ref scope_id) = ctx.options.scope_id.clone() {
-        ctx.push(",");
-        ctx.newline();
-        ctx.push("\"");
-        ctx.push(scope_id);
-        ctx.push("\": \"\"");
+        if !first_merge_arg {
+            ctx.push(", ");
+        }
+        generate_if_branch_props_object(
+            ctx,
+            el,
+            branch,
+            branch_index,
+            static_class,
+            static_style,
+            has_dyn_class,
+            has_dyn_style,
+        );
+        ctx.push(")");
+    } else {
+        ctx.push(", ");
+        generate_if_branch_props_object(
+            ctx,
+            el,
+            branch,
+            branch_index,
+            static_class,
+            static_style,
+            has_dyn_class,
+            has_dyn_style,
+        );
     }
-
-    ctx.deindent();
-    ctx.newline();
-    ctx.push("}");
 
     // Generate children if any
     if !el.children.is_empty() {
@@ -379,6 +397,209 @@ pub fn generate_if_branch_element(
     }
 
     ctx.push("))");
+}
+
+/// Generate props object for v-if branch (with key and other props)
+fn generate_if_branch_props_object(
+    ctx: &mut CodegenContext,
+    el: &ElementNode<'_>,
+    branch: &IfBranchNode<'_>,
+    branch_index: usize,
+    static_class: Option<&str>,
+    static_style: Option<&str>,
+    has_dynamic_class: bool,
+    has_dynamic_style: bool,
+) {
+    ctx.push("{");
+    ctx.indent();
+    ctx.newline();
+    ctx.push("key: ");
+    generate_if_branch_key(ctx, branch, branch_index);
+
+    let mut seen_events: FxHashSet<String> = FxHashSet::default();
+
+    for prop in el.props.iter() {
+        if should_skip_prop_for_if(prop, has_dynamic_class, has_dynamic_style) {
+            continue;
+        }
+        if is_vbind_spread_prop(prop) {
+            continue;
+        }
+        if let PropNode::Directive(dir) = prop {
+            if dir.name == "on" {
+                if let Some(key) = get_static_event_key(dir) {
+                    if !seen_events.insert(key) {
+                        continue;
+                    }
+                }
+            }
+        }
+        ctx.push(",");
+        ctx.newline();
+        generate_single_prop_for_if(ctx, prop, static_class, static_style);
+    }
+
+    // Add scope_id for scoped CSS
+    if let Some(ref scope_id) = ctx.options.scope_id.clone() {
+        ctx.push(",");
+        ctx.newline();
+        ctx.push("\"");
+        ctx.push(scope_id);
+        ctx.push("\": \"\"");
+    }
+
+    ctx.deindent();
+    ctx.newline();
+    ctx.push("}");
+}
+
+/// Check if element has v-bind object spread
+fn has_vbind_spread(el: &ElementNode<'_>) -> bool {
+    el.props.iter().any(|p| is_vbind_spread_prop(p))
+}
+
+/// Check if prop is a v-bind object spread (v-bind="obj")
+fn is_vbind_spread_prop(prop: &PropNode<'_>) -> bool {
+    if let PropNode::Directive(dir) = prop {
+        return dir.name == "bind" && dir.arg.is_none();
+    }
+    false
+}
+
+/// Compute static event prop key for dedupe (e.g., onClick, onUpdate:modelValue)
+fn get_static_event_key(dir: &DirectiveNode<'_>) -> Option<String> {
+    let arg = dir.arg.as_ref()?;
+    let ExpressionNode::Simple(exp) = arg else {
+        return None;
+    };
+    if !exp.is_static {
+        return None;
+    }
+
+    let mut event_name = exp.content.as_str();
+    let is_keyboard_event = matches!(event_name, "keydown" | "keyup" | "keypress");
+
+    let mut event_option_modifiers: Vec<&str> = Vec::new();
+    let mut system_modifiers: Vec<&str> = Vec::new();
+
+    for modifier in dir.modifiers.iter() {
+        let mod_name = modifier.content.as_str();
+        match mod_name {
+            "capture" | "once" | "passive" => {
+                event_option_modifiers.push(mod_name);
+            }
+            "left" | "right" => {
+                if !is_keyboard_event {
+                    system_modifiers.push(mod_name);
+                }
+            }
+            "middle" => {
+                system_modifiers.push(mod_name);
+            }
+            _ => {}
+        }
+    }
+
+    let has_right_modifier = system_modifiers.contains(&"right");
+    let has_middle_modifier = system_modifiers.contains(&"middle");
+
+    if event_name == "click" && has_right_modifier {
+        event_name = "contextmenu";
+    } else if event_name == "click" && has_middle_modifier {
+        event_name = "mouseup";
+    }
+
+    let mut key = if event_name.contains(':') {
+        let parts: Vec<&str> = event_name.splitn(2, ':').collect();
+        if parts.len() == 2 {
+            let first_part = camelize(parts[0]);
+            let mut name = String::from("on");
+            if let Some(first) = first_part.chars().next() {
+                name.push_str(&first.to_uppercase().to_string());
+                name.push_str(&first_part[first.len_utf8()..]);
+            }
+            name.push(':');
+            name.push_str(parts[1]);
+            name
+        } else {
+            String::from(event_name)
+        }
+    } else {
+        let camelized = camelize(event_name);
+        let mut name = String::from("on");
+        if let Some(first) = camelized.chars().next() {
+            name.push_str(&first.to_uppercase().to_string());
+            name.push_str(&camelized[first.len_utf8()..]);
+        }
+        name
+    };
+
+    for opt_mod in &event_option_modifiers {
+        key.push_str(&capitalize_first(opt_mod));
+    }
+
+    Some(key)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::codegen::generate;
+    use crate::options::{CodegenOptions, TransformOptions};
+    use crate::parser::parse;
+    use crate::transform::transform;
+    use bumpalo::Bump;
+
+    #[test]
+    fn test_has_vbind_spread() {
+        let allocator = Bump::new();
+        let (root, _) = parse(&allocator, r#"<div v-if=\"ok\" v-bind=\"props\"></div>"#);
+
+        if let TemplateChildNode::Element(el) = &root.children[0] {
+            assert!(has_vbind_spread(el));
+        }
+    }
+
+    #[test]
+    fn test_get_static_event_key_update_model() {
+        let allocator = Bump::new();
+        let (root, _) = parse(
+            &allocator,
+            r#"<div v-if=\"ok\" @update:modelValue=\"onUpdate\"></div>"#,
+        );
+
+        if let TemplateChildNode::Element(el) = &root.children[0] {
+            let dir = el.props.iter().find_map(|p| {
+                if let PropNode::Directive(d) = p {
+                    if d.name == "on" {
+                        return Some(d.as_ref());
+                    }
+                }
+                None
+            });
+            let key = get_static_event_key(dir.unwrap()).unwrap();
+            assert_eq!(key, "onUpdate:modelValue");
+        }
+    }
+
+    #[test]
+    fn test_v_if_dedupes_duplicate_events() {
+        let allocator = Bump::new();
+        let (mut root, errors) = parse(
+            &allocator,
+            r#"<input v-if=\"ok\" @update:modelValue=\"a\" @update:modelValue=\"b\" />"#,
+        );
+        assert!(errors.is_empty(), "Parse errors: {:?}", errors);
+
+        transform(&allocator, &mut root, TransformOptions::default());
+        let result = generate(&root, CodegenOptions::default());
+        let count = result.code.matches("onUpdate:modelValue").count();
+        assert_eq!(
+            count, 1,
+            "Expected duplicate events to be deduped. Got:\n{}",
+            result.code
+        );
+    }
 }
 
 /// Generate template fragment for if branch (multiple children from template)

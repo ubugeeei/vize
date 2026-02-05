@@ -36,6 +36,10 @@ export interface GenerateOutputOptions {
   extractCss?: boolean;
 }
 
+function hasSfcMainDefined(code: string): boolean {
+  return /\b(?:const|let|var)\s+_sfc_main\b/.test(code);
+}
+
 export function generateOutput(compiled: CompiledModule, options: GenerateOutputOptions): string {
   const { isProduction, isDev, hmrUpdateType, extractCss } = options;
 
@@ -45,13 +49,19 @@ export function generateOutput(compiled: CompiledModule, options: GenerateOutput
   // Use regex to match only line-start "export default" (not inside strings)
   const exportDefaultRegex = /^export default /m;
   const hasExportDefault = exportDefaultRegex.test(output);
-  if (hasExportDefault) {
+  const hasSfcMain = hasSfcMainDefined(output);
+  if (hasExportDefault && !hasSfcMain) {
     output = output.replace(exportDefaultRegex, "const _sfc_main = ");
     // Add __scopeId for scoped CSS support
     if (compiled.hasScoped && compiled.scopeId) {
       output += `\n_sfc_main.__scopeId = "data-v-${compiled.scopeId}";`;
     }
     output += "\nexport default _sfc_main;";
+  } else if (hasSfcMain) {
+    // _sfc_main already defined by compiler (e.g., non-script-setup)
+    if (compiled.hasScoped && compiled.scopeId) {
+      output += `\n_sfc_main.__scopeId = "data-v-${compiled.scopeId}";`;
+    }
   }
 
   // Inject CSS (skip in production if extracting)

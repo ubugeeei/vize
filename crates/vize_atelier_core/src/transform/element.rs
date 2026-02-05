@@ -3,6 +3,7 @@
 use vize_carton::{is_builtin_directive, Box, String, Vec};
 
 use crate::ast::*;
+use crate::transforms::transform_expression::process_inline_handler;
 
 use super::{ExitFn, TransformContext};
 
@@ -135,6 +136,7 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
     struct VModelData {
         idx: usize,
         value_exp: String,
+        raw_value_exp: String,
         prop_name: String,
         event_name: std::string::String,
         handler: std::string::String,
@@ -151,6 +153,11 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
             // Get value expression
             let value_exp = match &dir.exp {
                 Some(ExpressionNode::Simple(s)) => s.content.clone(),
+                Some(ExpressionNode::Compound(c)) => c.loc.source.clone(),
+                None => continue,
+            };
+            let raw_value_exp = match &dir.exp {
+                Some(ExpressionNode::Simple(s)) => s.loc.source.clone(),
                 Some(ExpressionNode::Compound(c)) => c.loc.source.clone(),
                 None => continue,
             };
@@ -192,7 +199,7 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
 
             // Build handler expression
             let handler = if is_component {
-                format!("$event => (({}) = $event)", value_exp)
+                format!("$event => (({}) = $event)", raw_value_exp)
             } else {
                 // For native elements, check modifiers
                 let has_number = dir.modifiers.iter().any(|m| m.content == "number");
@@ -205,7 +212,7 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
                 if has_number {
                     target_value = format!("_toNumber({})", target_value);
                 }
-                format!("$event => (({}) = {})", value_exp, target_value)
+                format!("$event => (({}) = {})", raw_value_exp, target_value)
             };
 
             let dir_loc = dir.loc.clone();
@@ -231,6 +238,7 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
             vmodel_data.push(VModelData {
                 idx,
                 value_exp,
+                raw_value_exp,
                 prop_name,
                 event_name,
                 handler,
@@ -293,6 +301,12 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
             el.props.push(value_prop);
 
             // Add @update:propName prop
+            let raw_handler_expr = ExpressionNode::Simple(Box::new_in(
+                SimpleExpressionNode::new(&data.handler, false, data.dir_loc.clone()),
+                allocator,
+            ));
+            let processed_handler = process_inline_handler(ctx, &raw_handler_expr);
+
             let event_prop = PropNode::Directive(Box::new_in(
                 DirectiveNode {
                     name: String::new("on"),
@@ -305,20 +319,7 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
                         ), // Remove "on" prefix
                         allocator,
                     ))),
-                    exp: Some(ExpressionNode::Simple(Box::new_in(
-                        SimpleExpressionNode {
-                            content: String::new(&data.handler),
-                            is_static: false,
-                            const_type: ConstantType::NotConstant,
-                            loc: data.dir_loc.clone(),
-                            js_ast: None,
-                            hoisted: None,
-                            identifiers: None,
-                            is_handler_key: true,
-                            is_ref_transformed: true, // Handler contains already-processed refs
-                        },
-                        allocator,
-                    ))),
+                    exp: Some(processed_handler),
                     modifiers: Vec::new_in(allocator),
                     for_parse_result: None,
                     loc: data.dir_loc.clone(),
@@ -366,7 +367,12 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
         // For native elements: process in reverse order to preserve indices during insertion
         for data in vmodel_data.iter().rev() {
             // Keep v-model directive, insert onUpdate:modelValue handler right after it
-            let handler = format!("$event => (({}) = $event)", data.value_exp);
+            let handler = format!("$event => (({}) = $event)", data.raw_value_exp);
+            let raw_handler_expr = ExpressionNode::Simple(Box::new_in(
+                SimpleExpressionNode::new(&handler, false, data.dir_loc.clone()),
+                allocator,
+            ));
+            let processed_handler = process_inline_handler(ctx, &raw_handler_expr);
             let event_prop = PropNode::Directive(Box::new_in(
                 DirectiveNode {
                     name: String::new("on"),
@@ -375,20 +381,7 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
                         SimpleExpressionNode::new("update:modelValue", true, data.dir_loc.clone()),
                         allocator,
                     ))),
-                    exp: Some(ExpressionNode::Simple(Box::new_in(
-                        SimpleExpressionNode {
-                            content: String::new(&handler),
-                            is_static: false,
-                            const_type: ConstantType::NotConstant,
-                            loc: data.dir_loc.clone(),
-                            js_ast: None,
-                            hoisted: None,
-                            identifiers: None,
-                            is_handler_key: true,
-                            is_ref_transformed: true, // Handler contains already-processed refs
-                        },
-                        allocator,
-                    ))),
+                    exp: Some(processed_handler),
                     modifiers: Vec::new_in(allocator),
                     for_parse_result: None,
                     loc: data.dir_loc.clone(),

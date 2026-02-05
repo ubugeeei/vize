@@ -143,6 +143,8 @@ static GLOBAL_ALLOWLIST_SET: phf::Set<&'static str> = phf_set! {
     "_ctx", "_cache", "_push", "_parent",
     // Event locals
     "$event",
+    // Helper functions injected by compiler/runtime
+    "_toNumber",
 };
 
 // =============================================================================

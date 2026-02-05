@@ -16,7 +16,7 @@ const __sfc__ = /*@__PURE__*/_defineComponent({
   setup(__props, { expose: __expose, emit: __emit }) {
   __expose();
   const props = __props
-  const __returned__ = { count, default, msg }
+  const __returned__ = { count, "default": default, msg }
   Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
   return __returned__
   }
