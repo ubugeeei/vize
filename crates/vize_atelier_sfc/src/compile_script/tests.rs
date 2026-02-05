@@ -106,6 +106,23 @@ const count = ref(0)
     }
 
     #[test]
+    fn test_type_only_imports_not_in_bindings() {
+        let content = r#"
+import type { AnalysisResult } from './wasm'
+import type { Diagnostic } from './MonacoEditor.vue'
+import { ref } from 'vue'
+
+const analysisResult = ref<AnalysisResult | null>(null)
+"#;
+        let result = compile_script_setup(content, "Test", false, true, None).unwrap();
+        let bindings = result.bindings.expect("bindings should be present");
+
+        assert!(!bindings.bindings.contains_key("AnalysisResult"));
+        assert!(!bindings.bindings.contains_key("Diagnostic"));
+        assert!(bindings.bindings.contains_key("analysisResult"));
+    }
+
+    #[test]
     fn test_compile_script_setup_with_define_emits() {
         let content = r#"
 const emit = defineEmits(['click', 'update'])

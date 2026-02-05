@@ -3,19 +3,18 @@ source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 assertion_line: 196
 expression: ts_output
 ---
-import { openBlock as _openBlock, createBlock as _createBlock, createCommentVNode as _createCommentVNode, mergeProps as _mergeProps } from "vue"
+import { openBlock as _openBlock, createBlock as _createBlock, createCommentVNode as _createCommentVNode, unref as _unref } from "vue"
 
 import { defineComponent as _defineComponent } from 'vue'
-import { ref, computed } from 'vue'
-import Button from './Button.vue'
+import PatinaPlayground from './PatinaPlayground.vue'
 
 const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
   __expose();
-  const isActive = ref(true)
-  const buttonProps = computed(() => ({ disabled: false, type: 'primary' }))
-  const __returned__ = { Button, buttonProps, computed, isActive, ref }
+  const show = true
+  const compiler = {}
+  const __returned__ = { PatinaPlayground, compiler, show }
   Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
   return __returned__
   }
@@ -23,11 +22,11 @@ const __sfc__ = /*@__PURE__*/_defineComponent({
 });
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return ($setup.isActive)
-    ? (_openBlock(), _createBlock($setup.Button, _mergeProps($setup.buttonProps, {
+  return ($setup.show)
+    ? (_openBlock(), _createBlock($setup.PatinaPlayground, {
       key: 0,
-      onClick: _ctx.handleClick
-    })))
+      compiler: _unref($setup.compiler)
+    }))
     : _createCommentVNode("v-if", true)
 }
 

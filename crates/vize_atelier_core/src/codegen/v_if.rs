@@ -191,7 +191,7 @@ pub fn generate_if_branch_component(
         );
     }
 
-    ctx.push("}))")
+    ctx.push("))")
 }
 
 /// Check if prop should be skipped for v-if branch element

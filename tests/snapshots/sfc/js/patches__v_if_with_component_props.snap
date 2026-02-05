@@ -3,22 +3,20 @@ source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 assertion_line: 219
 expression: js_output
 ---
-import { openBlock as _openBlock, createBlock as _createBlock, createCommentVNode as _createCommentVNode } from "vue"
+import { openBlock as _openBlock, createBlock as _createBlock, createCommentVNode as _createCommentVNode, unref as _unref } from "vue"
 
 import { defineComponent as _defineComponent } from "vue";
-import { ref } from "vue";
-import MyInput from "./MyInput.vue";
+import PatinaPlayground from "./PatinaPlayground.vue";
 const __sfc__ = /*@__PURE__*/ _defineComponent({
   __name: "test",
   setup(__props, { expose: __expose, emit: __emit }) {
     __expose();
-    const visible = ref(true);
-    const value = ref("");
+    const show = true;
+    const compiler = {};
     const __returned__ = {
-      MyInput,
-      ref,
-      value,
-      visible
+      PatinaPlayground,
+      compiler,
+      show
     };
     Object.defineProperty(__returned__, "__isScriptSetup", {
       enumerable: false,
@@ -29,11 +27,10 @@ const __sfc__ = /*@__PURE__*/ _defineComponent({
 });
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return ($setup.visible)
-    ? (_openBlock(), _createBlock($setup.MyInput, {
+  return ($setup.show)
+    ? (_openBlock(), _createBlock($setup.PatinaPlayground, {
       key: 0,
-      modelValue: $setup.value,
-      "onUpdate:modelValue": $event => (($setup.value) = $event)
+      compiler: _unref($setup.compiler)
     }))
     : _createCommentVNode("v-if", true)
 }

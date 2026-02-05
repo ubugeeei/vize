@@ -579,14 +579,18 @@ function getScopeColorClass(kind: string): string {
                   :key="line.index"
                   :class="['vir-line', `vir-line-${line.lineType}`]"
                 >
-                  <template v-if="line.tokens.length > 0"
-                    ><span
+                  <template v-if="line.tokens.length > 0">
+                    <span
                       v-for="(token, ti) in line.tokens"
                       :key="ti"
                       :class="['vir-token', `vir-${token.type}`]"
-                      >{{ token.text }}</span
-                    ></template
-                  ><template v-else>&#160;</template>
+                    >
+                      {{ token.text }}
+                    </span>
+                  </template>
+                  <template v-else>
+                    <span>&#160;</span>
+                  </template>
                 </div>
               </div>
             </div>

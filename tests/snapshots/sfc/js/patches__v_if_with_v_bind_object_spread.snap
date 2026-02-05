@@ -1,5 +1,6 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 219
 expression: js_output
 ---
 import { openBlock as _openBlock, createBlock as _createBlock, createCommentVNode as _createCommentVNode, mergeProps as _mergeProps } from "vue"
@@ -36,7 +37,9 @@ export function render(_ctx, _cache, $props, $setup, $data, $options) {
     ? (_openBlock(), _createBlock($setup.Button, _mergeProps($setup.buttonProps, {
       key: 0,
       onClick: _ctx.handleClick
-    })}))
+    })))
+    : _createCommentVNode("v-if", true)
+}
 
 __sfc__.render = render
 export default __sfc__

@@ -120,20 +120,11 @@ export function vize(options: VizeOptions = {}): Plugin {
       return {
         optimizeDeps: {
           exclude: ["virtual:vize-styles"],
-          // Prevent esbuild from trying to scan .vue files
+          // Prevent rolldown from trying to scan .vue files
           // which would cause issues with our virtual module prefix
-          esbuildOptions: {
-            plugins: [
-              {
-                name: "vize-vue-filter",
-                setup(build) {
-                  // Mark .vue imports as external during dep scanning
-                  build.onResolve({ filter: /\.vue$/ }, (args) => {
-                    return { path: args.path, external: true };
-                  });
-                },
-              },
-            ],
+          // Note: Vite 8 uses rolldownOptions instead of esbuildOptions
+          rolldownOptions: {
+            external: [/\.vue$/],
           },
         },
       };

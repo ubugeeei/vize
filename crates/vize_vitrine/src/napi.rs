@@ -278,7 +278,7 @@ pub fn compile_sfc(
 
     // Compile
     let has_scoped = descriptor.styles.iter().any(|s| s.scoped);
-    let is_ts = opts.is_ts.unwrap_or(true);
+    let is_ts = opts.is_ts.unwrap_or(false);
 
     // Create compiler options with scope_id for scoped CSS
     let template_compiler_options = if has_scoped {
@@ -419,7 +419,7 @@ pub fn compile_sfc_batch(
 
     let opts = options.unwrap_or_default();
     let ssr = opts.ssr.unwrap_or(false);
-    let is_ts = opts.is_ts.unwrap_or(true);
+    let is_ts = opts.is_ts.unwrap_or(false);
 
     // Configure thread pool if specified
     if let Some(threads) = opts.threads {
@@ -496,12 +496,14 @@ pub fn compile_sfc_batch(
             },
             script: ScriptCompileOptions {
                 id: Some(filename.clone()),
+                is_ts,
                 ..Default::default()
             },
             template: TemplateCompileOptions {
                 id: Some(filename.clone()),
                 scoped: has_scoped,
                 ssr,
+                is_ts,
                 ..Default::default()
             },
             style: StyleCompileOptions {
@@ -548,6 +550,7 @@ pub fn compile_sfc_batch_with_results(
 
     let opts = options.unwrap_or_default();
     let ssr = opts.ssr.unwrap_or(false);
+    let is_ts = opts.is_ts.unwrap_or(false);
 
     // Configure thread pool if specified
     if let Some(threads) = opts.threads {

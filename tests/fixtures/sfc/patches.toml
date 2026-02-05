@@ -184,6 +184,28 @@ const value = ref('')
 """
 
 # =============================================================================
+# v-if component props (v_if.rs)
+# Issue: Extra brace emitted in component branch output for v-if
+# Fix: Ensure component branch closes with `))` instead of `}))`
+# =============================================================================
+
+[[cases]]
+name = "v-if with component props"
+input = """
+<script setup>
+import PatinaPlayground from './PatinaPlayground.vue'
+const show = true
+const compiler = {}
+</script>
+
+<template>
+  <template v-if="show">
+    <PatinaPlayground :compiler="compiler" />
+  </template>
+</template>
+"""
+
+# =============================================================================
 # v-if with v-bind object spread (v_if.rs)
 # Issue: v-bind="obj" wasn't handled correctly in v-if branches
 # Fix: Use _mergeProps for v-bind object spread

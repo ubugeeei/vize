@@ -1,5 +1,6 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 196
 expression: ts_output
 ---
 import { openBlock as _openBlock, createBlock as _createBlock, createCommentVNode as _createCommentVNode } from "vue"
@@ -27,7 +28,9 @@ export function render(_ctx, _cache, $props, $setup, $data, $options) {
       key: 0,
       modelValue: $setup.value,
       "onUpdate:modelValue": $event => (($setup.value) = $event)
-    }}))
+    }))
+    : _createCommentVNode("v-if", true)
+}
 
 __sfc__.render = render
 export default __sfc__

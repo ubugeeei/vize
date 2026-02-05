@@ -5,7 +5,8 @@
 
 use oxc_allocator::Allocator;
 use oxc_ast::ast::{
-    Argument, BindingPatternKind, CallExpression, Expression, Statement, VariableDeclarationKind,
+    Argument, BindingPatternKind, CallExpression, Expression, ImportDeclaration, Statement,
+    VariableDeclarationKind,
 };
 use oxc_parser::Parser;
 use oxc_span::{GetSpan, SourceType};
@@ -242,7 +243,7 @@ impl ScriptCompileContext {
         match stmt {
             Statement::ImportDeclaration(import_decl) => {
                 // Skip type-only import declarations: import type { ... } from '...'
-                if import_decl.import_kind.is_type() {
+                if import_decl.import_kind.is_type() || is_import_type_only(import_decl, source) {
                     return;
                 }
 
@@ -774,6 +775,17 @@ fn is_literal(expr: &Expression<'_>) -> bool {
             | Expression::BigIntLiteral(_)
             | Expression::TemplateLiteral(_)
     )
+}
+
+fn is_import_type_only(import_decl: &ImportDeclaration<'_>, source: &str) -> bool {
+    let span = import_decl.span();
+    let start = span.start as usize;
+    let end = span.end as usize;
+    if start >= end || end > source.len() {
+        return false;
+    }
+    let raw = &source[start..end];
+    raw.trim_start().starts_with("import type")
 }
 
 #[cfg(test)]
