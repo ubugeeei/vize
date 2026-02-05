@@ -1,0 +1,43 @@
+---
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+expression: js_output
+---
+import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, createElementVNode as _createElementVNode, renderList as _renderList, toDisplayString as _toDisplayString, normalizeClass as _normalizeClass } from "vue"
+
+import { defineComponent as _defineComponent } from 'vue'
+import { mergeDefaults as _mergeDefaults } from 'vue'
+
+// Reactive Props Destructure (Vue 3.5+)
+
+const __sfc__ = /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: /*@__PURE__*/_mergeDefaults({ count: {}, disabled: {}, items: {}, title: {} }, {
+  disabled: false
+  count: 0
+  items: () => []
+}),
+  setup(__props, { expose: __expose, emit: __emit }) {
+  __expose();
+  const __returned__ = {  }
+  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
+  return __returned__
+  }
+
+});
+
+export function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (_openBlock(), _createElementBlock("div", {
+    class: _normalizeClass({ disabled: $props.disabled })
+  }, [
+    _createElementVNode("h1", null, _toDisplayString($props.title), 1 /* TEXT */),
+    _createElementVNode("span", null, _toDisplayString($props.count), 1 /* TEXT */),
+    _createElementVNode("ul", null, [
+      (_openBlock(true), _createElementBlock(_Fragment, null, _renderList($props.items, (item) => {
+        return (_openBlock(), _createElementBlock("li", { key: item }, _toDisplayString(item), 1 /* TEXT */))
+      }), 128 /* KEYED_FRAGMENT */))
+    ])
+  ], 2 /* CLASS */))
+}
+
+__sfc__.render = render
+export default __sfc__

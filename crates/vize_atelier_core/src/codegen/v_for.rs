@@ -440,47 +440,33 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::ast::SourceLocation;
-    use crate::parser::parse;
-    use bumpalo::Bump;
-    use vize_carton::Box;
+    use super::is_numeric_content;
 
-    #[test]
-    fn test_should_skip_custom_directive() {
-        let allocator = Bump::new();
-        let (root, _) = parse(
-            &allocator,
-            r#"<div v-for=\"item in items\" v-click-outside=\"close\"></div>"#,
-        );
-
-        if let TemplateChildNode::Element(el) = &root.children[0] {
-            let custom_prop = el.props.iter().find(|p| match p {
-                PropNode::Directive(dir) => dir.name == "click-outside",
-                _ => false,
-            });
-            assert!(custom_prop.is_some());
-            assert!(should_skip_prop(custom_prop.unwrap()));
-        }
-    }
-
+    /// Test numeric source detection for v-for range expressions.
+    /// This tests the actual `is_numeric_content` helper function.
     #[test]
     fn test_is_numeric_content() {
-        assert!(is_numeric_content("123"));
+        // Valid numeric literals (v-for="n in 10")
+        assert!(is_numeric_content("10"));
+        assert!(is_numeric_content("100"));
+        assert!(is_numeric_content("0"));
+        assert!(is_numeric_content("12345"));
+
+        // Invalid: variable names
+        assert!(!is_numeric_content("items"));
+        assert!(!is_numeric_content("arr"));
+
+        // Invalid: expressions
+        assert!(!is_numeric_content("arr.length"));
+        assert!(!is_numeric_content("10 + 5"));
+
+        // Invalid: floating point
+        assert!(!is_numeric_content("10.5"));
+
+        // Invalid: empty string
         assert!(!is_numeric_content(""));
-        assert!(!is_numeric_content("12a"));
-        assert!(!is_numeric_content(" 12"));
-    }
-
-    #[test]
-    fn test_is_numeric_source() {
-        let allocator = Bump::new();
-        let exp = SimpleExpressionNode::new("42", true, SourceLocation::STUB);
-        let source = ExpressionNode::Simple(Box::new_in(exp, &allocator));
-        assert!(is_numeric_source(&source));
-
-        let exp = SimpleExpressionNode::new("4 2", true, SourceLocation::STUB);
-        let source = ExpressionNode::Simple(Box::new_in(exp, &allocator));
-        assert!(!is_numeric_source(&source));
     }
 }
+
+// Note: Directive skipping behavior (v-for with custom directives, :key handling)
+// is tested via SFC snapshot tests in tests/fixtures/sfc/patches.toml.

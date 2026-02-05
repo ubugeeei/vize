@@ -1,23 +1,24 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-expression: ts_output
+expression: js_output
 ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
-
-const __sfc__ = /*@__PURE__*/_defineComponent({
-  __name: 'test',
+import { defineComponent as _defineComponent } from "vue";
+const __sfc__ = /*@__PURE__*/ _defineComponent({
+  __name: "test",
   setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const multiline = `Line 1
+    __expose();
+    const multiline = `Line 1
   Line 2
-  Line 3`
-  const __returned__ = { multiline }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
+  Line 3`;
+    const __returned__ = { multiline };
+    Object.defineProperty(__returned__, "__isScriptSetup", {
+      enumerable: false,
+      value: true
+    });
+    return __returned__;
   }
-
 });
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {

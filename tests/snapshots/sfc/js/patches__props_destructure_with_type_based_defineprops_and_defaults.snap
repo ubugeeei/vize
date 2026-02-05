@@ -1,0 +1,37 @@
+---
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+expression: js_output
+---
+import { openBlock as _openBlock, createElementBlock as _createElementBlock, normalizeClass as _normalizeClass } from "vue"
+
+import { defineComponent as _defineComponent } from 'vue'
+import { mergeDefaults as _mergeDefaults } from 'vue'
+
+// Reactive Props Destructure (Vue 3.5+)
+
+const __sfc__ = /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: /*@__PURE__*/_mergeDefaults({ color: {}, size: {} }, {
+  color: "primary"
+  size: "medium"
+}),
+  setup(__props, { expose: __expose, emit: __emit }) {
+  __expose();
+    __props.color?: "primary" | "secondary";
+    __props.size?: "small" | "medium" | "large";
+  }>();
+  const __returned__ = {  }
+  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
+  return __returned__
+  }
+
+});
+
+export function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (_openBlock(), _createElementBlock("div", {
+    class: _normalizeClass([$props.color, $props.size])
+  }, "Styled", 2 /* CLASS */))
+}
+
+__sfc__.render = render
+export default __sfc__

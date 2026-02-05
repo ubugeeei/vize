@@ -1,0 +1,38 @@
+---
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+expression: js_output
+---
+import { openBlock as _openBlock, createBlock as _createBlock, createTextVNode as _createTextVNode, withCtx as _withCtx } from "vue"
+
+import { defineComponent as _defineComponent } from "vue";
+import Card from "./Card.vue";
+const __sfc__ = /*@__PURE__*/ _defineComponent({
+  __name: "test",
+  setup(__props, { expose: __expose, emit: __emit }) {
+    __expose();
+    const __returned__ = { Card };
+    Object.defineProperty(__returned__, "__isScriptSetup", {
+      enumerable: false,
+      value: true
+    });
+    return __returned__;
+  }
+});
+
+export function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (_openBlock(), _createBlock($setup.Card, null, {
+    "card-header": _withCtx(() => [
+      _createTextVNode("Header")
+    ]),
+    "card-body": _withCtx(() => [
+      _createTextVNode("Body")
+    ]),
+    "card-footer": _withCtx(() => [
+      _createTextVNode("Footer")
+    ]),
+    _: 1 /* STABLE */
+  }))
+}
+
+__sfc__.render = render
+export default __sfc__

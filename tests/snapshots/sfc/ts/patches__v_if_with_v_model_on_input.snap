@@ -1,17 +1,19 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 150
 expression: ts_output
 ---
-import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
+import { openBlock as _openBlock, createElementBlock as _createElementBlock, createCommentVNode as _createCommentVNode } from "vue"
 
 import { defineComponent as _defineComponent } from 'vue'
+import { ref } from 'vue'
 
 const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
   __expose();
-  const __returned__ = { color, size }
+  const show = ref(true)
+  const text = ref('')
+  const __returned__ = { ref, show, text }
   Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
   return __returned__
   }
@@ -19,7 +21,13 @@ const __sfc__ = /*@__PURE__*/_defineComponent({
 });
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("div", null, _toDisplayString($props.size) + " " + _toDisplayString($props.color), 1 /* TEXT */))
+  return ($setup.show)
+    ? (_openBlock(), _createElementBlock("input", {
+      key: 0,
+      ,
+      "onUpdate:modelValue": $event => (($setup.text) = $event)
+    }))
+    : _createCommentVNode("v-if", true)
 }
 
 __sfc__.render = render

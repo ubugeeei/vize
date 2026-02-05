@@ -2,18 +2,17 @@
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 expression: ts_output
 ---
-import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
+import { openBlock as _openBlock, createElementBlock as _createElementBlock, withDirectives as _withDirectives, vModelText as _vModelText } from "vue"
 
 import { defineComponent as _defineComponent } from 'vue'
+import { ref } from 'vue'
 
 const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
   __expose();
-  const multiline = `Line 1
-  Line 2
-  Line 3`
-  const __returned__ = { multiline }
+  const inputValue = ref('')
+  const __returned__ = { inputValue, ref }
   Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
   return __returned__
   }
@@ -21,7 +20,11 @@ const __sfc__ = /*@__PURE__*/_defineComponent({
 });
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("pre", null, _toDisplayString($setup.multiline), 1 /* TEXT */))
+  return _withDirectives((_openBlock(), _createElementBlock("input", {
+    "onUpdate:modelValue": $event => (($setup.inputValue) = $event)
+  }, null, 8 /* PROPS */, ["onUpdate:modelValue"])), [
+    [_vModelText, $setup.inputValue]
+  ])
 }
 
 __sfc__.render = render

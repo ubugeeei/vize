@@ -2,18 +2,19 @@
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 expression: ts_output
 ---
-import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
+import { openBlock as _openBlock, createBlock as _createBlock, createCommentVNode as _createCommentVNode } from "vue"
 
 import { defineComponent as _defineComponent } from 'vue'
+import { ref } from 'vue'
+import MyInput from './MyInput.vue'
 
 const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
   __expose();
-  const multiline = `Line 1
-  Line 2
-  Line 3`
-  const __returned__ = { multiline }
+  const visible = ref(true)
+  const value = ref('')
+  const __returned__ = { MyInput, ref, value, visible }
   Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
   return __returned__
   }
@@ -21,8 +22,12 @@ const __sfc__ = /*@__PURE__*/_defineComponent({
 });
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("pre", null, _toDisplayString($setup.multiline), 1 /* TEXT */))
-}
+  return ($setup.visible)
+    ? (_openBlock(), _createBlock($setup.MyInput, {
+      key: 0,
+      modelValue: $setup.value,
+      "onUpdate:modelValue": $event => (($setup.value) = $event)
+    }}))
 
 __sfc__.render = render
 export default __sfc__

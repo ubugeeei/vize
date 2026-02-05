@@ -1,0 +1,42 @@
+---
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+expression: js_output
+---
+import { openBlock as _openBlock, createBlock as _createBlock, createCommentVNode as _createCommentVNode, mergeProps as _mergeProps } from "vue"
+
+import { defineComponent as _defineComponent } from "vue";
+import { ref, computed } from "vue";
+import Button from "./Button.vue";
+const __sfc__ = /*@__PURE__*/ _defineComponent({
+  __name: "test",
+  setup(__props, { expose: __expose, emit: __emit }) {
+    __expose();
+    const isActive = ref(true);
+    const buttonProps = computed(() => ({
+      disabled: false,
+      type: "primary"
+    }));
+    const __returned__ = {
+      Button,
+      buttonProps,
+      computed,
+      isActive,
+      ref
+    };
+    Object.defineProperty(__returned__, "__isScriptSetup", {
+      enumerable: false,
+      value: true
+    });
+    return __returned__;
+  }
+});
+
+export function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return ($setup.isActive)
+    ? (_openBlock(), _createBlock($setup.Button, _mergeProps($setup.buttonProps, {
+      key: 0,
+      onClick: _ctx.handleClick
+    })}))
+
+__sfc__.render = render
+export default __sfc__

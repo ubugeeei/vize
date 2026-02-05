@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 150
 expression: ts_output
 ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString, unref as _unref } from "vue"
@@ -11,8 +10,8 @@ const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
   __expose();
-  const items = [1, 2, 3]
-  const __returned__ = { items }
+  let value = $ref(10)
+  const __returned__ = { value }
   Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
   return __returned__
   }
@@ -20,7 +19,9 @@ const __sfc__ = /*@__PURE__*/_defineComponent({
 });
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(_unref($setup.items).filter((x) => x > 1)), 1 /* TEXT */))
+  return (_openBlock(), _createElementBlock("button", {
+    onClick: $event => ($setup.value.value++)
+  }, _toDisplayString(_unref($setup.value)), 9 /* TEXT, PROPS */, ["onClick"]))
 }
 
 __sfc__.render = render

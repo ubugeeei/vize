@@ -1,0 +1,27 @@
+---
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+expression: js_output
+---
+import { openBlock as _openBlock, createBlock as _createBlock } from "vue"
+
+import { defineComponent as _defineComponent } from "vue";
+import DefaultComponent from "./Default.vue";
+const __sfc__ = /*@__PURE__*/ _defineComponent({
+  __name: "test",
+  setup(__props, { expose: __expose, emit: __emit }) {
+    __expose();
+    const __returned__ = { DefaultComponent };
+    Object.defineProperty(__returned__, "__isScriptSetup", {
+      enumerable: false,
+      value: true
+    });
+    return __returned__;
+  }
+});
+
+export function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (_openBlock(), _createBlock($setup.DefaultComponent))
+}
+
+__sfc__.render = render
+export default __sfc__

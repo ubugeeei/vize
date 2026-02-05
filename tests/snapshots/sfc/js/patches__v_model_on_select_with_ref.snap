@@ -1,0 +1,41 @@
+---
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+expression: js_output
+---
+import { openBlock as _openBlock, createElementBlock as _createElementBlock, withDirectives as _withDirectives, vModelSelect as _vModelSelect } from "vue"
+
+import { defineComponent as _defineComponent } from "vue";
+import { ref } from "vue";
+const __sfc__ = /*@__PURE__*/ _defineComponent({
+  __name: "test",
+  setup(__props, { expose: __expose, emit: __emit }) {
+    __expose();
+    const selected = ref("option1");
+    const __returned__ = {
+      ref,
+      selected
+    };
+    Object.defineProperty(__returned__, "__isScriptSetup", {
+      enumerable: false,
+      value: true
+    });
+    return __returned__;
+  }
+});
+
+const _hoisted_1 = /*#__PURE__*/ _createElementVNode("option", { value: "option1" }, "Option 1")
+const _hoisted_2 = /*#__PURE__*/ _createElementVNode("option", { value: "option2" }, "Option 2")
+
+export function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return _withDirectives((_openBlock(), _createElementBlock("select", {
+    "onUpdate:modelValue": $event => (($setup.selected) = $event)
+  }, [
+    _hoisted_1,
+    _hoisted_2
+  ], 8 /* PROPS */, ["onUpdate:modelValue"])), [
+    [_vModelSelect, $setup.selected]
+  ])
+}
+
+__sfc__.render = render
+export default __sfc__

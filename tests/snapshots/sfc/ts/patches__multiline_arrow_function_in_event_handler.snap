@@ -2,18 +2,17 @@
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 expression: ts_output
 ---
-import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
+import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
 
 import { defineComponent as _defineComponent } from 'vue'
+import { ref } from 'vue'
 
 const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
   __expose();
-  const multiline = `Line 1
-  Line 2
-  Line 3`
-  const __returned__ = { multiline }
+  const count = ref(0)
+  const __returned__ = { count, ref }
   Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
   return __returned__
   }
@@ -21,7 +20,13 @@ const __sfc__ = /*@__PURE__*/_defineComponent({
 });
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("pre", null, _toDisplayString($setup.multiline), 1 /* TEXT */))
+  return (_openBlock(), _createElementBlock("button", {
+    onClick: () => {
+    const newValue = $setup.count.value + 1;
+    $setup.count.value = _ctx.newValue;
+    console.log('incremented');
+  }
+  }, "Increment", 8 /* PROPS */, ["onClick"]))
 }
 
 __sfc__.render = render

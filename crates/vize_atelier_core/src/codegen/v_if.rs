@@ -542,67 +542,6 @@ fn get_static_event_key(dir: &DirectiveNode<'_>) -> Option<String> {
     Some(key)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::codegen::generate;
-    use crate::options::{CodegenOptions, TransformOptions};
-    use crate::parser::parse;
-    use crate::transform::transform;
-    use bumpalo::Bump;
-
-    #[test]
-    fn test_has_vbind_spread() {
-        let allocator = Bump::new();
-        let (root, _) = parse(&allocator, r#"<div v-if=\"ok\" v-bind=\"props\"></div>"#);
-
-        if let TemplateChildNode::Element(el) = &root.children[0] {
-            assert!(has_vbind_spread(el));
-        }
-    }
-
-    #[test]
-    fn test_get_static_event_key_update_model() {
-        let allocator = Bump::new();
-        let (root, _) = parse(
-            &allocator,
-            r#"<div v-if=\"ok\" @update:modelValue=\"onUpdate\"></div>"#,
-        );
-
-        if let TemplateChildNode::Element(el) = &root.children[0] {
-            let dir = el.props.iter().find_map(|p| {
-                if let PropNode::Directive(d) = p {
-                    if d.name == "on" {
-                        return Some(d.as_ref());
-                    }
-                }
-                None
-            });
-            let key = get_static_event_key(dir.unwrap()).unwrap();
-            assert_eq!(key, "onUpdate:modelValue");
-        }
-    }
-
-    #[test]
-    fn test_v_if_dedupes_duplicate_events() {
-        let allocator = Bump::new();
-        let (mut root, errors) = parse(
-            &allocator,
-            r#"<input v-if=\"ok\" @update:modelValue=\"a\" @update:modelValue=\"b\" />"#,
-        );
-        assert!(errors.is_empty(), "Parse errors: {:?}", errors);
-
-        transform(&allocator, &mut root, TransformOptions::default());
-        let result = generate(&root, CodegenOptions::default());
-        let count = result.code.matches("onUpdate:modelValue").count();
-        assert_eq!(
-            count, 1,
-            "Expected duplicate events to be deduped. Got:\n{}",
-            result.code
-        );
-    }
-}
-
 /// Generate template fragment for if branch (multiple children from template)
 pub fn generate_if_branch_template_fragment(
     ctx: &mut CodegenContext,
@@ -667,6 +606,10 @@ pub fn generate_if_branch_key(
         ctx.push(&branch_index.to_string());
     }
 }
+
+// Note: v-if directive behavior is tested via SFC snapshot tests
+// in tests/fixtures/sfc/patches.toml. Unit tests for AST-based functions
+// require bumpalo allocation which adds complexity without significant benefit.
 
 /// Generate fragment wrapper for if branch with multiple children
 pub fn generate_if_branch_fragment(

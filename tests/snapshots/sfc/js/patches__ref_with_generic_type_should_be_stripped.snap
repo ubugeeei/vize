@@ -1,23 +1,28 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-expression: ts_output
+expression: js_output
 ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, createCommentVNode as _createCommentVNode, toDisplayString as _toDisplayString } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
-import { ref } from 'vue'
-
-const __sfc__ = /*@__PURE__*/_defineComponent({
-  __name: 'test',
+import { defineComponent as _defineComponent } from "vue";
+import { ref } from "vue";
+const __sfc__ = /*@__PURE__*/ _defineComponent({
+  __name: "test",
   setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const user = ref<User | null>(null)
-  const users = ref<User[]>([])
-  const __returned__ = { ref, user, users }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
+    __expose();
+    const user = ref(null);
+    const users = ref([]);
+    const __returned__ = {
+      ref,
+      user,
+      users
+    };
+    Object.defineProperty(__returned__, "__isScriptSetup", {
+      enumerable: false,
+      value: true
+    });
+    return __returned__;
   }
-
 });
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {

@@ -1,0 +1,23 @@
+---
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+expression: js_output
+---
+import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
+
+
+import { ref } from 'vue'
+
+const _sfc_main = {
+  name: 'SetupFunctionComponent',
+  setup() {
+    const count = ref(0)
+    return { count }
+  }
+}
+
+export function render(_ctx, _cache) {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(_ctx.count), 1 /* TEXT */))
+}
+
+_sfc_main.render = render
+export default _sfc_main

@@ -2,18 +2,16 @@
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 expression: ts_output
 ---
-import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
+import { openBlock as _openBlock, createBlock as _createBlock, createTextVNode as _createTextVNode, withCtx as _withCtx } from "vue"
 
 import { defineComponent as _defineComponent } from 'vue'
+import Card from './Card.vue'
 
 const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
   __expose();
-  const multiline = `Line 1
-  Line 2
-  Line 3`
-  const __returned__ = { multiline }
+  const __returned__ = { Card }
   Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
   return __returned__
   }
@@ -21,7 +19,18 @@ const __sfc__ = /*@__PURE__*/_defineComponent({
 });
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("pre", null, _toDisplayString($setup.multiline), 1 /* TEXT */))
+  return (_openBlock(), _createBlock($setup.Card, null, {
+    "card-header": _withCtx(() => [
+      _createTextVNode("Header")
+    ]),
+    "card-body": _withCtx(() => [
+      _createTextVNode("Body")
+    ]),
+    "card-footer": _withCtx(() => [
+      _createTextVNode("Footer")
+    ]),
+    _: 1 /* STABLE */
+  }))
 }
 
 __sfc__.render = render
