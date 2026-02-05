@@ -357,7 +357,8 @@ pub fn generate_v_once_element(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
                 ctx.push(", ");
                 ctx.push(&filtered_flag.to_string());
                 ctx.push(" /* ");
-                ctx.push(patch_flag_name(filtered_flag));
+                let flag_name = patch_flag_name(filtered_flag);
+                ctx.push(&flag_name);
                 ctx.push(" */");
             }
         }
@@ -611,7 +612,8 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
                     ctx.push(", ");
                     ctx.push(&flag.to_string());
                     ctx.push(" /* ");
-                    ctx.push(patch_flag_name(flag));
+                    let flag_name = patch_flag_name(flag);
+                    ctx.push(&flag_name);
                     ctx.push(" */");
                 }
             }
@@ -756,7 +758,8 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
                 ctx.push(", ");
                 ctx.push(&flag.to_string());
                 ctx.push(" /* ");
-                ctx.push(patch_flag_name(flag));
+                let flag_name = patch_flag_name(flag);
+                ctx.push(&flag_name);
                 ctx.push(" */");
             }
 
@@ -901,7 +904,8 @@ pub fn generate_element(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
                 ctx.push(", ");
                 ctx.push(&flag.to_string());
                 ctx.push(" /* ");
-                ctx.push(patch_flag_name(flag));
+                let flag_name = patch_flag_name(flag);
+                ctx.push(&flag_name);
                 ctx.push(" */");
             }
 

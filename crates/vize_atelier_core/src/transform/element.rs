@@ -138,10 +138,10 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
         value_exp: String,
         raw_value_exp: String,
         prop_name: String,
-        event_name: std::string::String,
-        handler: std::string::String,
+        event_name: String,
+        handler: String,
         dir_loc: SourceLocation,
-        modifiers_obj: Option<std::string::String>,
+        modifiers_obj: Option<String>,
         modifiers_key: Option<String>,
         is_dynamic: bool,
     }
@@ -188,15 +188,15 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
             let event_name = if is_component {
                 let mut name = String::with_capacity(9 + prop_name.len());
                 name.push_str("onUpdate:");
-                name.push_str(&prop_name);
+                name.push_str(prop_name.as_str());
                 name
             } else {
                 // For native elements, use input event (or change for lazy)
                 let has_lazy = dir.modifiers.iter().any(|m| m.content == "lazy");
                 if has_lazy {
-                    "onChange".to_string()
+                    String::new("onChange")
                 } else {
-                    "onInput".to_string()
+                    String::new("onInput")
                 }
             };
 
@@ -204,7 +204,7 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
             let handler = if is_component {
                 let mut out = String::with_capacity(raw_value_exp.len() + 20);
                 out.push_str("$event => ((");
-                out.push_str(&raw_value_exp);
+                out.push_str(raw_value_exp.as_str());
                 out.push_str(") = $event)");
                 out
             } else {
@@ -225,9 +225,9 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
                 }
                 let mut out = String::with_capacity(raw_value_exp.len() + target_value.len() + 16);
                 out.push_str("$event => ((");
-                out.push_str(&raw_value_exp);
+                out.push_str(raw_value_exp.as_str());
                 out.push_str(") = ");
-                out.push_str(&target_value);
+                out.push_str(target_value.as_str());
                 out.push(')');
                 out
             };
@@ -236,7 +236,7 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
 
             // Collect modifiers info for components
             let (modifiers_obj, modifiers_key) = if is_component && !dir.modifiers.is_empty() {
-                let modifiers_content: std::vec::Vec<std::string::String> = dir
+                let modifiers_content: std::vec::Vec<String> = dir
                     .modifiers
                     .iter()
                     .map(|m| {
@@ -258,9 +258,9 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
                     String::new("modelModifiers")
                 } else {
                     let mut key = String::with_capacity(prop_name.len() + 9);
-                    key.push_str(&prop_name);
+                    key.push_str(prop_name.as_str());
                     key.push_str("Modifiers");
-                    key.into()
+                    key
                 };
                 (Some(obj), Some(key))
             } else {
@@ -334,7 +334,7 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
 
             // Add @update:propName prop
             let raw_handler_expr = ExpressionNode::Simple(Box::new_in(
-                SimpleExpressionNode::new(&data.handler, false, data.dir_loc.clone()),
+                SimpleExpressionNode::new(data.handler.as_str(), false, data.dir_loc.clone()),
                 allocator,
             ));
             let processed_handler = process_inline_handler(ctx, &raw_handler_expr);
@@ -377,7 +377,11 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
                             allocator,
                         ))),
                         exp: Some(ExpressionNode::Simple(Box::new_in(
-                            SimpleExpressionNode::new(modifiers_obj, false, data.dir_loc.clone()),
+                            SimpleExpressionNode::new(
+                                modifiers_obj.as_str(),
+                                false,
+                                data.dir_loc.clone(),
+                            ),
                             allocator,
                         ))),
                         modifiers: Vec::new_in(allocator),
@@ -401,10 +405,10 @@ fn process_element_props<'a>(ctx: &mut TransformContext<'a>, el: &mut Box<'a, El
             // Keep v-model directive, insert onUpdate:modelValue handler right after it
             let mut handler = String::with_capacity(data.raw_value_exp.len() + 20);
             handler.push_str("$event => ((");
-            handler.push_str(&data.raw_value_exp);
+            handler.push_str(data.raw_value_exp.as_str());
             handler.push_str(") = $event)");
             let raw_handler_expr = ExpressionNode::Simple(Box::new_in(
-                SimpleExpressionNode::new(&handler, false, data.dir_loc.clone()),
+                SimpleExpressionNode::new(handler.as_str(), false, data.dir_loc.clone()),
                 allocator,
             ));
             let processed_handler = process_inline_handler(ctx, &raw_handler_expr);

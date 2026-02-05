@@ -731,7 +731,7 @@ impl<'a, 'ctx> Visit<'_> for IdentifierCollector<'a, 'ctx> {
 
                 if let Some(prefix) = get_identifier_prefix(name, self.ctx) {
                     if !prefix.is_empty() {
-                        let mut suffix = String::with_capacity(2 + prefix.len() + name.len());
+                        let mut suffix = StdString::with_capacity(2 + prefix.len() + name.len());
                         suffix.push_str(": ");
                         suffix.push_str(prefix);
                         suffix.push_str(name);
