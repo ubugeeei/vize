@@ -27,14 +27,6 @@ function createLogger(debug: boolean) {
   };
 }
 
-function splitQuery(id: string) {
-  const index = id.indexOf("?");
-  if (index === -1) {
-    return { path: id, query: "" };
-  }
-  return { path: id.slice(0, index), query: id.slice(index) };
-}
-
 export function vize(options: VizeOptions = {}): Plugin {
   const cache = new Map<string, CompiledModule>();
   // Map from virtual ID to real file path
@@ -206,8 +198,6 @@ export function vize(options: VizeOptions = {}): Plugin {
         return id;
       }
 
-      const { path: idPath, query } = splitQuery(id);
-
       // If importer is a virtual module, resolve imports against the real path
       if (importer?.startsWith(VIRTUAL_PREFIX)) {
         const realImporter = virtualToReal.get(importer) ?? importer.slice(VIRTUAL_PREFIX.length);
@@ -219,22 +209,30 @@ export function vize(options: VizeOptions = {}): Plugin {
         logger.log(`resolveId from virtual: id=${id}, cleanImporter=${cleanImporter}`);
 
         // For non-vue files, resolve relative to the real importer
-        if (!idPath.endsWith(".vue")) {
-          if (path.isAbsolute(idPath) || idPath.startsWith("/@fs/")) {
-            return idPath + query;
-          }
+        if (!id.endsWith(".vue")) {
+          if (id.startsWith("./") || id.startsWith("../")) {
+            // Separate query params (e.g., ?inline, ?raw) from the path
+            const [pathPart, queryPart] = id.split("?");
+            const querySuffix = queryPart ? `?${queryPart}` : "";
 
-          if (idPath.startsWith("./") || idPath.startsWith("../")) {
             // Relative imports - resolve and check if file exists
-            const resolved = path.resolve(path.dirname(cleanImporter), idPath);
+            const resolved = path.resolve(path.dirname(cleanImporter), pathPart);
             for (const ext of ["", ".ts", ".tsx", ".js", ".jsx", ".json"]) {
               if (fs.existsSync(resolved + ext)) {
-                logger.log(`resolveId: resolved relative ${id} to ${resolved + ext}`);
-                return resolved + ext + query;
+                const finalPath = resolved + ext + querySuffix;
+                logger.log(`resolveId: resolved relative ${id} to ${finalPath}`);
+                return finalPath;
               }
             }
           } else {
             // External package imports (e.g., '@mdi/js', 'vue')
+            // Check if the id looks like an already-resolved path (contains /dist/ or /lib/)
+            // This can happen when other plugins (like vue-i18n) have already transformed the import
+            if (id.includes("/dist/") || id.includes("/lib/") || id.includes("/es/")) {
+              // Already looks resolved, return null to let Vite handle it
+              logger.log(`resolveId: skipping already-resolved path ${id}`);
+              return null;
+            }
             // Re-resolve with the real importer path
             logger.log(`resolveId: resolving external ${id} from ${cleanImporter}`);
             const resolved = await this.resolve(id, cleanImporter, { skipSelf: true });
@@ -244,8 +242,8 @@ export function vize(options: VizeOptions = {}): Plugin {
         }
       }
 
-      if (idPath.endsWith(".vue") && !query) {
-        const resolved = resolveVuePath(idPath, importer);
+      if (id.endsWith(".vue")) {
+        const resolved = resolveVuePath(id, importer);
 
         // Debug: log all resolution attempts
         const hasCache = cache.has(resolved);
