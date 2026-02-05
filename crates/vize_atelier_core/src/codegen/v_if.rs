@@ -400,6 +400,7 @@ pub fn generate_if_branch_element(
 }
 
 /// Generate props object for v-if branch (with key and other props)
+#[allow(clippy::too_many_arguments)]
 fn generate_if_branch_props_object(
     ctx: &mut CodegenContext,
     el: &ElementNode<'_>,

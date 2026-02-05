@@ -9,23 +9,19 @@ export interface User {
   id: number;
   name: string;
 }
-import { defineComponent as _defineComponent } from "vue";
-import { ref } from "vue";
-const __sfc__ = /*@__PURE__*/ _defineComponent({
-  __name: "test",
+import { defineComponent as _defineComponent } from 'vue'
+import { ref } from 'vue'
+
+const __sfc__ = /*@__PURE__*/_defineComponent({
+  __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
-    __expose();
-    const user = ref(null);
-    const __returned__ = {
-      ref,
-      user
-    };
-    Object.defineProperty(__returned__, "__isScriptSetup", {
-      enumerable: false,
-      value: true
-    });
-    return __returned__;
+  __expose();
+  const user = ref<User | null>(null)
+  const __returned__ = { ref, user }
+  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
+  return __returned__
   }
+
 });
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {

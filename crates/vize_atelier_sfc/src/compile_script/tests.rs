@@ -537,6 +537,20 @@ const getNumberOfTeachers = (
     }
 
     #[test]
+    fn test_compile_script_setup_preserves_typescript_when_is_ts() {
+        let content = r#"
+const count: number = 1;
+const items: Array<string> = [];
+"#;
+        let result = compile_script_setup(content, "Test", false, true, None).unwrap();
+        assert!(
+            result.code.contains(": number") || result.code.contains("Array<string>"),
+            "Expected TypeScript annotations to be preserved. Got:\n{}",
+            result.code
+        );
+    }
+
+    #[test]
     fn test_props_destructure_type_based_defaults() {
         let content = r#"
 const { color = "primary" } = defineProps<{

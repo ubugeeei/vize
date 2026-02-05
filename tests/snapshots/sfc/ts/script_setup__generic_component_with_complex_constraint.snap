@@ -5,33 +5,23 @@ expression: ts_output
 ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, renderSlot as _renderSlot, withModifiers as _withModifiers } from "vue"
 
-import { defineComponent as _defineComponent } from "vue";
-import { ref } from "vue";
-const __sfc__ = /*@__PURE__*/ _defineComponent({
-  __name: "test",
+import { defineComponent as _defineComponent } from 'vue'
+import { ref } from 'vue'
+
+const __sfc__ = /*@__PURE__*/_defineComponent({
+  __name: 'test',
   props: {
-    initialState: {
-      type: Object,
-      required: true
-    },
-    onSubmit: {
-      type: Object,
-      required: true
-    }
+    initialState: { type: Object, required: true },
+    onSubmit: { type: Object, required: true },
   },
   setup(__props, { expose: __expose, emit: __emit }) {
-    __expose();
-    const formData = ref(null);
-    const __returned__ = {
-      formData,
-      ref
-    };
-    Object.defineProperty(__returned__, "__isScriptSetup", {
-      enumerable: false,
-      value: true
-    });
-    return __returned__;
+  __expose();
+  const formData = ref<FormShape | null>(null)
+  const __returned__ = { formData, ref }
+  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
+  return __returned__
   }
+
 });
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {

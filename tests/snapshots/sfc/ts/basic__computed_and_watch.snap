@@ -5,28 +5,21 @@ expression: ts_output
 ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
 
-import { defineComponent as _defineComponent } from "vue";
-import { ref, computed, watch } from "vue";
-const __sfc__ = /*@__PURE__*/ _defineComponent({
-  __name: "test",
+import { defineComponent as _defineComponent } from 'vue'
+import { ref, computed, watch } from 'vue'
+
+const __sfc__ = /*@__PURE__*/_defineComponent({
+  __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
-    __expose();
-    const count = ref(0);
-    const double = computed(() => count.value * 2);
-    watch(count, (n) => console.log(n));
-    const __returned__ = {
-      computed,
-      count,
-      double,
-      ref,
-      watch
-    };
-    Object.defineProperty(__returned__, "__isScriptSetup", {
-      enumerable: false,
-      value: true
-    });
-    return __returned__;
+  __expose();
+  const count = ref(0)
+  const double = computed(() => count.value * 2)
+  watch(count, (n) => console.log(n))
+  const __returned__ = { computed, count, double, ref, watch }
+  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
+  return __returned__
   }
+
 });
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {

@@ -248,10 +248,8 @@ fn prefix_identifiers_with_context(content: &str, ctx: &CodegenContext) -> Strin
                             }
                         }
                         AssignmentTarget::ArrayAssignmentTarget(arr) => {
-                            for elem in &arr.elements {
-                                if let Some(elem) = elem {
-                                    self.collect_assignment_targets_maybe_default(elem);
-                                }
+                            for elem in arr.elements.iter().flatten() {
+                                self.collect_assignment_targets_maybe_default(elem);
                             }
                             if let Some(rest) = &arr.rest {
                                 self.collect_assignment_targets(&rest.target);
@@ -297,10 +295,8 @@ fn prefix_identifiers_with_context(content: &str, ctx: &CodegenContext) -> Strin
                             }
                         }
                         AssignmentTargetMaybeDefault::ArrayAssignmentTarget(arr) => {
-                            for elem in &arr.elements {
-                                if let Some(elem) = elem {
-                                    self.collect_assignment_targets_maybe_default(elem);
-                                }
+                            for elem in arr.elements.iter().flatten() {
+                                self.collect_assignment_targets_maybe_default(elem);
                             }
                             if let Some(rest) = &arr.rest {
                                 self.collect_assignment_targets(&rest.target);
@@ -316,11 +312,8 @@ fn prefix_identifiers_with_context(content: &str, ctx: &CodegenContext) -> Strin
                 ) {
                     use oxc_ast::ast::SimpleAssignmentTarget;
 
-                    match target {
-                        SimpleAssignmentTarget::AssignmentTargetIdentifier(ident) => {
-                            self.assignment_targets.insert(ident.span.start as usize);
-                        }
-                        _ => {}
+                    if let SimpleAssignmentTarget::AssignmentTargetIdentifier(ident) = target {
+                        self.assignment_targets.insert(ident.span.start as usize);
                     }
                 }
             }

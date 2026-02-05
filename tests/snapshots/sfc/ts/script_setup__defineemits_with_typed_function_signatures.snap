@@ -5,24 +5,19 @@ expression: ts_output
 ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, unref as _unref } from "vue"
 
-import { defineComponent as _defineComponent } from "vue";
-const __sfc__ = /*@__PURE__*/ _defineComponent({
-  __name: "test",
-  emits: [
-    "update",
-    "delete",
-    "submit"
-  ],
+import { defineComponent as _defineComponent } from 'vue'
+
+const __sfc__ = /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  emits: ["update", "delete", "submit"],
   setup(__props, { expose: __expose, emit: __emit }) {
-    __expose();
-    const emit = __emit;
-    const __returned__ = { emit };
-    Object.defineProperty(__returned__, "__isScriptSetup", {
-      enumerable: false,
-      value: true
-    });
-    return __returned__;
+  __expose();
+  const emit = __emit
+  const __returned__ = { emit }
+  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
+  return __returned__
   }
+
 });
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {

@@ -72,11 +72,11 @@ pub fn compile_script(
         } else {
             code.push_str("\nconst __sfc__ = __default__\n");
         }
-        // Transform TypeScript to JavaScript using OXC if source is TypeScript
+        // Transform TypeScript to JavaScript only when output is not TS.
         let final_code = if is_ts {
-            transform_typescript_to_js(&code)
-        } else {
             code
+        } else {
+            transform_typescript_to_js(&code)
         };
         Ok(ScriptCompileResult {
             code: final_code,

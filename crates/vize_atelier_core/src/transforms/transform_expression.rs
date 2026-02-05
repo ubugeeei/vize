@@ -724,10 +724,8 @@ impl<'a, 'ctx> IdentifierCollector<'a, 'ctx> {
                 }
             }
             AssignmentTarget::ArrayAssignmentTarget(arr) => {
-                for elem in &arr.elements {
-                    if let Some(elem) = elem {
-                        self.collect_assignment_targets_maybe_default(elem);
-                    }
+                for elem in arr.elements.iter().flatten() {
+                    self.collect_assignment_targets_maybe_default(elem);
                 }
                 if let Some(rest) = &arr.rest {
                     self.collect_assignment_targets(&rest.target);
@@ -769,10 +767,8 @@ impl<'a, 'ctx> IdentifierCollector<'a, 'ctx> {
                 }
             }
             AssignmentTargetMaybeDefault::ArrayAssignmentTarget(arr) => {
-                for elem in &arr.elements {
-                    if let Some(elem) = elem {
-                        self.collect_assignment_targets_maybe_default(elem);
-                    }
+                for elem in arr.elements.iter().flatten() {
+                    self.collect_assignment_targets_maybe_default(elem);
                 }
                 if let Some(rest) = &arr.rest {
                     self.collect_assignment_targets(&rest.target);
@@ -788,11 +784,8 @@ impl<'a, 'ctx> IdentifierCollector<'a, 'ctx> {
     ) {
         use oxc_ast_types::SimpleAssignmentTarget;
 
-        match target {
-            SimpleAssignmentTarget::AssignmentTargetIdentifier(ident) => {
-                self.assignment_targets.insert(ident.span.start as usize);
-            }
-            _ => {}
+        if let SimpleAssignmentTarget::AssignmentTargetIdentifier(ident) = target {
+            self.assignment_targets.insert(ident.span.start as usize);
         }
     }
 }

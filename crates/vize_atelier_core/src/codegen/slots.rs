@@ -173,14 +173,12 @@ pub fn generate_slots(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
                             ctx.push("_ctx.");
                             ctx.push(&slot_name);
                             ctx.push("]");
+                        } else if is_valid_js_identifier(&slot_name) {
+                            ctx.push(&slot_name);
                         } else {
-                            if is_valid_js_identifier(&slot_name) {
-                                ctx.push(&slot_name);
-                            } else {
-                                ctx.push("\"");
-                                ctx.push(&escape_js_string(&slot_name));
-                                ctx.push("\"");
-                            }
+                            ctx.push("\"");
+                            ctx.push(&escape_js_string(&slot_name));
+                            ctx.push("\"");
                         }
 
                         if slot_name.as_str() == "default" {

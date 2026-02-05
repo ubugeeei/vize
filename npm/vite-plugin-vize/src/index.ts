@@ -27,6 +27,14 @@ function createLogger(debug: boolean) {
   };
 }
 
+function splitQuery(id: string) {
+  const index = id.indexOf("?");
+  if (index === -1) {
+    return { path: id, query: "" };
+  }
+  return { path: id.slice(0, index), query: id.slice(index) };
+}
+
 export function vize(options: VizeOptions = {}): Plugin {
   const cache = new Map<string, CompiledModule>();
   // Map from virtual ID to real file path
@@ -198,6 +206,8 @@ export function vize(options: VizeOptions = {}): Plugin {
         return id;
       }
 
+      const { path: idPath, query } = splitQuery(id);
+
       // If importer is a virtual module, resolve imports against the real path
       if (importer?.startsWith(VIRTUAL_PREFIX)) {
         const realImporter = virtualToReal.get(importer) ?? importer.slice(VIRTUAL_PREFIX.length);
@@ -209,14 +219,18 @@ export function vize(options: VizeOptions = {}): Plugin {
         logger.log(`resolveId from virtual: id=${id}, cleanImporter=${cleanImporter}`);
 
         // For non-vue files, resolve relative to the real importer
-        if (!id.endsWith(".vue")) {
-          if (id.startsWith("./") || id.startsWith("../")) {
+        if (!idPath.endsWith(".vue")) {
+          if (path.isAbsolute(idPath) || idPath.startsWith("/@fs/")) {
+            return idPath + query;
+          }
+
+          if (idPath.startsWith("./") || idPath.startsWith("../")) {
             // Relative imports - resolve and check if file exists
-            const resolved = path.resolve(path.dirname(cleanImporter), id);
+            const resolved = path.resolve(path.dirname(cleanImporter), idPath);
             for (const ext of ["", ".ts", ".tsx", ".js", ".jsx", ".json"]) {
               if (fs.existsSync(resolved + ext)) {
                 logger.log(`resolveId: resolved relative ${id} to ${resolved + ext}`);
-                return resolved + ext;
+                return resolved + ext + query;
               }
             }
           } else {
@@ -230,8 +244,8 @@ export function vize(options: VizeOptions = {}): Plugin {
         }
       }
 
-      if (id.endsWith(".vue")) {
-        const resolved = resolveVuePath(id, importer);
+      if (idPath.endsWith(".vue") && !query) {
+        const resolved = resolveVuePath(idPath, importer);
 
         // Debug: log all resolution attempts
         const hasCache = cache.has(resolved);

@@ -5,29 +5,20 @@ expression: ts_output
 ---
 import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, createElementVNode as _createElementVNode, renderList as _renderList, toDisplayString as _toDisplayString, unref as _unref } from "vue"
 
-import { defineComponent as _defineComponent } from "vue";
-import { ref } from "vue";
-import { OPTIONS } from "./options";
-const __sfc__ = /*@__PURE__*/ _defineComponent({
-  __name: "test",
+import { defineComponent as _defineComponent } from 'vue'
+import { ref } from 'vue'
+import { OPTIONS } from './options'
+
+const __sfc__ = /*@__PURE__*/_defineComponent({
+  __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
-    __expose();
-    const localItems = ref([
-      "a",
-      "b",
-      "c"
-    ]);
-    const __returned__ = {
-      OPTIONS,
-      localItems,
-      ref
-    };
-    Object.defineProperty(__returned__, "__isScriptSetup", {
-      enumerable: false,
-      value: true
-    });
-    return __returned__;
+  __expose();
+  const localItems = ref(['a', 'b', 'c'])
+  const __returned__ = { OPTIONS, localItems, ref }
+  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
+  return __returned__
   }
+
 });
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {

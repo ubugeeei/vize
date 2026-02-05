@@ -906,16 +906,23 @@ pub fn compile_script_setup_inline(
     // Convert arena Vec<u8> to String - SAFETY: we only push valid UTF-8
     let output_str = unsafe { String::from_utf8_unchecked(output.into_iter().collect()) };
 
-    // Transform TypeScript to JavaScript
-    // Always transpile to JavaScript for browser compatibility
-    let transformed_code = transform_typescript_to_js(&output_str);
-
-    // Prepend preserved normal script content (also transformed)
-    let final_code = if let Some(normal_script) = preserved_normal_script {
-        let transformed_normal = transform_typescript_to_js(&normal_script);
-        format!("{}\n\n{}", transformed_normal, transformed_code)
+    let final_code = if is_ts {
+        // Preserve TypeScript output for downstream toolchains.
+        if let Some(normal_script) = preserved_normal_script {
+            format!("{}\n\n{}", normal_script, output_str)
+        } else {
+            output_str
+        }
     } else {
-        transformed_code
+        // Transform TypeScript to JavaScript
+        let transformed_code = transform_typescript_to_js(&output_str);
+        // Prepend preserved normal script content (also transformed)
+        if let Some(normal_script) = preserved_normal_script {
+            let transformed_normal = transform_typescript_to_js(&normal_script);
+            format!("{}\n\n{}", transformed_normal, transformed_code)
+        } else {
+            transformed_code
+        }
     };
 
     Ok(ScriptCompileResult {

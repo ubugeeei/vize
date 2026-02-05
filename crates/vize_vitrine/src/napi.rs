@@ -146,6 +146,8 @@ pub struct SfcCompileOptionsNapi {
     pub filename: Option<String>,
     pub source_map: Option<bool>,
     pub ssr: Option<bool>,
+    /// Preserve TypeScript in output when true
+    pub is_ts: Option<bool>,
     /// Scope ID for scoped CSS (e.g., "data-v-abc123")
     pub scope_id: Option<String>,
 }
@@ -276,8 +278,7 @@ pub fn compile_sfc(
 
     // Compile
     let has_scoped = descriptor.styles.iter().any(|s| s.scoped);
-    // Preserve TypeScript in output - let Vite/esbuild handle TS transformation
-    // This avoids issues with OXC transformer incorrectly removing code
+    let is_ts = opts.is_ts.unwrap_or(true);
 
     // Create compiler options with scope_id for scoped CSS
     let template_compiler_options = if has_scoped {
@@ -298,14 +299,14 @@ pub fn compile_sfc(
         },
         script: ScriptCompileOptions {
             id: Some(filename.clone()),
-            is_ts: true, // Preserve TypeScript
+            is_ts,
             ..Default::default()
         },
         template: TemplateCompileOptions {
             id: Some(filename.clone()),
             scoped: has_scoped,
             ssr: opts.ssr.unwrap_or(false),
-            is_ts: true, // Preserve TypeScript
+            is_ts,
             compiler_options: template_compiler_options,
             ..Default::default()
         },
@@ -337,6 +338,8 @@ pub fn compile_sfc(
 #[derive(Default)]
 pub struct BatchCompileOptionsNapi {
     pub ssr: Option<bool>,
+    /// Preserve TypeScript in output when true
+    pub is_ts: Option<bool>,
     pub threads: Option<u32>,
 }
 
@@ -416,6 +419,7 @@ pub fn compile_sfc_batch(
 
     let opts = options.unwrap_or_default();
     let ssr = opts.ssr.unwrap_or(false);
+    let is_ts = opts.is_ts.unwrap_or(true);
 
     // Configure thread pool if specified
     if let Some(threads) = opts.threads {
@@ -627,14 +631,14 @@ pub fn compile_sfc_batch_with_results(
             },
             script: ScriptCompileOptions {
                 id: Some(filename.clone()),
-                is_ts: true, // Preserve TypeScript
+                is_ts,
                 ..Default::default()
             },
             template: TemplateCompileOptions {
                 id: Some(filename.clone()),
                 scoped: actual_has_scoped,
                 ssr,
-                is_ts: true, // Preserve TypeScript
+                is_ts,
                 compiler_options: template_compiler_options,
                 ..Default::default()
             },

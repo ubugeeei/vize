@@ -5,30 +5,22 @@ expression: ts_output
 ---
 import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, createElementVNode as _createElementVNode, createCommentVNode as _createCommentVNode, normalizeClass as _normalizeClass } from "vue"
 
-import { defineComponent as _defineComponent } from "vue";
-import { ref, computed } from "vue";
-const __sfc__ = /*@__PURE__*/ _defineComponent({
-  __name: "test",
+import { defineComponent as _defineComponent } from 'vue'
+import { ref, computed } from 'vue'
+
+const __sfc__ = /*@__PURE__*/_defineComponent({
+  __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
-    __expose();
-    const output = ref({ code: "test" });
-    const activeTab = ref("code");
-    const isTypeScript = computed(() => true);
-    const codeViewMode = ref("ts");
-    const __returned__ = {
-      activeTab,
-      codeViewMode,
-      computed,
-      isTypeScript,
-      output,
-      ref
-    };
-    Object.defineProperty(__returned__, "__isScriptSetup", {
-      enumerable: false,
-      value: true
-    });
-    return __returned__;
+  __expose();
+  const output = ref<{ code: string } | null>({ code: 'test' });
+  const activeTab = ref<'code' | 'ast' | 'helpers' | 'sfc'>('code');
+  const isTypeScript = computed(() => true);
+  const codeViewMode = ref<'ts' | 'js'>('ts');
+  const __returned__ = { activeTab, codeViewMode, computed, isTypeScript, output, ref }
+  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
+  return __returned__
   }
+
 });
 
 const _hoisted_1 = /*#__PURE__*/ _createElementVNode("h4", null, "AST")

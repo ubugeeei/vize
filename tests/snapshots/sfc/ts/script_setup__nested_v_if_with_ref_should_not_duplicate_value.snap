@@ -5,23 +5,19 @@ expression: ts_output
 ---
 import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, createElementVNode as _createElementVNode, createCommentVNode as _createCommentVNode, normalizeClass as _normalizeClass } from "vue"
 
-import { defineComponent as _defineComponent } from "vue";
-import { ref } from "vue";
-const __sfc__ = /*@__PURE__*/ _defineComponent({
-  __name: "test",
+import { defineComponent as _defineComponent } from 'vue'
+import { ref } from 'vue'
+
+const __sfc__ = /*@__PURE__*/_defineComponent({
+  __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
-    __expose();
-    const mode = ref("a");
-    const __returned__ = {
-      mode,
-      ref
-    };
-    Object.defineProperty(__returned__, "__isScriptSetup", {
-      enumerable: false,
-      value: true
-    });
-    return __returned__;
+  __expose();
+  const mode = ref<'a' | 'b'>('a');
+  const __returned__ = { mode, ref }
+  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
+  return __returned__
   }
+
 });
 
 const _hoisted_1 = /*#__PURE__*/ _createElementVNode("span", null, "Alt")

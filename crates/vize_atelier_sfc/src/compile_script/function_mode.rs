@@ -34,7 +34,7 @@ pub fn compile_script_setup(
     content: &str,
     component_name: &str,
     is_vapor: bool,
-    _is_ts: bool,
+    is_ts: bool,
     template_content: Option<&str>,
 ) -> Result<ScriptCompileResult, SfcError> {
     let mut ctx = ScriptCompileContext::new(content);
@@ -573,7 +573,7 @@ pub fn compile_script_setup(
 
     // Prepare setup code and detect top-level await (async setup)
     let setup_code = setup_lines.join("\n");
-    let has_top_level_await = contains_top_level_await(&setup_code, _is_ts);
+    let has_top_level_await = contains_top_level_await(&setup_code, is_ts);
 
     // Setup function
     if has_top_level_await {
@@ -823,9 +823,12 @@ pub fn compile_script_setup(
     // Convert arena Vec<u8> to String - SAFETY: we only push valid UTF-8
     let output_str = unsafe { String::from_utf8_unchecked(output.into_iter().collect()) };
 
-    // Transform TypeScript to JavaScript using OXC
-    // Always transpile to JavaScript for browser compatibility
-    let final_code = transform_typescript_to_js(&output_str);
+    // Transform TypeScript to JavaScript only when output is not TS.
+    let final_code = if is_ts {
+        output_str
+    } else {
+        transform_typescript_to_js(&output_str)
+    };
 
     Ok(ScriptCompileResult {
         code: final_code,
