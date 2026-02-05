@@ -151,6 +151,76 @@ jobs:
           path: npm/vize-native/*.node
           if-no-files-found: error
 
+  # Build fresco native bindings for all platforms
+  build-fresco-native:
+    name: Build Fresco Native - ${{ matrix.settings.target }}
+    runs-on: ${{ matrix.settings.host }}
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - host: macos-latest
+            target: x86_64-apple-darwin
+            build: pnpm -C npm/fresco-native build --target x86_64-apple-darwin
+          - host: macos-latest
+            target: aarch64-apple-darwin
+            build: pnpm -C npm/fresco-native build --target aarch64-apple-darwin
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
+            build: pnpm -C npm/fresco-native build --target x86_64-pc-windows-msvc
+          - host: windows-latest
+            target: aarch64-pc-windows-msvc
+            build: pnpm -C npm/fresco-native build --target aarch64-pc-windows-msvc
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            build: pnpm -C npm/fresco-native build --target x86_64-unknown-linux-gnu
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            build: pnpm -C npm/fresco-native build --target x86_64-unknown-linux-musl --zig
+          - host: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            build: pnpm -C npm/fresco-native build --target aarch64-unknown-linux-gnu --zig
+          - host: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            build: pnpm -C npm/fresco-native build --target aarch64-unknown-linux-musl --zig
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.settings.target }}
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Zig
+        if: contains(matrix.settings.build, '--zig')
+        uses: goto-bus-stop/setup-zig@v2
+
+      - name: Build
+        run: ${{ matrix.settings.build }}
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fresco-bindings-${{ matrix.settings.target }}
+          path: npm/fresco-native/*.node
+          if-no-files-found: error
+
   # Publish native packages to npm (using Trusted Publishing / OIDC)
   release-npm-native:
     name: Release @vizejs/native to npm
@@ -198,6 +268,55 @@ jobs:
 
       - name: Publish
         working-directory: npm/vize-native
+        run: pnpm publish --provenance --access public --no-git-checks
+
+  # Publish fresco native packages to npm (using Trusted Publishing / OIDC)
+  release-npm-fresco-native:
+    name: Release @vizejs/fresco-native to npm
+    runs-on: ubuntu-latest
+    needs: build-fresco-native
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: fresco-bindings-*
+          path: npm/fresco-native/artifacts
+
+      - name: Prepare npm packages
+        working-directory: npm/fresco-native
+        run: npx napi prepublish -t npm
+
+      - name: Move artifacts
+        working-directory: npm/fresco-native
+        run: npx napi artifacts --dir artifacts
+
+      - name: List packages
+        run: ls -la npm/fresco-native/npm/
+
+      - name: Install npm with OIDC support
+        run: npm install -g npm@latest
+
+      - name: Publish
+        working-directory: npm/fresco-native
         run: pnpm publish --provenance --access public --no-git-checks
 
   # Build and publish WASM package (using Trusted Publishing / OIDC)
@@ -280,6 +399,111 @@ jobs:
         working-directory: npm/vite-plugin-vize
         run: pnpm publish --provenance --access public --no-git-checks
 
+  # Build and publish Fresco package (using Trusted Publishing / OIDC)
+  release-npm-fresco:
+    name: Release @vizejs/fresco to npm
+    runs-on: ubuntu-latest
+    needs: release-npm-fresco-native
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build fresco
+        run: pnpm -C npm/fresco build
+
+      - name: Install npm with OIDC support
+        run: npm install -g npm@latest
+
+      - name: Publish @vizejs/fresco
+        working-directory: npm/fresco
+        run: pnpm publish --provenance --access public --no-git-checks
+
+  # Build and publish Musea MCP server (using Trusted Publishing / OIDC)
+  release-npm-musea-mcp-server:
+    name: Release @vizejs/musea-mcp-server to npm
+    runs-on: ubuntu-latest
+    needs: release-npm-native
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build musea-mcp-server
+        run: pnpm -C npm/musea-mcp-server build
+
+      - name: Install npm with OIDC support
+        run: npm install -g npm@latest
+
+      - name: Publish @vizejs/musea-mcp-server
+        working-directory: npm/musea-mcp-server
+        run: pnpm publish --provenance --access public --no-git-checks
+
+  # Build and publish Vite plugin for Musea (using Trusted Publishing / OIDC)
+  release-npm-vite-plugin-musea:
+    name: Release @vizejs/vite-plugin-musea to npm
+    runs-on: ubuntu-latest
+    needs: release-npm-native
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build vite-plugin-musea
+        run: pnpm -C npm/vite-plugin-musea build
+
+      - name: Install npm with OIDC support
+        run: npm install -g npm@latest
+
+      - name: Publish @vizejs/vite-plugin-musea
+        working-directory: npm/vite-plugin-musea
+        run: pnpm publish --provenance --access public --no-git-checks
+
   # Publish crates to crates.io (using Trusted Publishing)
   release-crates:
     name: Release crates to crates.io
@@ -349,7 +573,7 @@ jobs:
   create-github-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [build-cli, release-npm-native, release-npm-wasm, release-npm-vite-plugin, release-crates]
+    needs: [build-cli, release-npm-native, release-npm-fresco-native, release-npm-fresco, release-npm-wasm, release-npm-vite-plugin, release-npm-musea-mcp-server, release-npm-vite-plugin-musea, release-crates]
     steps:
       - uses: actions/checkout@v4
 

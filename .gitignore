@@ -23,6 +23,7 @@ examples/*/.vite/
 *.swp
 *.swo
 .DS_Store
+*.tgz
 
 # Benchmark input/output files
 bench/__in__/
