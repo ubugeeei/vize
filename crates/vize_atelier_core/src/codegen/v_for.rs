@@ -9,10 +9,15 @@ use super::expression::generate_expression;
 use super::helpers::escape_js_string;
 use super::node::generate_node;
 
+/// Check if content is a numeric literal (for v-for range)
+fn is_numeric_content(content: &str) -> bool {
+    !content.is_empty() && content.chars().all(|c| c.is_ascii_digit())
+}
+
 /// Check if source is a numeric literal (for v-for range)
 pub fn is_numeric_source(source: &ExpressionNode<'_>) -> bool {
     if let ExpressionNode::Simple(exp) = source {
-        exp.content.chars().all(|c| c.is_ascii_digit())
+        is_numeric_content(exp.content.as_str())
     } else {
         false
     }
@@ -436,8 +441,10 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ast::SourceLocation;
     use crate::parser::parse;
     use bumpalo::Bump;
+    use vize_carton::Box;
 
     #[test]
     fn test_should_skip_custom_directive() {
@@ -455,5 +462,25 @@ mod tests {
             assert!(custom_prop.is_some());
             assert!(should_skip_prop(custom_prop.unwrap()));
         }
+    }
+
+    #[test]
+    fn test_is_numeric_content() {
+        assert!(is_numeric_content("123"));
+        assert!(!is_numeric_content(""));
+        assert!(!is_numeric_content("12a"));
+        assert!(!is_numeric_content(" 12"));
+    }
+
+    #[test]
+    fn test_is_numeric_source() {
+        let allocator = Bump::new();
+        let exp = SimpleExpressionNode::new("42", true, SourceLocation::STUB);
+        let source = ExpressionNode::Simple(Box::new_in(exp, &allocator));
+        assert!(is_numeric_source(&source));
+
+        let exp = SimpleExpressionNode::new("4 2", true, SourceLocation::STUB);
+        let source = ExpressionNode::Simple(Box::new_in(exp, &allocator));
+        assert!(!is_numeric_source(&source));
     }
 }

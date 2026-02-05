@@ -408,7 +408,14 @@ mod tests {
     #[test]
     fn test_slot_name_identifier_check() {
         assert!(is_valid_js_identifier("header"));
+        assert!(is_valid_js_identifier("_header"));
+        assert!(is_valid_js_identifier("$slot"));
+        assert!(is_valid_js_identifier("item1"));
+        assert!(is_valid_js_identifier("itemHeader"));
         assert!(!is_valid_js_identifier("item-header"));
         assert!(!is_valid_js_identifier("item header"));
+        assert!(!is_valid_js_identifier("1item"));
+        assert!(!is_valid_js_identifier("item.header"));
+        assert!(!is_valid_js_identifier(""));
     }
 }
