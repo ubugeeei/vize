@@ -548,7 +548,7 @@ async function getTypeScriptDiagnostics(virtualTs: string): Promise<Diagnostic[]
         message = d.messageText;
       } else if (d.messageText && typeof d.messageText === "object") {
         // DiagnosticMessageChain - get the first message
-        message = (d.messageText as any).messageText || "Unknown error";
+        message = d.messageText.messageText || "Unknown error";
       } else if (typeof d.message === "string") {
         message = d.message;
       }

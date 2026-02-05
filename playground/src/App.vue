@@ -533,7 +533,7 @@ async function compile() {
   }
 }
 
-function handlePresetChange(key: PresetKey) {
+function handlePresetChange(key: string) {
   const preset = PRESETS[key];
   selectedPreset.value = key;
   inputMode.value = preset.mode;
@@ -700,7 +700,7 @@ onMounted(async () => {
             <span>Preset:</span>
             <select
               :value="selectedPreset"
-              @change="handlePresetChange(($event.target as HTMLSelectElement).value as PresetKey)"
+              @change="handlePresetChange($event.target.value)"
             >
               <option v-for="(preset, key) in PRESETS" :key="key" :value="key">
                 {{ preset.name }}
