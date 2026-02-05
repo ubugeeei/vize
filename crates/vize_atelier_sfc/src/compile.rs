@@ -302,7 +302,9 @@ pub fn compile_sfc(
 
     // Add scope ID if scoped styles are used
     if has_scoped {
-        code.push_str(&format!("__sfc__.__scopeId = \"data-v-{}\"\n", scope_id));
+        code.push_str("__sfc__.__scopeId = \"data-v-");
+        code.push_str(&scope_id);
+        code.push_str("\"\n");
     }
 
     // Export the component
@@ -334,7 +336,12 @@ fn compile_styles(
     let mut all_css = String::new();
     for style in styles {
         let style_opts = StyleCompileOptions {
-            id: format!("data-v-{}", scope_id),
+            id: {
+                let mut id = String::with_capacity(scope_id.len() + 7);
+                id.push_str("data-v-");
+                id.push_str(scope_id);
+                id
+            },
             scoped: style.scoped,
             ..base_opts.clone()
         };
@@ -356,7 +363,14 @@ fn generate_scope_id(filename: &str) -> String {
     use std::hash::{Hash, Hasher};
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     filename.hash(&mut hasher);
-    format!("{:08x}", hasher.finish() & 0xFFFFFFFF)
+    let value = hasher.finish() & 0xFFFFFFFF;
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(8);
+    for shift in (0..32).step_by(4).rev() {
+        let digit = ((value >> shift) & 0xF) as usize;
+        out.push(HEX[digit] as char);
+    }
+    out
 }
 
 /// Extract component name from filename

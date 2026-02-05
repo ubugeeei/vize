@@ -299,7 +299,10 @@ fn generate_vnode_call_to_bytes(ctx: &CodegenContext, vnode: &VNodeCall<'_>, out
         out.extend_from_slice(b", ");
         out.extend_from_slice(patch_flag.bits().to_string().as_bytes());
         out.extend_from_slice(b" /* ");
-        out.extend_from_slice(format!("{:?}", patch_flag).as_bytes());
+        let mut debug = String::new();
+        use std::fmt::Write as _;
+        let _ = write!(&mut debug, "{:?}", patch_flag);
+        out.extend_from_slice(debug.as_bytes());
         out.extend_from_slice(b" */");
     }
 

@@ -89,8 +89,11 @@ pub fn build_props<'a>(
                         has_runtime_props = true;
                         if let Some(ExpressionNode::Simple(exp)) = &dir.arg {
                             if !exp.is_static {
-                                dynamic_prop_names
-                                    .push(format!("on{}", capitalize(&exp.content)).into());
+                                let cap = capitalize(&exp.content);
+                                let mut name = String::with_capacity(2 + cap.len());
+                                name.push_str("on");
+                                name.push_str(&cap);
+                                dynamic_prop_names.push(name.into());
                             }
                         }
                     }
@@ -142,12 +145,25 @@ pub fn build_element_codegen<'a>(
     let tag: String = match el.tag_type {
         ElementType::Element => {
             ctx.helper(RuntimeHelper::CreateElementVNode);
-            format!("\"{}\"", el.tag).into()
+            {
+                let mut name = String::with_capacity(el.tag.len() + 2);
+                name.push('"');
+                name.push_str(&el.tag);
+                name.push('"');
+                name
+            }
+            .into()
         }
         ElementType::Component => {
             ctx.helper(RuntimeHelper::CreateVNode);
             ctx.helper(RuntimeHelper::ResolveComponent);
-            format!("_component_{}", el.tag).into()
+            {
+                let mut name = String::with_capacity(11 + el.tag.len());
+                name.push_str("_component_");
+                name.push_str(&el.tag);
+                name
+            }
+            .into()
         }
         _ => return None,
     };

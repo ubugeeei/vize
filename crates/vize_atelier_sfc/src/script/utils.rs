@@ -181,7 +181,10 @@ pub fn get_escaped_prop_name(key: &str) -> String {
     if is_valid_identifier(key) {
         key.to_string()
     } else {
-        format!("{:?}", key)
+        let mut out = String::new();
+        use std::fmt::Write as _;
+        let _ = write!(&mut out, "{:?}", key);
+        out
     }
 }
 

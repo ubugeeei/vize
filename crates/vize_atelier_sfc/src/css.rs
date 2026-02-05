@@ -204,7 +204,9 @@ fn compile_css_internal(
         Ok(ss) => ss,
         Err(e) => {
             let mut errors = Vec::with_capacity(1);
-            errors.push(format!("CSS parse error: {}", e));
+            let mut message = String::from("CSS parse error: ");
+            message.push_str(&e.to_string());
+            errors.push(message);
             return (css.to_string(), errors);
         }
     };
@@ -216,7 +218,10 @@ fn compile_css_internal(
             ..Default::default()
         }) {
             let mut errors = Vec::with_capacity(1);
-            errors.push(format!("CSS minify error: {:?}", e));
+            let mut message = String::from("CSS minify error: ");
+            use std::fmt::Write as _;
+            let _ = write!(&mut message, "{:?}", e);
+            errors.push(message);
             return (css.to_string(), errors);
         }
     }
@@ -232,7 +237,10 @@ fn compile_css_internal(
         Ok(result) => (result.code, vec![]),
         Err(e) => {
             let mut errors = Vec::with_capacity(1);
-            errors.push(format!("CSS print error: {:?}", e));
+            let mut message = String::from("CSS print error: ");
+            use std::fmt::Write as _;
+            let _ = write!(&mut message, "{:?}", e);
+            errors.push(message);
             (css.to_string(), errors)
         }
     }

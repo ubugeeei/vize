@@ -57,23 +57,35 @@ pub fn process_import_for_types(import: &str) -> Option<String> {
                                     if imported == local {
                                         imported.to_string()
                                     } else {
-                                        format!("{} as {}", imported, local)
+                                        let mut name =
+                                            String::with_capacity(imported.len() + local.len() + 4);
+                                        name.push_str(imported);
+                                        name.push_str(" as ");
+                                        name.push_str(local);
+                                        name
                                     }
                                 }
                                 ImportDeclarationSpecifier::ImportDefaultSpecifier(s) => {
                                     s.local.name.to_string()
                                 }
                                 ImportDeclarationSpecifier::ImportNamespaceSpecifier(s) => {
-                                    format!("* as {}", s.local.name)
+                                    let local = s.local.name.as_str();
+                                    let mut name = String::with_capacity(local.len() + 5);
+                                    name.push_str("* as ");
+                                    name.push_str(local);
+                                    name
                                 }
                             })
                             .collect();
 
-                        let new_import = format!(
-                            "import {{ {} }} from '{}'\n",
-                            specifier_strs.join(", "),
-                            source
-                        );
+                        let joined = specifier_strs.join(", ");
+                        let mut new_import =
+                            String::with_capacity(joined.len() + source.len() + 15);
+                        new_import.push_str("import { ");
+                        new_import.push_str(&joined);
+                        new_import.push_str(" } from '");
+                        new_import.push_str(source);
+                        new_import.push_str("'\n");
                         return Some(new_import);
                     }
                 }

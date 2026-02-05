@@ -114,7 +114,10 @@ fn rewrite_expression(
     let source_type = SourceType::default().with_module(true);
 
     // Wrap in parentheses to make it a valid expression statement
-    let wrapped = format!("({})", js_content);
+    let mut wrapped = String::with_capacity(js_content.len() + 2);
+    wrapped.push('(');
+    wrapped.push_str(&js_content);
+    wrapped.push(')');
     let parser = Parser::new(&oxc_allocator, &wrapped, source_type);
     let parse_result = parser.parse_expression();
 
@@ -280,7 +283,10 @@ pub fn strip_typescript_from_expression(content: &str) -> std::string::String {
     let source_type = SourceType::ts();
 
     // Wrap in a dummy statement to make it parseable
-    let wrapped = format!("const _expr_ = ({});", content);
+    let mut wrapped = String::with_capacity(content.len() + 18);
+    wrapped.push_str("const _expr_ = (");
+    wrapped.push_str(content);
+    wrapped.push_str(");");
     let parser = Parser::new(&allocator, &wrapped, source_type);
     let parse_result = parser.parse();
 
@@ -343,7 +349,10 @@ pub fn prefix_identifiers_in_expression(content: &str) -> std::string::String {
     let source_type = SourceType::default().with_module(true);
 
     // Wrap in parentheses to make it a valid expression statement
-    let wrapped = format!("({})", content);
+    let mut wrapped = String::with_capacity(content.len() + 2);
+    wrapped.push('(');
+    wrapped.push_str(content);
+    wrapped.push(')');
     let parser = Parser::new(&allocator, &wrapped, source_type);
     let parse_result = parser.parse_expression();
 
@@ -722,7 +731,10 @@ impl<'a, 'ctx> Visit<'_> for IdentifierCollector<'a, 'ctx> {
 
                 if let Some(prefix) = get_identifier_prefix(name, self.ctx) {
                     if !prefix.is_empty() {
-                        let suffix = format!(": {}{}", prefix, name);
+                        let mut suffix = String::with_capacity(2 + prefix.len() + name.len());
+                        suffix.push_str(": ");
+                        suffix.push_str(prefix);
+                        suffix.push_str(name);
                         self.suffix_rewrites.push((ident.span.end as usize, suffix));
                         return;
                     }

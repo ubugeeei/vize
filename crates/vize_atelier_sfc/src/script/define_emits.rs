@@ -92,6 +92,13 @@ pub fn process_define_emits(
 /// Returns the emits array/object as a string for use in the compiled output.
 #[allow(dead_code)]
 pub fn gen_runtime_emits(ctx: &ScriptCompileContext, model_names: &[String]) -> Option<String> {
+    fn debug_string<T: std::fmt::Debug>(value: &T) -> String {
+        let mut out = String::new();
+        use std::fmt::Write as _;
+        let _ = write!(&mut out, "{:?}", value);
+        out
+    }
+
     let mut emits_decl = String::new();
 
     if let Some(ref runtime_decl) = ctx.emits_runtime_decl {
@@ -101,9 +108,14 @@ pub fn gen_runtime_emits(ctx: &ScriptCompileContext, model_names: &[String]) -> 
         if !type_declared_emits.is_empty() {
             let emits: Vec<String> = type_declared_emits
                 .into_iter()
-                .map(|k| format!("{:?}", k)) // JSON.stringify equivalent
+                .map(|k| debug_string(&k)) // JSON.stringify equivalent
                 .collect();
-            emits_decl = format!("[{}]", emits.join(", "));
+            let joined = emits.join(", ");
+            let mut out = String::with_capacity(joined.len() + 2);
+            out.push('[');
+            out.push_str(&joined);
+            out.push(']');
+            emits_decl = out;
         }
     }
 
@@ -111,18 +123,30 @@ pub fn gen_runtime_emits(ctx: &ScriptCompileContext, model_names: &[String]) -> 
     if !model_names.is_empty() {
         let model_emits: Vec<String> = model_names
             .iter()
-            .map(|n| format!("{:?}", format!("update:{}", n)))
+            .map(|n| {
+                let mut name = String::with_capacity(7 + n.len());
+                name.push_str("update:");
+                name.push_str(n);
+                debug_string(&name)
+            })
             .collect();
-        let model_emits_decl = format!("[{}]", model_emits.join(", "));
+        let joined = model_emits.join(", ");
+        let mut model_emits_decl = String::with_capacity(joined.len() + 2);
+        model_emits_decl.push('[');
+        model_emits_decl.push_str(&joined);
+        model_emits_decl.push(']');
 
         if emits_decl.is_empty() {
             emits_decl = model_emits_decl;
         } else {
             // /*@__PURE__*/_mergeModels(emitsDecl, modelEmitsDecl)
-            emits_decl = format!(
-                "/*@__PURE__*/_mergeModels({}, {})",
-                emits_decl, model_emits_decl
-            );
+            let mut merged = String::with_capacity(emits_decl.len() + model_emits_decl.len() + 26);
+            merged.push_str("/*@__PURE__*/_mergeModels(");
+            merged.push_str(&emits_decl);
+            merged.push_str(", ");
+            merged.push_str(&model_emits_decl);
+            merged.push(')');
+            emits_decl = merged;
         }
     }
 

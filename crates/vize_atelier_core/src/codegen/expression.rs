@@ -23,7 +23,10 @@ fn prefix_identifiers_with_context(content: &str, ctx: &CodegenContext) -> Strin
     let source_type = SourceType::default().with_module(true);
 
     // Wrap in parentheses to make it a valid expression statement
-    let wrapped = format!("({})", content);
+    let mut wrapped = String::with_capacity(content.len() + 2);
+    wrapped.push('(');
+    wrapped.push_str(content);
+    wrapped.push(')');
     let parser = Parser::new(&allocator, &wrapped, source_type);
     let parse_result = parser.parse_expression();
 
@@ -99,9 +102,16 @@ fn prefix_identifiers_with_context(content: &str, ctx: &CodegenContext) -> Strin
                             Some(BindingType::SetupLet | BindingType::SetupMaybeRef)
                         );
                         let replacement = if needs_value {
-                            format!("{}{}.value", prefix, name)
+                            let mut out = String::with_capacity(prefix.len() + name.len() + 6);
+                            out.push_str(prefix);
+                            out.push_str(name);
+                            out.push_str(".value");
+                            out
                         } else if !prefix.is_empty() {
-                            format!("{}{}", prefix, name)
+                            let mut out = String::with_capacity(prefix.len() + name.len());
+                            out.push_str(prefix);
+                            out.push_str(name);
+                            out
                         } else {
                             name.to_string()
                         };
@@ -116,8 +126,10 @@ fn prefix_identifiers_with_context(content: &str, ctx: &CodegenContext) -> Strin
                     if !prefix.is_empty() {
                         let start = (ident.span.start - self.offset) as usize;
                         let end = (ident.span.end - self.offset) as usize;
-                        self.rewrites
-                            .push((start, end, format!("{}{}", prefix, name)));
+                        let mut replacement = String::with_capacity(prefix.len() + name.len());
+                        replacement.push_str(prefix);
+                        replacement.push_str(name);
+                        self.rewrites.push((start, end, replacement));
                     }
                 }
 
@@ -171,7 +183,13 @@ fn prefix_identifiers_with_context(content: &str, ctx: &CodegenContext) -> Strin
                             if !prefix.is_empty() {
                                 let start = (prop.span.start - self.offset) as usize;
                                 let end = (prop.span.end - self.offset) as usize;
-                                let replacement = format!("{}: {}{}", name, prefix, name);
+                                let mut replacement = String::with_capacity(
+                                    name.len() + 2 + prefix.len() + name.len(),
+                                );
+                                replacement.push_str(name);
+                                replacement.push_str(": ");
+                                replacement.push_str(prefix);
+                                replacement.push_str(name);
                                 self.rewrites.push((start, end, replacement));
                                 return;
                             }

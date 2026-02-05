@@ -757,7 +757,10 @@ pub fn compile_script_setup_inline(
 
     // Add model update events
     for (model_name, _, _) in &model_infos {
-        all_emits.push(format!("update:{}", model_name));
+        let mut name = String::with_capacity(7 + model_name.len());
+        name.push_str("update:");
+        name.push_str(model_name);
+        all_emits.push(name);
     }
 
     // Output combined emits
@@ -909,7 +912,11 @@ pub fn compile_script_setup_inline(
     let final_code = if is_ts {
         // Preserve TypeScript output for downstream toolchains.
         if let Some(normal_script) = preserved_normal_script {
-            format!("{}\n\n{}", normal_script, output_str)
+            let mut combined = String::with_capacity(normal_script.len() + output_str.len() + 2);
+            combined.push_str(&normal_script);
+            combined.push_str("\n\n");
+            combined.push_str(&output_str);
+            combined
         } else {
             output_str
         }
@@ -919,7 +926,12 @@ pub fn compile_script_setup_inline(
         // Prepend preserved normal script content (also transformed)
         if let Some(normal_script) = preserved_normal_script {
             let transformed_normal = transform_typescript_to_js(&normal_script);
-            format!("{}\n\n{}", transformed_normal, transformed_code)
+            let mut combined =
+                String::with_capacity(transformed_normal.len() + transformed_code.len() + 2);
+            combined.push_str(&transformed_normal);
+            combined.push_str("\n\n");
+            combined.push_str(&transformed_code);
+            combined
         } else {
             transformed_code
         }

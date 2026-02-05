@@ -129,7 +129,9 @@ pub fn generate_if_branch_component(
         }
         ctx.push(el.tag.as_str());
     } else {
-        let component_name = format!("_component_{}", el.tag.as_str());
+        let mut component_name = String::with_capacity(11 + el.tag.len());
+        component_name.push_str("_component_");
+        component_name.push_str(el.tag.as_str());
         ctx.push(&component_name);
     }
 

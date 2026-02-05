@@ -488,10 +488,16 @@ pub fn generate_directive_prop_with_static(
                     camelize(key)
                 } else if has_prop {
                     // Add . prefix for DOM property binding
-                    format!(".{}", key).into()
+                    let mut name = String::with_capacity(1 + key.len());
+                    name.push('.');
+                    name.push_str(key);
+                    name.into()
                 } else if has_attr {
                     // Add ^ prefix for attribute binding
-                    format!("^{}", key).into()
+                    let mut name = String::with_capacity(1 + key.len());
+                    name.push('^');
+                    name.push_str(key);
+                    name.into()
                 } else {
                     key.to_string().into()
                 };

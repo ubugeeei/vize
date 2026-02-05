@@ -125,7 +125,10 @@ impl<'a> SfcDescriptor<'a> {
             (Some(s), None) => Some(vize_carton::hash::content_hash(s)),
             (None, Some(ss)) => Some(vize_carton::hash::content_hash(ss)),
             (Some(s), Some(ss)) => {
-                let combined = format!("{}\0{}", s, ss);
+                let mut combined = String::with_capacity(s.len() + ss.len() + 1);
+                combined.push_str(s);
+                combined.push('\0');
+                combined.push_str(ss);
                 Some(vize_carton::hash::content_hash(&combined))
             }
         }
@@ -509,9 +512,12 @@ pub struct SfcError {
 
 impl From<vize_atelier_core::CompilerError> for SfcError {
     fn from(err: vize_atelier_core::CompilerError) -> Self {
+        let mut code = String::new();
+        use std::fmt::Write as _;
+        let _ = write!(&mut code, "{:?}", err.code);
         Self {
             message: err.message,
-            code: Some(std::format!("{:?}", err.code)),
+            code: Some(code),
             loc: None,
         }
     }

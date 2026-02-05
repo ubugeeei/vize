@@ -24,7 +24,10 @@ pub fn compile_style(
 
 /// Apply scoped CSS transformation
 pub fn apply_scoped_css(css: &str, scope_id: &str) -> String {
-    let attr_selector = format!("[{}]", scope_id);
+    let mut attr_selector = String::with_capacity(scope_id.len() + 2);
+    attr_selector.push('[');
+    attr_selector.push_str(scope_id);
+    attr_selector.push(']');
     let mut output = String::with_capacity(css.len() * 2);
     let mut chars = css.chars().peekable();
     let mut in_selector = true;
@@ -192,7 +195,11 @@ fn add_scope_to_element(selector: &str, attr_selector: &str) -> String {
     // Handle pseudo-elements and pseudo-classes
     if let Some(pseudo_pos) = selector.find("::") {
         let (before, after) = selector.split_at(pseudo_pos);
-        return format!("{}{}{}", before, attr_selector, after);
+        let mut result = String::with_capacity(before.len() + attr_selector.len() + after.len());
+        result.push_str(before);
+        result.push_str(attr_selector);
+        result.push_str(after);
+        return result;
     }
 
     if let Some(pseudo_pos) = selector.rfind(':') {
@@ -200,11 +207,19 @@ fn add_scope_to_element(selector: &str, attr_selector: &str) -> String {
         let before = &selector[..pseudo_pos];
         if !before.is_empty() && !before.ends_with('\\') {
             let after = &selector[pseudo_pos..];
-            return format!("{}{}{}", before, attr_selector, after);
+            let mut result =
+                String::with_capacity(before.len() + attr_selector.len() + after.len());
+            result.push_str(before);
+            result.push_str(attr_selector);
+            result.push_str(after);
+            return result;
         }
     }
 
-    format!("{}{}", selector, attr_selector)
+    let mut result = String::with_capacity(selector.len() + attr_selector.len());
+    result.push_str(selector);
+    result.push_str(attr_selector);
+    result
 }
 
 /// Transform :deep() to descendant selector
@@ -221,10 +236,20 @@ fn transform_deep(selector: &str, attr_selector: &str) -> String {
             let scoped_before = if before.is_empty() {
                 attr_selector.to_string()
             } else {
-                format!("{}{}", before.trim(), attr_selector)
+                let trimmed = before.trim();
+                let mut result = String::with_capacity(trimmed.len() + attr_selector.len());
+                result.push_str(trimmed);
+                result.push_str(attr_selector);
+                result
             };
 
-            return format!("{} {}{}", scoped_before, inner, rest);
+            let mut result =
+                String::with_capacity(scoped_before.len() + inner.len() + rest.len() + 1);
+            result.push_str(&scoped_before);
+            result.push(' ');
+            result.push_str(inner);
+            result.push_str(rest);
+            return result;
         }
     }
 
@@ -241,7 +266,13 @@ fn transform_slotted(selector: &str, attr_selector: &str) -> String {
             let inner = &after[..end];
             let rest = &after[end + 1..];
 
-            return format!("{}{}-s{}", inner, attr_selector, rest);
+            let mut result =
+                String::with_capacity(inner.len() + attr_selector.len() + rest.len() + 2);
+            result.push_str(inner);
+            result.push_str(attr_selector);
+            result.push_str("-s");
+            result.push_str(rest);
+            return result;
         }
     }
 
@@ -259,7 +290,11 @@ fn transform_global(selector: &str) -> String {
             let inner = &after[..end];
             let rest = &after[end + 1..];
 
-            return format!("{}{}{}", before, inner, rest);
+            let mut result = String::with_capacity(before.len() + inner.len() + rest.len());
+            result.push_str(before);
+            result.push_str(inner);
+            result.push_str(rest);
+            return result;
         }
     }
 

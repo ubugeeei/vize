@@ -67,6 +67,14 @@ pub fn escape_js_string(s: &str) -> String {
     // First decode HTML entities, then escape for JS
     let decoded = decode_html_entities(s);
     let mut result = String::with_capacity(decoded.len());
+    fn push_hex4(out: &mut String, value: u32) {
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        out.push_str("\\u");
+        out.push(HEX[((value >> 12) & 0xF) as usize] as char);
+        out.push(HEX[((value >> 8) & 0xF) as usize] as char);
+        out.push(HEX[((value >> 4) & 0xF) as usize] as char);
+        out.push(HEX[(value & 0xF) as usize] as char);
+    }
     for c in decoded.chars() {
         match c {
             '\\' => result.push_str("\\\\"),
@@ -78,7 +86,7 @@ pub fn escape_js_string(s: &str) -> String {
             '\x0C' => result.push_str("\\f"), // form feed
             c if c.is_control() => {
                 // Other control characters as unicode escape
-                result.push_str(&format!("\\u{:04x}", c as u32));
+                push_hex4(&mut result, c as u32);
             }
             c => result.push(c),
         }

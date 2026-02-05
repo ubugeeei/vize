@@ -665,11 +665,11 @@ fn collect_from_expression<'a>(
                                         // For shorthand, we need to expand it
                                         // { foo } -> { foo: __props.foo }
                                         let end = p.span.end as usize;
-                                        rewrites.push((
-                                            end,
-                                            end,
-                                            format!(": {}", gen_props_access_exp(key)),
-                                        ));
+                                        let access = gen_props_access_exp(key);
+                                        let mut suffix = String::with_capacity(access.len() + 2);
+                                        suffix.push_str(": ");
+                                        suffix.push_str(&access);
+                                        rewrites.push((end, end, suffix));
                                     }
                                 }
                             }
@@ -800,9 +800,17 @@ fn register_binding_pattern(pattern: &BindingPattern<'_>, bindings: &mut FxHashM
 /// Generate prop access expression
 pub fn gen_props_access_exp(key: &str) -> String {
     if is_simple_identifier(key) {
-        format!("__props.{}", key)
+        let mut out = String::with_capacity(key.len() + 8);
+        out.push_str("__props.");
+        out.push_str(key);
+        out
     } else {
-        format!("__props[{:?}]", key)
+        let mut out = String::with_capacity(key.len() + 10);
+        out.push_str("__props[");
+        use std::fmt::Write as _;
+        let _ = write!(&mut out, "{:?}", key);
+        out.push(']');
+        out
     }
 }
 

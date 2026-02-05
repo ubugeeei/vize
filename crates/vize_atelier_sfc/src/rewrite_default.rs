@@ -40,7 +40,9 @@ pub fn rewrite_default(input: &str, as_name: &str, is_ts: bool) -> (String, bool
     if !has_default {
         // No default export - append empty object
         let mut output = input.to_string();
-        output.push_str(&format!("\nconst {} = {{}}", as_name));
+        output.push_str("\nconst ");
+        output.push_str(as_name);
+        output.push_str(" = {}");
         return (output, false);
     }
 
@@ -64,10 +66,15 @@ pub fn rewrite_default(input: &str, as_name: &str, is_ts: bool) -> (String, bool
                             let class_body_start = id.span.end as usize;
                             let class_body = &input[class_body_start..decl.span.end as usize];
                             output.push_str(class_body);
-                            output.push_str(&format!("\nconst {} = {}", as_name, id.name));
+                            output.push_str("\nconst ");
+                            output.push_str(as_name);
+                            output.push_str(" = ");
+                            output.push_str(id.name.as_str());
                         } else {
                             // Anonymous class - wrap in const
-                            output.push_str(&format!("const {} = ", as_name));
+                            output.push_str("const ");
+                            output.push_str(as_name);
+                            output.push_str(" = ");
                             let class_start = class_decl.span.start as usize;
                             output.push_str(&input[class_start..decl.span.end as usize]);
                         }
@@ -81,17 +88,24 @@ pub fn rewrite_default(input: &str, as_name: &str, is_ts: bool) -> (String, bool
                             let func_body_start = id.span.end as usize;
                             let func_body = &input[func_body_start..decl.span.end as usize];
                             output.push_str(func_body);
-                            output.push_str(&format!("\nconst {} = {}", as_name, id.name));
+                            output.push_str("\nconst ");
+                            output.push_str(as_name);
+                            output.push_str(" = ");
+                            output.push_str(id.name.as_str());
                         } else {
                             // Anonymous function - wrap in const
-                            output.push_str(&format!("const {} = ", as_name));
+                            output.push_str("const ");
+                            output.push_str(as_name);
+                            output.push_str(" = ");
                             let func_start = func_decl.span.start as usize;
                             output.push_str(&input[func_start..decl.span.end as usize]);
                         }
                     }
                     _ => {
                         // export default {...} -> const as_name = {...}
-                        output.push_str(&format!("const {} = ", as_name));
+                        output.push_str("const ");
+                        output.push_str(as_name);
+                        output.push_str(" = ");
                         let expr_start = decl.declaration.span().start as usize;
                         let expr_end = decl.declaration.span().end as usize;
                         output.push_str(&input[expr_start..expr_end]);
@@ -131,10 +145,11 @@ pub fn rewrite_default(input: &str, as_name: &str, is_ts: bool) -> (String, bool
                                 };
 
                                 // Add import for the default
-                                output.push_str(&format!(
-                                    "import {{ {} as __VUE_DEFAULT__ }} from '{}'\n",
-                                    local_name, source.value
-                                ));
+                                output.push_str("import { ");
+                                output.push_str(local_name);
+                                output.push_str(" as __VUE_DEFAULT__ } from '");
+                                output.push_str(source.value.as_str());
+                                output.push_str("'\n");
                             }
                         }
 
@@ -177,13 +192,19 @@ pub fn rewrite_default(input: &str, as_name: &str, is_ts: bool) -> (String, bool
                                 if local == exported {
                                     output.push_str(local);
                                 } else {
-                                    output.push_str(&format!("{} as {}", local, exported));
+                                    output.push_str(local);
+                                    output.push_str(" as ");
+                                    output.push_str(exported);
                                 }
                             }
-                            output.push_str(&format!(" }} from '{}'\n", source.value));
+                            output.push_str(" } from '");
+                            output.push_str(source.value.as_str());
+                            output.push_str("'\n");
                         }
 
-                        output.push_str(&format!("const {} = __VUE_DEFAULT__", as_name));
+                        output.push_str("const ");
+                        output.push_str(as_name);
+                        output.push_str(" = __VUE_DEFAULT__");
                     } else {
                         // export { foo as default } (no source)
                         for specifier in &named_decl.specifiers {
@@ -242,13 +263,18 @@ pub fn rewrite_default(input: &str, as_name: &str, is_ts: bool) -> (String, bool
                                         if local == exported {
                                             output.push_str(local);
                                         } else {
-                                            output.push_str(&format!("{} as {}", local, exported));
+                                            output.push_str(local);
+                                            output.push_str(" as ");
+                                            output.push_str(exported);
                                         }
                                     }
                                     output.push_str(" }\n");
                                 }
 
-                                output.push_str(&format!("const {} = {}", as_name, local_name));
+                                output.push_str("const ");
+                                output.push_str(as_name);
+                                output.push_str(" = ");
+                                output.push_str(local_name);
                                 break;
                             }
                         }

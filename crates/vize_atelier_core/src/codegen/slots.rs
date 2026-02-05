@@ -395,7 +395,9 @@ fn strip_ctx_prefix_for_slot_params(ctx: &CodegenContext, content: &str) -> std:
     let mut result = content.to_string();
     for param in &ctx.slot_params {
         // Replace _ctx.paramName with paramName
-        let prefixed = format!("_ctx.{}", param);
+        let mut prefixed = String::with_capacity(5 + param.len());
+        prefixed.push_str("_ctx.");
+        prefixed.push_str(param);
         result = result.replace(&prefixed, param);
     }
     result

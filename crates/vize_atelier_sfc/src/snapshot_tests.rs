@@ -8,6 +8,7 @@
 
 use crate::{compile_sfc, parse_sfc, SfcCompileOptions};
 use serde::Deserialize;
+use std::fmt::Write;
 use std::path::PathBuf;
 
 /// A test case from a TOML fixture
@@ -67,11 +68,22 @@ fn normalize_name(name: &str) -> String {
         .collect()
 }
 
+fn build_snapshot_name(prefix: &str, name: &str) -> String {
+    let mut result = String::with_capacity(prefix.len() + name.len());
+    result.push_str(prefix);
+    result.push_str(name);
+    result
+}
+
 /// Compile an SFC to TypeScript output
 fn compile_sfc_ts(input: &str) -> String {
     let descriptor = match parse_sfc(input, Default::default()) {
         Ok(d) => d,
-        Err(e) => return format!("Parse error: {:?}", e),
+        Err(e) => {
+            let mut msg = String::from("Parse error: ");
+            let _ = write!(&mut msg, "{:?}", e);
+            return msg;
+        }
     };
 
     let mut options = SfcCompileOptions::default();
@@ -82,7 +94,11 @@ fn compile_sfc_ts(input: &str) -> String {
 
     match compile_sfc(&descriptor, options) {
         Ok(result) => result.code,
-        Err(e) => format!("Compile error: {:?}", e),
+        Err(e) => {
+            let mut msg = String::from("Compile error: ");
+            let _ = write!(&mut msg, "{:?}", e);
+            msg
+        }
     }
 }
 
@@ -90,7 +106,11 @@ fn compile_sfc_ts(input: &str) -> String {
 fn compile_sfc_js(input: &str) -> String {
     let descriptor = match parse_sfc(input, Default::default()) {
         Ok(d) => d,
-        Err(e) => return format!("Parse error: {:?}", e),
+        Err(e) => {
+            let mut msg = String::from("Parse error: ");
+            let _ = write!(&mut msg, "{:?}", e);
+            return msg;
+        }
     };
 
     let mut options = SfcCompileOptions::default();
@@ -101,7 +121,11 @@ fn compile_sfc_js(input: &str) -> String {
 
     match compile_sfc(&descriptor, options) {
         Ok(result) => result.code,
-        Err(e) => format!("Compile error: {:?}", e),
+        Err(e) => {
+            let mut msg = String::from("Compile error: ");
+            let _ = write!(&mut msg, "{:?}", e);
+            msg
+        }
     }
 }
 
@@ -122,7 +146,8 @@ fn test_script_setup_ts_snapshots() {
             prepend_module_to_snapshot => false,
             snapshot_suffix => "",
         }, {
-            insta::assert_snapshot!(format!("script_setup__{}", normalized_name), ts_output);
+            let snapshot_name = build_snapshot_name("script_setup__", &normalized_name);
+            insta::assert_snapshot!(snapshot_name, ts_output);
         });
     }
 }
@@ -144,7 +169,8 @@ fn test_basic_sfc_ts_snapshots() {
             prepend_module_to_snapshot => false,
             snapshot_suffix => "",
         }, {
-            insta::assert_snapshot!(format!("basic__{}", normalized_name), ts_output);
+            let snapshot_name = build_snapshot_name("basic__", &normalized_name);
+            insta::assert_snapshot!(snapshot_name, ts_output);
         });
     }
 }
@@ -166,7 +192,8 @@ fn test_patches_ts_snapshots() {
             prepend_module_to_snapshot => false,
             snapshot_suffix => "",
         }, {
-            insta::assert_snapshot!(format!("patches__{}", normalized_name), ts_output);
+            let snapshot_name = build_snapshot_name("patches__", &normalized_name);
+            insta::assert_snapshot!(snapshot_name, ts_output);
         });
     }
 }
@@ -188,7 +215,8 @@ fn test_patches_js_snapshots() {
             prepend_module_to_snapshot => false,
             snapshot_suffix => "",
         }, {
-            insta::assert_snapshot!(format!("patches__{}", normalized_name), js_output);
+            let snapshot_name = build_snapshot_name("patches__", &normalized_name);
+            insta::assert_snapshot!(snapshot_name, js_output);
         });
     }
 }

@@ -177,7 +177,11 @@ fn process_directive(
 
     // Add custom directive to identifiers
     if collect_used_ids && !is_builtin_directive(name) {
-        let directive_name = format!("v{}", capitalize(&camelize(name)));
+        let camel = camelize(name);
+        let cap = capitalize(&camel);
+        let mut directive_name = String::with_capacity(1 + cap.len());
+        directive_name.push('v');
+        directive_name.push_str(&cap);
         result.used_ids.insert(directive_name);
     }
 

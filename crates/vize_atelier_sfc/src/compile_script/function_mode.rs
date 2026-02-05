@@ -547,7 +547,10 @@ pub fn compile_script_setup(
 
     // Add update:modelValue emits from defineModel
     for model_name in &model_names {
-        all_emits.push(format!("update:{}", model_name));
+        let mut name = String::with_capacity(7 + model_name.len());
+        name.push_str("update:");
+        name.push_str(model_name);
+        all_emits.push(name);
     }
 
     // Output emits
@@ -798,7 +801,12 @@ pub fn compile_script_setup(
         .iter()
         .map(|name| {
             if is_reserved_word(name) {
-                format!("\"{}\": {}", name, name)
+                let mut entry = String::with_capacity(name.len() * 2 + 4);
+                entry.push('"');
+                entry.push_str(name);
+                entry.push_str("\": ");
+                entry.push_str(name);
+                entry
             } else {
                 name.clone()
             }
@@ -894,7 +902,10 @@ fn contains_top_level_await(code: &str, is_ts: bool) -> bool {
         SourceType::default()
     };
 
-    let wrapped = format!("async function __temp__() {{\n{}\n}}", code);
+    let mut wrapped = String::with_capacity(code.len() + 28);
+    wrapped.push_str("async function __temp__() {\n");
+    wrapped.push_str(code);
+    wrapped.push_str("\n}");
     let parser = Parser::new(&allocator, &wrapped, source_type);
     let parse_result = parser.parse();
 
@@ -1030,9 +1041,15 @@ fn dedupe_imports(imports: &[String]) -> Vec<String> {
 
                 if decl.specifiers.is_none() {
                     // Side-effect import: import 'module';
-                    let key = format!("{}::side-effect", source);
+                    let mut key = String::with_capacity(source.len() + 13);
+                    key.push_str(source);
+                    key.push_str("::side-effect");
                     if seen_specifiers.insert(key) {
-                        result.push(format!("import '{}'\n", source));
+                        let mut line = String::with_capacity(source.len() + 12);
+                        line.push_str("import '");
+                        line.push_str(source);
+                        line.push_str("'\n");
+                        result.push(line);
                     }
                     handled = true;
                     break;
@@ -1047,7 +1064,10 @@ fn dedupe_imports(imports: &[String]) -> Vec<String> {
                         match spec {
                             ImportDeclarationSpecifier::ImportSpecifier(s) => {
                                 let local = s.local.name.as_str();
-                                let key = format!("{}::{}", source, local);
+                                let mut key = String::with_capacity(source.len() + local.len() + 2);
+                                key.push_str(source);
+                                key.push_str("::");
+                                key.push_str(local);
                                 if !seen_specifiers.insert(key) {
                                     continue;
                                 }
@@ -1056,19 +1076,30 @@ fn dedupe_imports(imports: &[String]) -> Vec<String> {
                                 if imported == local {
                                     named_specs.push(imported.to_string());
                                 } else {
-                                    named_specs.push(format!("{} as {}", imported, local));
+                                    let mut name =
+                                        String::with_capacity(imported.len() + local.len() + 4);
+                                    name.push_str(imported);
+                                    name.push_str(" as ");
+                                    name.push_str(local);
+                                    named_specs.push(name);
                                 }
                             }
                             ImportDeclarationSpecifier::ImportDefaultSpecifier(s) => {
                                 let local = s.local.name.as_str();
-                                let key = format!("{}::{}", source, local);
+                                let mut key = String::with_capacity(source.len() + local.len() + 2);
+                                key.push_str(source);
+                                key.push_str("::");
+                                key.push_str(local);
                                 if seen_specifiers.insert(key) {
                                     default_spec = Some(local.to_string());
                                 }
                             }
                             ImportDeclarationSpecifier::ImportNamespaceSpecifier(s) => {
                                 let local = s.local.name.as_str();
-                                let key = format!("{}::{}", source, local);
+                                let mut key = String::with_capacity(source.len() + local.len() + 2);
+                                key.push_str(source);
+                                key.push_str("::");
+                                key.push_str(local);
                                 if seen_specifiers.insert(key) {
                                     namespace_spec = Some(local.to_string());
                                 }
@@ -1087,13 +1118,28 @@ fn dedupe_imports(imports: &[String]) -> Vec<String> {
                     parts.push(def);
                 }
                 if let Some(ns) = namespace_spec {
-                    parts.push(format!("* as {}", ns));
+                    let mut name = String::with_capacity(ns.len() + 5);
+                    name.push_str("* as ");
+                    name.push_str(&ns);
+                    parts.push(name);
                 }
                 if !named_specs.is_empty() {
-                    parts.push(format!("{{ {} }}", named_specs.join(", ")));
+                    let joined = named_specs.join(", ");
+                    let mut part = String::with_capacity(joined.len() + 4);
+                    part.push_str("{ ");
+                    part.push_str(&joined);
+                    part.push_str(" }");
+                    parts.push(part);
                 }
 
-                result.push(format!("import {} from '{}'\n", parts.join(", "), source));
+                let joined = parts.join(", ");
+                let mut line = String::with_capacity(joined.len() + source.len() + 13);
+                line.push_str("import ");
+                line.push_str(&joined);
+                line.push_str(" from '");
+                line.push_str(source);
+                line.push_str("'\n");
+                result.push(line);
                 handled = true;
                 break;
             }

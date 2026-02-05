@@ -110,8 +110,14 @@ pub fn transform_v_model<'a>(
         props.push(value_prop);
 
         // Create @update:propName handler
-        let event_name = format!("update:{}", prop_name);
-        let handler = format!("$event => (({}) = $event)", value_exp);
+        let mut event_name = String::with_capacity(7 + prop_name.len());
+        event_name.push_str("update:");
+        event_name.push_str(prop_name);
+
+        let mut handler = String::with_capacity(value_exp.len() + 20);
+        handler.push_str("$event => ((");
+        handler.push_str(value_exp);
+        handler.push_str(") = $event)");
 
         let event_prop = PropNode::Directive(Box::new_in(
             DirectiveNode {
@@ -135,7 +141,10 @@ pub fn transform_v_model<'a>(
     } else {
         // For native elements: generate onUpdate:modelValue handler
         // The withDirectives wrapper with vModelText/etc will be generated in codegen
-        let handler = format!("$event => (({}) = $event)", value_exp);
+        let mut handler = String::with_capacity(value_exp.len() + 20);
+        handler.push_str("$event => ((");
+        handler.push_str(value_exp);
+        handler.push_str(") = $event)");
 
         let event_prop = PropNode::Directive(Box::new_in(
             DirectiveNode {

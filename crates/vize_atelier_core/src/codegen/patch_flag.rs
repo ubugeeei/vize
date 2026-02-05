@@ -100,9 +100,15 @@ pub fn calculate_element_patch_info(
                                             let prop_name = if has_camel {
                                                 camelize(key).to_string()
                                             } else if has_prop {
-                                                format!(".{}", key)
+                                                let mut name = String::with_capacity(1 + key.len());
+                                                name.push('.');
+                                                name.push_str(key);
+                                                name
                                             } else if has_attr {
-                                                format!("^{}", key)
+                                                let mut name = String::with_capacity(1 + key.len());
+                                                name.push('^');
+                                                name.push_str(key);
+                                                name
                                             } else {
                                                 key.to_string()
                                             };

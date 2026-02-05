@@ -19,7 +19,8 @@ pub fn generate_node(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>) {
         TemplateChildNode::For(for_node) => generate_for(ctx, for_node),
         TemplateChildNode::Hoisted(index) => {
             // Output reference to hoisted variable
-            ctx.push(&format!("_hoisted_{}", index + 1));
+            ctx.push("_hoisted_");
+            ctx.push(&(index + 1).to_string());
         }
         _ => {
             ctx.push("null /* unsupported node */");

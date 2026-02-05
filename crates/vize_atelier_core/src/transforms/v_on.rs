@@ -100,7 +100,11 @@ use vize_carton::{camelize, capitalize};
 /// Converts kebab-case to camelCase (e.g., "select-koma" -> "onSelectKoma")
 pub fn create_on_name(event: &str) -> String {
     let camel = camelize(event);
-    format!("on{}", capitalize(&camel)).into()
+    let cap = capitalize(&camel);
+    let mut result = String::with_capacity(2 + cap.len());
+    result.push_str("on");
+    result.push_str(&cap);
+    result.into()
 }
 
 #[cfg(test)]

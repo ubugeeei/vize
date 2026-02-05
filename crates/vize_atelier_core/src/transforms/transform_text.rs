@@ -142,8 +142,21 @@ pub enum TextPart {
 impl TextPart {
     pub fn to_code(&self) -> String {
         match self {
-            TextPart::Static(s) => format!("\"{}\"", escape_text(s)).into(),
-            TextPart::Dynamic(s) => format!("_toDisplayString({})", s).into(),
+            TextPart::Static(s) => {
+                let escaped = escape_text(s);
+                let mut out = String::with_capacity(escaped.len() + 2);
+                out.push('"');
+                out.push_str(&escaped);
+                out.push('"');
+                out.into()
+            }
+            TextPart::Dynamic(s) => {
+                let mut out = String::with_capacity(s.len() + 18);
+                out.push_str("_toDisplayString(");
+                out.push_str(s);
+                out.push(')');
+                out.into()
+            }
         }
     }
 }

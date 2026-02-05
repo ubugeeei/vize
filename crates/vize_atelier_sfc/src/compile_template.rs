@@ -24,7 +24,10 @@ pub(crate) fn compile_template_block(
     dom_opts.mode = vize_atelier_core::options::CodegenMode::Module;
     dom_opts.prefix_identifiers = true;
     dom_opts.scope_id = if has_scoped {
-        Some(format!("data-v-{}", scope_id).into())
+        let mut attr = String::with_capacity(scope_id.len() + 7);
+        attr.push_str("data-v-");
+        attr.push_str(scope_id);
+        Some(attr.into())
     } else {
         None
     };
@@ -79,8 +82,11 @@ pub(crate) fn compile_template_block(
         vize_atelier_dom::compile_template_with_options(&allocator, &template.content, dom_opts);
 
     if !errors.is_empty() {
+        let mut message = String::from("Template compilation errors: ");
+        use std::fmt::Write as _;
+        let _ = write!(&mut message, "{:?}", errors);
         return Err(SfcError {
-            message: format!("Template compilation errors: {:?}", errors),
+            message,
             code: Some("TEMPLATE_ERROR".to_string()),
             loc: Some(template.loc.clone()),
         });
@@ -120,11 +126,11 @@ pub(crate) fn compile_template_block_vapor(
     let result = compile_vapor(&allocator, &template.content, vapor_opts);
 
     if !result.error_messages.is_empty() {
+        let mut message = String::from("Vapor template compilation errors: ");
+        use std::fmt::Write as _;
+        let _ = write!(&mut message, "{:?}", result.error_messages);
         return Err(SfcError {
-            message: format!(
-                "Vapor template compilation errors: {:?}",
-                result.error_messages
-            ),
+            message,
             code: Some("VAPOR_TEMPLATE_ERROR".to_string()),
             loc: Some(template.loc.clone()),
         });
@@ -133,7 +139,10 @@ pub(crate) fn compile_template_block_vapor(
     // Process the Vapor output to extract imports and render function
     let mut output = String::new();
     let scope_attr = if has_scoped {
-        format!("data-v-{}", scope_id)
+        let mut attr = String::with_capacity(scope_id.len() + 7);
+        attr.push_str("data-v-");
+        attr.push_str(scope_id);
+        attr
     } else {
         String::new()
     };
@@ -212,7 +221,16 @@ fn add_scope_id_to_template(template_line: &str, scope_id: &str) -> String {
                 let rest = &content[tag_end..];
 
                 // Insert scope_id attribute after tag name
-                return format!("{}{} {}{}{}", prefix, tag_name, scope_id, rest, suffix);
+                let mut result = String::with_capacity(
+                    prefix.len() + tag_name.len() + scope_id.len() + rest.len() + suffix.len() + 1,
+                );
+                result.push_str(prefix);
+                result.push_str(tag_name);
+                result.push(' ');
+                result.push_str(scope_id);
+                result.push_str(rest);
+                result.push_str(suffix);
+                return result;
             }
         }
     }

@@ -39,10 +39,14 @@ pub fn transform_v_once<'a>(ctx: &mut TransformContext<'a>, _el: &ElementNode<'a
 
 /// Generate v-once cache wrapper
 pub fn generate_v_once_wrapper(index: usize) -> String {
-    format!(
-        "_cache[{}] || (_setBlockTracking(-1), _cache[{}] = ",
-        index, index
-    )
+    let index_str = index.to_string();
+    let mut out = String::with_capacity(32 + index_str.len());
+    out.push_str("_cache[");
+    out.push_str(&index_str);
+    out.push_str("] || (_setBlockTracking(-1), _cache[");
+    out.push_str(&index_str);
+    out.push_str("] = ");
+    out
 }
 
 #[cfg(test)]

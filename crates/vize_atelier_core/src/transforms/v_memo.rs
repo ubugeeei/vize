@@ -60,12 +60,22 @@ pub struct MemoInfo {
 
 /// Generate v-memo wrapper code
 pub fn generate_v_memo_wrapper(deps: &str) -> String {
-    format!("_withMemo([{}], () => ", deps).into()
+    let mut out = String::with_capacity(deps.len() + 18);
+    out.push_str("_withMemo([");
+    out.push_str(deps);
+    out.push_str("], () => ");
+    out.into()
 }
 
 /// Generate memo check code
 pub fn generate_memo_check(deps: &str, cache_index: usize) -> String {
-    format!("_isMemoSame(_cache, {}, [{}])", cache_index, deps).into()
+    let mut out = String::with_capacity(deps.len() + 24);
+    out.push_str("_isMemoSame(_cache, ");
+    out.push_str(&cache_index.to_string());
+    out.push_str(", [");
+    out.push_str(deps);
+    out.push_str("])");
+    out.into()
 }
 
 #[cfg(test)]
