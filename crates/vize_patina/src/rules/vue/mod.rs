@@ -37,12 +37,16 @@ mod valid_v_slot;
 
 // Strongly recommended rules
 mod attribute_hyphenation;
+mod component_definition_name_casing;
+mod html_quotes;
 mod html_self_closing;
 mod mustache_interpolation_spacing;
 mod no_multi_spaces;
 mod no_template_shadow;
+mod prop_name_casing;
 mod v_bind_style;
 mod v_on_style;
+mod v_slot_style;
 
 // Recommended rules
 mod attribute_order;
@@ -108,12 +112,16 @@ pub use valid_v_slot::ValidVSlot;
 
 // Strongly recommended rules exports
 pub use attribute_hyphenation::AttributeHyphenation;
+pub use component_definition_name_casing::ComponentDefinitionNameCasing;
+pub use html_quotes::HtmlQuotes;
 pub use html_self_closing::HtmlSelfClosing;
 pub use mustache_interpolation_spacing::MustacheInterpolationSpacing;
 pub use no_multi_spaces::NoMultiSpaces;
 pub use no_template_shadow::NoTemplateShadow;
+pub use prop_name_casing::PropNameCasing;
 pub use v_bind_style::{VBindStyle, VBindStyleOption};
 pub use v_on_style::{VOnStyle, VOnStyleOption};
+pub use v_slot_style::VSlotStyle;
 
 // Recommended rules exports
 pub use attribute_order::AttributeOrder;

@@ -115,6 +115,7 @@ pub fn has_event_handler(element: &ElementNode, event_name: &str) -> bool {
 }
 
 /// Check if an element has any ARIA attribute (aria-*)
+#[allow(dead_code)]
 pub fn has_any_aria_attribute(element: &ElementNode) -> bool {
     for prop in &element.props {
         if let PropNode::Attribute(attr) = prop {

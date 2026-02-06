@@ -119,7 +119,7 @@ impl Rule for NoUselessTemplateAttributes {
                         "vue/no-useless-template-attributes.message",
                         &[("attr", &attr_name)],
                     ),
-                    &prop.loc(),
+                    prop.loc(),
                     ctx.t("vue/no-useless-template-attributes.help"),
                 );
             }
