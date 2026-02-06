@@ -258,6 +258,36 @@
   "vue/use-unique-element-ids.help": "**理由:** 静的な`id`属性は、コンポーネントが複数回レンダリングされると重複IDを引き起こし、アクセシビリティの問題や機能の破損（例：label-input関連付け）につながります。\n\n**修正:** Vue 3.5+ の `useId()` を使用:\n```vue\n<script setup>\nimport { useId } from 'vue'\n\nconst id = useId()\n</script>\n\n<template>\n  <label :for=\"id\">名前:</label>\n  <input :id=\"id\" type=\"text\">\n</template>\n```\n\n**メリット:**\n- 各コンポーネントインスタンスにユニークなIDを生成\n- サーバーとクライアントのレンダリング間で安定（SSR対応）\n- label、ARIA属性、フォーム関連付けに対応",
   "vue/use-unique-element-ids.help_has_use_id": "**良い:** すでに `useId()` を使用しています。生成されたIDをテンプレートで使用してください:\n```vue\n<label :for=\"id\">名前:</label>\n<input :id=\"id\" type=\"text\">\n```\n\n静的な `id`、`for`、ARIA ID参照を動的な値に置き換えてください。",
 
+  "vue/no-child-content.description": "v-htmlまたはv-text使用時に子コンテンツを禁止する",
+  "vue/no-child-content.message": "v-{directive}を持つ要素の子コンテンツは上書きされます",
+  "vue/no-child-content.help": "`v-html`または`v-text`を使用する場合、子コンテンツは無視されます。子コンテンツを削除してください",
+
+  "vue/valid-attribute-name.description": "有効な属性名を必須にする",
+  "vue/valid-attribute-name.message": "属性名 '{name}' は無効です",
+  "vue/valid-attribute-name.help": "属性名にスペース、引用符、`>`、`/`、`=`、制御文字を含めることはできません",
+
+  "vue/no-v-text-v-html-on-component.description": "コンポーネント要素でのv-text/v-htmlを禁止する",
+  "vue/no-v-text-v-html-on-component.message": "v-{directive}はコンポーネント<{tag}>では使用できません",
+  "vue/no-v-text-v-html-on-component.help": "コンポーネントは独自のレンダリングロジックを持っています。propsまたはスロット経由でコンテンツを渡してください",
+
+  "vue/require-component-is.description": "`<component>`要素に`v-bind:is`を必須にする",
+  "vue/require-component-is.message": "<component>には`:is`または`is`属性が必要です",
+  "vue/require-component-is.help": "`<component>`は動的コンポーネントであり、レンダリングするコンポーネントを決定するために`is`属性が必要です",
+
+  "vue/no-useless-template-attributes.description": "<template>要素の不要な属性を禁止する",
+  "vue/no-useless-template-attributes.message": "'{attr}'は<template>では無意味です — 無視されます",
+  "vue/no-useless-template-attributes.help": "`<template>`はDOMにレンダリングされません。構造的ディレクティブ（v-if、v-for、v-slot）と`:key`のみが有効です",
+
+  "vue/valid-v-memo.description": "有効なv-memoディレクティブを強制する",
+  "vue/valid-v-memo.missing_expression": "v-memoには依存配列の式が必要です",
+  "vue/valid-v-memo.unexpected_argument": "v-memoは引数を受け付けません",
+  "vue/valid-v-memo.unexpected_modifier": "v-memoは修飾子を受け付けません",
+  "vue/valid-v-memo.help": "v-memo=\"[valueA, valueB]\"のように依存配列を指定してください",
+
+  "vue/use-v-on-exact.description": "システム修飾子使用時にv-onに.exact修飾子を強制する",
+  "vue/use-v-on-exact.message": ".exactなしの@{event}はシステム修飾子が押されている時も発火します",
+  "vue/use-v-on-exact.help": "`@click`はCtrl/Shift/Alt/Metaが押されている時も発火します。`.exact`を追加してシステム修飾子なしの場合のみ発火するようにしてください",
+
   "compiler.parse_error": "パースエラー: {message}",
   "compiler.unexpected_token": "予期しないトークン'{token}'",
   "compiler.unclosed_tag": "閉じられていないタグ<{tag}>",

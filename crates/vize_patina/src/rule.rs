@@ -147,6 +147,13 @@ impl RuleRegistry {
         registry.register(Box::new(
             crate::rules::vue::MultiWordComponentNames::default(),
         ));
+        registry.register(Box::new(crate::rules::vue::NoChildContent));
+        registry.register(Box::new(crate::rules::vue::ValidAttributeName));
+        registry.register(Box::new(crate::rules::vue::NoVTextVHtmlOnComponent));
+        registry.register(Box::new(crate::rules::vue::RequireComponentIs));
+        registry.register(Box::new(crate::rules::vue::NoUselessTemplateAttributes));
+        registry.register(Box::new(crate::rules::vue::ValidVMemo));
+        registry.register(Box::new(crate::rules::vue::UseVOnExact));
 
         // ============================================
         // Security Rules (Warning)
@@ -261,6 +268,13 @@ impl RuleRegistry {
         registry.register(Box::new(
             crate::rules::vue::MultiWordComponentNames::default(),
         ));
+        registry.register(Box::new(crate::rules::vue::NoChildContent));
+        registry.register(Box::new(crate::rules::vue::ValidAttributeName));
+        registry.register(Box::new(crate::rules::vue::NoVTextVHtmlOnComponent));
+        registry.register(Box::new(crate::rules::vue::RequireComponentIs));
+        registry.register(Box::new(crate::rules::vue::NoUselessTemplateAttributes));
+        registry.register(Box::new(crate::rules::vue::ValidVMemo));
+        registry.register(Box::new(crate::rules::vue::UseVOnExact));
 
         // Security Rules
         registry.register(Box::new(crate::rules::vue::NoVHtml));

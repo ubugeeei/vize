@@ -258,6 +258,36 @@
   "vue/use-unique-element-ids.help": "**Why:** Static `id` attributes can cause duplicate IDs when components are rendered multiple times, leading to accessibility issues and broken functionality (e.g., label-input associations).\n\n**Fix:** Use `useId()` from Vue 3.5+:\n```vue\n<script setup>\nimport { useId } from 'vue'\n\nconst id = useId()\n</script>\n\n<template>\n  <label :for=\"id\">Name:</label>\n  <input :id=\"id\" type=\"text\">\n</template>\n```\n\n**Benefits:**\n- Generates unique IDs for each component instance\n- Stable across server and client rendering (SSR-safe)\n- Works with labels, ARIA attributes, and form associations",
   "vue/use-unique-element-ids.help_has_use_id": "**Good:** You're already using `useId()`. Now use the generated ID in your template:\n```vue\n<label :for=\"id\">Name:</label>\n<input :id=\"id\" type=\"text\">\n```\n\nReplace static `id`, `for`, and ARIA ID references with the dynamic value.",
 
+  "vue/no-child-content.description": "Disallow child content when using v-html or v-text",
+  "vue/no-child-content.message": "Child content of element with v-{directive} will be overwritten",
+  "vue/no-child-content.help": "**Why:** When using `v-html` or `v-text`, Vue replaces the element's child content with the directive value. Any child content is silently ignored.\n\n**Fix:** Remove the child content:\n```vue\n<!-- Before -->\n<div v-html=\"content\">This will be ignored</div>\n\n<!-- After -->\n<div v-html=\"content\"></div>\n```",
+
+  "vue/valid-attribute-name.description": "Require valid attribute names",
+  "vue/valid-attribute-name.message": "Attribute name '{name}' is invalid",
+  "vue/valid-attribute-name.help": "Attribute names must not contain spaces, quotes, `>`, `/`, `=`, or control characters",
+
+  "vue/no-v-text-v-html-on-component.description": "Disallow v-text / v-html on component elements",
+  "vue/no-v-text-v-html-on-component.message": "v-{directive} cannot be used on component <{tag}>",
+  "vue/no-v-text-v-html-on-component.help": "**Why:** Components have their own rendering logic. `v-text`/`v-html` would overwrite the component's content unexpectedly.\n\n**Fix:** Pass content via props or slots:\n```vue\n<!-- Instead of -->\n<MyComponent v-html=\"content\" />\n\n<!-- Use slots -->\n<MyComponent><div v-html=\"content\" /></MyComponent>\n```",
+
+  "vue/require-component-is.description": "Require `v-bind:is` on `<component>` elements",
+  "vue/require-component-is.message": "<component> requires a `:is` or `is` attribute",
+  "vue/require-component-is.help": "**Why:** The `<component>` element is a dynamic component placeholder. Without `is`, Vue cannot determine which component to render.\n\n**Fix:**\n```vue\n<component :is=\"currentComponent\" />\n<component is=\"MyComponent\" />\n```",
+
+  "vue/no-useless-template-attributes.description": "Disallow useless attributes on <template> elements",
+  "vue/no-useless-template-attributes.message": "'{attr}' is useless on <template> — it will be ignored",
+  "vue/no-useless-template-attributes.help": "**Why:** `<template>` is not rendered to the DOM. Only structural directives (v-if, v-for, v-slot) and `:key` are meaningful.\n\n**Fix:** Move attributes to a child element or remove them.",
+
+  "vue/valid-v-memo.description": "Enforce valid v-memo directives",
+  "vue/valid-v-memo.missing_expression": "v-memo requires a dependency array expression",
+  "vue/valid-v-memo.unexpected_argument": "v-memo does not accept an argument",
+  "vue/valid-v-memo.unexpected_modifier": "v-memo does not accept modifiers",
+  "vue/valid-v-memo.help": "**Usage:**\n```vue\n<div v-memo=\"[valueA, valueB]\">\n  <!-- Only re-renders when valueA or valueB changes -->\n</div>\n```\n\n**Note:** `v-memo` accepts an array of dependencies, similar to React's `useMemo`.",
+
+  "vue/use-v-on-exact.description": "Enforce .exact modifier on v-on when using system modifiers",
+  "vue/use-v-on-exact.message": "@{event} without .exact will also fire when system modifiers are pressed",
+  "vue/use-v-on-exact.help": "**Why:** `@click` fires even when Ctrl/Shift/Alt/Meta is pressed. Use `.exact` to only fire when no system modifiers are active.\n\n**Fix:**\n```vue\n<!-- Before -->\n<button @click=\"onClick\" @click.ctrl=\"onCtrlClick\" />\n\n<!-- After -->\n<button @click.exact=\"onClick\" @click.ctrl=\"onCtrlClick\" />\n```",
+
   "compiler.parse_error": "Parse error: {message}",
   "compiler.unexpected_token": "Unexpected token '{token}'",
   "compiler.unclosed_tag": "Unclosed tag <{tag}>",

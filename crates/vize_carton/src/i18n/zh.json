@@ -258,6 +258,36 @@
   "vue/use-unique-element-ids.help": "**原因:** 静态`id`属性在组件多次渲染时可能导致重复ID，造成无障碍问题和功能故障（如label-input关联）。\n\n**修复:** 使用Vue 3.5+的`useId()`:\n```vue\n<script setup>\nimport { useId } from 'vue'\n\nconst id = useId()\n</script>\n\n<template>\n  <label :for=\"id\">姓名:</label>\n  <input :id=\"id\" type=\"text\">\n</template>\n```\n\n**优点:**\n- 为每个组件实例生成唯一ID\n- 在服务器和客户端渲染间保持稳定（SSR安全）\n- 支持label、ARIA属性和表单关联",
   "vue/use-unique-element-ids.help_has_use_id": "**很好:** 您已经在使用`useId()`。现在在模板中使用生成的ID:\n```vue\n<label :for=\"id\">姓名:</label>\n<input :id=\"id\" type=\"text\">\n```\n\n将静态的`id`、`for`和ARIA ID引用替换为动态值。",
 
+  "vue/no-child-content.description": "禁止在使用v-html或v-text时包含子内容",
+  "vue/no-child-content.message": "带有v-{directive}的元素的子内容将被覆盖",
+  "vue/no-child-content.help": "使用`v-html`或`v-text`时，子内容会被忽略。请删除子内容",
+
+  "vue/valid-attribute-name.description": "要求有效的属性名",
+  "vue/valid-attribute-name.message": "属性名 '{name}' 无效",
+  "vue/valid-attribute-name.help": "属性名不能包含空格、引号、`>`、`/`、`=`或控制字符",
+
+  "vue/no-v-text-v-html-on-component.description": "禁止在组件元素上使用v-text/v-html",
+  "vue/no-v-text-v-html-on-component.message": "v-{directive}不能用于组件<{tag}>",
+  "vue/no-v-text-v-html-on-component.help": "组件有自己的渲染逻辑。请通过props或插槽传递内容",
+
+  "vue/require-component-is.description": "要求`<component>`元素具有`v-bind:is`",
+  "vue/require-component-is.message": "<component>需要`:is`或`is`属性",
+  "vue/require-component-is.help": "`<component>`是动态组件，需要`is`属性来确定要渲染的组件",
+
+  "vue/no-useless-template-attributes.description": "禁止<template>元素上的无用属性",
+  "vue/no-useless-template-attributes.message": "'{attr}'在<template>上无意义 — 将被忽略",
+  "vue/no-useless-template-attributes.help": "`<template>`不会渲染到DOM。只有结构性指令（v-if、v-for、v-slot）和`:key`有效",
+
+  "vue/valid-v-memo.description": "强制有效的v-memo指令",
+  "vue/valid-v-memo.missing_expression": "v-memo需要依赖数组表达式",
+  "vue/valid-v-memo.unexpected_argument": "v-memo不接受参数",
+  "vue/valid-v-memo.unexpected_modifier": "v-memo不接受修饰符",
+  "vue/valid-v-memo.help": "请使用v-memo=\"[valueA, valueB]\"的形式指定依赖数组",
+
+  "vue/use-v-on-exact.description": "使用系统修饰符时强制在v-on上使用.exact修饰符",
+  "vue/use-v-on-exact.message": "没有.exact的@{event}在系统修饰键按下时也会触发",
+  "vue/use-v-on-exact.help": "`@click`在按下Ctrl/Shift/Alt/Meta时也会触发。添加`.exact`使其仅在没有系统修饰键时触发",
+
   "compiler.parse_error": "解析错误: {message}",
   "compiler.unexpected_token": "意外的标记'{token}'",
   "compiler.unclosed_tag": "未关闭的标签<{tag}>",
