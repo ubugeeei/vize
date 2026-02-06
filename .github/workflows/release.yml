@@ -34,10 +34,10 @@ jobs:
           - host: windows-latest
             target: aarch64-pc-windows-msvc
             archive: vize-aarch64-pc-windows-msvc.zip
-          - host: ubuntu-latest
+          - host: ubuntu-latest-xlarge
             target: x86_64-unknown-linux-gnu
             archive: vize-x86_64-unknown-linux-gnu.tar.gz
-          - host: ubuntu-latest
+          - host: ubuntu-latest-xlarge
             target: aarch64-unknown-linux-gnu
             archive: vize-aarch64-unknown-linux-gnu.tar.gz
     steps:
@@ -82,8 +82,8 @@ jobs:
           path: ${{ matrix.settings.archive }}
           if-no-files-found: error
 
-  # Build native bindings for all platforms
-  build-native:
+  # Build native bindings (vize-native + fresco-native) for all platforms
+  build-native-all:
     name: Build Native - ${{ matrix.settings.target }}
     runs-on: ${{ matrix.settings.host }}
     strategy:
@@ -92,28 +92,36 @@ jobs:
         settings:
           - host: macos-latest
             target: x86_64-apple-darwin
-            build: pnpm -C npm/vize-native build --target x86_64-apple-darwin
+            build_vize: pnpm -C npm/vize-native build --target x86_64-apple-darwin
+            build_fresco: pnpm -C npm/fresco-native build --target x86_64-apple-darwin
           - host: macos-latest
             target: aarch64-apple-darwin
-            build: pnpm -C npm/vize-native build --target aarch64-apple-darwin
+            build_vize: pnpm -C npm/vize-native build --target aarch64-apple-darwin
+            build_fresco: pnpm -C npm/fresco-native build --target aarch64-apple-darwin
           - host: windows-latest
             target: x86_64-pc-windows-msvc
-            build: pnpm -C npm/vize-native build --target x86_64-pc-windows-msvc
+            build_vize: pnpm -C npm/vize-native build --target x86_64-pc-windows-msvc
+            build_fresco: pnpm -C npm/fresco-native build --target x86_64-pc-windows-msvc
           - host: windows-latest
             target: aarch64-pc-windows-msvc
-            build: pnpm -C npm/vize-native build --target aarch64-pc-windows-msvc
-          - host: ubuntu-latest
+            build_vize: pnpm -C npm/vize-native build --target aarch64-pc-windows-msvc
+            build_fresco: pnpm -C npm/fresco-native build --target aarch64-pc-windows-msvc
+          - host: ubuntu-latest-xlarge
             target: x86_64-unknown-linux-gnu
-            build: pnpm -C npm/vize-native build --target x86_64-unknown-linux-gnu
-          - host: ubuntu-latest
+            build_vize: pnpm -C npm/vize-native build --target x86_64-unknown-linux-gnu
+            build_fresco: pnpm -C npm/fresco-native build --target x86_64-unknown-linux-gnu
+          - host: ubuntu-latest-xlarge
             target: x86_64-unknown-linux-musl
-            build: pnpm -C npm/vize-native build --target x86_64-unknown-linux-musl --cross-compile
-          - host: ubuntu-latest
+            build_vize: pnpm -C npm/vize-native build --target x86_64-unknown-linux-musl --cross-compile
+            build_fresco: pnpm -C npm/fresco-native build --target x86_64-unknown-linux-musl --cross-compile
+          - host: ubuntu-latest-xlarge
             target: aarch64-unknown-linux-gnu
-            build: pnpm -C npm/vize-native build --target aarch64-unknown-linux-gnu --cross-compile
-          - host: ubuntu-latest
+            build_vize: pnpm -C npm/vize-native build --target aarch64-unknown-linux-gnu --cross-compile
+            build_fresco: pnpm -C npm/fresco-native build --target aarch64-unknown-linux-gnu --cross-compile
+          - host: ubuntu-latest-xlarge
             target: aarch64-unknown-linux-musl
-            build: pnpm -C npm/vize-native build --target aarch64-unknown-linux-musl --cross-compile
+            build_vize: pnpm -C npm/vize-native build --target aarch64-unknown-linux-musl --cross-compile
+            build_fresco: pnpm -C npm/fresco-native build --target aarch64-unknown-linux-musl --cross-compile
     steps:
       - uses: actions/checkout@v4
 
@@ -138,84 +146,25 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Setup Zig
-        if: contains(matrix.settings.build, '--cross-compile')
+        if: contains(matrix.settings.build_vize, '--cross-compile')
         uses: goto-bus-stop/setup-zig@v2
 
-      - name: Build
-        run: ${{ matrix.settings.build }}
+      - name: Build vize-native
+        run: ${{ matrix.settings.build_vize }}
         shell: bash
 
-      - name: Upload artifact
+      - name: Upload vize-native artifact
         uses: actions/upload-artifact@v4
         with:
           name: bindings-${{ matrix.settings.target }}
           path: npm/vize-native/*.node
           if-no-files-found: error
 
-  # Build fresco native bindings for all platforms
-  build-fresco-native:
-    name: Build Fresco Native - ${{ matrix.settings.target }}
-    runs-on: ${{ matrix.settings.host }}
-    strategy:
-      fail-fast: false
-      matrix:
-        settings:
-          - host: macos-latest
-            target: x86_64-apple-darwin
-            build: pnpm -C npm/fresco-native build --target x86_64-apple-darwin
-          - host: macos-latest
-            target: aarch64-apple-darwin
-            build: pnpm -C npm/fresco-native build --target aarch64-apple-darwin
-          - host: windows-latest
-            target: x86_64-pc-windows-msvc
-            build: pnpm -C npm/fresco-native build --target x86_64-pc-windows-msvc
-          - host: windows-latest
-            target: aarch64-pc-windows-msvc
-            build: pnpm -C npm/fresco-native build --target aarch64-pc-windows-msvc
-          - host: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            build: pnpm -C npm/fresco-native build --target x86_64-unknown-linux-gnu
-          - host: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-            build: pnpm -C npm/fresco-native build --target x86_64-unknown-linux-musl --cross-compile
-          - host: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            build: pnpm -C npm/fresco-native build --target aarch64-unknown-linux-gnu --cross-compile
-          - host: ubuntu-latest
-            target: aarch64-unknown-linux-musl
-            build: pnpm -C npm/fresco-native build --target aarch64-unknown-linux-musl --cross-compile
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.settings.target }}
-
-      - name: Cache Rust
-        uses: Swatinem/rust-cache@v2
-
-      - name: Setup Zig
-        if: contains(matrix.settings.build, '--cross-compile')
-        uses: goto-bus-stop/setup-zig@v2
-
-      - name: Build
-        run: ${{ matrix.settings.build }}
+      - name: Build fresco-native
+        run: ${{ matrix.settings.build_fresco }}
         shell: bash
 
-      - name: Upload artifact
+      - name: Upload fresco-native artifact
         uses: actions/upload-artifact@v4
         with:
           name: fresco-bindings-${{ matrix.settings.target }}
@@ -226,7 +175,7 @@ jobs:
   release-npm-native:
     name: Release @vizejs/native to npm
     runs-on: ubuntu-latest
-    needs: build-native
+    needs: build-native-all
     environment: npm
     permissions:
       contents: read
@@ -291,7 +240,7 @@ jobs:
   release-npm-fresco-native:
     name: Release @vizejs/fresco-native to npm
     runs-on: ubuntu-latest
-    needs: build-fresco-native
+    needs: build-native-all
     environment: npm
     permissions:
       contents: read
@@ -355,7 +304,7 @@ jobs:
   # Build and publish WASM package (using Trusted Publishing / OIDC)
   release-npm-wasm:
     name: Release @vizejs/wasm to npm
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-xlarge
     environment: npm
     permissions:
       contents: read
@@ -372,7 +321,9 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install wasm-bindgen-cli
-        run: cargo install wasm-bindgen-cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen-cli
 
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
@@ -540,7 +491,7 @@ jobs:
   # Publish crates to crates.io (using Trusted Publishing)
   release-crates:
     name: Release crates to crates.io
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-xlarge
     environment: crates-io
     steps:
       - uses: actions/checkout@v4
@@ -578,22 +529,23 @@ jobs:
           }
 
           # Publish in dependency order with delays for index updates
-          publish_crate vize_carton && sleep 60
-          publish_crate vize_relief && sleep 60
-          publish_crate vize_armature && sleep 60
-          publish_crate vize_croquis && sleep 60
-          publish_crate vize_atelier_core && sleep 60
-          publish_crate vize_atelier_dom && sleep 60
-          publish_crate vize_atelier_vapor && sleep 60
-          publish_crate vize_atelier_sfc && sleep 60
-          publish_crate vize_atelier_ssr && sleep 60
-          publish_crate vize_glyph && sleep 60
-          publish_crate vize_patina && sleep 60
-          publish_crate vize_canon && sleep 60
-          publish_crate vize_musea && sleep 60
-          publish_crate vize_vitrine && sleep 60
-          publish_crate vize_fresco && sleep 60
-          publish_crate vize_maestro && sleep 60
+          # (sparse registry reflects quickly, 20s is sufficient)
+          publish_crate vize_carton && sleep 20
+          publish_crate vize_relief && sleep 20
+          publish_crate vize_armature && sleep 20
+          publish_crate vize_croquis && sleep 20
+          publish_crate vize_atelier_core && sleep 20
+          publish_crate vize_atelier_dom && sleep 20
+          publish_crate vize_atelier_vapor && sleep 20
+          publish_crate vize_atelier_sfc && sleep 20
+          publish_crate vize_atelier_ssr && sleep 20
+          publish_crate vize_glyph && sleep 20
+          publish_crate vize_patina && sleep 20
+          publish_crate vize_canon && sleep 20
+          publish_crate vize_musea && sleep 20
+          publish_crate vize_vitrine && sleep 20
+          publish_crate vize_fresco && sleep 20
+          publish_crate vize_maestro && sleep 20
           publish_crate vize
 
   # Create GitHub Release with CLI binaries
