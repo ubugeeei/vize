@@ -1,6 +1,6 @@
 {
   "name": "@vizejs/vite-plugin",
-  "version": "0.0.1-alpha.41",
+  "version": "0.0.1-alpha.42",
   "description": "High-performance native Vite plugin for Vue SFC compilation powered by Vize",
   "publishConfig": {
     "provenance": true,
