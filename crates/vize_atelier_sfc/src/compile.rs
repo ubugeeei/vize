@@ -4,9 +4,10 @@
 //! Following the Vue.js core structure, template/script/style compilation
 //! is delegated to specialized modules.
 
-use crate::compile_script::compile_script_setup_function_mode;
+use crate::compile_script::{compile_script_setup_inline, TemplateParts};
 use crate::compile_template::{
-    compile_template_block, compile_template_block_vapor, extract_template_parts_full,
+    compile_template_block, compile_template_block_vapor, extract_template_parts,
+    extract_template_parts_full,
 };
 use crate::rewrite_default::rewrite_default;
 use crate::script::ScriptCompileContext;
@@ -201,7 +202,6 @@ pub fn compile_sfc(
             });
         }
     };
-    let _template_content = descriptor.template.as_ref().map(|t| t.content.as_ref());
 
     // Extract normal script content if present (for type definitions, imports, etc.)
     // When both <script> and <script setup> exist, normal script content should be preserved
@@ -247,68 +247,38 @@ pub fn compile_sfc(
         None
     };
 
-    // Extract render function code from template result (full function, not body only)
-    let (template_imports, template_hoisted, render_fn) = match &template_result {
-        Some(Ok(template_code)) => extract_template_parts_full(template_code),
-        Some(Err(e)) => {
-            errors.push(e.clone());
-            (String::new(), String::new(), String::new())
-        }
-        None => (String::new(), String::new(), String::new()),
-    };
+    // Extract template parts for inline mode (imports, hoisted, preamble, render_body)
+    let (template_imports, template_hoisted, template_preamble, render_body) =
+        match &template_result {
+            Some(Ok(template_code)) => extract_template_parts(template_code),
+            Some(Err(e)) => {
+                errors.push(e.clone());
+                (String::new(), String::new(), String::new(), String::new())
+            }
+            None => (String::new(), String::new(), String::new(), String::new()),
+        };
 
-    // Compile script setup using function mode (NOT inline) to match Vue's behavior
-    // Function mode generates __returned__ object instead of inline render function
-    // This allows the template to use $setup.xxx pattern for proper reactivity tracking
-    let template_content = descriptor.template.as_ref().map(|t| t.content.as_ref());
-    let script_result = compile_script_setup_function_mode(
+    // Compile script setup using inline mode to match Vue's @vue/compiler-sfc output format:
+    // 1. Template imports (from "vue")
+    // 2. User imports
+    // 3. Hoisted literal consts (module-level)
+    // 4. export default { __name, props?, emits?, setup(__props) { ... return (_ctx, _cache) => { ... } } }
+    let script_result = compile_script_setup_inline(
         &script_setup.content,
         &component_name,
-        is_vapor,
         is_ts,
-        template_content,
+        TemplateParts {
+            imports: &template_imports,
+            hoisted: &template_hoisted,
+            preamble: &template_preamble,
+            render_body: &render_body,
+        },
+        normal_script_content.as_deref(),
     )?;
 
-    // Build final output: imports + script + hoisted + render function + exports
-    // This matches the structure of @vitejs/plugin-vue output
-    code.push_str(&template_imports);
-    if !template_imports.is_empty() {
-        code.push('\n');
-    }
-
-    // Add normal script content if present
-    if let Some(normal_content) = normal_script_content {
-        code.push_str(&normal_content);
-        code.push('\n');
-    }
-
-    // Add script setup compilation result
+    // The inline mode compile_script_setup_inline generates a complete output
+    // including imports, hoisted vars, and `export default { ... }` with inline render
     code.push_str(&script_result.code);
-    code.push('\n');
-
-    // Add hoisted template constants
-    if !template_hoisted.is_empty() {
-        code.push_str(&template_hoisted);
-        code.push('\n');
-    }
-
-    // Add render function
-    if !render_fn.is_empty() {
-        code.push_str(&render_fn);
-        code.push('\n');
-        // Attach render function to component
-        code.push_str("__sfc__.render = render\n");
-    }
-
-    // Add scope ID if scoped styles are used
-    if has_scoped {
-        code.push_str("__sfc__.__scopeId = \"data-v-");
-        code.push_str(&scope_id);
-        code.push_str("\"\n");
-    }
-
-    // Export the component
-    code.push_str("export default __sfc__\n");
 
     // Compile styles
     let all_css = compile_styles(&descriptor.styles, &scope_id, &options.style, &mut warnings);
@@ -548,7 +518,7 @@ const msg = ref('')
     }
 
     #[test]
-    #[ignore = "TODO: fix $setup prefix for refs"]
+    #[ignore = "TODO: fix inline mode ref handling"]
     fn test_bindings_passed_to_template() {
         let source = r#"<script setup lang="ts">
 import { ref } from 'vue';
@@ -863,14 +833,14 @@ var c = 3
         );
 
         // Check that let/var variables are wrapped with _unref
-        // In function mode, setup bindings use $setup. prefix
+        // In inline mode, setup bindings are accessed directly (no $setup. prefix)
         assert!(
-            result.code.contains("_unref($setup.b)"),
+            result.code.contains("_unref(b)"),
             "b should be wrapped with _unref. Got:\n{}",
             result.code
         );
         assert!(
-            result.code.contains("_unref($setup.c)"),
+            result.code.contains("_unref(c)"),
             "c should be wrapped with _unref. Got:\n{}",
             result.code
         );

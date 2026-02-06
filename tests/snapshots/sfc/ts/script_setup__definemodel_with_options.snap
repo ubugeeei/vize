@@ -1,37 +1,25 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 106
 expression: ts_output
 ---
+import { useModel as _useModel } from 'vue'
+import { defineComponent, PropType } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, withDirectives as _withDirectives, unref as _unref, vModelText as _vModelText } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
-import { useModel as _useModel } from 'vue'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
-  __name: 'test',
+export default defineComponent({
+  name: 'test',
   props: {
-    "modelValue": {},
+    modelValue: { type: Number, default: 0 },
   },
   emits: ["update:modelValue"],
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const count = _useModel(__props, "modelValue")
-  const __returned__ = { count }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
+  setup(__props) {
 
-});
+const count = _useModel(__props, "modelValue")
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return _withDirectives((_openBlock(), _createElementBlock("input", {
-    "onUpdate:modelValue": $event => (($setup.count.value) = $event),
-    type: "number"
-  }, null, 8 /* PROPS */, ["onUpdate:modelValue"])), [
-    [_vModelText, _unref($setup.count)]
-  ])
+return (_ctx, _cache) => {
+  return _withDirectives((_openBlock(), _createElementBlock("input", { "onUpdate:modelValue": $event => ((count.value) = $event), type: "number" }, null, 8 /* PROPS */, ["onUpdate:modelValue"])), [ [_vModelText, _unref(count)] ])
+}
 }
 
-__sfc__.render = render
-export default __sfc__
+})

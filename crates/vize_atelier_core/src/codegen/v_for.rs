@@ -9,6 +9,58 @@ use super::expression::generate_expression;
 use super::helpers::escape_js_string;
 use super::node::generate_node;
 
+/// Extract parameter names from a v-for callback expression.
+/// Handles simple identifiers ("item") and destructuring patterns ("{ id, name }").
+fn extract_for_params(expr: &ExpressionNode<'_>, params: &mut Vec<String>) {
+    let content = match expr {
+        ExpressionNode::Simple(exp) => exp.content.as_str(),
+        _ => return,
+    };
+    let trimmed = content.trim();
+
+    if trimmed.starts_with('{') && trimmed.ends_with('}') {
+        // Destructuring pattern: { id, name }
+        let inner = &trimmed[1..trimmed.len() - 1];
+        for part in inner.split(',') {
+            let part = part.trim();
+            // Handle default values: "item = default"
+            let name = if let Some(pos) = part.find('=') {
+                part[..pos].trim()
+            } else if let Some(pos) = part.find(':') {
+                // Handle renaming: "original: alias" - take alias
+                part[pos + 1..].trim()
+            } else {
+                part
+            };
+            if !name.is_empty() && is_valid_ident(name) {
+                params.push(name.to_string());
+            }
+        }
+    } else if trimmed.starts_with('[') && trimmed.ends_with(']') {
+        // Array destructuring: [first, second]
+        let inner = &trimmed[1..trimmed.len() - 1];
+        for part in inner.split(',') {
+            let name = part.trim();
+            if !name.is_empty() && is_valid_ident(name) {
+                params.push(name.to_string());
+            }
+        }
+    } else if is_valid_ident(trimmed) {
+        // Simple identifier: item
+        params.push(trimmed.to_string());
+    }
+}
+
+/// Check if a string is a valid JS identifier
+fn is_valid_ident(s: &str) -> bool {
+    let mut chars = s.chars();
+    match chars.next() {
+        Some(c) if c.is_ascii_alphabetic() || c == '_' || c == '$' => {}
+        _ => return false,
+    }
+    chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$')
+}
+
 /// Check if content is a numeric literal (for v-for range)
 fn is_numeric_content(content: &str) -> bool {
     !content.is_empty() && content.chars().all(|c| c.is_ascii_digit())
@@ -86,9 +138,13 @@ pub fn generate_for(ctx: &mut CodegenContext, for_node: &ForNode<'_>) {
     generate_expression(ctx, &for_node.source);
     ctx.push(", (");
 
+    // Collect callback parameter names for scope registration
+    let mut callback_params: Vec<String> = Vec::new();
+
     // Value alias
     if let Some(value) = &for_node.value_alias {
         generate_expression(ctx, value);
+        extract_for_params(value, &mut callback_params);
     } else {
         ctx.push("_item");
     }
@@ -97,13 +153,18 @@ pub fn generate_for(ctx: &mut CodegenContext, for_node: &ForNode<'_>) {
     if let Some(key) = &for_node.key_alias {
         ctx.push(", ");
         generate_expression(ctx, key);
+        extract_for_params(key, &mut callback_params);
     }
 
     // Index alias
     if let Some(index) = &for_node.object_index_alias {
         ctx.push(", ");
         generate_expression(ctx, index);
+        extract_for_params(index, &mut callback_params);
     }
+
+    // Register callback params so they don't get _ctx. prefix
+    ctx.add_slot_params(&callback_params);
 
     ctx.push(") => {");
     ctx.indent();
@@ -116,6 +177,9 @@ pub fn generate_for(ctx: &mut CodegenContext, for_node: &ForNode<'_>) {
     } else {
         generate_children(ctx, &for_node.children);
     }
+
+    // Unregister callback params
+    ctx.remove_slot_params(&callback_params);
 
     ctx.deindent();
     ctx.newline();

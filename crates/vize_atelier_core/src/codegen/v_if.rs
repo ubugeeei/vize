@@ -413,6 +413,23 @@ fn generate_if_branch_props_object(
     has_dynamic_class: bool,
     has_dynamic_style: bool,
 ) {
+    // Check if there are other props besides key (skip excluded ones)
+    let has_other_props = el.props.iter().any(|p| {
+        !should_skip_prop_for_if(p, has_dynamic_class, has_dynamic_style)
+            && !is_vbind_spread_prop(p)
+    });
+    let scope_id = ctx.options.scope_id.clone();
+    let has_scope = scope_id.is_some();
+
+    if !has_other_props && !has_scope {
+        // Key-only: use inline format { key: N }
+        ctx.push("{ key: ");
+        generate_if_branch_key(ctx, branch, branch_index);
+        ctx.push(" }");
+        return;
+    }
+
+    // Multiline format for key + other props
     ctx.push("{");
     ctx.indent();
     ctx.newline();
@@ -443,7 +460,7 @@ fn generate_if_branch_props_object(
     }
 
     // Add scope_id for scoped CSS
-    if let Some(ref scope_id) = ctx.options.scope_id.clone() {
+    if let Some(ref scope_id) = scope_id {
         ctx.push(",");
         ctx.newline();
         ctx.push("\"");

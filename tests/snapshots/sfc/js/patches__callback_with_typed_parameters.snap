@@ -2,26 +2,19 @@
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 expression: js_output
 ---
-import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
-
-import { defineComponent as _defineComponent } from "vue";
-const __sfc__ = /*@__PURE__*/ _defineComponent({
+import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue";
+export default {
   __name: "test",
-  setup(__props, { expose: __expose, emit: __emit }) {
-    __expose();
+  setup(__props) {
     const items = [];
-    const __returned__ = { items };
-    Object.defineProperty(__returned__, "__isScriptSetup", {
-      enumerable: false,
-      value: true
-    });
-    return __returned__;
+    return (_ctx, _cache) => {
+      return _openBlock(), _createElementBlock(
+        "div",
+        null,
+        "\n    " + _toDisplayString(items.map((item) => item.name).join(", ")) + "\n  ",
+        1
+        /* TEXT */
+);
+    };
   }
-});
-
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("div", null, "\n    " + _toDisplayString(items.map((item: Item) => item.name).join(', ')) + "\n  ", 1 /* TEXT */))
-}
-
-__sfc__.render = render
-export default __sfc__
+};

@@ -2,34 +2,23 @@
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 expression: js_output
 ---
-import { openBlock as _openBlock, createElementBlock as _createElementBlock, createCommentVNode as _createCommentVNode, toDisplayString as _toDisplayString } from "vue"
-
-import { defineComponent as _defineComponent } from "vue";
-const __sfc__ = /*@__PURE__*/ _defineComponent({
+import { openBlock as _openBlock, createElementBlock as _createElementBlock, createCommentVNode as _createCommentVNode, toDisplayString as _toDisplayString } from "vue";
+export default {
   __name: "test",
   props: { item: {
     type: Object,
     required: true
   } },
-  setup(__props, { expose: __expose, emit: __emit }) {
-    __expose();
+  setup(__props) {
     const props = __props;
-    const __returned__ = {};
-    Object.defineProperty(__returned__, "__isScriptSetup", {
-      enumerable: false,
-      value: true
-    });
-    return __returned__;
+    return (_ctx, _cache) => {
+      return __props.item.type === "special" ? (_openBlock(), _createElementBlock(
+        "div",
+        { key: 0 },
+        _toDisplayString(__props.item.value),
+        1
+        /* TEXT */
+)) : _createCommentVNode("v-if", true);
+    };
   }
-});
-
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return ($props.item.type === 'special')
-    ? (_openBlock(), _createElementBlock("div", {
-      key: 0
-    }, _toDisplayString($props.item.value), 1 /* TEXT */))
-    : _createCommentVNode("v-if", true)
-}
-
-__sfc__.render = render
-export default __sfc__
+};

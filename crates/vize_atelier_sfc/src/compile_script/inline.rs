@@ -538,9 +538,251 @@ pub fn compile_script_setup_inline(
         output.extend_from_slice(template.hoisted.as_bytes());
     }
 
-    // Start export default (blank line before)
+    // Collect props and emits definitions into a buffer (output later after hoisted consts)
+    let mut props_emits_buf: Vec<u8> = Vec::new();
+
+    // Props definition
+    // Extract defaults from withDefaults if present
+    let with_defaults_args = ctx
+        .macros
+        .with_defaults
+        .as_ref()
+        .map(|wd| extract_with_defaults_defaults(&wd.args));
+
+    // Collect model names from defineModel calls (needed before props)
+    let model_infos: Vec<(String, String, Option<String>)> = ctx
+        .macros
+        .define_models
+        .iter()
+        .map(|m| {
+            let model_name = if m.args.trim().is_empty() {
+                "modelValue".to_string()
+            } else {
+                let args = m.args.trim();
+                if args.starts_with('\'') || args.starts_with('"') {
+                    args.trim_matches(|c| c == '\'' || c == '"')
+                        .split(',')
+                        .next()
+                        .unwrap_or("modelValue")
+                        .trim_matches(|c| c == '\'' || c == '"')
+                        .to_string()
+                } else {
+                    "modelValue".to_string()
+                }
+            };
+            let binding_name = m.binding_name.clone().unwrap_or_else(|| model_name.clone());
+            let options = if m.args.trim().is_empty() {
+                None
+            } else {
+                let args = m.args.trim();
+                if args.starts_with('{') {
+                    Some(args.to_string())
+                } else if args.contains(',') {
+                    args.split_once(',')
+                        .map(|(_, opts)| opts.trim().to_string())
+                } else {
+                    None
+                }
+            };
+            (model_name, binding_name, options)
+        })
+        .collect();
+
+    if let Some(ref props_macro) = ctx.macros.define_props {
+        if let Some(ref type_args) = props_macro.type_args {
+            let prop_types = extract_prop_types_from_type(type_args);
+            if !prop_types.is_empty() || !model_infos.is_empty() {
+                props_emits_buf.extend_from_slice(b"  props: {\n");
+                let mut sorted_props: Vec<_> = prop_types.iter().collect();
+                sorted_props.sort_by(|a, b| a.0.cmp(b.0));
+                for (name, prop_type) in sorted_props {
+                    props_emits_buf.extend_from_slice(b"    ");
+                    props_emits_buf.extend_from_slice(name.as_bytes());
+                    props_emits_buf.extend_from_slice(b": { type: ");
+                    props_emits_buf.extend_from_slice(prop_type.js_type.as_bytes());
+                    if is_ts {
+                        if let Some(ref ts_type) = prop_type.ts_type {
+                            if is_runtime_safe_ts_type(ts_type) {
+                                props_emits_buf.extend_from_slice(b" as PropType<");
+                                props_emits_buf.extend_from_slice(ts_type.as_bytes());
+                                props_emits_buf.push(b'>');
+                            }
+                        }
+                    }
+                    props_emits_buf.extend_from_slice(b", required: ");
+                    props_emits_buf.extend_from_slice(if prop_type.optional {
+                        b"false"
+                    } else {
+                        b"true"
+                    });
+                    let mut has_default = false;
+                    if let Some(ref defaults) = with_defaults_args {
+                        if let Some(default_val) = defaults.get(name.as_str()) {
+                            props_emits_buf.extend_from_slice(b", default: ");
+                            props_emits_buf.extend_from_slice(default_val.as_bytes());
+                            has_default = true;
+                        }
+                    }
+                    if !has_default {
+                        if let Some(ref destructure) = ctx.macros.props_destructure {
+                            if let Some(binding) = destructure.bindings.get(name) {
+                                if let Some(ref default_val) = binding.default {
+                                    props_emits_buf.extend_from_slice(b", default: ");
+                                    props_emits_buf.extend_from_slice(default_val.as_bytes());
+                                }
+                            }
+                        }
+                    }
+                    props_emits_buf.extend_from_slice(b" },\n");
+                }
+                for (model_name, _, options) in &model_infos {
+                    props_emits_buf.extend_from_slice(b"    ");
+                    props_emits_buf.extend_from_slice(model_name.as_bytes());
+                    props_emits_buf.extend_from_slice(b": ");
+                    if let Some(opts) = options {
+                        props_emits_buf.extend_from_slice(opts.as_bytes());
+                    } else {
+                        props_emits_buf.extend_from_slice(b"{}");
+                    }
+                    props_emits_buf.extend_from_slice(b",\n");
+                }
+                props_emits_buf.extend_from_slice(b"  },\n");
+            }
+        } else if !props_macro.args.is_empty() {
+            if needs_merge_defaults {
+                let destructure = ctx.macros.props_destructure.as_ref().unwrap();
+                props_emits_buf.extend_from_slice(b"  props: /*@__PURE__*/_mergeDefaults(");
+                props_emits_buf.extend_from_slice(props_macro.args.as_bytes());
+                props_emits_buf.extend_from_slice(b", {\n");
+                let defaults: Vec<_> = destructure
+                    .bindings
+                    .iter()
+                    .filter_map(|(k, b)| b.default.as_ref().map(|d| (k.as_str(), d.as_str())))
+                    .collect();
+                for (i, (key, default_val)) in defaults.iter().enumerate() {
+                    props_emits_buf.extend_from_slice(b"  ");
+                    props_emits_buf.extend_from_slice(key.as_bytes());
+                    props_emits_buf.extend_from_slice(b": ");
+                    props_emits_buf.extend_from_slice(default_val.as_bytes());
+                    if i < defaults.len() - 1 {
+                        props_emits_buf.push(b',');
+                    }
+                    props_emits_buf.push(b'\n');
+                }
+                props_emits_buf.extend_from_slice(b"}),\n");
+            } else {
+                props_emits_buf.extend_from_slice(b"  props: ");
+                props_emits_buf.extend_from_slice(props_macro.args.as_bytes());
+                props_emits_buf.extend_from_slice(b",\n");
+            }
+        }
+    }
+
+    if !model_infos.is_empty() && ctx.macros.define_props.is_none() {
+        props_emits_buf.extend_from_slice(b"  props: {\n");
+        for (model_name, _binding_name, options) in &model_infos {
+            props_emits_buf.extend_from_slice(b"    ");
+            props_emits_buf.extend_from_slice(model_name.as_bytes());
+            props_emits_buf.extend_from_slice(b": ");
+            if let Some(opts) = options {
+                props_emits_buf.extend_from_slice(opts.as_bytes());
+            } else {
+                props_emits_buf.extend_from_slice(b"{}");
+            }
+            props_emits_buf.extend_from_slice(b",\n");
+        }
+        props_emits_buf.extend_from_slice(b"  },\n");
+    }
+
+    // Emits definition - combine defineEmits and defineModel emits
+    let mut all_emits: Vec<String> = Vec::new();
+    if let Some(ref emits_macro) = ctx.macros.define_emits {
+        if !emits_macro.args.is_empty() {
+            let args = emits_macro.args.trim();
+            if args.starts_with('[') && args.ends_with(']') {
+                let inner = &args[1..args.len() - 1];
+                for part in inner.split(',') {
+                    let name = part.trim().trim_matches(|c| c == '\'' || c == '"');
+                    if !name.is_empty() {
+                        all_emits.push(name.to_string());
+                    }
+                }
+            }
+        } else if let Some(ref type_args) = emits_macro.type_args {
+            let emit_names = extract_emit_names_from_type(type_args);
+            all_emits.extend(emit_names);
+        }
+    }
+    for (model_name, _, _) in &model_infos {
+        let mut name = String::with_capacity(7 + model_name.len());
+        name.push_str("update:");
+        name.push_str(model_name);
+        all_emits.push(name);
+    }
+    if !all_emits.is_empty() {
+        props_emits_buf.extend_from_slice(b"  emits: [");
+        for (i, name) in all_emits.iter().enumerate() {
+            if i > 0 {
+                props_emits_buf.extend_from_slice(b", ");
+            }
+            props_emits_buf.push(b'"');
+            props_emits_buf.extend_from_slice(name.as_bytes());
+            props_emits_buf.push(b'"');
+        }
+        props_emits_buf.extend_from_slice(b"],\n");
+    }
+
+    // Setup code body - transform props destructure references and separate hoisted/setup code
+    let setup_code = setup_lines.join("\n");
+    let transformed_setup = if let Some(ref destructure) = ctx.macros.props_destructure {
+        transform_destructured_props(&setup_code, destructure)
+    } else {
+        setup_code
+    };
+
+    // Separate hoisted consts (literal consts that can be module-level) from setup code
+    let mut hoisted_lines: Vec<String> = Vec::new();
+    let mut setup_body_lines: Vec<String> = Vec::new();
+    for line in transformed_setup.lines() {
+        let trimmed = line.trim();
+        // Check if this is a literal const that should be hoisted
+        if trimmed.starts_with("const ") && !trimmed.starts_with("const {") {
+            // Extract variable name and check if it's LiteralConst
+            if let Some(name) = extract_const_name(trimmed) {
+                if matches!(
+                    ctx.bindings.bindings.get(&name),
+                    Some(crate::types::BindingType::LiteralConst)
+                ) {
+                    hoisted_lines.push(line.to_string());
+                    continue;
+                }
+            }
+        }
+        setup_body_lines.push(line.to_string());
+    }
+
+    // Output hoisted literal consts (before export default)
+    if !hoisted_lines.is_empty() {
+        for line in &hoisted_lines {
+            output.extend_from_slice(line.as_bytes());
+            output.push(b'\n');
+        }
+    }
+
+    // Start export default
     output.push(b'\n');
     let has_options = ctx.macros.define_options.is_some();
+
+    // Setup function - include destructured args based on macros used
+    let has_emit = ctx.macros.define_emits.is_some();
+    let has_emit_binding = ctx
+        .macros
+        .define_emits
+        .as_ref()
+        .map(|e| e.binding_name.is_some())
+        .unwrap_or(false);
+    let has_expose = ctx.macros.define_expose.is_some();
+
     if has_options {
         // Use Object.assign for defineOptions
         output.extend_from_slice(b"export default /*@__PURE__*/Object.assign(");
@@ -562,230 +804,8 @@ pub fn compile_script_setup_inline(
     output.extend_from_slice(component_name.as_bytes());
     output.extend_from_slice(b"',\n");
 
-    // Props definition
-    // Extract defaults from withDefaults if present
-    let with_defaults_args = ctx
-        .macros
-        .with_defaults
-        .as_ref()
-        .map(|wd| extract_with_defaults_defaults(&wd.args));
-
-    // Collect model names from defineModel calls (needed before props)
-    let model_infos: Vec<(String, String, Option<String>)> = ctx
-        .macros
-        .define_models
-        .iter()
-        .map(|m| {
-            // Extract model name from args: defineModel('count') -> 'count', defineModel() -> 'modelValue'
-            let model_name = if m.args.trim().is_empty() {
-                "modelValue".to_string()
-            } else {
-                // Check if first arg is a string literal (model name)
-                let args = m.args.trim();
-                if args.starts_with('\'') || args.starts_with('"') {
-                    // Extract the string literal
-                    args.trim_matches(|c| c == '\'' || c == '"')
-                        .split(',')
-                        .next()
-                        .unwrap_or("modelValue")
-                        .trim_matches(|c| c == '\'' || c == '"')
-                        .to_string()
-                } else {
-                    "modelValue".to_string()
-                }
-            };
-            let binding_name = m.binding_name.clone().unwrap_or_else(|| model_name.clone());
-            let options = if m.args.trim().is_empty() {
-                None
-            } else {
-                // Extract options (second argument or first if not a string)
-                let args = m.args.trim();
-                if args.starts_with('{') {
-                    Some(args.to_string())
-                } else if args.contains(',') {
-                    // defineModel('name', { options })
-                    args.split_once(',')
-                        .map(|(_, opts)| opts.trim().to_string())
-                } else {
-                    None
-                }
-            };
-            (model_name, binding_name, options)
-        })
-        .collect();
-
-    if let Some(ref props_macro) = ctx.macros.define_props {
-        if let Some(ref type_args) = props_macro.type_args {
-            // Type-based props: extract prop definitions from type
-            let prop_types = extract_prop_types_from_type(type_args);
-            if !prop_types.is_empty() || !model_infos.is_empty() {
-                output.extend_from_slice(b"  props: {\n");
-                // Sort props for deterministic output
-                let mut sorted_props: Vec<_> = prop_types.iter().collect();
-                sorted_props.sort_by(|a, b| a.0.cmp(b.0));
-                for (name, prop_type) in sorted_props {
-                    output.extend_from_slice(b"    ");
-                    output.extend_from_slice(name.as_bytes());
-                    output.extend_from_slice(b": { type: ");
-                    output.extend_from_slice(prop_type.js_type.as_bytes());
-                    // Add PropType for TypeScript output, but only for built-in types
-                    // User-defined types (interfaces/types) don't exist at runtime
-                    if is_ts {
-                        if let Some(ref ts_type) = prop_type.ts_type {
-                            if is_runtime_safe_ts_type(ts_type) {
-                                output.extend_from_slice(b" as PropType<");
-                                output.extend_from_slice(ts_type.as_bytes());
-                                output.push(b'>');
-                            }
-                        }
-                    }
-                    output.extend_from_slice(b", required: ");
-                    output.extend_from_slice(if prop_type.optional {
-                        b"false"
-                    } else {
-                        b"true"
-                    });
-                    // Add default value from withDefaults or props destructure
-                    let mut has_default = false;
-                    if let Some(ref defaults) = with_defaults_args {
-                        if let Some(default_val) = defaults.get(name.as_str()) {
-                            output.extend_from_slice(b", default: ");
-                            output.extend_from_slice(default_val.as_bytes());
-                            has_default = true;
-                        }
-                    }
-                    // Also check props destructure defaults (Vue 3.4+ reactive props destructure)
-                    if !has_default {
-                        if let Some(ref destructure) = ctx.macros.props_destructure {
-                            if let Some(binding) = destructure.bindings.get(name) {
-                                if let Some(ref default_val) = binding.default {
-                                    output.extend_from_slice(b", default: ");
-                                    output.extend_from_slice(default_val.as_bytes());
-                                }
-                            }
-                        }
-                    }
-                    output.extend_from_slice(b" },\n");
-                }
-                // Add model props if any
-                for (model_name, _, options) in &model_infos {
-                    output.extend_from_slice(b"    ");
-                    output.extend_from_slice(model_name.as_bytes());
-                    output.extend_from_slice(b": ");
-                    if let Some(opts) = options {
-                        output.extend_from_slice(opts.as_bytes());
-                    } else {
-                        output.extend_from_slice(b"{}");
-                    }
-                    output.extend_from_slice(b",\n");
-                }
-                output.extend_from_slice(b"  },\n");
-            }
-        } else if !props_macro.args.is_empty() {
-            if needs_merge_defaults {
-                // Use mergeDefaults format: _mergeDefaults(['prop1', 'prop2'], { prop2: default })
-                let destructure = ctx.macros.props_destructure.as_ref().unwrap();
-                output.extend_from_slice(b"  props: /*@__PURE__*/_mergeDefaults(");
-                output.extend_from_slice(props_macro.args.as_bytes());
-                output.extend_from_slice(b", {\n");
-                // Collect defaults
-                let defaults: Vec<_> = destructure
-                    .bindings
-                    .iter()
-                    .filter_map(|(k, b)| b.default.as_ref().map(|d| (k.as_str(), d.as_str())))
-                    .collect();
-                for (i, (key, default_val)) in defaults.iter().enumerate() {
-                    output.extend_from_slice(b"  ");
-                    output.extend_from_slice(key.as_bytes());
-                    output.extend_from_slice(b": ");
-                    output.extend_from_slice(default_val.as_bytes());
-                    if i < defaults.len() - 1 {
-                        output.push(b',');
-                    }
-                    output.push(b'\n');
-                }
-                output.extend_from_slice(b"}),\n");
-            } else {
-                output.extend_from_slice(b"  props: ");
-                output.extend_from_slice(props_macro.args.as_bytes());
-                output.extend_from_slice(b",\n");
-            }
-        }
-    }
-
-    // Add model props to props definition if defineModel was used and no defineProps
-    if !model_infos.is_empty() && ctx.macros.define_props.is_none() {
-        output.extend_from_slice(b"  props: {\n");
-        for (model_name, _binding_name, options) in &model_infos {
-            output.extend_from_slice(b"    ");
-            output.extend_from_slice(model_name.as_bytes());
-            output.extend_from_slice(b": ");
-            if let Some(opts) = options {
-                output.extend_from_slice(opts.as_bytes());
-            } else {
-                output.extend_from_slice(b"{}");
-            }
-            output.extend_from_slice(b",\n");
-        }
-        output.extend_from_slice(b"  },\n");
-    }
-
-    // Emits definition - combine defineEmits and defineModel emits
-    let mut all_emits: Vec<String> = Vec::new();
-
-    // Collect emits from defineEmits
-    if let Some(ref emits_macro) = ctx.macros.define_emits {
-        if !emits_macro.args.is_empty() {
-            // Runtime array syntax: defineEmits(['click', 'update'])
-            // Parse the array to extract event names
-            let args = emits_macro.args.trim();
-            if args.starts_with('[') && args.ends_with(']') {
-                let inner = &args[1..args.len() - 1];
-                for part in inner.split(',') {
-                    let name = part.trim().trim_matches(|c| c == '\'' || c == '"');
-                    if !name.is_empty() {
-                        all_emits.push(name.to_string());
-                    }
-                }
-            }
-        } else if let Some(ref type_args) = emits_macro.type_args {
-            // Type-based syntax: defineEmits<{ (e: 'click'): void }>()
-            let emit_names = extract_emit_names_from_type(type_args);
-            all_emits.extend(emit_names);
-        }
-    }
-
-    // Add model update events
-    for (model_name, _, _) in &model_infos {
-        let mut name = String::with_capacity(7 + model_name.len());
-        name.push_str("update:");
-        name.push_str(model_name);
-        all_emits.push(name);
-    }
-
-    // Output combined emits
-    if !all_emits.is_empty() {
-        output.extend_from_slice(b"  emits: [");
-        for (i, name) in all_emits.iter().enumerate() {
-            if i > 0 {
-                output.extend_from_slice(b", ");
-            }
-            output.push(b'"');
-            output.extend_from_slice(name.as_bytes());
-            output.push(b'"');
-        }
-        output.extend_from_slice(b"],\n");
-    }
-
-    // Setup function - include destructured args based on macros used
-    let has_emit = ctx.macros.define_emits.is_some();
-    let has_emit_binding = ctx
-        .macros
-        .define_emits
-        .as_ref()
-        .map(|e| e.binding_name.is_some())
-        .unwrap_or(false);
-    let has_expose = ctx.macros.define_expose.is_some();
+    // Output props and emits definitions
+    output.extend_from_slice(&props_emits_buf);
 
     // Build setup function signature based on what macros are used
     let mut setup_args = Vec::new();
@@ -840,14 +860,8 @@ pub fn compile_script_setup_inline(
         }
     }
 
-    // Setup code body - transform props destructure references
-    let setup_code = setup_lines.join("\n");
-    let transformed_setup = if let Some(ref destructure) = ctx.macros.props_destructure {
-        transform_destructured_props(&setup_code, destructure)
-    } else {
-        setup_code
-    };
-    for line in transformed_setup.lines() {
+    // Output setup code lines (non-hoisted)
+    for line in &setup_body_lines {
         output.extend_from_slice(line.as_bytes());
         output.push(b'\n');
     }
@@ -941,4 +955,23 @@ pub fn compile_script_setup_inline(
         code: final_code,
         bindings: Some(ctx.bindings),
     })
+}
+
+/// Extract the variable name from a const declaration line.
+/// e.g., "const msg = 'hello'" -> Some("msg")
+/// e.g., "const count = ref(0)" -> Some("count")
+/// e.g., "const { a, b } = obj" -> None (destructure)
+fn extract_const_name(line: &str) -> Option<String> {
+    let rest = line.trim().strip_prefix("const ")?;
+    // Skip destructuring patterns
+    if rest.starts_with('{') || rest.starts_with('[') {
+        return None;
+    }
+    // Extract identifier before = or : (type annotation)
+    let name_end = rest.find(|c: char| c == '=' || c == ':' || c.is_whitespace())?;
+    let name = rest[..name_end].trim();
+    if name.is_empty() {
+        return None;
+    }
+    Some(name.to_string())
 }

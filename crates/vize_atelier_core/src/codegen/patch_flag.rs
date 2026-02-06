@@ -89,8 +89,11 @@ pub fn calculate_element_patch_info(
                                 match key {
                                     "class" => flag |= 2, // CLASS
                                     "style" => flag |= 4, // STYLE
-                                    // key and ref are special props - don't add to patch flags
-                                    "key" | "ref" => {}
+                                    "key" => {}
+                                    "ref" => {
+                                        // Dynamic ref binding needs NEED_PATCH
+                                        flag |= 512; // NEED_PATCH
+                                    }
                                     _ => {
                                         // Skip modelModifiers and *Modifiers props (they are static)
                                         if !key.ends_with("Modifiers") {
@@ -133,7 +136,10 @@ pub fn calculate_element_patch_info(
                 }
                 "on" => {
                     // Event handlers are considered dynamic props
-                    if let Some(arg) = &dir.arg {
+                    if dir.arg.is_none() {
+                        // v-on without argument (object spread) - FULL_PROPS
+                        flag |= 16;
+                    } else if let Some(arg) = &dir.arg {
                         if let ExpressionNode::Simple(exp) = arg {
                             if !exp.is_static {
                                 // Dynamic event name
@@ -302,6 +308,8 @@ pub fn calculate_element_patch_info(
     }
 
     let patch_flag = if flag > 0 { Some(flag) } else { None };
+    // Deduplicate dynamic props (e.g., multiple handlers for same event)
+    dynamic_props.dedup();
     let dynamic_props_result = if !dynamic_props.is_empty() {
         Some(dynamic_props)
     } else {
