@@ -5,6 +5,8 @@
 //! is delegated to specialized modules.
 
 use crate::compile_script::compile_script_setup_function_mode;
+use crate::compile_script::import_utils::strip_unused_imports;
+use crate::compile_script::typescript::transform_typescript_to_js;
 use crate::compile_template::{
     compile_template_block, compile_template_block_vapor, extract_template_parts_full,
 };
@@ -70,7 +72,31 @@ pub fn compile_sfc(
 
         match template_result {
             Ok(template_code) => {
-                code = template_code;
+                // Extract template parts (imports, hoisted, render function)
+                let (template_imports, template_hoisted, render_fn) =
+                    extract_template_parts_full(&template_code);
+
+                // Build output: imports + empty component + hoisted + render + export
+                code.push_str(&template_imports);
+                if !template_imports.is_empty() {
+                    code.push('\n');
+                }
+                code.push_str("const _sfc_main = {}\n");
+
+                if !template_hoisted.is_empty() {
+                    code.push_str(&template_hoisted);
+                    code.push('\n');
+                }
+
+                code.push_str(&render_fn);
+                code.push('\n');
+                code.push_str("_sfc_main.render = render\n");
+                if has_scoped {
+                    code.push_str("_sfc_main.__scopeId = \"data-v-");
+                    code.push_str(&scope_id);
+                    code.push_str("\"\n");
+                }
+                code.push_str("export default _sfc_main\n");
             }
             Err(e) => errors.push(e),
         }
@@ -82,7 +108,10 @@ pub fn compile_sfc(
         }
 
         return Ok(SfcCompileResult {
-            code,
+            code: {
+                let processed = if !is_ts { transform_typescript_to_js(&code) } else { code.clone() };
+                strip_unused_imports(&processed)
+            },
             css,
             map: None,
             errors,
@@ -178,7 +207,10 @@ pub fn compile_sfc(
         }
 
         return Ok(SfcCompileResult {
-            code,
+            code: {
+                let processed = if !is_ts { transform_typescript_to_js(&code) } else { code.clone() };
+                strip_unused_imports(&processed)
+            },
             css,
             map: None,
             errors,
@@ -261,12 +293,18 @@ pub fn compile_sfc(
     // Function mode generates __returned__ object instead of inline render function
     // This allows the template to use $setup.xxx pattern for proper reactivity tracking
     let template_content = descriptor.template.as_ref().map(|t| t.content.as_ref());
+    let render_fn_ref = if render_fn.is_empty() {
+        None
+    } else {
+        Some(render_fn.as_str())
+    };
     let script_result = compile_script_setup_function_mode(
         &script_setup.content,
         &component_name,
         is_vapor,
         is_ts,
         template_content,
+        render_fn_ref,
     )?;
 
     // Build final output: imports + script + hoisted + render function + exports
@@ -317,7 +355,10 @@ pub fn compile_sfc(
     }
 
     Ok(SfcCompileResult {
-        code,
+        code: {
+            let processed = if !is_ts { transform_typescript_to_js(&code) } else { code.clone() };
+            strip_unused_imports(&processed)
+        },
         css,
         map: None,
         errors,

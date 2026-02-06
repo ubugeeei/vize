@@ -3,8 +3,7 @@ source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 assertion_line: 219
 expression: js_output
 ---
-import { openBlock as _openBlock, createBlock as _createBlock, createCommentVNode as _createCommentVNode, mergeProps as _mergeProps, unref as _unref } from "vue"
-
+import { openBlock as _openBlock, createBlock as _createBlock, mergeProps as _mergeProps, unref as _unref } from "vue";
 import { defineComponent as _defineComponent } from "vue";
 import { ref } from "vue";
 import Icon from "./Icon.vue";
@@ -30,23 +29,17 @@ const __sfc__ = /*@__PURE__*/ _defineComponent({
     return __returned__;
   }
 });
-
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return ($setup.mode === 'view')
-    ? (_openBlock(), _createBlock($setup.Icon, {
-      key: 0,
-      name: "eye"
-    }))
-    : ($setup.mode === 'edit')
-      ? (_openBlock(), _createBlock($setup.Icon, _mergeProps(_unref($setup.iconProps), {
-        key: 1,
-        name: "pencil"
-      })))
-    : (_openBlock(), _createBlock($setup.Icon, {
-      key: 2,
-      name: "default"
-    }))
+  return $setup.mode === "view" ? (_openBlock(), _createBlock($setup.Icon, {
+    key: 0,
+    name: "eye"
+  })) : $setup.mode === "edit" ? (_openBlock(), _createBlock($setup.Icon, _mergeProps(_unref($setup.iconProps), {
+    key: 1,
+    name: "pencil"
+  }))) : (_openBlock(), _createBlock($setup.Icon, {
+    key: 2,
+    name: "default"
+  }));
 }
-
-__sfc__.render = render
-export default __sfc__
+__sfc__.render = render;
+export default __sfc__;

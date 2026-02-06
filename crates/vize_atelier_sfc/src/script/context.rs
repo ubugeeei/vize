@@ -529,25 +529,49 @@ impl ScriptCompileContext {
                 }
             }
         } else if args.starts_with('{') && args.ends_with('}') {
-            // Object syntax - extract keys
+            // Object syntax - extract only top-level keys
+            // We need to handle nested braces, brackets, and parens to avoid
+            // extracting keys from nested objects (e.g., `default`, `type`, `required`
+            // from `{ count: { type: Number, default: 0 } }`)
             let inner = &args[1..args.len() - 1];
-            for part in inner.split(',') {
-                let part = part.trim();
-                // Find key before : or whitespace
-                if let Some(colon_pos) = part.find(':') {
-                    let key = part[..colon_pos].trim();
-                    if !key.is_empty() && is_valid_identifier(key) {
-                        self.bindings
-                            .bindings
-                            .insert(key.to_string(), BindingType::Props);
+            let mut depth = 0i32;
+            let mut current_start = 0;
+
+            for (i, ch) in inner.char_indices() {
+                match ch {
+                    '{' | '[' | '(' => depth += 1,
+                    '}' | ']' | ')' => depth -= 1,
+                    ',' if depth == 0 => {
+                        let part = inner[current_start..i].trim();
+                        self.extract_top_level_prop_key(part);
+                        current_start = i + 1;
                     }
-                } else if is_valid_identifier(part) {
-                    // Shorthand property
-                    self.bindings
-                        .bindings
-                        .insert(part.to_string(), BindingType::Props);
+                    _ => {}
                 }
             }
+            // Handle the last part
+            let last_part = inner[current_start..].trim();
+            self.extract_top_level_prop_key(last_part);
+        }
+    }
+
+    /// Extract a top-level prop key from a key-value pair like "msg: String" or "count: { type: Number }"
+    fn extract_top_level_prop_key(&mut self, part: &str) {
+        if part.is_empty() {
+            return;
+        }
+        if let Some(colon_pos) = part.find(':') {
+            let key = part[..colon_pos].trim();
+            if !key.is_empty() && is_valid_identifier(key) {
+                self.bindings
+                    .bindings
+                    .insert(key.to_string(), BindingType::Props);
+            }
+        } else if is_valid_identifier(part) {
+            // Shorthand property
+            self.bindings
+                .bindings
+                .insert(part.to_string(), BindingType::Props);
         }
     }
 

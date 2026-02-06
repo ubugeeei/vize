@@ -1,0 +1,36 @@
+---
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 196
+expression: ts_output
+---
+import { openBlock as _openBlock, createBlock as _createBlock, createTextVNode as _createTextVNode, toDisplayString as _toDisplayString, withCtx as _withCtx } from "vue"
+import { defineComponent as _defineComponent } from 'vue'
+import MyButton from './MyButton.vue'
+import { ref } from 'vue'
+
+
+const __sfc__ = /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  setup(__props, { expose: __expose, emit: __emit }) {
+  __expose();
+  const count = ref(0)
+  const __returned__ = { MyButton, count, ref }
+  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
+  return __returned__
+  }
+
+});
+
+export function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (_openBlock(), _createBlock($setup.MyButton, {
+    onClick: $event => ($setup.count++)
+  }, {
+    default: _withCtx(() => [
+      _createTextVNode(_toDisplayString($setup.count), 1 /* TEXT */)
+    ]),
+    _: 1 /* STABLE */
+  }, 8 /* PROPS */, ["onClick"]))
+}
+
+__sfc__.render = render
+export default __sfc__

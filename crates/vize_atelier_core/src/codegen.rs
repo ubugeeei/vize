@@ -208,7 +208,8 @@ fn generate_js_child_node_to_bytes(
         JsChildNode::SimpleExpression(exp) => {
             if exp.is_static {
                 out.push(b'"');
-                out.extend_from_slice(exp.content.as_bytes());
+                let escaped = escape_js_string(&exp.content);
+                out.extend_from_slice(escaped.as_bytes());
                 out.push(b'"');
             } else {
                 // Expression should already be processed by transform
@@ -227,6 +228,7 @@ fn generate_js_child_node_to_bytes(
                         let key = &exp.content;
                         // Check if key needs quoting (contains hyphen or other non-identifier chars)
                         let needs_quote = key.contains('-')
+                            || key.contains(':')
                             || key.chars().next().is_some_and(|c| c.is_ascii_digit());
                         if needs_quote {
                             out.push(b'"');
@@ -346,6 +348,7 @@ fn generate_props_expression_to_bytes(
                         let key = &exp.content;
                         // Check if key needs quoting (contains hyphen or other non-identifier chars)
                         let needs_quote = key.contains('-')
+                            || key.contains(':')
                             || key.chars().next().is_some_and(|c| c.is_ascii_digit());
                         if needs_quote {
                             out.push(b'"');

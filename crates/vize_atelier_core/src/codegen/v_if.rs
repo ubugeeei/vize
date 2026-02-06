@@ -7,7 +7,7 @@ use super::context::CodegenContext;
 use super::expression::generate_expression;
 use super::helpers::{camelize, capitalize_first, escape_js_string, is_valid_js_identifier};
 use super::node::generate_node;
-use super::props::generate_directive_prop_with_static;
+use super::props::{generate_directive_prop_with_static, is_supported_directive};
 use vize_carton::FxHashSet;
 
 /// Generate if node
@@ -220,8 +220,12 @@ fn should_skip_prop_for_if(
                     }
                 }
             }
-            // Skip v-if/v-else-if/v-else directives
-            if matches!(dir.name.as_str(), "if" | "else-if" | "else") {
+            // Skip v-if/v-else-if/v-else/v-slot/v-for and other structural directives
+            if matches!(dir.name.as_str(), "if" | "else-if" | "else" | "slot" | "for") {
+                return true;
+            }
+            // Skip unsupported directives that don't produce props output
+            if !is_supported_directive(dir) {
                 return true;
             }
             false

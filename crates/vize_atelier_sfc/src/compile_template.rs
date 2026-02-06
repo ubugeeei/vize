@@ -303,6 +303,37 @@ fn compact_render_body(render_body: &str) -> String {
     result
 }
 
+/// Count braces outside of string literals in a line of code.
+/// Returns (open_count, close_count) for `{` and `}` respectively.
+fn count_braces_outside_strings(line: &str) -> (i32, i32) {
+    let mut opens = 0i32;
+    let mut closes = 0i32;
+    let mut in_string = false;
+    let mut string_char = '\0';
+    let mut prev_char = '\0';
+
+    for ch in line.chars() {
+        if in_string {
+            if ch == string_char && prev_char != '\\' {
+                in_string = false;
+            }
+        } else {
+            match ch {
+                '\'' | '"' => {
+                    in_string = true;
+                    string_char = ch;
+                }
+                '{' => opens += 1,
+                '}' => closes += 1,
+                _ => {}
+            }
+        }
+        prev_char = ch;
+    }
+
+    (opens, closes)
+}
+
 /// Extract imports, hoisted consts, and render function from compiled template code
 /// Returns (imports, hoisted, render_function) where render_function is the full function definition
 pub(crate) fn extract_template_parts_full(template_code: &str) -> (String, String, String) {
@@ -326,13 +357,15 @@ pub(crate) fn extract_template_parts_full(template_code: &str) -> (String, Strin
         {
             in_render = true;
             brace_depth = 0;
-            brace_depth += line.matches('{').count() as i32;
-            brace_depth -= line.matches('}').count() as i32;
+            let (opens, closes) = count_braces_outside_strings(line);
+            brace_depth += opens;
+            brace_depth -= closes;
             render_fn.push_str(line);
             render_fn.push('\n');
         } else if in_render {
-            brace_depth += line.matches('{').count() as i32;
-            brace_depth -= line.matches('}').count() as i32;
+            let (opens, closes) = count_braces_outside_strings(line);
+            brace_depth += opens;
+            brace_depth -= closes;
             render_fn.push_str(line);
             render_fn.push('\n');
 
@@ -377,12 +410,14 @@ pub(crate) fn extract_template_parts(template_code: &str) -> (String, String, St
         {
             in_render = true;
             brace_depth = 0;
-            // Count opening braces
-            brace_depth += line.matches('{').count() as i32;
-            brace_depth -= line.matches('}').count() as i32;
+            // Count opening braces (excluding those inside string literals)
+            let (opens, closes) = count_braces_outside_strings(line);
+            brace_depth += opens;
+            brace_depth -= closes;
         } else if in_render {
-            brace_depth += line.matches('{').count() as i32;
-            brace_depth -= line.matches('}').count() as i32;
+            let (opens, closes) = count_braces_outside_strings(line);
+            brace_depth += opens;
+            brace_depth -= closes;
 
             // Extract the return statement inside the render function (may span multiple lines)
             if in_return {
@@ -469,6 +504,36 @@ mod tests {
         let input = r#"const t0 = _template("<div class='container'>Hello</div>")"#;
         let result = add_scope_id_to_template(input, "data-v-abc123");
         assert!(result.contains("data-v-abc123"));
+    }
+
+    #[test]
+    fn test_count_braces_normal() {
+        let (opens, closes) = count_braces_outside_strings("if (x) { foo(); }");
+        assert_eq!(opens, 1);
+        assert_eq!(closes, 1);
+    }
+
+    #[test]
+    fn test_count_braces_inside_string_ignored() {
+        let (opens, closes) = count_braces_outside_strings(r#"const s = "{ hello }""#);
+        assert_eq!(opens, 0);
+        assert_eq!(closes, 0);
+    }
+
+    #[test]
+    fn test_count_braces_mixed_string_and_code() {
+        // One real open brace, one real close brace; the ones inside the string are ignored
+        let (opens, closes) =
+            count_braces_outside_strings(r#"if (x) { const s = "{}"; }"#);
+        assert_eq!(opens, 1);
+        assert_eq!(closes, 1);
+    }
+
+    #[test]
+    fn test_count_braces_single_quote_string() {
+        let (opens, closes) = count_braces_outside_strings("const s = '{ brace }'");
+        assert_eq!(opens, 0);
+        assert_eq!(closes, 0);
     }
 
     #[test]

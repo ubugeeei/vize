@@ -1,12 +1,12 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 106
+assertion_line: 150
 expression: ts_output
 ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, renderSlot as _renderSlot, normalizeClass as _normalizeClass } from "vue"
-
 import { defineComponent as _defineComponent } from 'vue'
 import { mergeDefaults as _mergeDefaults } from 'vue'
+
 
 // Reactive Props Destructure (Vue 3.5+)
 
@@ -18,9 +18,6 @@ const __sfc__ = /*@__PURE__*/_defineComponent({
 }),
   setup(__props, { expose: __expose, emit: __emit }) {
   __expose();
-    __props.color?: "primary" | "success" | "inactive";
-    __props.appearance?: "filled" | "outlined";
-  }>();
   const __returned__ = {  }
   Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
   return __returned__

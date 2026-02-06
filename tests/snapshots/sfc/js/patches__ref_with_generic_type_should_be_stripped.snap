@@ -1,9 +1,9 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 219
 expression: js_output
 ---
-import { openBlock as _openBlock, createElementBlock as _createElementBlock, createCommentVNode as _createCommentVNode, toDisplayString as _toDisplayString } from "vue"
-
+import { openBlock as _openBlock, createElementBlock as _createElementBlock, createCommentVNode as _createCommentVNode, toDisplayString as _toDisplayString } from "vue";
 import { defineComponent as _defineComponent } from "vue";
 import { ref } from "vue";
 const __sfc__ = /*@__PURE__*/ _defineComponent({
@@ -24,14 +24,14 @@ const __sfc__ = /*@__PURE__*/ _defineComponent({
     return __returned__;
   }
 });
-
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return ($setup.user)
-    ? (_openBlock(), _createElementBlock("div", {
-      key: 0
-    }, _toDisplayString($setup.user.name), 1 /* TEXT */))
-    : _createCommentVNode("v-if", true)
+  return $setup.user ? (_openBlock(), _createElementBlock(
+    "div",
+    { key: 0 },
+    _toDisplayString($setup.user.name),
+    1
+    /* TEXT */
+)) : _createCommentVNode("v-if", true);
 }
-
-__sfc__.render = render
-export default __sfc__
+__sfc__.render = render;
+export default __sfc__;

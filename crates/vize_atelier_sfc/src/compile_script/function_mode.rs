@@ -20,7 +20,7 @@ use crate::script::{
 };
 use crate::types::{BindingType, SfcError};
 
-use super::import_utils::{extract_import_identifiers, process_import_for_types};
+use super::import_utils::{contains_identifier, contains_identifier_standalone, extract_import_identifiers, process_import_for_types};
 use super::macros::{
     is_macro_call_line, is_multiline_macro_start, is_paren_macro_start, is_props_destructure_line,
 };
@@ -36,6 +36,7 @@ pub fn compile_script_setup(
     is_vapor: bool,
     is_ts: bool,
     template_content: Option<&str>,
+    render_fn_code: Option<&str>,
 ) -> Result<ScriptCompileResult, SfcError> {
     let mut ctx = ScriptCompileContext::new(content);
     ctx.analyze();
@@ -236,12 +237,37 @@ pub fn compile_script_setup(
 
         // Handle single-line props destructure (only when outside template literals)
         if template_literal_depth % 2 == 0 && is_props_destructure_line(trimmed) {
+            // Check if this has unclosed angle brackets (multi-line type parameter)
+            let line_no_arrow = trimmed.replace("=>", "");
+            let angle_depth = line_no_arrow.matches('<').count() as i32
+                - line_no_arrow.matches('>').count() as i32;
+            if angle_depth > 0 {
+                // Enter macro call mode to skip remaining type parameter lines
+                in_macro_call = true;
+                macro_buffer.clear();
+                macro_buffer.push_str(line);
+                macro_buffer.push('\n');
+                macro_angle_depth = angle_depth;
+            }
             continue;
         }
 
         // Only process imports when outside template literals (depth is even)
         // When inside a template literal (depth is odd), treat as regular content
         let outside_template_literal = template_literal_depth % 2 == 0;
+
+        // Skip type-only exports:
+        // - `export type { X }` (type re-export) - skip single line
+        // - `export type X = { ... }` (type declaration) - skip until block closes
+        if outside_template_literal && trimmed.starts_with("export type ") {
+            if trimmed.contains('{') && !trimmed.contains('}') {
+                // Multi-line type declaration, enter TS type skipping mode
+                in_ts_type = true;
+                ts_type_depth = trimmed.matches('{').count() as i32
+                    - trimmed.matches('}').count() as i32;
+            }
+            continue;
+        }
 
         if outside_template_literal && trimmed.starts_with("import ") {
             in_import = true;
@@ -285,10 +311,13 @@ pub fn compile_script_setup(
         // Handle TypeScript type declarations (skip them)
         if in_ts_type {
             // Track balanced brackets for complex types like: type X = { a: string } | { b: number }
+            // We need to count angle brackets carefully to avoid counting `>` in `=>`
             ts_type_depth += trimmed.matches('{').count() as i32;
             ts_type_depth -= trimmed.matches('}').count() as i32;
             ts_type_depth += trimmed.matches('<').count() as i32;
-            ts_type_depth -= trimmed.matches('>').count() as i32;
+            // Count `>` but subtract `=>` occurrences (arrow functions are not closing angle brackets)
+            ts_type_depth -= trimmed.matches('>').count() as i32
+                - trimmed.matches("=>").count() as i32;
             ts_type_depth += trimmed.matches('(').count() as i32;
             ts_type_depth -= trimmed.matches(')').count() as i32;
             // Type declaration ends when balanced and NOT a continuation line
@@ -318,6 +347,7 @@ pub fn compile_script_setup(
                     - trimmed.matches('}').count() as i32
                     + trimmed.matches('<').count() as i32
                     - trimmed.matches('>').count() as i32
+                    + trimmed.matches("=>").count() as i32
                     + trimmed.matches('(').count() as i32
                     - trimmed.matches(')').count() as i32;
                 if ts_type_depth <= 0
@@ -797,20 +827,38 @@ pub fn compile_script_setup(
     all_bindings.sort();
     all_bindings.dedup();
 
+    // Strip TypeScript from setup_lines and render function for usage checking
+    // This prevents type-only references like `ref<CountryOption[]>` from keeping type imports
+    // We use the compiled render function (JS/TS) instead of raw template HTML because
+    // template HTML can't be parsed by the TS transformer.
+    let setup_code_for_check = transform_typescript_to_js(&setup_lines.join("\n"));
+    let render_code_for_check = render_fn_code
+        .map(|r| transform_typescript_to_js(r))
+        .unwrap_or_default();
+
     let returned_props: Vec<String> = all_bindings
         .iter()
-        .map(|name| {
+        .filter(|name| {
+            // Reserved words can never be valid variable names, so they should
+            // never appear in __returned__. This handles cases where prop option
+            // keys like `default`, `type`, `required` are incorrectly extracted
+            // as bindings from nested object syntax in defineProps.
             if is_reserved_word(name) {
-                let mut entry = String::with_capacity(name.len() * 2 + 4);
-                entry.push('"');
-                entry.push_str(name);
-                entry.push_str("\": ");
-                entry.push_str(name);
-                entry
-            } else {
-                name.clone()
+                return false;
             }
+            // For imported identifiers, verify they are actually used in setup code
+            // or template (not just as types). If an import is not referenced after
+            // TS stripping, it's likely a type-only import that leaked through.
+            if imported_identifiers.contains(name) {
+                let used_in_setup = contains_identifier_standalone(&setup_code_for_check, name.as_str());
+                let used_in_template = contains_identifier(&render_code_for_check, name.as_str());
+                if !used_in_setup && !used_in_template {
+                    return false;
+                }
+            }
+            true
         })
+        .cloned()
         .collect();
 
     output.extend_from_slice(b"  const __returned__ = { ");

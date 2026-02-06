@@ -1,11 +1,12 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 196
 expression: ts_output
 ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, createCommentVNode as _createCommentVNode } from "vue"
-
 import { defineComponent as _defineComponent } from 'vue'
 import { ref } from 'vue'
+
 
 const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',
@@ -24,7 +25,6 @@ export function render(_ctx, _cache, $props, $setup, $data, $options) {
   return ($setup.show)
     ? (_openBlock(), _createElementBlock("input", {
       key: 0,
-      ,
       "onUpdate:modelValue": $event => (($setup.text) = $event)
     }))
     : _createCommentVNode("v-if", true)

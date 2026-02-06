@@ -4,10 +4,10 @@ assertion_line: 196
 expression: ts_output
 ---
 import { openBlock as _openBlock, createBlock as _createBlock, createCommentVNode as _createCommentVNode, mergeProps as _mergeProps } from "vue"
-
 import { defineComponent as _defineComponent } from 'vue'
 import { ref, computed } from 'vue'
 import Button from './Button.vue'
+
 
 const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',

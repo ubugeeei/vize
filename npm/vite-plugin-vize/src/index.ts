@@ -225,11 +225,23 @@ export function vize(options: VizeOptions = {}): Plugin {
 
             // Relative imports - resolve and check if file exists
             const resolved = path.resolve(path.dirname(cleanImporter), pathPart);
-            for (const ext of ["", ".ts", ".tsx", ".js", ".jsx", ".json"]) {
-              if (fs.existsSync(resolved + ext)) {
-                const finalPath = resolved + ext + querySuffix;
+            for (const ext of ["", ".ts", ".tsx", ".js", ".jsx", ".json", ".d.ts"]) {
+              const candidate = resolved + ext;
+              if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+                const finalPath = candidate + querySuffix;
                 logger.log(`resolveId: resolved relative ${id} to ${finalPath}`);
                 return finalPath;
+              }
+            }
+            // Check for directory with index file
+            if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+              for (const indexFile of ["index.ts", "index.tsx", "index.js", "index.jsx", "index.vue"]) {
+                const candidate = path.join(resolved, indexFile);
+                if (fs.existsSync(candidate)) {
+                  const finalPath = candidate + querySuffix;
+                  logger.log(`resolveId: resolved directory ${id} to ${finalPath}`);
+                  return finalPath;
+                }
               }
             }
           } else {
@@ -245,6 +257,14 @@ export function vize(options: VizeOptions = {}): Plugin {
             logger.log(`resolveId: resolving external ${id} from ${cleanImporter}`);
             const resolved = await this.resolve(id, cleanImporter, { skipSelf: true });
             logger.log(`resolveId: resolved external ${id} to`, resolved?.id ?? "null");
+            // If resolved to a path that doesn't exist, check if a .d.ts file exists
+            // (.d.ts files are type-only and should resolve to empty modules)
+            if (resolved && !fs.existsSync(resolved.id)) {
+              if (fs.existsSync(resolved.id + ".d.ts")) {
+                logger.log(`resolveId: ${resolved.id} is type-only (.d.ts), returning empty module`);
+                return { id: resolved.id + ".d.ts", external: false };
+              }
+            }
             return resolved;
           }
         }
@@ -267,6 +287,19 @@ export function vize(options: VizeOptions = {}): Plugin {
           const virtualId = VIRTUAL_PREFIX + resolved + ".ts";
           virtualToReal.set(virtualId, resolved);
           return virtualId;
+        }
+
+        // Fallback: for package-style imports (e.g., @studio/assistant/Component.vue),
+        // use Vite's resolver to find the real file path
+        if (!path.isAbsolute(id) && !id.startsWith("./") && !id.startsWith("../")) {
+          const viteResolved = await this.resolve(id, importer, { skipSelf: true });
+          if (viteResolved && viteResolved.id.endsWith(".vue") && fs.existsSync(viteResolved.id)) {
+            const realPath = path.normalize(viteResolved.id);
+            const virtualId = VIRTUAL_PREFIX + realPath + ".ts";
+            virtualToReal.set(virtualId, realPath);
+            logger.log(`resolveId: package import ${id} resolved to ${realPath}`);
+            return virtualId;
+          }
         }
       }
 
@@ -297,7 +330,18 @@ export function vize(options: VizeOptions = {}): Plugin {
         // Remove .ts suffix if present for lookup
         const lookupId = id.endsWith(".ts") ? id.slice(0, -3) : id;
         const realPath = virtualToReal.get(id) ?? lookupId.slice(VIRTUAL_PREFIX.length);
-        const compiled = cache.get(realPath);
+        let compiled = cache.get(realPath);
+
+        // On-demand compilation for files not in the pre-compilation cache
+        // (e.g. .vue files from other workspace packages)
+        if (!compiled && fs.existsSync(realPath)) {
+          logger.log(`On-demand compiling: ${realPath}`);
+          compileFile(realPath, cache, {
+            sourceMap: mergedOptions.sourceMap ?? !isProduction,
+            ssr: mergedOptions.ssr ?? false,
+          });
+          compiled = cache.get(realPath);
+        }
 
         if (compiled) {
           const output = generateOutput(compiled, {
@@ -312,6 +356,41 @@ export function vize(options: VizeOptions = {}): Plugin {
         }
       }
 
+      // Fallback: if a non-existent file is requested but a .d.ts version exists,
+      // return empty module (type-only imports don't need runtime code)
+      if (!id.startsWith(VIRTUAL_PREFIX) && !id.includes("?") && !fs.existsSync(id)) {
+        if (fs.existsSync(id + ".d.ts")) {
+          logger.log(`load: returning empty module for type-only import ${id}`);
+          return { code: "export {}", map: null };
+        }
+      }
+
+      return null;
+    },
+
+    async transform(code: string, id: string) {
+      // Strip TypeScript syntax from vize virtual modules
+      // The Rust compiler may emit TS constructs (e.g. `as` type assertions) in template render functions
+      if (id.startsWith(VIRTUAL_PREFIX) && id.endsWith(".ts")) {
+        try {
+          // Resolve esbuild from the consuming project (where vite is installed)
+          const { createRequire } = await import("node:module");
+          const projectRequire = createRequire(path.resolve(root, "package.json"));
+          const esbuild = projectRequire("esbuild");
+          const result = await esbuild.transform(code, {
+            loader: "ts",
+            sourcemap: false,
+            target: "esnext",
+          });
+          return {
+            code: result.code,
+            map: null,
+          };
+        } catch (e) {
+          logger.warn(`Failed to strip TypeScript from ${id}:`, e);
+          return null;
+        }
+      }
       return null;
     },
 

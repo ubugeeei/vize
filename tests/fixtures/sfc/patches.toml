@@ -691,3 +691,197 @@ const items = ref([{ id: 1, value: 0 }])
   </div>
 </template>
 """
+
+# =============================================================================
+# Template-only SFC (no <script>)
+# Issue: SFCs with only a <template> block should compile correctly
+# Fix: Handle missing script block gracefully
+# =============================================================================
+
+[[cases]]
+name = "template only SFC without style"
+input = """
+<template>
+  <div class="hello">Hello World</div>
+</template>
+"""
+
+[[cases]]
+name = "template only SFC with scoped style"
+input = """
+<template>
+  <div class="hello">Hello World</div>
+</template>
+
+<style scoped>
+.hello { color: red; }
+</style>
+"""
+
+# =============================================================================
+# Brace counting in string literals
+# Issue: Braces inside string/template literals affected render function extraction
+# Fix: count_braces_outside_strings skips string contents
+# =============================================================================
+
+[[cases]]
+name = "string literal containing braces"
+input = """
+<script setup>
+import { ref } from 'vue'
+const msg = ref('{ hello }')
+</script>
+
+<template>
+  <div>{{ msg }}</div>
+</template>
+"""
+
+[[cases]]
+name = "template literal containing braces"
+input = """
+<script setup>
+import { ref } from 'vue'
+const msg = ref(`value is { x }`)
+</script>
+
+<template>
+  <div>{{ msg }}</div>
+</template>
+"""
+
+# =============================================================================
+# SVG attribute escaping and colon key quoting
+# Issue: Multiline SVG d attributes and xlink:href needed special handling
+# Fix: Escape SVG attributes properly, quote colon-containing keys
+# =============================================================================
+
+[[cases]]
+name = "SVG multiline d attribute"
+input = """
+<script setup>
+</script>
+
+<template>
+  <svg viewBox="0 0 100 100">
+    <path d="M10 10
+             L90 10
+             L90 90
+             Z" />
+  </svg>
+</template>
+"""
+
+[[cases]]
+name = "SVG xlink href attribute"
+input = """
+<script setup>
+</script>
+
+<template>
+  <svg>
+    <use xlink:href="#icon-star" />
+  </svg>
+</template>
+"""
+
+# =============================================================================
+# __returned__ filtering (component vs type-only import)
+# Issue: Type-only imports were included in __returned__ object
+# Fix: Filter out type-only imports from __returned__
+# =============================================================================
+
+[[cases]]
+name = "returned includes template component"
+input = """
+<script setup>
+import MyButton from './MyButton.vue'
+import { ref } from 'vue'
+const count = ref(0)
+</script>
+
+<template>
+  <MyButton @click="count++">{{ count }}</MyButton>
+</template>
+"""
+
+[[cases]]
+name = "property access only type import excluded"
+input = """
+<script setup lang="ts">
+import { StatusEnum } from './types'
+import { ref } from 'vue'
+const status = ref(StatusEnum.Active)
+</script>
+
+<template>
+  <div>{{ status }}</div>
+</template>
+"""
+
+# =============================================================================
+# Vue type-only export filtering
+# Issue: Vue type exports like PropType were included in runtime imports
+# Fix: Filter known Vue type-only exports
+# =============================================================================
+
+[[cases]]
+name = "PropType removed from vue import"
+input = """
+<script setup lang="ts">
+import { PropType, ref } from 'vue'
+const items = ref<PropType<string[]>>([])
+</script>
+
+<template>
+  <div>{{ items }}</div>
+</template>
+"""
+
+[[cases]]
+name = "mixed Vue type and runtime imports"
+input = """
+<script setup lang="ts">
+import { Ref, ref, ComputedRef, computed } from 'vue'
+const count = ref(0)
+const double = computed(() => count.value * 2)
+</script>
+
+<template>
+  <div>{{ count }} {{ double }}</div>
+</template>
+"""
+
+# =============================================================================
+# Unused import stripping
+# Issue: Unused imports remained in compiled output
+# Fix: strip_unused_imports removes unreferenced specifiers
+# =============================================================================
+
+[[cases]]
+name = "unused helper import stripped"
+input = """
+<script setup>
+import { ref } from 'vue'
+import { unusedHelper } from './utils'
+const count = ref(0)
+</script>
+
+<template>
+  <div>{{ count }}</div>
+</template>
+"""
+
+[[cases]]
+name = "enum member property access pattern"
+input = """
+<script setup lang="ts">
+import { StatusEnum } from './enums'
+import { ref } from 'vue'
+const current = ref(StatusEnum.Active)
+</script>
+
+<template>
+  <div>{{ current }}</div>
+</template>
+"""

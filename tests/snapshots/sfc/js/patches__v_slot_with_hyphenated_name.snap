@@ -1,9 +1,9 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 219
 expression: js_output
 ---
-import { openBlock as _openBlock, createBlock as _createBlock, createElementVNode as _createElementVNode, toDisplayString as _toDisplayString, withCtx as _withCtx } from "vue"
-
+import { openBlock as _openBlock, createBlock as _createBlock, createElementVNode as _createElementVNode, toDisplayString as _toDisplayString, withCtx as _withCtx } from "vue";
 import { defineComponent as _defineComponent } from "vue";
 import DataTable from "./DataTable.vue";
 const __sfc__ = /*@__PURE__*/ _defineComponent({
@@ -18,15 +18,17 @@ const __sfc__ = /*@__PURE__*/ _defineComponent({
     return __returned__;
   }
 });
-
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createBlock($setup.DataTable, null, {
-    "item-header": _withCtx(({ item }) => [
-      _createElementVNode("span", null, _toDisplayString(_ctx.item.title), 1 /* TEXT */)
-    ]),
-    _: 1 /* STABLE */
-  }))
+  return _openBlock(), _createBlock($setup.DataTable, null, {
+    "item-header": _withCtx(({ item }) => [_createElementVNode(
+      "span",
+      null,
+      _toDisplayString(_ctx.item.title),
+      1
+      /* TEXT */
+)]),
+    _: 1
+  });
 }
-
-__sfc__.render = render
-export default __sfc__
+__sfc__.render = render;
+export default __sfc__;

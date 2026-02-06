@@ -68,7 +68,7 @@ import { ref } from 'vue'
 const props = defineProps(['msg'])
 const count = ref(0)
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
 
         println!("Compiled output:\n{}", result.code);
 
@@ -114,7 +114,7 @@ import { ref } from 'vue'
 
 const analysisResult = ref<AnalysisResult | null>(null)
 "#;
-        let result = compile_script_setup(content, "Test", false, true, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, true, None, None).unwrap();
         let bindings = result.bindings.expect("bindings should be present");
 
         assert!(!bindings.bindings.contains_key("AnalysisResult"));
@@ -127,7 +127,7 @@ const analysisResult = ref<AnalysisResult | null>(null)
         let content = r#"
 const emit = defineEmits(['click', 'update'])
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
 
         println!("Full output:\n{}", result.code);
 
@@ -161,7 +161,7 @@ function onClick() {
     emit('click', count.value)
 }
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
 
         println!("Compiled output:\n{}", result.code);
 
@@ -196,7 +196,7 @@ function onClick() {
 import { ref } from 'vue'
 const msg = ref('hello')
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
 
         // Should have setup
         assert!(result.code.contains("setup(__props"), "Should have setup");
@@ -215,7 +215,7 @@ import { computed } from 'vue'
 const { count } = defineProps({ count: Number })
 const double = computed(() => count * 2)
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
 
         println!("Compiled output:\n{}", result.code);
 
@@ -248,7 +248,7 @@ import { defineProps, ref } from 'vue'
 const props = defineProps(['msg'])
 const count = ref(0)
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
 
         println!("Compiled output:\n{}", result.code);
 
@@ -302,7 +302,7 @@ const itemCount = computed(() => items.length)
         println!("props_destructure: {:?}", ctx.macros.props_destructure);
         println!("bindings: {:?}", ctx.bindings.bindings);
 
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
 
         println!("\n=== Compiled output ===\n{}", result.code);
 
@@ -379,7 +379,7 @@ function handleClick(e: MouseEvent) {
     emit('click', e)
 }
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
 
         println!("Multi-line defineEmits output:\n{}", result.code);
 
@@ -410,7 +410,7 @@ function handleClick(e: MouseEvent) {
         let content = r#"
 const emit = defineEmits<(e: 'click') => void>()
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
 
         println!("Typed defineEmits output:\n{}", result.code);
 
@@ -434,7 +434,7 @@ const count = ref(0)
 const reset = () => count.value = 0
 defineExpose({ count, reset })
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
 
         println!("defineExpose output:\n{}", result.code);
 
@@ -467,7 +467,7 @@ defineExpose({ count, reset })
 import { ref } from 'vue'
 const count = ref(0)
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
 
         println!("Output without defineExpose:\n{}", result.code);
 
@@ -487,7 +487,7 @@ import { ref } from 'vue'
 const count = ref(0)
 defineExpose()
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
 
         println!("Output with empty defineExpose:\n{}", result.code);
 
@@ -537,7 +537,7 @@ const getNumberOfTeachers = (
 };
 "#;
         // is_ts = false means we want JavaScript output (TypeScript should be stripped)
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
         eprintln!("Compiled TypeScript output:\n{}", result.code);
 
         // Should NOT contain type annotations
@@ -559,7 +559,7 @@ const getNumberOfTeachers = (
 const count: number = 1;
 const items: Array<string> = [];
 "#;
-        let result = compile_script_setup(content, "Test", false, true, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, true, None, None).unwrap();
         assert!(
             result.code.contains(": number") || result.code.contains("Array<string>"),
             "Expected TypeScript annotations to be preserved. Got:\n{}",
@@ -574,7 +574,7 @@ const { color = "primary" } = defineProps<{
   color?: "primary" | "secondary";
 }>();
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
         assert!(
             result.code.contains("_mergeDefaults(")
                 && result.code.contains("color")
@@ -591,7 +591,7 @@ import { ref } from 'vue'
 import { ref } from 'vue'
 const count = ref(0)
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
         let import_ref_lines = result
             .code
             .lines()
@@ -612,7 +612,7 @@ const count = ref(0)
 const response = await fetch('/api/data')
 const data = await response.json()
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
         assert!(
             result.code.contains("async setup("),
             "Expected async setup when top-level await is present. Got:\n{}",
@@ -625,7 +625,7 @@ const data = await response.json()
         let content = r#"
 const msg = "await should not trigger async"
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
         assert!(
             !result.code.contains("async setup("),
             "Did not expect async setup for await in string literal. Got:\n{}",
@@ -639,7 +639,7 @@ const msg = "await should not trigger async"
 const props = defineProps(['type'])
 const isButton = props.type === 'button'
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
         assert!(
             result.code.contains("type === 'button'")
                 || result.code.contains("type === \"button\""),
@@ -653,7 +653,7 @@ const isButton = props.type === 'button'
         let content = r#"
 const store = useStore<RootState>()
 "#;
-        let result = compile_script_setup(content, "Test", false, false, None).unwrap();
+        let result = compile_script_setup(content, "Test", false, false, None, None).unwrap();
         assert!(
             !result.code.contains("<RootState>"),
             "Expected generic type arguments to be stripped. Got:\n{}",

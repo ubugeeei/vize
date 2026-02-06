@@ -1,11 +1,11 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 106
+assertion_line: 150
 expression: ts_output
 ---
 import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, renderList as _renderList, toDisplayString as _toDisplayString } from "vue"
+import { defineComponent as _defineComponent } from 'vue'
 
-import type { RouteLocation } from "vue-router";
 
 interface TabItem {
   name: string;
@@ -13,7 +13,6 @@ interface TabItem {
 }
 
 export type { TabItem };
-import { defineComponent as _defineComponent } from 'vue'
 
 // Reactive Props Destructure (Vue 3.5+)
 
@@ -21,8 +20,6 @@ const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',
   setup(__props, { expose: __expose, emit: __emit }) {
   __expose();
-    __props.items: Array<TabItem>;
-  }>();
   const __returned__ = {  }
   Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
   return __returned__

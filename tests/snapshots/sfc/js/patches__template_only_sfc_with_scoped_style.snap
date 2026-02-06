@@ -1,0 +1,17 @@
+---
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 219
+expression: js_output
+---
+import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue";
+const _sfc_main = {};
+const _hoisted_1 = {
+  class: "hello",
+  "data-v-a6e04d40": ""
+};
+export function render(_ctx, _cache) {
+  return _openBlock(), _createElementBlock("div", _hoisted_1, "Hello World");
+}
+_sfc_main.render = render;
+_sfc_main.__scopeId = "data-v-a6e04d40";
+export default _sfc_main;

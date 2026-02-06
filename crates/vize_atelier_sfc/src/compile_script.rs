@@ -62,6 +62,7 @@ pub fn compile_script(
             is_vapor,
             is_ts,
             template_content,
+            None,
         )
     } else if let Some(script) = &descriptor.script {
         // Use regular script, wrapped in __sfc__

@@ -1,9 +1,9 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 219
 expression: js_output
 ---
-import { openBlock as _openBlock, createBlock as _createBlock, resolveComponent as _resolveComponent } from "vue"
-
+import { openBlock as _openBlock, createBlock as _createBlock, resolveComponent as _resolveComponent } from "vue";
 import { defineComponent as _defineComponent } from "vue";
 import { ref } from "vue";
 const __sfc__ = /*@__PURE__*/ _defineComponent({
@@ -22,12 +22,12 @@ const __sfc__ = /*@__PURE__*/ _defineComponent({
     return __returned__;
   }
 });
-
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  const _component_Component = _resolveComponent("Component")
-  
-  return (_openBlock(), _createBlock(_component_Component, { options: { name: $setup.name, extra: 'value' } }, null, 8 /* PROPS */, ["options"]))
+  const _component_Component = _resolveComponent("Component");
+  return _openBlock(), _createBlock(_component_Component, { options: {
+    name: $setup.name,
+    extra: "value"
+  } }, null, 8, ["options"]);
 }
-
-__sfc__.render = render
-export default __sfc__
+__sfc__.render = render;
+export default __sfc__;

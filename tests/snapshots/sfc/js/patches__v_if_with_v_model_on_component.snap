@@ -3,8 +3,7 @@ source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 assertion_line: 219
 expression: js_output
 ---
-import { openBlock as _openBlock, createBlock as _createBlock, createCommentVNode as _createCommentVNode } from "vue"
-
+import { openBlock as _openBlock, createBlock as _createBlock, createCommentVNode as _createCommentVNode } from "vue";
 import { defineComponent as _defineComponent } from "vue";
 import { ref } from "vue";
 import MyInput from "./MyInput.vue";
@@ -27,16 +26,12 @@ const __sfc__ = /*@__PURE__*/ _defineComponent({
     return __returned__;
   }
 });
-
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return ($setup.visible)
-    ? (_openBlock(), _createBlock($setup.MyInput, {
-      key: 0,
-      modelValue: $setup.value,
-      "onUpdate:modelValue": $event => (($setup.value) = $event)
-    }))
-    : _createCommentVNode("v-if", true)
+  return $setup.visible ? (_openBlock(), _createBlock($setup.MyInput, {
+    key: 0,
+    modelValue: $setup.value,
+    "onUpdate:modelValue": ($event) => $setup.value = $event
+  })) : _createCommentVNode("v-if", true);
 }
-
-__sfc__.render = render
-export default __sfc__
+__sfc__.render = render;
+export default __sfc__;

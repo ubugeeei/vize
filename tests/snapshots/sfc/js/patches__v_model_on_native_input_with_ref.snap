@@ -1,9 +1,9 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 219
 expression: js_output
 ---
-import { openBlock as _openBlock, createElementBlock as _createElementBlock, withDirectives as _withDirectives, vModelText as _vModelText } from "vue"
-
+import { openBlock as _openBlock, createElementBlock as _createElementBlock, withDirectives as _withDirectives, vModelText as _vModelText } from "vue";
 import { defineComponent as _defineComponent } from "vue";
 import { ref } from "vue";
 const __sfc__ = /*@__PURE__*/ _defineComponent({
@@ -22,14 +22,8 @@ const __sfc__ = /*@__PURE__*/ _defineComponent({
     return __returned__;
   }
 });
-
 export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return _withDirectives((_openBlock(), _createElementBlock("input", {
-    "onUpdate:modelValue": $event => (($setup.inputValue) = $event)
-  }, null, 8 /* PROPS */, ["onUpdate:modelValue"])), [
-    [_vModelText, $setup.inputValue]
-  ])
+  return _withDirectives((_openBlock(), _createElementBlock("input", { "onUpdate:modelValue": ($event) => $setup.inputValue = $event }, null, 8, ["onUpdate:modelValue"])), [[_vModelText, $setup.inputValue]]);
 }
-
-__sfc__.render = render
-export default __sfc__
+__sfc__.render = render;
+export default __sfc__;
