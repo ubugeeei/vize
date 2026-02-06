@@ -247,7 +247,7 @@ fn format_variant_name(prop_name: &str, value: &Value) -> String {
 
 /// Convert a string to PascalCase.
 fn to_pascal_case(s: &str) -> String {
-    s.split(|c: char| c == '-' || c == '_' || c == ' ')
+    s.split(['-', '_', ' '])
         .filter(|w| !w.is_empty())
         .map(|word| {
             let mut chars = word.chars();

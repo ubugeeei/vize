@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { ArtVariant } from '../../src/types.js'
 import { getPreviewUrl } from '../api'
+import { useAddons } from '../composables/useAddons'
+import { sendMessage } from '../composables/usePostMessage'
 
 const props = defineProps<{
   artPath: string
@@ -9,15 +11,83 @@ const props = defineProps<{
 }>()
 
 const previewUrl = computed(() => getPreviewUrl(props.artPath, props.variant.name))
+
+const iframeRef = ref<HTMLIFrameElement | null>(null)
+const iframeReady = ref(false)
+
+const {
+  outlineEnabled,
+  measureEnabled,
+  getEffectiveBackground,
+  getEffectiveViewport,
+} = useAddons()
+
+const viewportStyle = computed(() => {
+  const vp = getEffectiveViewport()
+  if (vp.width === '100%') {
+    return { width: '100%', height: '100%' }
+  }
+  return { width: vp.width, height: vp.height }
+})
+
+const isCustomViewport = computed(() => {
+  const vp = getEffectiveViewport()
+  return vp.width !== '100%'
+})
+
+// Listen for iframe ready
+function onIframeLoad() {
+  iframeReady.value = true
+  syncAllState()
+}
+
+function syncAllState() {
+  const iframe = iframeRef.value
+  if (!iframe) return
+
+  // Sync background
+  const bg = getEffectiveBackground()
+  if (bg.color) {
+    sendMessage(iframe, 'musea:set-background', { color: bg.color, pattern: bg.pattern })
+  }
+
+  // Sync outline
+  sendMessage(iframe, 'musea:toggle-outline', { enabled: outlineEnabled.value })
+
+  // Sync measure
+  sendMessage(iframe, 'musea:toggle-measure', { enabled: measureEnabled.value })
+}
+
+// Watch addons state and send messages to iframe
+watch(() => getEffectiveBackground(), (bg) => {
+  const iframe = iframeRef.value
+  if (!iframe || !iframeReady.value) return
+  sendMessage(iframe, 'musea:set-background', { color: bg.color, pattern: bg.pattern })
+}, { deep: true })
+
+watch(outlineEnabled, (enabled) => {
+  const iframe = iframeRef.value
+  if (!iframe || !iframeReady.value) return
+  sendMessage(iframe, 'musea:toggle-outline', { enabled })
+})
+
+watch(measureEnabled, (enabled) => {
+  const iframe = iframeRef.value
+  if (!iframe || !iframeReady.value) return
+  sendMessage(iframe, 'musea:toggle-measure', { enabled })
+})
 </script>
 
 <template>
   <div class="variant-card">
-    <div class="variant-preview">
+    <div class="variant-preview" :class="{ 'viewport-mode': isCustomViewport }">
       <iframe
+        ref="iframeRef"
         :src="previewUrl"
         loading="lazy"
         :title="variant.name"
+        :style="viewportStyle"
+        @load="onIframeLoad"
       />
     </div>
     <div class="variant-info">
@@ -72,11 +142,22 @@ const window = globalThis.window
   overflow: hidden;
 }
 
+.variant-preview.viewport-mode {
+  aspect-ratio: unset;
+  min-height: 200px;
+  max-height: 500px;
+  overflow: auto;
+}
+
 .variant-preview iframe {
   width: 100%;
   height: 100%;
   border: none;
   background: white;
+}
+
+.variant-preview.viewport-mode iframe {
+  flex-shrink: 0;
 }
 
 .variant-info {

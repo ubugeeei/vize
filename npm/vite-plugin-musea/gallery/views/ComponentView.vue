@@ -2,22 +2,27 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useArts } from '../composables/useArts'
+import { useActions } from '../composables/useActions'
 import VariantCard from '../components/VariantCard.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import PropsPanel from '../components/PropsPanel.vue'
 import DocumentationPanel from '../components/DocumentationPanel.vue'
 import A11yBadge from '../components/A11yBadge.vue'
+import AddonToolbar from '../components/AddonToolbar.vue'
+import ActionsPanel from '../components/ActionsPanel.vue'
 
 const route = useRoute()
 const { getArt, load } = useArts()
+const { init: initActions } = useActions()
 
-const activeTab = ref<'variants' | 'props' | 'docs' | 'a11y'>('variants')
+const activeTab = ref<'variants' | 'props' | 'docs' | 'a11y' | 'actions'>('variants')
 
 const artPath = computed(() => route.params.path as string)
 const art = computed(() => getArt(artPath.value))
 
 onMounted(() => {
   load()
+  initActions()
 })
 
 watch(artPath, () => {
@@ -61,6 +66,8 @@ watch(artPath, () => {
       </div>
     </div>
 
+    <AddonToolbar />
+
     <div class="component-tabs">
       <button
         class="tab-btn"
@@ -91,6 +98,13 @@ watch(artPath, () => {
         A11y
         <A11yBadge :art-path="art.path" />
       </button>
+      <button
+        class="tab-btn"
+        :class="{ active: activeTab === 'actions' }"
+        @click="activeTab = 'actions'"
+      >
+        Actions
+      </button>
     </div>
 
     <div class="component-content">
@@ -118,6 +132,8 @@ watch(artPath, () => {
           Run <code>musea-vrt --a11y</code> to generate accessibility reports, or view results in the A11y tab after running VRT tests.
         </p>
       </div>
+
+      <ActionsPanel v-if="activeTab === 'actions'" />
     </div>
   </div>
 
@@ -180,6 +196,10 @@ watch(artPath, () => {
 .meta-tag svg {
   width: 12px;
   height: 12px;
+}
+
+.component-view :deep(.addon-toolbar) {
+  margin-bottom: 1rem;
 }
 
 .component-tabs {
