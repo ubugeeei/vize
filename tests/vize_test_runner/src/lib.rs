@@ -245,8 +245,7 @@ pub fn normalize_code(code: &str) -> String {
             if let Some(start) = line.find('{') {
                 if let Some(end) = line.find('}') {
                     let helpers_str = &line[start + 1..end];
-                    let mut helpers: Vec<&str> =
-                        helpers_str.split(',').map(|s| s.trim()).collect();
+                    let mut helpers: Vec<&str> = helpers_str.split(',').map(|s| s.trim()).collect();
                     helpers.sort();
                     *line = format!("import {{ {} }} from \"vue\"", helpers.join(", "));
                 }

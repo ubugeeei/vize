@@ -799,12 +799,12 @@ pub fn generate_directive_prop_with_static(
         }
         "on" => {
             // Get event name first to determine context for modifiers
-            let (event_name, is_dynamic_event) =
-                if let Some(ExpressionNode::Simple(exp)) = &dir.arg {
-                    (exp.content.as_str(), !exp.is_static)
-                } else {
-                    ("", false)
-                };
+            let (event_name, is_dynamic_event) = if let Some(ExpressionNode::Simple(exp)) = &dir.arg
+            {
+                (exp.content.as_str(), !exp.is_static)
+            } else {
+                ("", false)
+            };
 
             // Check if this is a keyboard event (for context-dependent modifiers)
             let is_keyboard_event = matches!(event_name, "keydown" | "keyup" | "keypress");
@@ -856,9 +856,7 @@ pub fn generate_directive_prop_with_static(
                     ctx.push(ctx.helper(RuntimeHelper::ToHandlerKey));
                     ctx.push("(");
                     let content = exp.content.as_str();
-                    if content.contains('.')
-                        || content.starts_with('_')
-                        || content.starts_with('$')
+                    if content.contains('.') || content.starts_with('_') || content.starts_with('$')
                     {
                         generate_simple_expression(ctx, exp);
                     } else {
