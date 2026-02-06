@@ -34,10 +34,10 @@ jobs:
           - host: windows-latest
             target: aarch64-pc-windows-msvc
             archive: vize-aarch64-pc-windows-msvc.zip
-          - host: ubuntu-latest-xlarge
+          - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             archive: vize-x86_64-unknown-linux-gnu.tar.gz
-          - host: ubuntu-latest-xlarge
+          - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             archive: vize-aarch64-unknown-linux-gnu.tar.gz
     steps:
@@ -106,19 +106,19 @@ jobs:
             target: aarch64-pc-windows-msvc
             build_vize: pnpm -C npm/vize-native build --target aarch64-pc-windows-msvc
             build_fresco: pnpm -C npm/fresco-native build --target aarch64-pc-windows-msvc
-          - host: ubuntu-latest-xlarge
+          - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             build_vize: pnpm -C npm/vize-native build --target x86_64-unknown-linux-gnu
             build_fresco: pnpm -C npm/fresco-native build --target x86_64-unknown-linux-gnu
-          - host: ubuntu-latest-xlarge
+          - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             build_vize: pnpm -C npm/vize-native build --target x86_64-unknown-linux-musl --cross-compile
             build_fresco: pnpm -C npm/fresco-native build --target x86_64-unknown-linux-musl --cross-compile
-          - host: ubuntu-latest-xlarge
+          - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             build_vize: pnpm -C npm/vize-native build --target aarch64-unknown-linux-gnu --cross-compile
             build_fresco: pnpm -C npm/fresco-native build --target aarch64-unknown-linux-gnu --cross-compile
-          - host: ubuntu-latest-xlarge
+          - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
             build_vize: pnpm -C npm/vize-native build --target aarch64-unknown-linux-musl --cross-compile
             build_fresco: pnpm -C npm/fresco-native build --target aarch64-unknown-linux-musl --cross-compile
@@ -304,7 +304,7 @@ jobs:
   # Build and publish WASM package (using Trusted Publishing / OIDC)
   release-npm-wasm:
     name: Release @vizejs/wasm to npm
-    runs-on: ubuntu-latest-xlarge
+    runs-on: ubuntu-latest
     environment: npm
     permissions:
       contents: read
@@ -491,7 +491,7 @@ jobs:
   # Publish crates to crates.io (using Trusted Publishing)
   release-crates:
     name: Release crates to crates.io
-    runs-on: ubuntu-latest-xlarge
+    runs-on: ubuntu-latest
     environment: crates-io
     steps:
       - uses: actions/checkout@v4
