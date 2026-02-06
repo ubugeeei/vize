@@ -559,12 +559,17 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.crates-io-auth.outputs.token }}
         run: |
+          set -e
+
           # Helper function: publish a crate, treating "already uploaded" as success
           publish_crate() {
             local crate=$1
             echo "Publishing $crate..."
-            output=$(cargo publish -p "$crate" 2>&1) && { echo "$output"; return 0; }
-            if echo "$output" | grep -q "already uploaded"; then
+            if output=$(cargo publish -p "$crate" 2>&1); then
+              echo "$output"
+              return 0
+            fi
+            if echo "$output" | grep -q "already uploaded\|already exists"; then
               echo "$crate is already published, skipping."
               return 0
             fi
