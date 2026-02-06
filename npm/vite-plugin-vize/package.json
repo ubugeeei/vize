@@ -52,7 +52,7 @@
   },
   "dependencies": {
     "@vizejs/native": "workspace:*",
-    "vizejs": "workspace:*",
+    "vize": "workspace:*",
     "tinyglobby": "^0.2.0"
   }
 }

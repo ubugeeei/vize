@@ -11,8 +11,8 @@ import { detectHmrUpdateType, type HmrUpdateType } from "./hmr.js";
 export type { VizeOptions, CompiledModule };
 
 // Re-export config utilities from vizejs
-export { defineConfig, loadConfig } from "vizejs";
-export type { VizeConfig, LoadConfigOptions } from "vizejs";
+export { defineConfig, loadConfig } from "vize";
+export type { VizeConfig, LoadConfigOptions } from "vize";
 
 const VIRTUAL_PREFIX = "\0vize:";
 const VIRTUAL_CSS_MODULE = "virtual:vize-styles";
@@ -156,7 +156,7 @@ export function vize(options: VizeOptions = {}): Plugin {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let fileConfig: any = null;
       if (options.configMode !== false) {
-        const { loadConfig } = await import("vizejs");
+        const { loadConfig } = await import("vize");
         fileConfig = await loadConfig(root, {
           mode: options.configMode ?? "root",
           configFile: options.configFile,
