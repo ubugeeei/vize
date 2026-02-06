@@ -196,7 +196,7 @@ run = "cargo bench -p vize_atelier_sfc"
 [tasks.dev]
 alias = "d"
 description = "Start playground dev server (using Vize compiler)"
-depends = ["build:vite-plugin", "build:wasm-web"]
+depends = ["build:native", "build:vite-plugin", "build:wasm-web"]
 run = "CI=true pnpm -C playground dev"
 
 [tasks.example]

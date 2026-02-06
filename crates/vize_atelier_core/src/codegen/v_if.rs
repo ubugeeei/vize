@@ -648,21 +648,35 @@ pub fn generate_if_branch_children(ctx: &mut CodegenContext, children: &[Templat
         )
     });
 
-    if has_only_text_or_interpolation && children.len() == 1 {
-        match &children[0] {
-            TemplateChildNode::Interpolation(interp) => {
-                ctx.use_helper(RuntimeHelper::ToDisplayString);
-                ctx.push(ctx.helper(RuntimeHelper::ToDisplayString));
-                ctx.push("(");
-                generate_expression(ctx, &interp.content);
-                ctx.push("), 1 /* TEXT */");
+    if has_only_text_or_interpolation {
+        let has_interpolation = children
+            .iter()
+            .any(|c| matches!(c, TemplateChildNode::Interpolation(_)));
+
+        // Use string concatenation for text/interpolation mix
+        for (i, child) in children.iter().enumerate() {
+            if i > 0 {
+                ctx.push(" + ");
             }
-            TemplateChildNode::Text(text) => {
-                ctx.push("\"");
-                ctx.push(&escape_js_string(text.content.as_str()));
-                ctx.push("\"");
+            match child {
+                TemplateChildNode::Interpolation(interp) => {
+                    ctx.use_helper(RuntimeHelper::ToDisplayString);
+                    ctx.push(ctx.helper(RuntimeHelper::ToDisplayString));
+                    ctx.push("(");
+                    generate_expression(ctx, &interp.content);
+                    ctx.push(")");
+                }
+                TemplateChildNode::Text(text) => {
+                    ctx.push("\"");
+                    ctx.push(&escape_js_string(text.content.as_str()));
+                    ctx.push("\"");
+                }
+                _ => {}
             }
-            _ => {}
+        }
+
+        if has_interpolation {
+            ctx.push(", 1 /* TEXT */");
         }
     } else {
         // Complex children - use array
