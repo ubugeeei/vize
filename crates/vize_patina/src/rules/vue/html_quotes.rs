@@ -129,19 +129,15 @@ mod tests {
         assert_eq!(result.warning_count, 0);
     }
 
-    // Note: single-quote tests depend on parser handling of single-quoted attributes.
-    // The parser may normalize quotes, in which case we test the other direction.
     #[test]
-    fn test_valid_single_quotes_with_single_option() {
+    fn test_single_option_warns_on_double_quotes() {
         let mut registry = RuleRegistry::new();
         registry.register(Box::new(HtmlQuotes {
             style: HtmlQuotesOption::Single,
         }));
         let linter = Linter::with_registry(registry);
-        // If parser normalizes to double quotes, this would always warn.
-        // This test verifies the rule logic is correct regardless.
+        // Parser preserves double quotes, so single-quote preference should warn
         let result = linter.lint_template(r#"<div class="foo"></div>"#, "test.vue");
-        // With single-quote preference, double quotes should warn
-        assert!(result.warning_count >= 0); // Depends on parser behavior
+        assert_eq!(result.warning_count, 1);
     }
 }

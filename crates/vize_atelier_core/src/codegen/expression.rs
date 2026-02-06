@@ -576,9 +576,11 @@ mod tests {
             is_script_setup: true,
         };
 
-        let mut options = CodegenOptions::default();
-        options.inline = false;
-        options.binding_metadata = Some(metadata);
+        let options = CodegenOptions {
+            inline: false,
+            binding_metadata: Some(metadata),
+            ..Default::default()
+        };
 
         let ctx = CodegenContext::new(options);
         let result = generate_simple_expression_with_prefix(&ctx, "{ foo }");
@@ -595,9 +597,11 @@ mod tests {
             is_script_setup: true,
         };
 
-        let mut options = CodegenOptions::default();
-        options.inline = false;
-        options.binding_metadata = Some(metadata);
+        let options = CodegenOptions {
+            inline: false,
+            binding_metadata: Some(metadata),
+            ..Default::default()
+        };
 
         let ctx = CodegenContext::new(options);
         let result = generate_simple_expression_with_prefix(&ctx, "count = count + 1");
