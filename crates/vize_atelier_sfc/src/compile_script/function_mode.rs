@@ -419,7 +419,8 @@ pub fn compile_script_setup(
                     if prop_types.is_empty() {
                         "{}".to_string()
                     } else {
-                        let mut names: Vec<_> = prop_types.iter().map(|(n, _)| n.as_str()).collect();
+                        let mut names: Vec<_> =
+                            prop_types.iter().map(|(n, _)| n.as_str()).collect();
                         names.sort();
                         let mut s = String::from("{ ");
                         for (i, name) in names.iter().enumerate() {

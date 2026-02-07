@@ -637,8 +637,7 @@ impl<'a, 'ctx> Visit<'_> for IdentifierCollector<'a, 'ctx> {
                 while pos < source_bytes.len() && source_bytes[pos] == b')' {
                     pos += 1;
                 }
-                self.suffix_rewrites
-                    .push((pos, ".value".to_string()));
+                self.suffix_rewrites.push((pos, ".value".to_string()));
             }
             return;
         }

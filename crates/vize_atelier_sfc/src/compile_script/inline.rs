@@ -16,138 +16,6 @@ use super::props::{
 use super::typescript::transform_typescript_to_js;
 use super::{ScriptCompileResult, TemplateParts};
 
-/// Check if a TypeScript type is safe to use at runtime in PropType<T>.
-/// Returns true for built-in types that exist at runtime, false for user-defined types.
-fn is_runtime_safe_ts_type(ts_type: &str) -> bool {
-    let ts_type = ts_type.trim();
-
-    // Primitive types
-    if matches!(
-        ts_type,
-        "string"
-            | "number"
-            | "boolean"
-            | "null"
-            | "undefined"
-            | "any"
-            | "unknown"
-            | "never"
-            | "void"
-            | "bigint"
-            | "symbol"
-    ) {
-        return true;
-    }
-
-    // Array types - check if element type is safe
-    if let Some(element_type) = ts_type.strip_suffix("[]") {
-        return is_runtime_safe_ts_type(element_type);
-    }
-
-    // Generic Array<T>
-    if ts_type.starts_with("Array<") && ts_type.ends_with('>') {
-        let inner = &ts_type[6..ts_type.len() - 1];
-        return is_runtime_safe_ts_type(inner);
-    }
-
-    // Built-in JavaScript types that exist at runtime
-    if matches!(
-        ts_type,
-        "String"
-            | "Number"
-            | "Boolean"
-            | "Object"
-            | "Array"
-            | "Function"
-            | "Date"
-            | "RegExp"
-            | "Error"
-            | "Map"
-            | "Set"
-            | "WeakMap"
-            | "WeakSet"
-            | "Promise"
-            | "ArrayBuffer"
-            | "DataView"
-            | "Int8Array"
-            | "Uint8Array"
-            | "Int16Array"
-            | "Uint16Array"
-            | "Int32Array"
-            | "Uint32Array"
-            | "Float32Array"
-            | "Float64Array"
-            | "BigInt64Array"
-            | "BigUint64Array"
-            | "URL"
-            | "URLSearchParams"
-            | "FormData"
-            | "Blob"
-            | "File"
-    ) {
-        return true;
-    }
-
-    // Union types - check all parts
-    if ts_type.contains('|') {
-        return ts_type
-            .split('|')
-            .all(|part| is_runtime_safe_ts_type(part.trim()));
-    }
-
-    // Record<K, V> - generic but safe
-    if ts_type.starts_with("Record<") {
-        return true;
-    }
-
-    // Partial<T>, Required<T>, Readonly<T>, etc. - utility types referencing potentially user types
-    // These are NOT safe as they reference user-defined types
-    if ts_type.starts_with("Partial<")
-        || ts_type.starts_with("Required<")
-        || ts_type.starts_with("Readonly<")
-        || ts_type.starts_with("Pick<")
-        || ts_type.starts_with("Omit<")
-    {
-        return false;
-    }
-
-    // Object literal types like { foo: string }
-    if ts_type.starts_with('{') && ts_type.ends_with('}') {
-        return true;
-    }
-
-    // String/number literal types
-    if (ts_type.starts_with('"') && ts_type.ends_with('"'))
-        || (ts_type.starts_with('\'') && ts_type.ends_with('\''))
-    {
-        return true;
-    }
-    if ts_type.parse::<f64>().is_ok() {
-        return true;
-    }
-
-    // Everything else (user-defined interfaces/types) is NOT safe
-    false
-}
-
-/// Check if PropType<T> assertion is needed for a given TS type and its JS constructor.
-/// Primitives (string→String, number→Number, boolean→Boolean) don't need PropType.
-/// Complex types (arrays, objects, functions, user-defined types) do.
-fn needs_prop_type_assertion(ts_type: &str, js_type: &str) -> bool {
-    let ts = ts_type.trim().to_lowercase();
-    // Simple primitive mappings don't need PropType
-    match ts.as_str() {
-        "string" | "number" | "boolean" | "symbol" | "bigint" => return false,
-        _ => {}
-    }
-    // If js_type is null, the type can't be represented at runtime - no PropType
-    if js_type == "null" {
-        return false;
-    }
-    // For complex types (Array, Object, Function, etc.), PropType is needed
-    true
-}
-
 /// Compile script setup with inline template (Vue's inline template mode)
 pub fn compile_script_setup_inline(
     content: &str,
@@ -195,9 +63,7 @@ pub fn compile_script_setup_inline(
 
     // defineComponent import for TypeScript
     if is_ts {
-        output.extend_from_slice(
-            b"import { defineComponent as _defineComponent } from 'vue'\n",
-        );
+        output.extend_from_slice(b"import { defineComponent as _defineComponent } from 'vue'\n");
     }
 
     // Template imports (Vue helpers)
@@ -649,7 +515,8 @@ pub fn compile_script_setup_inline(
     if let Some(ref props_macro) = ctx.macros.define_props {
         if let Some(ref type_args) = props_macro.type_args {
             // Resolve type references (interface/type alias names) to their definitions
-            let resolved_type_args = resolve_type_args(type_args, &ctx.interfaces, &ctx.type_aliases);
+            let resolved_type_args =
+                resolve_type_args(type_args, &ctx.interfaces, &ctx.type_aliases);
             let prop_types = extract_prop_types_from_type(&resolved_type_args);
             if !prop_types.is_empty() || !model_infos.is_empty() {
                 props_emits_buf.extend_from_slice(b"  props: {\n");
