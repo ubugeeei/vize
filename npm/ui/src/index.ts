@@ -56,46 +56,56 @@ export type { LabelProps } from './Label'
 export { Separator } from './Separator'
 export type { SeparatorProps } from './Separator'
 
-// Toggle
-export { ToggleRoot } from './Toggle'
-export type { ToggleRootProps } from './Toggle'
-
 // Button
 export { Button } from './Button'
 export type { ButtonProps } from './Button'
 
+// Skeleton
+export { Skeleton } from './Skeleton'
+export type { SkeletonProps } from './Skeleton'
+
+// Toggle
+import { ToggleRoot } from './Toggle'
+export const Toggle = { Root: ToggleRoot }
+export type { ToggleRootProps } from './Toggle'
+
 // Checkbox
-export { CheckboxRoot, CheckboxIndicator } from './Checkbox'
+import { CheckboxRoot, CheckboxIndicator } from './Checkbox'
+export const Checkbox = { Root: CheckboxRoot, Indicator: CheckboxIndicator }
 export type { CheckboxRootProps, CheckboxIndicatorProps } from './Checkbox'
 
 // Switch
-export { SwitchRoot, SwitchThumb } from './Switch'
+import { SwitchRoot, SwitchThumb } from './Switch'
+export const Switch = { Root: SwitchRoot, Thumb: SwitchThumb }
 export type { SwitchRootProps, SwitchThumbProps } from './Switch'
 
 // RadioGroup
-export { RadioGroupRoot, RadioGroupItem, RadioGroupIndicator } from './RadioGroup'
+import { RadioGroupRoot, RadioGroupItem, RadioGroupIndicator } from './RadioGroup'
+export const RadioGroup = {
+  Root: RadioGroupRoot,
+  Item: RadioGroupItem,
+  Indicator: RadioGroupIndicator,
+}
 export type { RadioGroupRootProps, RadioGroupItemProps, RadioGroupIndicatorProps } from './RadioGroup'
 
 // Collapsible
-export {
-  CollapsibleRoot,
-  CollapsibleTrigger,
-  CollapsibleContent,
-} from './Collapsible'
-export type {
-  CollapsibleRootProps,
-  CollapsibleTriggerProps,
-  CollapsibleContentProps,
-} from './Collapsible'
+import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from './Collapsible'
+export const Collapsible = {
+  Root: CollapsibleRoot,
+  Trigger: CollapsibleTrigger,
+  Content: CollapsibleContent,
+}
+export type { CollapsibleRootProps, CollapsibleTriggerProps, CollapsibleContentProps } from './Collapsible'
 
 // Accordion
-export {
-  AccordionRoot,
-  AccordionItem,
-  AccordionHeader,
-  AccordionTrigger,
-  AccordionContent,
-} from './Accordion'
+import { AccordionRoot, AccordionItem, AccordionHeader, AccordionTrigger, AccordionContent } from './Accordion'
+export const Accordion = {
+  Root: AccordionRoot,
+  Item: AccordionItem,
+  Header: AccordionHeader,
+  Trigger: AccordionTrigger,
+  Content: AccordionContent,
+}
 export type {
   AccordionRootProps,
   AccordionItemProps,
@@ -105,13 +115,14 @@ export type {
 } from './Accordion'
 
 // Tabs
-export {
-  TabsRoot,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  TabsIndicator,
-} from './Tabs'
+import { TabsRoot, TabsList, TabsTrigger, TabsContent, TabsIndicator } from './Tabs'
+export const Tabs = {
+  Root: TabsRoot,
+  List: TabsList,
+  Trigger: TabsTrigger,
+  Content: TabsContent,
+  Indicator: TabsIndicator,
+}
 export type {
   TabsRootProps,
   TabsListProps,
@@ -121,7 +132,7 @@ export type {
 } from './Tabs'
 
 // Dialog
-export {
+import {
   DialogRoot,
   DialogTrigger,
   DialogPortal,
@@ -131,6 +142,16 @@ export {
   DialogDescription,
   DialogClose,
 } from './Dialog'
+export const Dialog = {
+  Root: DialogRoot,
+  Trigger: DialogTrigger,
+  Portal: DialogPortal,
+  Overlay: DialogOverlay,
+  Content: DialogContent,
+  Title: DialogTitle,
+  Description: DialogDescription,
+  Close: DialogClose,
+}
 export type {
   DialogRootProps,
   DialogTriggerProps,
@@ -143,7 +164,7 @@ export type {
 } from './Dialog'
 
 // Popover
-export {
+import {
   PopoverRoot,
   PopoverTrigger,
   PopoverPortal,
@@ -151,6 +172,14 @@ export {
   PopoverClose,
   PopoverArrow,
 } from './Popover'
+export const Popover = {
+  Root: PopoverRoot,
+  Trigger: PopoverTrigger,
+  Portal: PopoverPortal,
+  Content: PopoverContent,
+  Close: PopoverClose,
+  Arrow: PopoverArrow,
+}
 export type {
   PopoverRootProps,
   PopoverTriggerProps,
@@ -161,7 +190,7 @@ export type {
 } from './Popover'
 
 // Tooltip
-export {
+import {
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
@@ -169,6 +198,14 @@ export {
   TooltipContent,
   TooltipArrow,
 } from './Tooltip'
+export const Tooltip = {
+  Provider: TooltipProvider,
+  Root: TooltipRoot,
+  Trigger: TooltipTrigger,
+  Portal: TooltipPortal,
+  Content: TooltipContent,
+  Arrow: TooltipArrow,
+}
 export type {
   TooltipProviderProps,
   TooltipRootProps,
@@ -179,7 +216,7 @@ export type {
 } from './Tooltip'
 
 // Carousel
-export {
+import {
   CarouselRoot,
   CarouselViewport,
   CarouselSlide,
@@ -188,6 +225,15 @@ export {
   CarouselDots,
   CarouselDot,
 } from './Carousel'
+export const Carousel = {
+  Root: CarouselRoot,
+  Viewport: CarouselViewport,
+  Slide: CarouselSlide,
+  Prev: CarouselPrev,
+  Next: CarouselNext,
+  Dots: CarouselDots,
+  Dot: CarouselDot,
+}
 export type {
   CarouselRootProps,
   CarouselRootContext,
@@ -200,10 +246,11 @@ export type {
 } from './Carousel'
 
 // VirtualScroll
-export {
-  VirtualScroll,
-  VirtualScrollItem,
-} from './VirtualScroll'
+import { VirtualScroll as VirtualScrollRoot, VirtualScrollItem } from './VirtualScroll'
+export const VirtualScroll = {
+  Root: VirtualScrollRoot,
+  Item: VirtualScrollItem,
+}
 export type {
   VirtualScrollProps,
   VirtualItem,
@@ -211,12 +258,8 @@ export type {
   VirtualScrollContentProps,
 } from './VirtualScroll'
 
-// Skeleton
-export { Skeleton } from './Skeleton'
-export type { SkeletonProps } from './Skeleton'
-
 // FileUploader
-export {
+import {
   FileUploaderRoot,
   FileUploaderDropzone,
   FileUploaderTrigger,
@@ -224,6 +267,14 @@ export {
   FileUploaderItem,
   FileUploaderItemDelete,
 } from './FileUploader'
+export const FileUploader = {
+  Root: FileUploaderRoot,
+  Dropzone: FileUploaderDropzone,
+  Trigger: FileUploaderTrigger,
+  List: FileUploaderList,
+  Item: FileUploaderItem,
+  ItemDelete: FileUploaderItemDelete,
+}
 export type {
   FileUploaderRootProps,
   FileUploaderRootContext,
@@ -236,11 +287,12 @@ export type {
 } from './FileUploader'
 
 // OTP
-export {
-  OTPRoot,
-  OTPSlot,
-  OTPSeparator,
-} from './OTP'
+import { OTPRoot, OTPSlot, OTPSeparator } from './OTP'
+export const OTP = {
+  Root: OTPRoot,
+  Slot: OTPSlot,
+  Separator: OTPSeparator,
+}
 export type {
   OTPRootProps,
   OTPRootContext,
@@ -250,13 +302,20 @@ export type {
 } from './OTP'
 
 // TreeView
-export {
+import {
   TreeViewRoot,
   TreeViewItem,
   TreeViewItemTrigger,
   TreeViewItemIndicator,
   TreeViewGroup,
 } from './TreeView'
+export const TreeView = {
+  Root: TreeViewRoot,
+  Item: TreeViewItem,
+  ItemTrigger: TreeViewItemTrigger,
+  ItemIndicator: TreeViewItemIndicator,
+  Group: TreeViewGroup,
+}
 export type {
   TreeViewRootProps,
   TreeViewRootContext,
@@ -268,7 +327,7 @@ export type {
 } from './TreeView'
 
 // Stepper
-export {
+import {
   StepperRoot,
   StepperItem,
   StepperTrigger,
@@ -276,6 +335,14 @@ export {
   StepperContent,
   StepperSeparator,
 } from './Stepper'
+export const Stepper = {
+  Root: StepperRoot,
+  Item: StepperItem,
+  Trigger: StepperTrigger,
+  Indicator: StepperIndicator,
+  Content: StepperContent,
+  Separator: StepperSeparator,
+}
 export type {
   StepperRootProps,
   StepperRootContext,
@@ -289,7 +356,7 @@ export type {
 } from './Stepper'
 
 // Calendar
-export {
+import {
   CalendarRoot,
   CalendarHeader,
   CalendarPrev,
@@ -302,6 +369,19 @@ export {
   CalendarCell,
   CalendarCellTrigger,
 } from './Calendar'
+export const Calendar = {
+  Root: CalendarRoot,
+  Header: CalendarHeader,
+  Prev: CalendarPrev,
+  Next: CalendarNext,
+  Heading: CalendarHeading,
+  Grid: CalendarGrid,
+  GridHead: CalendarGridHead,
+  GridHeadCell: CalendarGridHeadCell,
+  GridBody: CalendarGridBody,
+  Cell: CalendarCell,
+  CellTrigger: CalendarCellTrigger,
+}
 export type {
   DateValue,
   CalendarRootProps,
@@ -321,12 +401,18 @@ export type {
 } from './Calendar'
 
 // DatePicker
-export {
+import {
   DatePickerRoot,
   DatePickerTrigger,
   DatePickerInput,
   DatePickerContent,
 } from './DatePicker'
+export const DatePicker = {
+  Root: DatePickerRoot,
+  Trigger: DatePickerTrigger,
+  Input: DatePickerInput,
+  Content: DatePickerContent,
+}
 export type {
   DatePickerRootProps,
   DatePickerRootContext,
@@ -336,7 +422,7 @@ export type {
 } from './DatePicker'
 
 // Form
-export {
+import {
   FormRoot,
   FormField,
   FormLabel,
@@ -344,6 +430,14 @@ export {
   FormMessage,
   FormSubmit,
 } from './Form'
+export const Form = {
+  Root: FormRoot,
+  Field: FormField,
+  Label: FormLabel,
+  Control: FormControl,
+  Message: FormMessage,
+  Submit: FormSubmit,
+}
 export type {
   FormRootProps,
   FormRootContext,
@@ -361,7 +455,7 @@ export type {
 } from './Form'
 
 // Graph
-export {
+import {
   GraphRoot,
   GraphLine,
   GraphBar,
@@ -371,6 +465,16 @@ export {
   GraphTooltip,
   GraphDot,
 } from './Graph'
+export const Graph = {
+  Root: GraphRoot,
+  Line: GraphLine,
+  Bar: GraphBar,
+  Area: GraphArea,
+  Axis: GraphAxis,
+  Grid: GraphGrid,
+  Tooltip: GraphTooltip,
+  Dot: GraphDot,
+}
 export type {
   GraphRootProps,
   GraphRootContext,
