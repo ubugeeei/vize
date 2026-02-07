@@ -12,8 +12,8 @@ import { mergeDefaults as _mergeDefaults } from 'vue'
 const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',
   props: /*@__PURE__*/_mergeDefaults({ count: {}, disabled: {}, items: {}, title: {} }, {
-  disabled: false
-  count: 0
+  disabled: false,
+  count: 0,
   items: () => []
 }),
   setup(__props, { expose: __expose, emit: __emit }) {

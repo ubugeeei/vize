@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 106
 expression: ts_output
 ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
@@ -13,7 +12,7 @@ import { mergeDefaults as _mergeDefaults } from 'vue'
 const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',
   props: /*@__PURE__*/_mergeDefaults(['msg', 'count'], {
-  msg: 'hello'
+  msg: 'hello',
   count: 0
 }),
   setup(__props, { expose: __expose, emit: __emit }) {
