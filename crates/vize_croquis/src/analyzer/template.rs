@@ -178,6 +178,7 @@ impl Analyzer {
         };
 
         // Collect v-slot scopes
+        #[allow(clippy::type_complexity)]
         let mut slot_scope: Option<(
             CompactString,
             vize_carton::SmallVec<[CompactString; 4]>,
@@ -281,8 +282,7 @@ impl Analyzer {
                         (smallvec![], None)
                     };
 
-                    slot_scope =
-                        Some((slot_name, prop_names, props_pattern, dir.loc.start.offset));
+                    slot_scope = Some((slot_name, prop_names, props_pattern, dir.loc.start.offset));
                 }
             }
         }
@@ -303,15 +303,15 @@ impl Analyzer {
                         el.loc.end.offset,
                     );
 
-                for name in prop_names {
-                    scope_vars.push(name);
+                    for name in prop_names {
+                        scope_vars.push(name);
+                    }
                 }
-            }
 
-            count
-        } else {
-            0
-        };
+                count
+            } else {
+                0
+            };
 
         // Enter v-for scope if present
         let for_vars_count = if let Some((vars, source, start, end, _)) = for_scope {
