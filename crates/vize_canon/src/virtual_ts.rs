@@ -1056,15 +1056,20 @@ fn generate_scope_closures(
     }
 }
 
+/// Context for recursive scope generation, bundling shared parameters.
+struct ScopeGenContext<'a> {
+    summary: &'a Croquis,
+    expressions_by_scope: std::collections::HashMap<u32, Vec<&'a vize_croquis::TemplateExpression>>,
+    children_map: std::collections::HashMap<u32, Vec<ScopeId>>,
+    template_offset: u32,
+}
+
 /// Recursively generate a scope node (VFor/VSlot/EventHandler) and its nested children.
 fn generate_scope_node(
     ts: &mut String,
     mappings: &mut Vec<VizeMapping>,
-    summary: &Croquis,
-    expressions_by_scope: &std::collections::HashMap<u32, Vec<&vize_croquis::TemplateExpression>>,
-    children_map: &std::collections::HashMap<u32, Vec<ScopeId>>,
+    ctx: &ScopeGenContext<'_>,
     scope: &Scope,
-    template_offset: u32,
     indent: &str,
 ) {
     let scope_id = scope.id.as_u32();
