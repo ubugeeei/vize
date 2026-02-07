@@ -1,5 +1,5 @@
-import { ref, watch } from 'vue'
-import type { PaletteApiResponse, PaletteControl } from '../api'
+import { ref } from 'vue'
+import type { PaletteApiResponse } from '../api'
 import { fetchPalette } from '../api'
 
 export function usePalette() {

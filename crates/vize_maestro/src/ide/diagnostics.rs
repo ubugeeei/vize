@@ -660,8 +660,7 @@ impl DiagnosticService {
                 // Only process diagnostics that fall within the content area
                 if (lint_diag.start as usize) < art_tag_prefix_len {
                     // Diagnostic is on the <art> tag itself - map to the original tag
-                    let (start_line, start_col) =
-                        offset_to_line_col(content, custom.loc.tag_start);
+                    let (start_line, start_col) = offset_to_line_col(content, custom.loc.tag_start);
                     let (end_line, end_col) =
                         offset_to_line_col(content, custom.loc.tag_end.min(content.len()));
 

@@ -1356,8 +1356,7 @@ impl SemanticTokensService {
                         if value_start < slice.len() {
                             let quote_char = slice.as_bytes()[value_start];
                             if quote_char == b'"' || quote_char == b'\'' {
-                                if let Some(end) =
-                                    slice[value_start + 1..].find(quote_char as char)
+                                if let Some(end) = slice[value_start + 1..].find(quote_char as char)
                                 {
                                     let abs_val = range_start + value_start;
                                     let (val_line, val_col) =

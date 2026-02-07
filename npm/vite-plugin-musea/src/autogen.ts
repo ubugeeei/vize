@@ -277,7 +277,7 @@ function generateArtFileJs(
       const unionValues = parseUnionType(prop.propType);
       for (const val of unionValues) {
         if (variants.length >= maxVariants) break;
-        const name = typeof val === "string" ? toPascalCase(val) : `${toPascalCase(prop.name)}_${val}`;
+        const name = typeof val === "string" ? toPascalCase(val) : `${toPascalCase(prop.name)}_${String(val)}`;
         variants.push({
           name,
           isDefault: false,
