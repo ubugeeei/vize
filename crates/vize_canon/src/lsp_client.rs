@@ -24,6 +24,8 @@ pub struct TsgoLspClient {
     request_id: AtomicI64,
     /// Pending diagnostics received via publishDiagnostics
     diagnostics: HashMap<String, Vec<LspDiagnostic>>,
+    /// Temporary directory for tsconfig.json (cleaned up on drop)
+    temp_dir: Option<std::path::PathBuf>,
 }
 
 /// LSP Diagnostic
@@ -69,11 +71,34 @@ impl TsgoLspClient {
 
         eprintln!("\x1b[90m[tsgo] Using: {}\x1b[0m", tsgo);
 
-        // Determine project root (for tsconfig.json resolution)
-        let project_root = working_dir
+        // Determine project root (for tsgo binary search)
+        let _project_root = working_dir
             .map(std::path::PathBuf::from)
             .or_else(|| std::env::current_dir().ok())
             .and_then(|p| p.canonicalize().ok());
+
+        // Create a temporary directory with a proper tsconfig.json.
+        // This ensures tsgo uses ES module mode (import.meta, dynamic import, etc.)
+        // regardless of the project's tsconfig.json state.
+        let temp_dir_path = std::env::temp_dir().join(format!("vize-tsgo-{}", std::process::id()));
+        std::fs::create_dir_all(&temp_dir_path)
+            .map_err(|e| format!("Failed to create temp directory: {}", e))?;
+        let tsconfig_content = serde_json::json!({
+            "compilerOptions": {
+                "target": "ES2022",
+                "module": "ESNext",
+                "moduleResolution": "bundler",
+                "lib": ["ES2022", "DOM", "DOM.Iterable"],
+                "strict": true,
+                "noEmit": true,
+                "skipLibCheck": true
+            }
+        });
+        std::fs::write(
+            temp_dir_path.join("tsconfig.json"),
+            tsconfig_content.to_string(),
+        )
+        .map_err(|e| format!("Failed to write temp tsconfig.json: {}", e))?;
 
         let mut cmd = Command::new(tsgo);
         cmd.arg("--lsp")
@@ -82,12 +107,8 @@ impl TsgoLspClient {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
-        // Set working directory to project root for proper tsconfig resolution
-        if let Some(root) = &project_root {
-            cmd.current_dir(root);
-        } else if let Some(wd) = working_dir {
-            cmd.current_dir(wd);
-        }
+        // Use temp directory as working directory so tsgo picks up our tsconfig.json
+        cmd.current_dir(&temp_dir_path);
 
         let mut process = cmd
             .spawn()
@@ -113,16 +134,19 @@ impl TsgoLspClient {
             }
         }
 
+        // Use temp dir path as rootUri for LSP initialization
+        let temp_root = temp_dir_path.canonicalize().ok();
         let mut client = Self {
             process,
             stdin,
             stdout: BufReader::new(stdout),
             request_id: AtomicI64::new(1),
             diagnostics: HashMap::new(),
+            temp_dir: Some(temp_dir_path),
         };
 
-        // Initialize LSP with project root for tsconfig resolution
-        client.initialize(project_root.as_ref())?;
+        // Initialize LSP with temp directory for tsconfig resolution
+        client.initialize(temp_root.as_ref())?;
 
         Ok(client)
     }
@@ -759,5 +783,9 @@ impl TsgoLspClient {
 impl Drop for TsgoLspClient {
     fn drop(&mut self) {
         let _ = self.shutdown();
+        // Clean up temporary tsconfig directory
+        if let Some(ref dir) = self.temp_dir {
+            let _ = std::fs::remove_dir_all(dir);
+        }
     }
 }

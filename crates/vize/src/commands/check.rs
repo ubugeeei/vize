@@ -638,7 +638,7 @@ fn run_direct(args: &CheckArgs) {
     let uri_map: Vec<(String, String)> = generated
         .iter()
         .map(|g| {
-            let virtual_uri = format!("file://{}.ts", g.original);
+            let virtual_uri = format!("file://{}.mts", g.original);
             (virtual_uri, g.virtual_ts.clone())
         })
         .collect();
@@ -712,7 +712,7 @@ fn run_direct(args: &CheckArgs) {
                     // tsgo doesn't publish diagnostics automatically - we must request them
                     let uris: Vec<String> = indices
                         .iter()
-                        .map(|i| format!("file://{}.ts", generated[*i].original))
+                        .map(|i| format!("file://{}.mts", generated[*i].original))
                         .collect();
 
                     let batch_results = lsp_client.request_diagnostics_batch(&uris);
@@ -725,7 +725,7 @@ fn run_direct(args: &CheckArgs) {
 
                     for idx in &indices {
                         let g = &generated[*idx];
-                        let virtual_uri = format!("file://{}.ts", g.original);
+                        let virtual_uri = format!("file://{}.mts", g.original);
 
                         // Get diagnostics from batch result
                         let diagnostics = diag_map.get(&virtual_uri).cloned().unwrap_or_default();
@@ -743,103 +743,10 @@ fn run_direct(args: &CheckArgs) {
                                 _ => None,
                             });
 
-                            // Skip noise: module resolution errors (TS2307/TS2666)
-                            // In single-file mode, tsgo cannot resolve .vue imports,
-                            // path aliases (~/, ~~/, #imports, @/), or npm packages
+                            // Module resolution: fundamental limitation of single-file mode.
+                            // tsgo cannot resolve .vue imports, path aliases, or npm packages
+                            // without a full project context. This is NOT a virtual TS bug.
                             if matches!(code_num, Some(2307) | Some(2666)) {
-                                continue;
-                            }
-                            // Skip TS2552 ("Did you mean ...?") - always noise from TS2304 cascade
-                            if matches!(code_num, Some(2552)) {
-                                continue;
-                            }
-                            // Skip syntax/structural errors from virtual TS generation
-                            if matches!(
-                                code_num,
-                                Some(1005)  // ';' expected
-                                    | Some(1011)  // element access expression
-                                    | Some(1109)  // expression expected
-                                    | Some(1128)  // declaration or statement expected
-                                    | Some(1184)  // modifiers cannot appear here
-                                    | Some(1343)  // module declaration
-                                    | Some(1361)  // import type used as value
-                                    | Some(1434)  // unexpected keyword
-                                    | Some(2300)  // duplicate identifier (virtual TS)
-                                    | Some(2362)  // left-hand side of arithmetic
-                                    | Some(2448)  // block-scoped variable before declaration
-                                    | Some(2550)  // lib target too low
-                                    | Some(2614)  // module has no exported member (.vue)
-                                    | Some(2693)  // type used as value
-                                    | Some(2705)  // async requires Promise (ES5)
-                                    | Some(2712) // dynamic import requires Promise (ES5)
-                            ) {
-                                continue;
-                            }
-                            // Skip TS2304 for virtual TS internal names, type-level leaks,
-                            // and generic type parameters that leak into value space
-                            if matches!(code_num, Some(2304)) {
-                                let is_internal = diag.message.contains("'__P'")
-                                    || diag.message.contains("'__A'")
-                                    || diag.message.contains("'infer'")
-                                    || diag.message.contains("'as'")
-                                    || diag.message.contains("'t_Props_")
-                                    || diag.message.contains("'Props'")
-                                    || diag.message.contains("'State'")
-                                    || diag.message.contains("'$field'");
-                                if is_internal {
-                                    continue;
-                                }
-                                // Filter generic type params (single uppercase letter)
-                                if let Some(name) = diag.message.split('\'').nth(1) {
-                                    if name.len() == 1
-                                        && name
-                                            .chars()
-                                            .next()
-                                            .is_some_and(|c| c.is_ascii_uppercase())
-                                    {
-                                        continue;
-                                    }
-                                }
-                            }
-                            // Skip unused variable/label/destructure warnings in virtual TS
-                            // Script setup bindings may appear unused in virtual TS
-                            // even when they're used in template expressions
-                            if matches!(
-                                code_num,
-                                Some(6133)  // declared but never read
-                                    | Some(6192)  // all imports unused (type-only imports)
-                                    | Some(6196)  // declared but never used
-                                    | Some(6198)  // all destructured elements unused
-                                    | Some(7028) // unused label
-                            ) {
-                                continue;
-                            }
-                            // Skip implicit any warnings (type info unavailable in single-file mode)
-                            if matches!(code_num, Some(7043) | Some(7044)) {
-                                continue;
-                            }
-                            // Skip redeclare block-scoped variable (virtual TS slot/scope collisions)
-                            if matches!(code_num, Some(2451)) {
-                                continue;
-                            }
-                            // Skip "Expected 0 arguments" for auto-imported components (declared as any)
-                            if matches!(code_num, Some(2554))
-                                && diag.message.contains("Expected 0 arguments")
-                            {
-                                continue;
-                            }
-                            // Skip ImportMeta property errors for project-specific augmentations.
-                            // Common properties (client, server, env, hot) are covered by
-                            // declare global augmentation in virtual TS, but project-specific
-                            // properties (e.g., vfFeatures) cannot be known without reading
-                            // the project's type declarations.
-                            if matches!(code_num, Some(2339)) && diag.message.contains("ImportMeta")
-                            {
-                                continue;
-                            }
-                            if matches!(code_num, Some(2578))
-                                && diag.message.contains("@ts-expect-error")
-                            {
                                 continue;
                             }
 

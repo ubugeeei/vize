@@ -181,6 +181,7 @@ impl Analyzer {
         let mut slot_scope: Option<(
             CompactString,
             vize_carton::SmallVec<[CompactString; 4]>,
+            Option<CompactString>,
             u32,
         )> = None;
 
@@ -267,35 +268,40 @@ impl Analyzer {
                         })
                         .unwrap_or_else(|| CompactString::const_new("default"));
 
-                    let prop_names = if let Some(ref exp) = dir.exp {
+                    let (prop_names, props_pattern) = if let Some(ref exp) = dir.exp {
                         let content = match exp {
                             ExpressionNode::Simple(s) => s.content.as_str(),
                             ExpressionNode::Compound(c) => c.loc.source.as_str(),
                         };
-                        extract_slot_props(content)
+                        (
+                            extract_slot_props(content),
+                            Some(CompactString::new(content)),
+                        )
                     } else {
-                        smallvec![]
+                        (smallvec![], None)
                     };
 
-                    slot_scope = Some((slot_name, prop_names, dir.loc.start.offset));
+                    slot_scope =
+                        Some((slot_name, prop_names, props_pattern, dir.loc.start.offset));
                 }
             }
         }
 
         // Enter v-slot scope if present
-        let slot_vars_count = if let Some((slot_name, prop_names, offset)) = slot_scope {
-            let count = prop_names.len();
+        let slot_vars_count =
+            if let Some((slot_name, prop_names, props_pattern, offset)) = slot_scope {
+                let count = prop_names.len();
 
-            if count > 0 || self.options.analyze_template_scopes {
-                self.summary.scopes.enter_v_slot_scope(
-                    VSlotScopeData {
-                        name: slot_name,
-                        props_pattern: None,
-                        prop_names: prop_names.iter().cloned().collect(),
-                    },
-                    offset,
-                    el.loc.end.offset,
-                );
+                if count > 0 || self.options.analyze_template_scopes {
+                    self.summary.scopes.enter_v_slot_scope(
+                        VSlotScopeData {
+                            name: slot_name,
+                            props_pattern,
+                            prop_names: prop_names.iter().cloned().collect(),
+                        },
+                        offset,
+                        el.loc.end.offset,
+                    );
 
                 for name in prop_names {
                     scope_vars.push(name);
