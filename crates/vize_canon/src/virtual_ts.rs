@@ -898,16 +898,13 @@ fn generate_scope_closures(
             continue;
         }
 
-        generate_scope_node(
-            ts,
-            mappings,
+        let ctx = ScopeGenContext {
             summary,
-            &expressions_by_scope,
-            &children_map,
-            scope,
+            expressions_by_scope: &expressions_by_scope,
+            children_map: &children_map,
             template_offset,
-            "  ",
-        );
+        };
+        generate_scope_node(ts, mappings, &ctx, scope, "  ");
     }
 
     // Handle undefined references
@@ -1039,16 +1036,13 @@ fn generate_scope_closures(
             if !root_vfor_scope_ids.contains(&scope.id.as_u32()) {
                 continue;
             }
-            generate_vfor_component_props_recursive(
-                ts,
-                mappings,
+            let props_ctx = VForPropsContext {
                 summary,
-                &components_by_scope,
-                &children_map,
-                scope,
+                components_by_scope: &components_by_scope,
+                children_map: &children_map,
                 template_offset,
-                "  ",
-            );
+            };
+            generate_vfor_component_props_recursive(ts, mappings, &props_ctx, scope, "  ");
         }
     }
 }
@@ -1056,8 +1050,17 @@ fn generate_scope_closures(
 /// Context for recursive scope generation, bundling shared parameters.
 struct ScopeGenContext<'a> {
     summary: &'a Croquis,
-    expressions_by_scope: std::collections::HashMap<u32, Vec<&'a vize_croquis::TemplateExpression>>,
-    children_map: std::collections::HashMap<u32, Vec<ScopeId>>,
+    expressions_by_scope:
+        &'a std::collections::HashMap<u32, Vec<&'a vize_croquis::TemplateExpression>>,
+    children_map: &'a std::collections::HashMap<u32, Vec<ScopeId>>,
+    template_offset: u32,
+}
+
+/// Context for recursive component prop checks inside v-for scopes.
+struct VForPropsContext<'a> {
+    summary: &'a Croquis,
+    components_by_scope: &'a std::collections::HashMap<u32, Vec<(usize, &'a ComponentUsage)>>,
+    children_map: &'a std::collections::HashMap<u32, Vec<ScopeId>>,
     template_offset: u32,
 }
 
@@ -1178,7 +1181,7 @@ fn generate_scope_node(
                 generate_event_handler_expressions(
                     ts,
                     mappings,
-                    &ctx.expressions_by_scope,
+                    ctx.expressions_by_scope,
                     scope_id,
                     data,
                     ctx.template_offset,
@@ -1193,7 +1196,7 @@ fn generate_scope_node(
                 generate_event_handler_expressions(
                     ts,
                     mappings,
-                    &ctx.expressions_by_scope,
+                    ctx.expressions_by_scope,
                     scope_id,
                     data,
                     ctx.template_offset,
@@ -1259,30 +1262,18 @@ fn generate_event_handler_expressions(
 fn generate_child_scopes(
     ts: &mut String,
     mappings: &mut Vec<VizeMapping>,
-    summary: &Croquis,
-    expressions_by_scope: &std::collections::HashMap<u32, Vec<&vize_croquis::TemplateExpression>>,
-    children_map: &std::collections::HashMap<u32, Vec<ScopeId>>,
+    ctx: &ScopeGenContext<'_>,
     parent_scope_id: u32,
-    template_offset: u32,
     indent: &str,
 ) {
-    if let Some(child_ids) = children_map.get(&parent_scope_id) {
+    if let Some(child_ids) = ctx.children_map.get(&parent_scope_id) {
         for &child_id in child_ids {
-            if let Some(child_scope) = summary.scopes.get_scope(child_id) {
+            if let Some(child_scope) = ctx.summary.scopes.get_scope(child_id) {
                 if matches!(
                     child_scope.kind,
                     ScopeKind::VFor | ScopeKind::VSlot | ScopeKind::EventHandler
                 ) {
-                    generate_scope_node(
-                        ts,
-                        mappings,
-                        summary,
-                        expressions_by_scope,
-                        children_map,
-                        child_scope,
-                        template_offset,
-                        indent,
-                    );
+                    generate_scope_node(ts, mappings, ctx, child_scope, indent);
                 }
             }
         }
@@ -1293,11 +1284,8 @@ fn generate_child_scopes(
 fn generate_vfor_component_props_recursive(
     ts: &mut String,
     mappings: &mut Vec<VizeMapping>,
-    summary: &Croquis,
-    components_by_scope: &std::collections::HashMap<u32, Vec<(usize, &ComponentUsage)>>,
-    children_map: &std::collections::HashMap<u32, Vec<ScopeId>>,
+    ctx: &VForPropsContext<'_>,
     scope: &Scope,
-    template_offset: u32,
     indent: &str,
 ) {
     let scope_id = scope.id.as_u32();
@@ -1331,32 +1319,29 @@ fn generate_vfor_component_props_recursive(
         ts.push_str(") => {\n");
 
         // Emit component prop checks for this scope
-        if let Some(usages) = components_by_scope.get(&scope_id) {
+        if let Some(usages) = ctx.components_by_scope.get(&scope_id) {
             for &(idx, usage) in usages {
                 generate_component_prop_checks(
                     ts,
                     mappings,
                     usage,
                     idx,
-                    template_offset,
+                    ctx.template_offset,
                     &inner_indent,
                 );
             }
         }
 
         // Recursively handle child v-for scopes
-        if let Some(child_ids) = children_map.get(&scope_id) {
+        if let Some(child_ids) = ctx.children_map.get(&scope_id) {
             for &child_id in child_ids {
-                if let Some(child_scope) = summary.scopes.get_scope(child_id) {
+                if let Some(child_scope) = ctx.summary.scopes.get_scope(child_id) {
                     if matches!(child_scope.kind, ScopeKind::VFor) {
                         generate_vfor_component_props_recursive(
                             ts,
                             mappings,
-                            summary,
-                            components_by_scope,
-                            children_map,
+                            ctx,
                             child_scope,
-                            template_offset,
                             &inner_indent,
                         );
                     }
