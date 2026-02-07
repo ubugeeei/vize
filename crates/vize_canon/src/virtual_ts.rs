@@ -691,7 +691,51 @@ pub fn generate_virtual_ts_with_offsets(
             let mut first = true;
             for name in summary.bindings.bindings.keys() {
                 // Skip bindings that are JS keywords or would cause syntax errors
-                if matches!(name.as_str(), "default" | "class" | "new" | "delete" | "void" | "typeof" | "in" | "instanceof" | "return" | "switch" | "case" | "break" | "continue" | "throw" | "try" | "catch" | "finally" | "if" | "else" | "for" | "while" | "do" | "with" | "var" | "let" | "const" | "function" | "this" | "super" | "import" | "export" | "yield" | "await" | "async" | "static" | "enum" | "implements" | "interface" | "package" | "private" | "protected" | "public") {
+                if matches!(
+                    name.as_str(),
+                    "default"
+                        | "class"
+                        | "new"
+                        | "delete"
+                        | "void"
+                        | "typeof"
+                        | "in"
+                        | "instanceof"
+                        | "return"
+                        | "switch"
+                        | "case"
+                        | "break"
+                        | "continue"
+                        | "throw"
+                        | "try"
+                        | "catch"
+                        | "finally"
+                        | "if"
+                        | "else"
+                        | "for"
+                        | "while"
+                        | "do"
+                        | "with"
+                        | "var"
+                        | "let"
+                        | "const"
+                        | "function"
+                        | "this"
+                        | "super"
+                        | "import"
+                        | "export"
+                        | "yield"
+                        | "await"
+                        | "async"
+                        | "static"
+                        | "enum"
+                        | "implements"
+                        | "interface"
+                        | "package"
+                        | "private"
+                        | "protected"
+                        | "public"
+                ) {
                     continue;
                 }
                 if !first {
@@ -1326,8 +1370,7 @@ fn generate_scope_node(
             // e.g., "(expr) as OptionSponsor[]" -> "(expr)" with type annotation
             let (source_expr, type_annotation) = strip_as_assertion(&data.source);
 
-            let is_simple_identifier =
-                source_expr.chars().all(|c| c.is_alphanumeric() || c == '_');
+            let is_simple_identifier = source_expr.chars().all(|c| c.is_alphanumeric() || c == '_');
             let element_type = if let Some(ref ta) = type_annotation {
                 // Use the asserted type's element type
                 format!("{}[number]", ta)
@@ -1560,8 +1603,7 @@ fn generate_vfor_component_props_recursive(
     if let ScopeData::VFor(data) = scope.data() {
         let (source_expr, type_annotation) = strip_as_assertion(&data.source);
 
-        let is_simple_identifier =
-            source_expr.chars().all(|c| c.is_alphanumeric() || c == '_');
+        let is_simple_identifier = source_expr.chars().all(|c| c.is_alphanumeric() || c == '_');
         let element_type = if let Some(ref ta) = type_annotation {
             format!("{}[number]", ta)
         } else if is_simple_identifier {
