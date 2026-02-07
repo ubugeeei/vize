@@ -729,7 +729,7 @@ fn run_direct(args: &CheckArgs) {
                                     | Some(2614)  // module has no exported member (.vue)
                                     | Some(2693)  // type used as value
                                     | Some(2705)  // async requires Promise (ES5)
-                                    | Some(2712)  // dynamic import requires Promise (ES5)
+                                    | Some(2712) // dynamic import requires Promise (ES5)
                             ) {
                                 continue;
                             }
@@ -748,13 +748,12 @@ fn run_direct(args: &CheckArgs) {
                                     continue;
                                 }
                                 // Filter generic type params (single uppercase letter)
-                                if let Some(name) = diag
-                                    .message
-                                    .split('\'')
-                                    .nth(1)
-                                {
+                                if let Some(name) = diag.message.split('\'').nth(1) {
                                     if name.len() == 1
-                                        && name.chars().next().map_or(false, |c| c.is_ascii_uppercase())
+                                        && name
+                                            .chars()
+                                            .next()
+                                            .is_some_and(|c| c.is_ascii_uppercase())
                                     {
                                         continue;
                                     }
@@ -766,9 +765,10 @@ fn run_direct(args: &CheckArgs) {
                             if matches!(
                                 code_num,
                                 Some(6133)  // declared but never read
+                                    | Some(6192)  // all imports unused (type-only imports)
                                     | Some(6196)  // declared but never used
                                     | Some(6198)  // all destructured elements unused
-                                    | Some(7028)  // unused label
+                                    | Some(7028) // unused label
                             ) {
                                 continue;
                             }
@@ -787,8 +787,7 @@ fn run_direct(args: &CheckArgs) {
                                 continue;
                             }
                             // Skip ImportMeta property errors (custom augmented types)
-                            if matches!(code_num, Some(2339))
-                                && diag.message.contains("ImportMeta")
+                            if matches!(code_num, Some(2339)) && diag.message.contains("ImportMeta")
                             {
                                 continue;
                             }

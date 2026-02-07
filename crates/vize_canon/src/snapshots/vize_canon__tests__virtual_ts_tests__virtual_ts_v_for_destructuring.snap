@@ -9,6 +9,10 @@ expression: virtual_ts
 
 // ========== Module Scope (imports) ==========
 import { ref } from 'vue'
+interface Item {
+  id: number
+  name: string
+}
 
 // ========== Setup Scope ==========
 function __setup() {
@@ -28,13 +32,9 @@ function __setup() {
   // User setup code
   
   
-  interface Item {
-    id: number
-    name: string
-  }
   
   const items = ref<Item[]>([])
-  // @vize-map: 1593:1689 -> 0:106
+  // @vize-map: 1640:1681 -> 0:106
 
   // ========== Template Scope (inherits from setup) ==========
   (function __template() {

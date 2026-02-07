@@ -8,6 +8,10 @@ expression: virtual_ts
 // ============================================
 
 // ========== Module Scope (imports) ==========
+interface Emits {
+  (e: 'update', value: number): void
+  (e: 'close'): void
+}
 
 // ========== Setup Scope ==========
 function __setup() {
@@ -26,17 +30,13 @@ function __setup() {
 
   // User setup code
   
-  interface Emits {
-    (e: 'update', value: number): void
-    (e: 'close'): void
-  }
   
   const emit = defineEmits<Emits>()
   
   function handleClick() {
     emit('update', 42)
   }
-  // @vize-map: 1567:1752 -> 0:163
+  // @vize-map: 1645:1744 -> 0:163
 
   // ========== Template Scope (inherits from setup) ==========
   (function __template() {

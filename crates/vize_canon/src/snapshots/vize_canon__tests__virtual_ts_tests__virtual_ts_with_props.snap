@@ -8,6 +8,10 @@ expression: virtual_ts
 // ============================================
 
 // ========== Module Scope (imports) ==========
+interface Props {
+  title: string
+  count?: number
+}
 
 // ========== Setup Scope ==========
 function __setup() {
@@ -26,13 +30,9 @@ function __setup() {
 
   // User setup code
   
-  interface Props {
-    title: string
-    count?: number
-  }
   
   const props = defineProps<Props>()
-  // @vize-map: 1567:1671 -> 0:90
+  // @vize-map: 1620:1663 -> 0:90
 
   // ========== Template Scope (inherits from setup) ==========
   (function __template() {

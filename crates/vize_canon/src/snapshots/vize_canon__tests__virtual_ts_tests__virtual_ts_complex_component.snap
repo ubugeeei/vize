@@ -9,6 +9,13 @@ expression: virtual_ts
 
 // ========== Module Scope (imports) ==========
 import { ref, computed, watch } from 'vue'
+interface Props {
+  initialCount?: number
+  title: string
+}
+interface Emits {
+  (e: 'change', value: number): void
+}
 
 // ========== Setup Scope ==========
 function __setup() {
@@ -28,14 +35,7 @@ function __setup() {
   // User setup code
   
   
-  interface Props {
-    initialCount?: number
-    title: string
-  }
   
-  interface Emits {
-    (e: 'change', value: number): void
-  }
   
   const props = withDefaults(defineProps<Props>(), {
     initialCount: 0
@@ -54,7 +54,7 @@ function __setup() {
   watch(count, (newVal) => {
     console.log('Count changed:', newVal)
   })
-  // @vize-map: 1610:2124 -> 0:501
+  // @vize-map: 1727:2110 -> 0:501
 
   // ========== Template Scope (inherits from setup) ==========
   (function __template() {
