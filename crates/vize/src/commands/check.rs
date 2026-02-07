@@ -760,17 +760,36 @@ fn run_direct(args: &CheckArgs) {
                                     }
                                 }
                             }
-                            if matches!(code_num, Some(2300))
-                                && (diag.message.contains("component")
-                                    || diag.message.contains("VueComponent")
-                                    || diag.message.contains("_default"))
+                            // Skip unused variable/label/destructure warnings in virtual TS
+                            // Script setup bindings may appear unused in virtual TS
+                            // even when they're used in template expressions
+                            if matches!(
+                                code_num,
+                                Some(6133)  // declared but never read
+                                    | Some(6196)  // declared but never used
+                                    | Some(6198)  // all destructured elements unused
+                                    | Some(7028)  // unused label
+                            ) {
+                                continue;
+                            }
+                            // Skip implicit any warnings (type info unavailable in single-file mode)
+                            if matches!(code_num, Some(7043) | Some(7044)) {
+                                continue;
+                            }
+                            // Skip redeclare block-scoped variable (virtual TS slot/scope collisions)
+                            if matches!(code_num, Some(2451)) {
+                                continue;
+                            }
+                            // Skip "Expected 0 arguments" for auto-imported components (declared as any)
+                            if matches!(code_num, Some(2554))
+                                && diag.message.contains("Expected 0 arguments")
                             {
                                 continue;
                             }
-                            // Skip unused variable warnings (TS6133/TS6196) in virtual TS
-                            // Script setup bindings may appear unused in virtual TS
-                            // even when they're used in template expressions
-                            if matches!(code_num, Some(6133) | Some(6196)) {
+                            // Skip ImportMeta property errors (custom augmented types)
+                            if matches!(code_num, Some(2339))
+                                && diag.message.contains("ImportMeta")
+                            {
                                 continue;
                             }
                             if matches!(code_num, Some(2578))

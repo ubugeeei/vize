@@ -81,6 +81,10 @@ function __setup() {
   // Access via `propName` or `props.propName`
   const props: Props = {} as Props;
   void props; // Mark as used to avoid TS6133
+  const initialCount = props["initialCount"];
+  void initialCount;
+  const title = props["title"];
+  void title;
 
   void (props.title); // Interpolation
   // @vize-map: expr -> 582:593
