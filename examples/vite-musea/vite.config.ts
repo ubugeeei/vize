@@ -8,6 +8,7 @@ export default defineConfig({
     musea({
       include: ['src/**/*.art.vue'],
       basePath: '/__musea__',
+      inlineArt: true,
     }),
   ],
 })

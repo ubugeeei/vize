@@ -59,3 +59,26 @@ defineProps<{
   cursor: not-allowed;
 }
 </style>
+
+<art title="Button (Inline)" category="Inline Components" status="ready">
+  <variant name="Default" default>
+    <Self>Default Button</Self>
+  </variant>
+  <variant name="Primary">
+    <Self variant="primary">Primary Button</Self>
+  </variant>
+  <variant name="Secondary">
+    <Self variant="secondary">Secondary Button</Self>
+  </variant>
+  <variant name="Disabled">
+    <Self disabled>Disabled Button</Self>
+  </variant>
+  <variant name="All Variants" skip-vrt>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap">
+      <Self>Default</Self>
+      <Self variant="primary">Primary</Self>
+      <Self variant="secondary">Secondary</Self>
+      <Self disabled>Disabled</Self>
+    </div>
+  </variant>
+</art>

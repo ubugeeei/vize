@@ -33,6 +33,14 @@ export interface MuseaOptions {
   storybookOutDir?: string;
 
   /**
+   * Enable inline <art> blocks in regular .vue SFC files.
+   * When enabled, regular .vue files containing <art> blocks will be
+   * included in the gallery. Use <Self> to reference the host component.
+   * @default false
+   */
+  inlineArt?: boolean;
+
+  /**
    * VRT (Visual Regression Testing) configuration.
    */
   vrt?: VrtOptions;
@@ -115,6 +123,10 @@ export interface ArtFileInfo {
   hasScript: boolean;
   /** Number of style blocks */
   styleCount: number;
+  /** Whether this art comes from an inline <art> block in a regular .vue file */
+  isInline?: boolean;
+  /** For inline art: absolute path to the host .vue component file */
+  componentPath?: string;
 }
 
 /**
