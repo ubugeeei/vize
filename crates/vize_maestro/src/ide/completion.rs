@@ -34,11 +34,17 @@ impl CompletionService {
             return Self::complete_art(ctx);
         }
 
+        // Check if cursor is inside <art> block in a regular .vue file
+        if matches!(ctx.block_type, Some(BlockType::Art(_))) {
+            return Self::complete_inline_art(ctx);
+        }
+
         let items = match ctx.block_type? {
             BlockType::Template => Self::complete_template(ctx),
             BlockType::Script => Self::complete_script(ctx, false),
             BlockType::ScriptSetup => Self::complete_script(ctx, true),
             BlockType::Style(index) => Self::complete_style(ctx, index),
+            BlockType::Art(_) => unreachable!(), // handled above
         };
 
         if items.is_empty() {
@@ -59,6 +65,11 @@ impl CompletionService {
             return Self::complete_art(ctx);
         }
 
+        // Check if cursor is inside <art> block in a regular .vue file
+        if matches!(ctx.block_type, Some(BlockType::Art(_))) {
+            return Self::complete_inline_art(ctx);
+        }
+
         let block_type = ctx.block_type?;
 
         // Try tsgo completion first
@@ -68,6 +79,7 @@ impl CompletionService {
                 BlockType::Script => Self::complete_script_with_tsgo(ctx, false, &bridge).await,
                 BlockType::ScriptSetup => Self::complete_script_with_tsgo(ctx, true, &bridge).await,
                 BlockType::Style(_) => vec![],
+                BlockType::Art(_) => unreachable!(), // handled above
             };
 
             if !tsgo_items.is_empty() {
@@ -82,6 +94,7 @@ impl CompletionService {
                         v
                     }
                     BlockType::Style(_) => Self::vue_css_completions(),
+                    BlockType::Art(_) => unreachable!(), // handled above
                 });
 
                 return Some(CompletionResponse::Array(items));
@@ -272,6 +285,47 @@ impl CompletionService {
             None
         } else {
             Some(CompletionResponse::Array(items))
+        }
+    }
+
+    /// Get completions for inline <art> blocks in regular .vue files.
+    fn complete_inline_art(ctx: &IdeContext) -> Option<CompletionResponse> {
+        let mut items = Vec::new();
+
+        let content = &ctx.content;
+        let offset = ctx.offset;
+        let before_cursor = &content[..offset.min(content.len())];
+
+        if is_inside_art_tag(before_cursor) {
+            items.extend(Self::art_attribute_completions());
+        } else if is_inside_variant_tag(before_cursor) {
+            items.extend(Self::variant_attribute_completions());
+        } else if should_suggest_variant_block(before_cursor) {
+            items.extend(Self::variant_block_completions());
+            // Inside variant content, suggest <Self> for referencing the host component
+            items.push(Self::self_component_completion());
+        }
+
+        if items.is_empty() {
+            None
+        } else {
+            Some(CompletionResponse::Array(items))
+        }
+    }
+
+    /// Completion item for <Self> component reference in inline art blocks.
+    fn self_component_completion() -> CompletionItem {
+        CompletionItem {
+            label: "Self".to_string(),
+            kind: Some(CompletionItemKind::CLASS),
+            detail: Some("Reference to the host component".to_string()),
+            insert_text: Some("<Self $1>$0</Self>".to_string()),
+            insert_text_format: Some(InsertTextFormat::SNIPPET),
+            documentation: Some(Documentation::MarkupContent(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: "**`<Self>`**\n\nReferences the host component in inline art blocks.\nReplaced with the component name at build time.".to_string(),
+            })),
+            ..Default::default()
         }
     }
 

@@ -10,14 +10,14 @@ const props = defineProps<{
 const route = useRoute()
 const router = useRouter()
 
-const categories = computed(() => {
+const categoryList = computed(() => {
   const map = new Map<string, ArtFileInfo[]>()
   for (const art of props.arts) {
     const cat = art.metadata.category || 'Components'
     if (!map.has(cat)) map.set(cat, [])
     map.get(cat)!.push(art)
   }
-  return map
+  return Array.from(map.entries())
 })
 
 const selectedPath = computed(() => route.params.path as string | undefined)
@@ -63,7 +63,7 @@ function selectArt(art: ArtFileInfo) {
     </div>
 
     <div
-      v-for="[category, items] in categories"
+      v-for="[category, items] in categoryList"
       :key="category"
       class="sidebar-section"
     >
@@ -103,7 +103,11 @@ function selectArt(art: ArtFileInfo) {
 }
 
 .sidebar-section {
-  padding: 0.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.sidebar-section + .sidebar-section {
+  padding-top: 0;
 }
 
 .sidebar-home-link {
@@ -171,8 +175,8 @@ function selectArt(art: ArtFileInfo) {
 .art-item {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  padding: 0.5rem 0.75rem 0.5rem 1.75rem;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem 0.375rem 2.25rem;
   border-radius: var(--musea-radius-sm);
   cursor: pointer;
   font-size: 0.8125rem;
@@ -184,11 +188,11 @@ function selectArt(art: ArtFileInfo) {
 .art-item::before {
   content: '';
   position: absolute;
-  left: 0.75rem;
+  left: 1.25rem;
   top: 50%;
   transform: translateY(-50%);
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--musea-border);
   transition: background var(--musea-transition);

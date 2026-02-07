@@ -63,3 +63,25 @@ defineProps<{
   color: #1e40af;
 }
 </style>
+
+<art title="Badge" category="Components" status="ready" tags="badge,tag,label">
+  <variant name="Default" default>
+    <Self>Default</Self>
+  </variant>
+  <variant name="Variants">
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center">
+      <Self>Default</Self>
+      <Self variant="success">Success</Self>
+      <Self variant="warning">Warning</Self>
+      <Self variant="error">Error</Self>
+      <Self variant="info">Info</Self>
+    </div>
+  </variant>
+  <variant name="Sizes">
+    <div style="display: flex; gap: 0.5rem; align-items: center">
+      <Self size="sm" variant="info">Small</Self>
+      <Self size="md" variant="info">Medium</Self>
+      <Self size="lg" variant="info">Large</Self>
+    </div>
+  </variant>
+</art>

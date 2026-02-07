@@ -7,6 +7,8 @@ import StatusBadge from '../components/StatusBadge.vue'
 const { arts, categories } = useArts()
 const router = useRouter()
 
+const categoryList = computed(() => Array.from(categories.value.entries()))
+
 const stats = computed(() => ({
   total: arts.value.length,
   variants: arts.value.reduce((sum, a) => sum + a.variants.length, 0),
@@ -42,7 +44,7 @@ function goToArt(path: string) {
     </div>
 
     <div
-      v-for="[category, items] in categories"
+      v-for="[category, items] in categoryList"
       :key="category"
       class="home-category"
     >

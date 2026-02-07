@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [
     vize(),
     musea({
-      include: ['src/**/*.art.vue'],
+      include: ['src/**/*.vue'],
       basePath: '/__musea__',
       inlineArt: true,
     }),

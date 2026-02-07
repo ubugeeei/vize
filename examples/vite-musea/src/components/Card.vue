@@ -95,3 +95,31 @@ defineProps<{
   gap: 0.5rem;
 }
 </style>
+
+<art title="Card" category="Layout" status="ready" tags="card,container,layout">
+  <variant name="Default" default>
+    <Self title="Getting Started" description="Learn how to build with Musea components.">
+      <button class="btn btn--primary">Read More</button>
+    </Self>
+  </variant>
+  <variant name="With Image">
+    <Self
+      title="Featured"
+      description="A card with an image header for rich content display."
+      image="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+    >
+      <button class="btn btn--primary">View</button>
+      <button class="btn">Share</button>
+    </Self>
+  </variant>
+  <variant name="Outlined">
+    <Self title="Outlined Card" description="A card with an outlined style." variant="outlined">
+      <button class="btn">Action</button>
+    </Self>
+  </variant>
+  <variant name="Elevated">
+    <Self title="Elevated Card" description="A card with elevation shadow." variant="elevated">
+      <button class="btn btn--primary">Action</button>
+    </Self>
+  </variant>
+</art>

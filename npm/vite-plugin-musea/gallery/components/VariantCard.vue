@@ -12,6 +12,18 @@ const props = defineProps<{
   variant: ArtVariant
 }>()
 
+const copied = ref(false)
+
+async function copyTemplate() {
+  try {
+    await navigator.clipboard.writeText(props.variant.template)
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 2000)
+  } catch {
+    // fallback
+  }
+}
+
 const previewUrl = computed(() => getPreviewUrl(props.artPath, props.variant.name))
 
 const iframeRef = ref<HTMLIFrameElement | null>(null)
@@ -108,6 +120,20 @@ watch(measureEnabled, (enabled) => {
         <span v-if="variant.isDefault" class="variant-badge">Default</span>
       </div>
       <div class="variant-actions">
+        <button
+          class="variant-action-btn"
+          :title="copied ? 'Copied!' : 'Copy template'"
+          :class="{ active: copied }"
+          @click="copyTemplate"
+        >
+          <svg v-if="!copied" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </button>
         <button
           class="variant-action-btn"
           title="View source"

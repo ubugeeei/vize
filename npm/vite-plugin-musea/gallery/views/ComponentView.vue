@@ -18,8 +18,9 @@ const { getArt, load } = useArts()
 const { events, init: initActions, clear: clearActions } = useActions()
 const { gridDensity } = useAddons()
 
-const activeTab = ref<'variants' | 'props' | 'docs' | 'a11y' | 'actions'>('variants')
+const activeTab = ref<'variants' | 'props' | 'docs' | 'a11y'>('variants')
 const actionCount = computed(() => events.value.length)
+const actionsExpanded = ref(false)
 
 const gridClass = computed(() => `gallery-grid density-${gridDensity.value}`)
 
@@ -105,14 +106,6 @@ watch(artPath, () => {
         A11y
         <A11yBadge :art-path="art.path" />
       </button>
-      <button
-        class="tab-btn"
-        :class="{ active: activeTab === 'actions' }"
-        @click="activeTab = 'actions'"
-      >
-        Actions
-        <span v-if="actionCount > 0" class="action-count-badge">{{ actionCount > 99 ? '99+' : actionCount }}</span>
-      </button>
     </div>
 
     <div class="component-content">
@@ -128,6 +121,7 @@ watch(artPath, () => {
       <PropsPanel
         v-if="activeTab === 'props'"
         :art-path="art.path"
+        :default-variant-name="art.variants.find(v => v.isDefault)?.name || art.variants[0]?.name"
       />
 
       <DocumentationPanel
@@ -141,7 +135,20 @@ watch(artPath, () => {
         </p>
       </div>
 
-      <ActionsPanel v-if="activeTab === 'actions'" />
+    </div>
+
+    <!-- Actions Footer Panel -->
+    <div class="actions-footer" :class="{ expanded: actionsExpanded }">
+      <button class="actions-footer-toggle" @click="actionsExpanded = !actionsExpanded">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <polyline :points="actionsExpanded ? '18 15 12 9 6 15' : '6 9 12 15 18 9'" />
+        </svg>
+        Actions
+        <span v-if="actionCount > 0" class="action-count-badge">{{ actionCount > 99 ? '99+' : actionCount }}</span>
+      </button>
+      <div v-if="actionsExpanded" class="actions-footer-content">
+        <ActionsPanel />
+      </div>
     </div>
 
     <FullscreenPreview />
@@ -293,6 +300,39 @@ watch(artPath, () => {
   padding: 0.125rem 0.375rem;
   border-radius: 4px;
   font-family: var(--musea-font-mono);
+}
+
+.actions-footer {
+  margin-top: 1.5rem;
+  border: 1px solid var(--musea-border);
+  border-radius: var(--musea-radius-md);
+  overflow: hidden;
+}
+
+.actions-footer-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.625rem 1rem;
+  background: var(--musea-bg-secondary);
+  border: none;
+  color: var(--musea-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--musea-transition);
+}
+
+.actions-footer-toggle:hover {
+  background: var(--musea-bg-tertiary);
+  color: var(--musea-text);
+}
+
+.actions-footer-content {
+  border-top: 1px solid var(--musea-border);
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .component-not-found {

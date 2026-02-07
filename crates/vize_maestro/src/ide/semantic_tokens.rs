@@ -172,6 +172,13 @@ impl SemanticTokensService {
             Self::collect_style_tokens(&style.content, style.loc.start_line as u32, &mut tokens);
         }
 
+        // Collect tokens from inline <art> custom blocks
+        for custom in &descriptor.custom_blocks {
+            if custom.block_type == "art" {
+                Self::collect_inline_art_tokens(content, &mut tokens, &custom.loc);
+            }
+        }
+
         // Sort by position
         tokens.sort_by(|a, b| a.line.cmp(&b.line).then(a.start.cmp(&b.start)));
 
@@ -1211,6 +1218,196 @@ impl SemanticTokensService {
             }
         }
     }
+    /// Collect semantic tokens for inline <art> blocks in regular .vue files.
+    ///
+    /// Scans the specified range of the content for <art>, </art>, <variant>,
+    /// </variant> tags, and art-specific attributes.
+    fn collect_inline_art_tokens(
+        content: &str,
+        tokens: &mut Vec<AbsoluteToken>,
+        loc: &vize_atelier_sfc::BlockLocation,
+    ) {
+        let range_start = loc.tag_start;
+        let range_end = loc.end;
+
+        // Ensure we don't go out of bounds
+        let range_end = range_end.min(content.len());
+        if range_start >= range_end {
+            return;
+        }
+
+        let slice = &content[range_start..range_end];
+
+        // Collect <art> / </art> tokens
+        {
+            let mut pos = 0;
+            while let Some(start) = slice[pos..].find("<art") {
+                let abs_pos = range_start + pos + start;
+                let next_pos = pos + start + 4;
+                if next_pos < slice.len() {
+                    let next_char = slice.as_bytes()[next_pos];
+                    if next_char == b' '
+                        || next_char == b'\n'
+                        || next_char == b'\t'
+                        || next_char == b'>'
+                    {
+                        let (line, col) = Self::offset_to_line_col(content, abs_pos);
+                        tokens.push(AbsoluteToken {
+                            line,
+                            start: col,
+                            length: 4,
+                            token_type: TokenType::Keyword as u32,
+                            modifiers: TokenModifier::encode(&[TokenModifier::Declaration]),
+                        });
+                    }
+                }
+                pos = next_pos;
+            }
+
+            pos = 0;
+            while let Some(start) = slice[pos..].find("</art>") {
+                let abs_pos = range_start + pos + start;
+                let (line, col) = Self::offset_to_line_col(content, abs_pos);
+                tokens.push(AbsoluteToken {
+                    line,
+                    start: col,
+                    length: 6,
+                    token_type: TokenType::Keyword as u32,
+                    modifiers: 0,
+                });
+                pos += start + 6;
+            }
+        }
+
+        // Collect <variant> / </variant> tokens
+        {
+            let mut pos = 0;
+            while let Some(start) = slice[pos..].find("<variant") {
+                let abs_pos = range_start + pos + start;
+                let next_pos = pos + start + 8;
+                if next_pos < slice.len() {
+                    let next_char = slice.as_bytes()[next_pos];
+                    if next_char == b' '
+                        || next_char == b'\n'
+                        || next_char == b'\t'
+                        || next_char == b'>'
+                    {
+                        let (line, col) = Self::offset_to_line_col(content, abs_pos);
+                        tokens.push(AbsoluteToken {
+                            line,
+                            start: col,
+                            length: 8,
+                            token_type: TokenType::Class as u32,
+                            modifiers: TokenModifier::encode(&[TokenModifier::Declaration]),
+                        });
+                    }
+                }
+                pos = next_pos;
+            }
+
+            pos = 0;
+            while let Some(start) = slice[pos..].find("</variant>") {
+                let abs_pos = range_start + pos + start;
+                let (line, col) = Self::offset_to_line_col(content, abs_pos);
+                tokens.push(AbsoluteToken {
+                    line,
+                    start: col,
+                    length: 10,
+                    token_type: TokenType::Class as u32,
+                    modifiers: 0,
+                });
+                pos += start + 10;
+            }
+        }
+
+        // Collect art-specific attribute tokens in the slice
+        let art_attrs = [
+            "title",
+            "description",
+            "component",
+            "category",
+            "tags",
+            "status",
+            "order",
+        ];
+        let variant_attrs = ["name", "args", "viewport", "skip-vrt"];
+
+        for attr in art_attrs.iter().chain(variant_attrs.iter()) {
+            let pattern_eq = format!("{}=", attr);
+            let mut pos = 0;
+            while let Some(start) = slice[pos..].find(&pattern_eq) {
+                let rel_pos = pos + start;
+                let abs_pos = range_start + rel_pos;
+
+                if rel_pos > 0 {
+                    let before = slice.as_bytes()[rel_pos - 1];
+                    if before == b' ' || before == b'\n' || before == b'\t' {
+                        let (line, col) = Self::offset_to_line_col(content, abs_pos);
+                        tokens.push(AbsoluteToken {
+                            line,
+                            start: col,
+                            length: attr.len() as u32,
+                            token_type: TokenType::Property as u32,
+                            modifiers: 0,
+                        });
+
+                        // Highlight string value
+                        let value_start = rel_pos + attr.len() + 1;
+                        if value_start < slice.len() {
+                            let quote_char = slice.as_bytes()[value_start];
+                            if quote_char == b'"' || quote_char == b'\'' {
+                                if let Some(end) =
+                                    slice[value_start + 1..].find(quote_char as char)
+                                {
+                                    let abs_val = range_start + value_start;
+                                    let (val_line, val_col) =
+                                        Self::offset_to_line_col(content, abs_val);
+                                    tokens.push(AbsoluteToken {
+                                        line: val_line,
+                                        start: val_col,
+                                        length: (end + 2) as u32,
+                                        token_type: TokenType::String as u32,
+                                        modifiers: 0,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+                pos = rel_pos + attr.len();
+            }
+        }
+
+        // Highlight 'default' boolean attribute
+        {
+            let mut pos = 0;
+            while let Some(start) = slice[pos..].find(" default") {
+                let rel_pos = pos + start + 1; // skip leading space
+                let abs_pos = range_start + rel_pos;
+                let after_pos = rel_pos + 7;
+
+                if after_pos < slice.len() {
+                    let after = slice.as_bytes()[after_pos];
+                    if after == b' '
+                        || after == b'>'
+                        || after == b'\n'
+                        || after == b'\t'
+                        || after == b'/'
+                    {
+                        let (line, col) = Self::offset_to_line_col(content, abs_pos);
+                        tokens.push(AbsoluteToken {
+                            line,
+                            start: col,
+                            length: 7,
+                            token_type: TokenType::Modifier as u32,
+                            modifiers: 0,
+                        });
+                    }
+                }
+                pos = rel_pos + 7;
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1452,5 +1649,37 @@ const count = ref(0)
         // - todo (variable) x2
         // - || (operator)
         assert!(tokens.len() >= 7, "Expected at least 7 tokens");
+    }
+
+    #[test]
+    fn test_inline_art_tokens_in_vue() {
+        let content = r#"<template>
+  <div>test</div>
+</template>
+
+<script setup>
+const x = 1
+</script>
+
+<art title="Button" component="./Button.vue">
+  <variant name="Primary" default>
+    <Button>Click</Button>
+  </variant>
+</art>"#;
+
+        let uri = tower_lsp::lsp_types::Url::parse("file:///test.vue").unwrap();
+        let result = SemanticTokensService::get_tokens(content, &uri);
+        assert!(result.is_some());
+
+        if let Some(SemanticTokensResult::Tokens(tokens)) = result {
+            assert!(!tokens.data.is_empty(), "Should have inline art tokens");
+
+            // Verify we have enough tokens (at least art/variant tags + attributes)
+            assert!(
+                tokens.data.len() >= 4,
+                "Expected at least 4 tokens for inline art, got {}",
+                tokens.data.len()
+            );
+        }
     }
 }

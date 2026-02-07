@@ -68,3 +68,21 @@ defineEmits<{
   font-size: 0.75rem;
 }
 </style>
+
+<art title="Input" category="Forms" status="ready" tags="input,form,text">
+  <variant name="Default" default>
+    <Self placeholder="Enter text..." />
+  </variant>
+  <variant name="With Value">
+    <Self model-value="Hello, Musea!" placeholder="Enter text..." />
+  </variant>
+  <variant name="Search">
+    <Self type="search" placeholder="Search..." />
+  </variant>
+  <variant name="With Error">
+    <Self model-value="bad@" error="Invalid email address" placeholder="Enter email..." />
+  </variant>
+  <variant name="Disabled">
+    <Self model-value="Read only" disabled placeholder="Disabled input" />
+  </variant>
+</art>

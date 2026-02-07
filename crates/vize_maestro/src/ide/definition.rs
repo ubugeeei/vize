@@ -29,6 +29,7 @@ impl DefinitionService {
             BlockType::Template => Self::definition_in_template(ctx),
             BlockType::Script | BlockType::ScriptSetup => Self::definition_in_script(ctx),
             BlockType::Style(_) => Self::definition_in_style(ctx),
+            BlockType::Art(_) => None,
         }
     }
 
@@ -44,6 +45,7 @@ impl DefinitionService {
                 Self::definition_in_script_with_tsgo(ctx, tsgo_bridge).await
             }
             BlockType::Style(_) => Self::definition_in_style(ctx),
+            BlockType::Art(_) => None,
         }
     }
 

@@ -166,9 +166,21 @@ importers:
       '@types/pngjs':
         specifier: ^6.0.5
         version: 6.0.5
+      '@vitejs/plugin-vue':
+        specifier: ^6.0.4
+        version: 6.0.4(vite@8.0.0-beta.11(@types/node@22.19.3)(esbuild@0.27.2)(jiti@2.6.1)(tsx@4.21.0))(vue@3.5.26(typescript@5.9.3))
       '@vizejs/vite-plugin':
         specifier: workspace:*
         version: link:../vite-plugin-vize
+      highlight.js:
+        specifier: ^11.11.1
+        version: 11.11.1
+      marked:
+        specifier: ^17.0.1
+        version: 17.0.1
+      marked-highlight:
+        specifier: ^2.2.3
+        version: 2.2.3(marked@17.0.1)
       tsdown:
         specifier: ^0.9.0
         version: 0.9.9(@oxc-project/runtime@0.111.0)(typescript@5.9.3)(unplugin-unused@0.2.3(rollup@4.54.0))
@@ -2189,6 +2201,13 @@ packages:
     peerDependencies:
       valibot: ^1.0.0
 
+  '@vitejs/plugin-vue@6.0.4':
+    resolution: {integrity: sha512-uM5iXipgYIn13UUQCZNdWkYk+sysBeA97d5mHsAoAt1u/wpN3+zxOmsVJWosuzX+IMGRzeYUNytztrYznboIkQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    peerDependencies:
+      vite: ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0-0
+      vue: ^3.2.25
+
   '@vitest/browser-playwright@4.0.18':
     resolution: {integrity: sha512-gfajTHVCiwpxRj1qh0Sh/5bbGLG4F/ZH/V9xvFVoFddpITfMta9YGow0W6ZpTTORv2vdJuz9TnrNSmjKvpOf4g==}
     peerDependencies:
@@ -2943,6 +2962,10 @@ packages:
     resolution: {integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==}
     hasBin: true
 
+  highlight.js@11.11.1:
+    resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
+    engines: {node: '>=12.0.0'}
+
   hookable@5.5.3:
     resolution: {integrity: sha512-Yc+BQe8SvoXH1643Qez1zqLRmbA5rCL+sSmk6TVos0LWVfNIB7PGncdlId77WzLGSIB5KaWgTaNTs2lNVEI6VQ==}
 
@@ -3216,6 +3239,16 @@ packages:
 
   markdown-it@14.1.0:
     resolution: {integrity: sha512-a54IwgWPaeBCAAsv13YgmALOF1elABB08FxO9i+r4VFk5Vl4pKokRPeX8u5TCgSsPi6ec1otfLjdOpVcgbpshg==}
+    hasBin: true
+
+  marked-highlight@2.2.3:
+    resolution: {integrity: sha512-FCfZRxW/msZAiasCML4isYpxyQWKEEx44vOgdn5Kloae+Qc3q4XR7WjpKKf8oMLk7JP9ZCRd2vhtclJFdwxlWQ==}
+    peerDependencies:
+      marked: '>=4 <18'
+
+  marked@17.0.1:
+    resolution: {integrity: sha512-boeBdiS0ghpWcSwoNm/jJBwdpFaMnZWRzjA6SkUMYb40SVaN1x7mmfGKp0jvexGcx+7y2La5zRZsYFZI6Qpypg==}
+    engines: {node: '>= 20'}
     hasBin: true
 
   math-intrinsics@1.1.0:
@@ -5705,6 +5738,12 @@ snapshots:
     dependencies:
       valibot: 1.0.0(typescript@5.9.3)
 
+  '@vitejs/plugin-vue@6.0.4(vite@8.0.0-beta.11(@types/node@22.19.3)(esbuild@0.27.2)(jiti@2.6.1)(tsx@4.21.0))(vue@3.5.26(typescript@5.9.3))':
+    dependencies:
+      '@rolldown/pluginutils': 1.0.0-rc.2
+      vite: 8.0.0-beta.11(@types/node@22.19.3)(esbuild@0.27.2)(jiti@2.6.1)(tsx@4.21.0)
+      vue: 3.5.26(typescript@5.9.3)
+
   '@vitest/browser-playwright@4.0.18(playwright@1.57.0)(vite@8.0.0-beta.11(@types/node@22.19.3)(esbuild@0.27.2)(jiti@2.6.1)(tsx@4.21.0))(vitest@4.0.18)':
     dependencies:
       '@vitest/browser': 4.0.18(vite@8.0.0-beta.11(@types/node@22.19.3)(esbuild@0.27.2)(jiti@2.6.1)(tsx@4.21.0))(vitest@4.0.18(@types/node@22.19.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0))
@@ -6634,6 +6673,8 @@ snapshots:
 
   he@1.2.0: {}
 
+  highlight.js@11.11.1: {}
+
   hookable@5.5.3: {}
 
   hosted-git-info@4.1.0:
@@ -6890,6 +6931,12 @@ snapshots:
       mdurl: 2.0.0
       punycode.js: 2.3.1
       uc.micro: 2.1.0
+
+  marked-highlight@2.2.3(marked@17.0.1):
+    dependencies:
+      marked: 17.0.1
+
+  marked@17.0.1: {}
 
   math-intrinsics@1.1.0: {}
 
@@ -7313,8 +7360,8 @@ snapshots:
   rolldown-plugin-dts@0.9.11(rolldown@1.0.0-beta.8-commit.151352b(@oxc-project/runtime@0.111.0)(typescript@5.6.3))(typescript@5.6.3):
     dependencies:
       '@babel/generator': 7.29.0
-      '@babel/parser': 7.28.5
-      '@babel/types': 7.28.5
+      '@babel/parser': 7.29.0
+      '@babel/types': 7.29.0
       ast-kit: 1.4.3
       debug: 4.4.3
       dts-resolver: 1.2.0

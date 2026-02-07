@@ -252,6 +252,7 @@ pub enum BlockType {
     Script,
     ScriptSetup,
     Style(usize),
+    Art(usize),
 }
 
 impl BlockType {
@@ -263,6 +264,7 @@ impl BlockType {
             BlockType::Script => VirtualLanguage::Script,
             BlockType::ScriptSetup => VirtualLanguage::ScriptSetup,
             BlockType::Style(_) => VirtualLanguage::Style,
+            BlockType::Art(_) => VirtualLanguage::Template,
         }
     }
 }
@@ -294,6 +296,13 @@ pub fn find_block_at_offset(descriptor: &SfcDescriptor, offset: usize) -> Option
     for (i, style) in descriptor.styles.iter().enumerate() {
         if offset >= style.loc.start && offset < style.loc.end {
             return Some(BlockType::Style(i));
+        }
+    }
+
+    // Check custom blocks (art, i18n, etc.)
+    for (i, custom) in descriptor.custom_blocks.iter().enumerate() {
+        if custom.block_type == "art" && offset >= custom.loc.start && offset < custom.loc.end {
+            return Some(BlockType::Art(i));
         }
     }
 
@@ -372,5 +381,49 @@ const x = 1
             find_block_at_offset(&descriptor, 60),
             Some(BlockType::ScriptSetup)
         );
+    }
+
+    #[test]
+    fn test_find_block_at_offset_inline_art() {
+        let source = r#"<template>
+  <div>test</div>
+</template>
+
+<script setup>
+const x = 1
+</script>
+
+<art title="Test" component="./Foo.vue">
+  <variant name="Default" default>
+    <Foo />
+  </variant>
+</art>"#;
+
+        let descriptor = vize_atelier_sfc::parse_sfc(source, Default::default()).unwrap();
+
+        // Verify custom_blocks contains the art block
+        assert_eq!(descriptor.custom_blocks.len(), 1);
+        assert_eq!(descriptor.custom_blocks[0].block_type, "art");
+
+        // Offset inside <art> content area
+        let art_content_start = descriptor.custom_blocks[0].loc.start;
+        assert_eq!(
+            find_block_at_offset(&descriptor, art_content_start + 5),
+            Some(BlockType::Art(0))
+        );
+
+        // In template - should still be Template
+        assert_eq!(
+            find_block_at_offset(&descriptor, 15),
+            Some(BlockType::Template)
+        );
+
+        // Outside any block
+        assert_eq!(find_block_at_offset(&descriptor, 0), None);
+    }
+
+    #[test]
+    fn test_block_type_art_language() {
+        assert_eq!(BlockType::Art(0).language(), VirtualLanguage::Template);
     }
 }

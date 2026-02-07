@@ -31,6 +31,7 @@ impl HoverService {
             BlockType::Script => Self::hover_script(ctx, false),
             BlockType::ScriptSetup => Self::hover_script(ctx, true),
             BlockType::Style(index) => Self::hover_style(ctx, index),
+            BlockType::Art(_) => None,
         }
     }
 
@@ -48,6 +49,7 @@ impl HoverService {
             BlockType::Script => Self::hover_script_with_tsgo(ctx, false, tsgo_bridge).await,
             BlockType::ScriptSetup => Self::hover_script_with_tsgo(ctx, true, tsgo_bridge).await,
             BlockType::Style(index) => Self::hover_style(ctx, index),
+            BlockType::Art(_) => None,
         }
     }
 

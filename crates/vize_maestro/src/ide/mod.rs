@@ -224,6 +224,12 @@ impl<'a> IdeContext<'a> {
     pub fn is_in_style(&self) -> bool {
         matches!(self.block_type, Some(BlockType::Style(_)))
     }
+
+    /// Check if cursor is in an art custom block.
+    #[inline]
+    pub fn is_in_art(&self) -> bool {
+        matches!(self.block_type, Some(BlockType::Art(_)))
+    }
 }
 
 #[cfg(test)]

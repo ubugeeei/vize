@@ -1,11 +1,23 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import hljs from 'highlight.js/lib/core'
+import xml from 'highlight.js/lib/languages/xml'
 
-defineProps<{
+hljs.registerLanguage('xml', xml)
+
+const props = defineProps<{
   code: string
 }>()
 
 const copied = ref(false)
+
+const highlightedCode = computed(() => {
+  try {
+    return hljs.highlight(props.code, { language: 'xml' }).value
+  } catch {
+    return props.code
+  }
+})
 
 async function copyCode(code: string) {
   try {
@@ -33,7 +45,7 @@ async function copyCode(code: string) {
         {{ copied ? 'Copied!' : 'Copy' }}
       </button>
     </div>
-    <pre class="source-pre"><code class="source-code-text">{{ code }}</code></pre>
+    <pre class="source-pre"><code class="source-code-text hljs" v-html="highlightedCode" /></pre>
   </div>
 </template>
 
