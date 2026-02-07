@@ -6,12 +6,12 @@ expression: ts_output
 import { defineComponent as _defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
 
-const multiline = `Line 1
 
 export default /*@__PURE__*/_defineComponent({
   __name: 'test',
   setup(__props) {
 
+const multiline = `Line 1
 Line 2
 Line 3`
 
