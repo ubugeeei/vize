@@ -397,49 +397,65 @@ fn collect_vue_files(patterns: &[String]) -> Vec<PathBuf> {
         .collect()
 }
 
+/// Parse a single global entry string into a TemplateGlobal.
+/// Format: `"$name"` (typed as any) or `"$name:TypeAnnotation"`.
+fn parse_global_entry(entry: &str) -> vize_canon::virtual_ts::TemplateGlobal {
+    use vize_canon::virtual_ts::TemplateGlobal;
+    if let Some((name, type_ann)) = entry.split_once(':') {
+        TemplateGlobal {
+            name: name.trim().to_string(),
+            type_annotation: type_ann.trim().to_string(),
+            default_value: "{} as any".to_string(),
+        }
+    } else {
+        TemplateGlobal {
+            name: entry.trim().to_string(),
+            type_annotation: "any".to_string(),
+            default_value: "{} as any".to_string(),
+        }
+    }
+}
+
+/// Parse a comma-separated globals string from CLI `--globals` flag.
+fn parse_globals_str(globals_str: &str) -> Vec<vize_canon::virtual_ts::TemplateGlobal> {
+    globals_str
+        .split(',')
+        .filter(|s| !s.is_empty())
+        .map(parse_global_entry)
+        .collect()
+}
+
 /// Run type checking directly with tsgo LSP (no file I/O)
 fn run_direct(args: &CheckArgs) {
     use rayon::prelude::*;
     use vize_atelier_core::parser::parse;
     use vize_atelier_sfc::{parse_sfc, SfcParseOptions};
     use vize_canon::lsp_client::TsgoLspClient;
-    use vize_canon::virtual_ts::{
-        generate_virtual_ts_with_offsets, TemplateGlobal, VirtualTsOptions,
-    };
+    use vize_canon::virtual_ts::{generate_virtual_ts_with_offsets, VirtualTsOptions};
     use vize_carton::Bump;
     use vize_croquis::{Analyzer, AnalyzerOptions};
 
     let start = Instant::now();
 
-    // Build VirtualTsOptions from CLI args
+    // Load vize.config.json and write JSON Schema
+    let config = crate::config::load_config(None);
+    crate::config::write_schema(None);
+
+    // Build VirtualTsOptions from CLI args or config.
+    // Priority: CLI --globals > vize.config.json check.globals > default (empty)
     let vts_options = if let Some(ref globals_str) = args.globals {
         if globals_str == "none" {
             VirtualTsOptions {
                 template_globals: vec![],
             }
         } else {
-            let globals = globals_str
-                .split(',')
-                .filter(|s| !s.is_empty())
-                .map(|entry| {
-                    if let Some((name, type_ann)) = entry.split_once(':') {
-                        TemplateGlobal {
-                            name: name.trim().to_string(),
-                            type_annotation: type_ann.trim().to_string(),
-                            default_value: "{} as any".to_string(),
-                        }
-                    } else {
-                        TemplateGlobal {
-                            name: entry.trim().to_string(),
-                            type_annotation: "any".to_string(),
-                            default_value: "{} as any".to_string(),
-                        }
-                    }
-                })
-                .collect();
             VirtualTsOptions {
-                template_globals: globals,
+                template_globals: parse_globals_str(globals_str),
             }
+        }
+    } else if let Some(ref globals_list) = config.check.globals {
+        VirtualTsOptions {
+            template_globals: globals_list.iter().map(|s| parse_global_entry(s)).collect(),
         }
     } else {
         VirtualTsOptions::default()

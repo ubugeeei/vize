@@ -70,19 +70,8 @@ function __setup() {
     const $slots: Record<string, (...args: any[]) => any> = {} as any;
     const $refs: Record<string, any> = {} as any;
     const $emit: (...args: any[]) => void = (() => {}) as any;
-    // Plugin globals (configurable via --globals)
-    const $t: (...args: any[]) => string = (() => '') as any;
-    const $d: (...args: any[]) => string = (() => '') as any;
-    const $n: (...args: any[]) => string = (() => '') as any;
-    const $tm: (key: string) => any[] = (() => []) as any;
-    const $rt: (...args: any[]) => string = (() => '') as any;
-    const $te: (key: string, locale?: string) => boolean = (() => false) as any;
-    const $route: any = {} as any;
-    const $router: any = {} as any;
-    const $form: any = {} as any;
     // Mark template context as used
     void $attrs; void $slots; void $refs; void $emit;
-    void $t; void $d; void $n; void $tm; void $rt; void $te; void $route; void $router; void $form;
 
   void (items); // VBind
   // @vize-map: expr -> 161:166

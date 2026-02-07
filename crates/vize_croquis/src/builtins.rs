@@ -101,18 +101,6 @@ static VUE_BUILTINS_SET: phf::Set<&'static str> = phf_set! {
     "$forceUpdate",
     "$nextTick",
     "$watch",
-    // Vue plugin globals (i18n)
-    "$t",
-    "$d",
-    "$n",
-    "$tm",
-    "$rt",
-    "$te",
-    // Vue Router globals
-    "$route",
-    "$router",
-    // Vue Forms globals
-    "$form",
 };
 
 /// Vue built-in components that don't need resolution.

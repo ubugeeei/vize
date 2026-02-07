@@ -10,6 +10,7 @@
 //! with native performance.
 
 mod commands;
+mod config;
 
 use clap::{Parser, Subcommand};
 

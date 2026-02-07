@@ -49,56 +49,10 @@ impl Default for VirtualTsOptions {
     }
 }
 
-/// Default plugin globals (vue-i18n, vue-router, vue-forms).
-/// These can be overridden by user configuration.
+/// Default plugin globals.
+/// Returns empty by default — configure via `vize.config.json` `check.globals`.
 fn default_plugin_globals() -> Vec<TemplateGlobal> {
-    vec![
-        TemplateGlobal {
-            name: "$t".into(),
-            type_annotation: "(...args: any[]) => string".into(),
-            default_value: "(() => '') as any".into(),
-        },
-        TemplateGlobal {
-            name: "$d".into(),
-            type_annotation: "(...args: any[]) => string".into(),
-            default_value: "(() => '') as any".into(),
-        },
-        TemplateGlobal {
-            name: "$n".into(),
-            type_annotation: "(...args: any[]) => string".into(),
-            default_value: "(() => '') as any".into(),
-        },
-        TemplateGlobal {
-            name: "$tm".into(),
-            type_annotation: "(key: string) => any[]".into(),
-            default_value: "(() => []) as any".into(),
-        },
-        TemplateGlobal {
-            name: "$rt".into(),
-            type_annotation: "(...args: any[]) => string".into(),
-            default_value: "(() => '') as any".into(),
-        },
-        TemplateGlobal {
-            name: "$te".into(),
-            type_annotation: "(key: string, locale?: string) => boolean".into(),
-            default_value: "(() => false) as any".into(),
-        },
-        TemplateGlobal {
-            name: "$route".into(),
-            type_annotation: "any".into(),
-            default_value: "{} as any".into(),
-        },
-        TemplateGlobal {
-            name: "$router".into(),
-            type_annotation: "any".into(),
-            default_value: "{} as any".into(),
-        },
-        TemplateGlobal {
-            name: "$form".into(),
-            type_annotation: "any".into(),
-            default_value: "{} as any".into(),
-        },
-    ]
+    vec![]
 }
 
 /// Output of virtual TypeScript generation.
@@ -1703,7 +1657,29 @@ mod tests {
         assert!(ctx.contains("$slots"));
         assert!(ctx.contains("$refs"));
         assert!(ctx.contains("$emit"));
-        // Plugin globals should be included by default
+        // Plugin globals should NOT be included by default (configure via vize.config.json)
+        assert!(!ctx.contains("$t"));
+        assert!(!ctx.contains("$route"));
+    }
+
+    #[test]
+    fn test_vue_template_context_with_globals() {
+        // Plugin globals should appear when configured
+        let options = VirtualTsOptions {
+            template_globals: vec![
+                TemplateGlobal {
+                    name: "$t".into(),
+                    type_annotation: "(...args: any[]) => string".into(),
+                    default_value: "(() => '') as any".into(),
+                },
+                TemplateGlobal {
+                    name: "$route".into(),
+                    type_annotation: "any".into(),
+                    default_value: "{} as any".into(),
+                },
+            ],
+        };
+        let ctx = generate_template_context(&options);
         assert!(ctx.contains("$t"));
         assert!(ctx.contains("$route"));
     }
