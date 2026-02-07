@@ -4,7 +4,7 @@ use crate::ast::*;
 use crate::transforms::v_model::{get_vmodel_helper, parse_model_modifiers};
 use vize_carton::is_builtin_directive;
 
-use super::children::generate_children;
+use super::children::{generate_children, generate_children_force_array};
 use super::context::CodegenContext;
 use super::expression::generate_expression;
 use super::helpers::{escape_js_string, is_builtin_component};
@@ -644,7 +644,12 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             let effective_has_patch_info = has_patch_info && should_emit_patch_flag;
             if !el.children.is_empty() {
                 ctx.push(", ");
-                generate_children(ctx, &el.children);
+                // Custom directives require array children with createTextVNode
+                if has_custom_dirs {
+                    generate_children_force_array(ctx, &el.children);
+                } else {
+                    generate_children(ctx, &el.children);
+                }
             } else if effective_has_patch_info {
                 ctx.push(", null");
             }

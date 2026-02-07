@@ -345,8 +345,11 @@ fn calculate_element_patch_info_inner(
     }
 
     // Add NEED_PATCH for v-show, custom directives, or ref only if no other dynamic bindings exist
+    // Custom directives only need NEED_PATCH when the element has no children
+    // (children already cause the element to be tracked for patching by the runtime)
     // This must come after TEXT flag check so we don't add NEED_PATCH when TEXT is about to be set
-    if (has_vshow || has_custom_directive || has_ref) && flag == 0 {
+    let custom_dir_needs_patch = has_custom_directive && el.children.is_empty();
+    if (has_vshow || custom_dir_needs_patch || has_ref) && flag == 0 {
         flag |= 512; // NEED_PATCH
     }
 

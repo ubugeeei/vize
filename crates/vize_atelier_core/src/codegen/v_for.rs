@@ -471,6 +471,24 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
                 ctx.push(ctx.helper(RuntimeHelper::OpenBlock));
                 ctx.push("(), ");
 
+                // Template with single child element optimization:
+                // unwrap the template and generate the child directly as a block
+                let unwrapped_child: Option<&ElementNode<'_>> =
+                    if is_template && el.children.len() == 1 {
+                        if let TemplateChildNode::Element(ref child_el) = el.children[0] {
+                            if child_el.tag_type == ElementType::Element {
+                                Some(child_el)
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+                let gen_is_template = is_template && unwrapped_child.is_none();
+
                 if is_component {
                     // Component: use createBlock
                     ctx.use_helper(RuntimeHelper::CreateBlock);
@@ -487,13 +505,20 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
                         ctx.push("_component_");
                         ctx.push(&el.tag.replace('-', "_"));
                     }
-                } else if is_template {
-                    // Template: use Fragment
+                } else if gen_is_template {
+                    // Template with multiple children: use Fragment
                     ctx.use_helper(RuntimeHelper::CreateElementBlock);
                     ctx.use_helper(RuntimeHelper::Fragment);
                     ctx.push(ctx.helper(RuntimeHelper::CreateElementBlock));
                     ctx.push("(");
                     ctx.push(ctx.helper(RuntimeHelper::Fragment));
+                } else if let Some(child_el) = unwrapped_child {
+                    // Template with single child: unwrap to child element
+                    ctx.use_helper(RuntimeHelper::CreateElementBlock);
+                    ctx.push(ctx.helper(RuntimeHelper::CreateElementBlock));
+                    ctx.push("(\"");
+                    ctx.push(&child_el.tag);
+                    ctx.push("\"");
                 } else {
                     // Regular element
                     ctx.use_helper(RuntimeHelper::CreateElementBlock);
@@ -504,16 +529,19 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
                 }
 
                 // Props with key and all other props
-                generate_for_item_props(ctx, el, key_exp);
+                // For unwrapped template child, use child's props with template's key
+                let props_el = unwrapped_child.unwrap_or(el);
+                generate_for_item_props(ctx, props_el, key_exp);
 
                 // Children
-                if !el.children.is_empty() {
+                let children_el = unwrapped_child.unwrap_or(el);
+                if !children_el.children.is_empty() {
                     ctx.push(", ");
-                    if is_template {
+                    if gen_is_template {
                         // Template children are array
                         ctx.push("[");
                         ctx.indent();
-                        for (i, child) in el.children.iter().enumerate() {
+                        for (i, child) in children_el.children.iter().enumerate() {
                             if i > 0 {
                                 ctx.push(",");
                             }
@@ -524,7 +552,7 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
                         ctx.newline();
                         ctx.push("]");
                     } else {
-                        generate_children(ctx, &el.children);
+                        generate_children(ctx, &children_el.children);
                     }
                 }
 
@@ -559,12 +587,13 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
                         }
                         ctx.push("]");
                     }
-                } else if is_template {
+                } else if gen_is_template {
                     ctx.push(", 64 /* STABLE_FRAGMENT */");
                 } else {
-                    // For regular elements, use full patch flag calculation
+                    // For regular elements (and unwrapped template children), use full patch flag calculation
+                    let flag_el = unwrapped_child.unwrap_or(el);
                     let (patch_flag, dynamic_props) = calculate_element_patch_info(
-                        el,
+                        flag_el,
                         ctx.options.binding_metadata.as_ref(),
                         ctx.options.cache_handlers,
                     );
