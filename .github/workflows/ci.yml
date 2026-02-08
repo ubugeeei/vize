@@ -69,7 +69,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Coverage report
-        run: cargo run -p vize_test_runner --bin coverage --release
+        run: |
+          cargo run -p vize_test_runner --bin coverage --release | tee coverage-report.txt
+          echo ""
+          echo "### Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          tail -7 coverage-report.txt >> $GITHUB_STEP_SUMMARY
 
   playground-test:
     runs-on: ubuntu-latest

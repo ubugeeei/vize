@@ -1,36 +1,29 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 106
+assertion_line: 150
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, createCommentVNode as _createCommentVNode, toDisplayString as _toDisplayString } from "vue"
+
+import { ref } from 'vue'
 
 export interface User {
   id: number;
   name: string;
 }
-import { defineComponent as _defineComponent } from 'vue'
-import { ref } from 'vue'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
+export default /*@__PURE__*/_defineComponent({
   __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const user = ref<User | null>(null)
-  const __returned__ = { ref, user }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
+  setup(__props) {
 
-});
+const user = ref<User | null>(null)
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return ($setup.user)
-    ? (_openBlock(), _createElementBlock("div", {
-      key: 0
-    }, _toDisplayString($setup.user.name), 1 /* TEXT */))
-    : _createCommentVNode("v-if", true)
+return (_ctx: any,_cache: any) => {
+  return (user.value)
+      ? (_openBlock(), _createElementBlock("div", { key: 0 }, _toDisplayString(user.value.name), 1 /* TEXT */))
+      : _createCommentVNode("v-if", true)
+}
 }
 
-__sfc__.render = render
-export default __sfc__
+})

@@ -34,11 +34,11 @@ pub(crate) fn compile_template_block(
     dom_opts.ssr = options.ssr;
     dom_opts.is_ts = is_ts;
 
-    // For script setup, use function mode (NOT inline) to match Vue's @vitejs/plugin-vue behavior
-    // This generates $setup.xxx for setup bindings, which properly tracks reactivity through Vue's proxy
-    // Inline mode uses direct closure access (compiler.value) which can cause reactivity issues
+    // For script setup, use inline mode to match Vue's actual compiler behavior
+    // Inline mode generates direct closure references (e.g., msg instead of $setup.msg)
+    // which are captured in the setup() function scope
     if bindings.is_some() {
-        dom_opts.inline = false; // Use function mode for proper reactivity tracking
+        dom_opts.inline = true;
         dom_opts.hoist_static = true;
         dom_opts.cache_handlers = true;
     }

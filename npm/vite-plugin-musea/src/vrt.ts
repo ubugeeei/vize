@@ -212,7 +212,7 @@ export class MuseaVrtRunner {
 
       // Navigate to variant preview URL
       const variantUrl = this.buildVariantUrl(baseUrl, art.path, variantName);
-      const waitUntil = this.capture.waitForNetwork ? "networkidle" as const : "load" as const;
+      const waitUntil = this.capture.waitForNetwork ? ("networkidle" as const) : ("load" as const);
       await page.goto(variantUrl, { waitUntil });
 
       // Wait for content to render
@@ -224,31 +224,25 @@ export class MuseaVrtRunner {
       // Hide elements before capture
       if (this.capture.hideElements.length > 0) {
         for (const selector of this.capture.hideElements) {
-          await page.evaluate(
-            (sel) => {
-              document.querySelectorAll(sel).forEach((el) => {
-                (el as HTMLElement).style.visibility = "hidden";
-              });
-            },
-            selector,
-          );
+          await page.evaluate((sel) => {
+            document.querySelectorAll(sel).forEach((el) => {
+              (el as HTMLElement).style.visibility = "hidden";
+            });
+          }, selector);
         }
       }
 
       // Mask elements before capture (replace with colored box)
       if (this.capture.maskElements.length > 0) {
         for (const selector of this.capture.maskElements) {
-          await page.evaluate(
-            (sel) => {
-              document.querySelectorAll(sel).forEach((el) => {
-                const htmlEl = el as HTMLElement;
-                htmlEl.style.background = "#ff00ff";
-                htmlEl.style.color = "transparent";
-                htmlEl.innerHTML = "";
-              });
-            },
-            selector,
-          );
+          await page.evaluate((sel) => {
+            document.querySelectorAll(sel).forEach((el) => {
+              const htmlEl = el as HTMLElement;
+              htmlEl.style.background = "#ff00ff";
+              htmlEl.style.color = "transparent";
+              htmlEl.innerHTML = "";
+            });
+          }, selector);
         }
       }
 

@@ -147,6 +147,18 @@ pub fn transform_v_if<'a>(
             other => other,
         };
 
+        // Process user_key expression for identifier prefixing (e.g., keyA -> _ctx.keyA)
+        if let Some(PropNode::Directive(ref mut dir)) = user_key {
+            if ctx.options.prefix_identifiers || ctx.options.is_ts {
+                if let Some(ref exp) = dir.exp {
+                    let processed = crate::transforms::transform_expression::process_expression(
+                        ctx, exp, false,
+                    );
+                    dir.exp = Some(processed);
+                }
+            }
+        }
+
         // Create branch with the taken element
         let mut branch_children = Vec::new_in(allocator);
         branch_children.push(taken_node);
@@ -255,6 +267,46 @@ pub fn transform_v_if<'a>(
                 }
                 other => other,
             };
+
+            // Process user_key expression for identifier prefixing
+            if let Some(PropNode::Directive(ref mut dir)) = user_key {
+                if ctx.options.prefix_identifiers || ctx.options.is_ts {
+                    if let Some(ref exp) = dir.exp {
+                        let processed = crate::transforms::transform_expression::process_expression(
+                            ctx, exp, false,
+                        );
+                        dir.exp = Some(processed);
+                    }
+                }
+            }
+
+            // Check for key collision with existing branches (vuejs/core #13881)
+            let has_key_collision = if let Some(ref new_key) = user_key {
+                let new_key_str = extract_key_value_str(new_key);
+                if let Some(parent) = &ctx.parent {
+                    let children = parent.children_mut();
+                    if let TemplateChildNode::If(if_node) = &children[if_idx] {
+                        if_node.branches.iter().any(|existing_branch| {
+                            if let Some(ref existing_key) = existing_branch.user_key {
+                                let existing_key_str = extract_key_value_str(existing_key);
+                                matches!((&new_key_str, &existing_key_str), (Some(nk), Some(ek)) if nk == ek)
+                            } else {
+                                false
+                            }
+                        })
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
+
+            if has_key_collision {
+                ctx.on_error(ErrorCode::VIfSameKey, None);
+            }
 
             // Create new branch
             let mut branch_children = Vec::new_in(allocator);
@@ -509,4 +561,15 @@ fn parse_v_for_expression<'a>(
     };
 
     (source, value, key, index)
+}
+
+/// Extract key value string from a PropNode for comparison
+fn extract_key_value_str(prop: &PropNode<'_>) -> Option<std::string::String> {
+    match prop {
+        PropNode::Attribute(attr) => attr.value.as_ref().map(|v| v.content.to_string()),
+        PropNode::Directive(dir) => dir.exp.as_ref().map(|exp| match exp {
+            ExpressionNode::Simple(s) => s.content.to_string(),
+            ExpressionNode::Compound(c) => c.loc.source.to_string(),
+        }),
+    }
 }

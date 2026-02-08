@@ -51,16 +51,36 @@ fn is_const_handler(expr: &ExpressionNode<'_>, bindings: Option<&BindingMetadata
     }
 }
 
-/// Calculate patch flag and dynamic props for an element
+/// Calculate patch flag and dynamic props for an element.
+/// `skip_is_prop`: when true, skip `:is` binding (used for `<component :is="...">`)
 pub fn calculate_element_patch_info(
     el: &ElementNode<'_>,
     bindings: Option<&BindingMetadata>,
     cache_handlers: bool,
 ) -> (Option<i32>, Option<Vec<String>>) {
+    calculate_element_patch_info_inner(el, bindings, cache_handlers, false)
+}
+
+/// Same as `calculate_element_patch_info` but allows skipping the `is` prop.
+pub fn calculate_element_patch_info_skip_is(
+    el: &ElementNode<'_>,
+    bindings: Option<&BindingMetadata>,
+    cache_handlers: bool,
+) -> (Option<i32>, Option<Vec<String>>) {
+    calculate_element_patch_info_inner(el, bindings, cache_handlers, true)
+}
+
+fn calculate_element_patch_info_inner(
+    el: &ElementNode<'_>,
+    bindings: Option<&BindingMetadata>,
+    cache_handlers: bool,
+    skip_is: bool,
+) -> (Option<i32>, Option<Vec<String>>) {
     let mut flag: i32 = 0;
     // Pre-allocate with small capacity - most elements have few dynamic props
     let mut dynamic_props: Vec<String> = Vec::with_capacity(4);
     let mut has_vshow = false;
+    let mut has_vmodel = false;
     let mut has_custom_directive = false;
     let mut has_ref = false;
 
@@ -74,6 +94,15 @@ pub fn calculate_element_patch_info(
         if let PropNode::Directive(dir) = prop {
             match dir.name.as_str() {
                 "bind" => {
+                    // Skip `:is` binding for dynamic components
+                    if skip_is {
+                        if let Some(ExpressionNode::Simple(arg)) = &dir.arg {
+                            if arg.content == "is" {
+                                continue;
+                            }
+                        }
+                    }
+
                     // Check for modifiers
                     let has_camel = dir.modifiers.iter().any(|m| m.content == "camel");
                     let has_prop = dir.modifiers.iter().any(|m| m.content == "prop");
@@ -89,8 +118,11 @@ pub fn calculate_element_patch_info(
                                 match key {
                                     "class" => flag |= 2, // CLASS
                                     "style" => flag |= 4, // STYLE
-                                    // key and ref are special props - don't add to patch flags
-                                    "key" | "ref" => {}
+                                    "key" => {}
+                                    "ref" => {
+                                        // Dynamic ref binding needs NEED_PATCH
+                                        flag |= 512; // NEED_PATCH
+                                    }
                                     _ => {
                                         // Skip modelModifiers and *Modifiers props (they are static)
                                         if !key.ends_with("Modifiers") {
@@ -133,7 +165,10 @@ pub fn calculate_element_patch_info(
                 }
                 "on" => {
                     // Event handlers are considered dynamic props
-                    if let Some(arg) = &dir.arg {
+                    if dir.arg.is_none() {
+                        // v-on without argument (object spread) - FULL_PROPS
+                        flag |= 16;
+                    } else if let Some(arg) = &dir.arg {
                         if let ExpressionNode::Simple(exp) = arg {
                             if !exp.is_static {
                                 // Dynamic event name
@@ -245,6 +280,22 @@ pub fn calculate_element_patch_info(
                         }
                     }
                 }
+                "model" => {
+                    // v-model on native elements needs NEED_PATCH
+                    has_vmodel = true;
+                    // v-model with dynamic argument → FULL_PROPS
+                    if let Some(arg) = &dir.arg {
+                        match arg {
+                            ExpressionNode::Simple(exp) if !exp.is_static => {
+                                flag |= 16; // FULL_PROPS
+                            }
+                            ExpressionNode::Compound(_) => {
+                                flag |= 16; // FULL_PROPS
+                            }
+                            _ => {}
+                        }
+                    }
+                }
                 "show" => {
                     // v-show requires NEED_PATCH, but only if no other flags are set
                     has_vshow = true;
@@ -267,11 +318,6 @@ pub fn calculate_element_patch_info(
                 }
             }
         }
-    }
-
-    // Add NEED_PATCH for v-show, custom directives, or ref only if no other dynamic bindings exist
-    if (has_vshow || has_custom_directive || has_ref) && flag == 0 {
-        flag |= 512; // NEED_PATCH
     }
 
     // Check for dynamic text children
@@ -301,7 +347,23 @@ pub fn calculate_element_patch_info(
         }
     }
 
+    // Add NEED_PATCH for v-show, custom directives, or ref only if no other dynamic bindings exist
+    // Custom directives only need NEED_PATCH when the element has no children
+    // (children already cause the element to be tracked for patching by the runtime)
+    // This must come after TEXT flag check so we don't add NEED_PATCH when TEXT is about to be set
+    let custom_dir_needs_patch = has_custom_directive && el.children.is_empty();
+    if (has_vshow || has_vmodel || custom_dir_needs_patch || has_ref) && flag == 0 {
+        flag |= 512; // NEED_PATCH
+    }
+
+    // When FULL_PROPS is set, per-prop flags are redundant (FULL_PROPS covers all prop changes)
+    if flag & 16 != 0 {
+        flag &= !(8 | 2 | 4); // Remove PROPS, CLASS, STYLE
+    }
+
     let patch_flag = if flag > 0 { Some(flag) } else { None };
+    // Deduplicate dynamic props (e.g., multiple handlers for same event)
+    dynamic_props.dedup();
     let dynamic_props_result = if !dynamic_props.is_empty() {
         Some(dynamic_props)
     } else {

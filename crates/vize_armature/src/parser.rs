@@ -676,18 +676,20 @@ impl<'a, 'p> Callbacks for ParserCallbacks<'a, 'p> {
     fn on_error(&mut self, code: ErrorCode, index: usize) {
         self.parser.on_error_impl(code, index);
     }
+
+    fn is_in_v_pre(&self) -> bool {
+        self.parser.in_v_pre
+    }
 }
 
 /// Condense whitespace in children
 fn condense_whitespace<'a>(children: &mut Vec<'a, TemplateChildNode<'a>>) {
     let mut i = 0;
     while i < children.len() {
-        if let TemplateChildNode::Text(ref text) = children[i] {
+        // Determine what action to take for whitespace-only text nodes
+        let action = if let TemplateChildNode::Text(ref text) = children[i] {
             let content = text.content.as_str();
-
-            // Check if text is all whitespace
             if content.chars().all(char::is_whitespace) {
-                // Check neighbors
                 let prev_is_text = i > 0
                     && matches!(
                         children[i - 1],
@@ -700,11 +702,39 @@ fn condense_whitespace<'a>(children: &mut Vec<'a, TemplateChildNode<'a>>) {
                     );
 
                 if !prev_is_text && !next_is_text {
-                    // Remove whitespace-only text between non-text nodes
-                    children.remove(i);
-                    continue;
+                    // Between non-text nodes (e.g. two elements):
+                    // If whitespace contains a newline, remove it entirely
+                    // (this handles indentation between block-level elements).
+                    // If it's just spaces (no newline), condense to single space
+                    // to preserve inline spacing (vuejs/core #7542).
+                    let has_newline = content.contains('\n');
+                    if has_newline {
+                        WhitespaceAction::Remove
+                    } else {
+                        WhitespaceAction::Condense
+                    }
+                } else {
+                    WhitespaceAction::Keep
+                }
+            } else {
+                WhitespaceAction::Keep
+            }
+        } else {
+            WhitespaceAction::Keep
+        };
+
+        match action {
+            WhitespaceAction::Remove => {
+                children.remove(i);
+                continue;
+            }
+            WhitespaceAction::Condense => {
+                // Condense whitespace between two elements to a single space
+                if let TemplateChildNode::Text(ref mut text) = children[i] {
+                    text.content = " ".into();
                 }
             }
+            WhitespaceAction::Keep => {}
         }
 
         // Recurse into elements
@@ -714,6 +744,16 @@ fn condense_whitespace<'a>(children: &mut Vec<'a, TemplateChildNode<'a>>) {
 
         i += 1;
     }
+}
+
+/// Action to take for a whitespace-only text node during condensing
+enum WhitespaceAction {
+    /// Keep the node as-is
+    Keep,
+    /// Remove the node entirely
+    Remove,
+    /// Condense to a single space
+    Condense,
 }
 
 /// Parse a Vue template

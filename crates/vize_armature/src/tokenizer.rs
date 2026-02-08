@@ -140,6 +140,13 @@ pub trait Callbacks {
 
     fn on_end(&mut self);
     fn on_error(&mut self, code: ErrorCode, index: usize);
+
+    /// Check if the parser is currently inside a v-pre block.
+    /// When true, the tokenizer skips directive parsing and treats all
+    /// attributes as regular attributes, and skips interpolation detection.
+    fn is_in_v_pre(&self) -> bool {
+        false
+    }
 }
 
 /// Check if character is a tag start character (a-z, A-Z)
@@ -183,8 +190,6 @@ pub struct Tokenizer<'a, C: Callbacks> {
     /// In pre tag
     #[allow(dead_code)]
     in_pre: bool,
-    /// In v-pre
-    in_v_pre: bool,
 }
 
 impl<'a, C: Callbacks> Tokenizer<'a, C> {
@@ -211,7 +216,6 @@ impl<'a, C: Callbacks> Tokenizer<'a, C> {
             delimiter_close,
             delimiter_index: 0,
             in_pre: false,
-            in_v_pre: false,
         }
     }
 
@@ -332,7 +336,7 @@ impl<'a, C: Callbacks> Tokenizer<'a, C> {
             }
             self.state = State::BeforeTagName;
             self.section_start = self.index;
-        } else if !self.in_v_pre && c == self.delimiter_open[0] {
+        } else if !self.callbacks.is_in_v_pre() && c == self.delimiter_open[0] {
             self.state = State::InterpolationOpen;
             self.delimiter_index = 0;
             self.state_interpolation_open(c);
@@ -468,6 +472,12 @@ impl<'a, C: Callbacks> Tokenizer<'a, C> {
     }
 
     fn handle_attr_start(&mut self, c: u8) {
+        if self.callbacks.is_in_v_pre() {
+            // In v-pre mode, treat all attributes as regular attributes
+            self.state = State::InAttrName;
+            self.section_start = self.index;
+            return;
+        }
         if c == LOWER_V && self.index + 1 < self.input.len() && self.input[self.index + 1] == DASH {
             self.state = State::InDirName;
             self.section_start = self.index;

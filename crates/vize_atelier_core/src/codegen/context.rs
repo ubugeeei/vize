@@ -30,6 +30,10 @@ pub struct CodegenContext {
     pub(super) cache_index: usize,
     /// Slot parameters (identifiers that should not be prefixed with _ctx.)
     pub(super) slot_params: std::collections::HashSet<String>,
+    /// When true, skip `is` prop in generate_props (used for dynamic components)
+    pub(super) skip_is_prop: bool,
+    /// When true, skip normalizeClass/normalizeStyle wrappers (inside mergeProps)
+    pub(super) skip_normalize: bool,
 }
 
 /// Code generation result
@@ -57,6 +61,8 @@ impl CodegenContext {
             used_helpers: std::collections::HashSet::new(),
             cache_index: 0,
             slot_params: std::collections::HashSet::new(),
+            skip_is_prop: false,
+            skip_normalize: false,
         }
     }
 
@@ -77,6 +83,12 @@ impl CodegenContext {
     /// Check if an identifier is a slot parameter
     pub fn is_slot_param(&self, name: &str) -> bool {
         self.slot_params.contains(name)
+    }
+
+    /// Check if there are any slot parameters registered (fast path check)
+    #[inline]
+    pub fn has_slot_params(&self) -> bool {
+        !self.slot_params.is_empty()
     }
 
     /// Get next cache index for v-once

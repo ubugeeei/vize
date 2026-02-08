@@ -124,7 +124,7 @@ fn rewrite_expression(
     match parse_result {
         Ok(expr) => {
             // Successfully parsed - walk the AST and collect identifiers to rewrite
-            let mut collector = IdentifierCollector::new(ctx);
+            let mut collector = IdentifierCollector::new(ctx, &wrapped);
             collector.visit_expression(&expr);
 
             let used_unref = collector.used_unref;
@@ -540,6 +540,8 @@ fn collect_binding_names(
 /// Visitor to collect identifiers that need prefixing
 struct IdentifierCollector<'a, 'ctx> {
     ctx: &'a TransformContext<'ctx>,
+    /// The wrapped source text (for scanning paren positions)
+    source: &'a str,
     /// Identifiers that are being declared (e.g., in arrow function params)
     local_scope: FxHashSet<StdString>,
     /// (position, prefix) pairs for rewrites
@@ -553,9 +555,10 @@ struct IdentifierCollector<'a, 'ctx> {
 }
 
 impl<'a, 'ctx> IdentifierCollector<'a, 'ctx> {
-    fn new(ctx: &'a TransformContext<'ctx>) -> Self {
+    fn new(ctx: &'a TransformContext<'ctx>, source: &'a str) -> Self {
         Self {
             ctx,
+            source,
             local_scope: FxHashSet::default(),
             rewrites: FxHashSet::default(),
             suffix_rewrites: Vec::new(),
@@ -626,8 +629,15 @@ impl<'a, 'ctx> Visit<'_> for IdentifierCollector<'a, 'ctx> {
                     .insert((ident.span.start as usize, prefix.to_string()));
             }
             if self.is_ref_binding(name) || needs_unref {
-                self.suffix_rewrites
-                    .push((ident.span.end as usize, ".value".to_string()));
+                // For assignment targets wrapped in parens like ((model) = $event),
+                // we need to place .value after the closing paren: ((model).value = $event)
+                // Scan forward from ident.span.end to skip past ')' characters
+                let mut pos = ident.span.end as usize;
+                let source_bytes = self.source.as_bytes();
+                while pos < source_bytes.len() && source_bytes[pos] == b')' {
+                    pos += 1;
+                }
+                self.suffix_rewrites.push((pos, ".value".to_string()));
             }
             return;
         }

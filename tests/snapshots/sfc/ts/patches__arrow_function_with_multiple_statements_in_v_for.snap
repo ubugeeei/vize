@@ -1,36 +1,22 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 196
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, createElementVNode as _createElementVNode, renderList as _renderList, toDisplayString as _toDisplayString } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
 import { ref } from 'vue'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
+export default /*@__PURE__*/_defineComponent({
   __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const items = ref([{ id: 1, value: 0 }])
-  const __returned__ = { items, ref }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
+  setup(__props) {
 
-});
+const items = ref([{ id: 1, value: 0 }])
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList($setup.items, (item) => {
-    return (_openBlock(), _createElementBlock("div", { key: item.id }, [
-      _createElementVNode("button", {
-        onClick: () => {
-      item.value++;
-      console.log(item.id);
-    }
-      }, _toDisplayString(item.value), 9 /* TEXT, PROPS */, ["onClick"])
-    ]))
-  }), 128 /* KEYED_FRAGMENT */))
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(items.value, (item) => { return (_openBlock(), _createElementBlock("div", { key: item.id }, [ _createElementVNode("button", { onClick: _cache[0] || (_cache[0] = () => { item.value++; console.log(item.id); }) }, _toDisplayString(item.value), 1 /* TEXT */) ])) }), 128 /* KEYED_FRAGMENT */))
+}
 }
 
-__sfc__.render = render
-export default __sfc__
+})

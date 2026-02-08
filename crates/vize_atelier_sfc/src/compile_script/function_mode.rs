@@ -419,7 +419,8 @@ pub fn compile_script_setup(
                     if prop_types.is_empty() {
                         "{}".to_string()
                     } else {
-                        let mut names: Vec<_> = prop_types.keys().collect();
+                        let mut names: Vec<_> =
+                            prop_types.iter().map(|(n, _)| n.as_str()).collect();
                         names.sort();
                         let mut s = String::from("{ ");
                         for (i, name) in names.iter().enumerate() {
@@ -480,7 +481,7 @@ pub fn compile_script_setup(
                 output.extend_from_slice(b"  props: {\n");
                 // Sort props for deterministic output
                 let mut sorted_props: Vec<_> = prop_types.iter().collect();
-                sorted_props.sort_by(|a, b| a.0.cmp(b.0));
+                sorted_props.sort_by(|a, b| a.0.cmp(&b.0));
                 for (name, prop_type) in sorted_props {
                     output.extend_from_slice(b"    ");
                     output.extend_from_slice(name.as_bytes());
@@ -732,8 +733,8 @@ pub fn compile_script_setup(
         .and_then(|p| p.type_args.as_ref())
         .map(|type_args| {
             extract_prop_types_from_type(type_args)
-                .keys()
-                .cloned()
+                .iter()
+                .map(|(n, _)| n.clone())
                 .collect()
         })
         .unwrap_or_default();

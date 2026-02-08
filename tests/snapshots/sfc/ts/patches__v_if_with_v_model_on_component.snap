@@ -3,34 +3,24 @@ source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 assertion_line: 196
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { openBlock as _openBlock, createBlock as _createBlock, createCommentVNode as _createCommentVNode } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
 import { ref } from 'vue'
 import MyInput from './MyInput.vue'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
+export default /*@__PURE__*/_defineComponent({
   __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const visible = ref(true)
-  const value = ref('')
-  const __returned__ = { MyInput, ref, value, visible }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
+  setup(__props) {
 
-});
+const visible = ref(true)
+const value = ref('')
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return ($setup.visible)
-    ? (_openBlock(), _createBlock($setup.MyInput, {
-      key: 0,
-      modelValue: $setup.value,
-      "onUpdate:modelValue": $event => (($setup.value) = $event)
-    }))
-    : _createCommentVNode("v-if", true)
+return (_ctx: any,_cache: any) => {
+  return (visible.value)
+      ? (_openBlock(), _createBlock(MyInput, { key: 0, modelValue: value.value, "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event: any) => ((value).value = $event)) }))
+      : _createCommentVNode("v-if", true)
+}
 }
 
-__sfc__.render = render
-export default __sfc__
+})

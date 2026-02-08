@@ -1,35 +1,25 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 219
 expression: js_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
 
-import { defineComponent as _defineComponent } from "vue";
-import { ref } from "vue";
-import { computed } from "vue";
-const __sfc__ = /*@__PURE__*/ _defineComponent({
-  __name: "test",
-  setup(__props, { expose: __expose, emit: __emit }) {
-    __expose();
-    const count = ref(0);
-    const double = computed(() => count.value * 2);
-    const __returned__ = {
-      computed,
-      count,
-      double,
-      ref
-    };
-    Object.defineProperty(__returned__, "__isScriptSetup", {
-      enumerable: false,
-      value: true
-    });
-    return __returned__;
-  }
-});
+import { ref } from 'vue'
+import { ref } from 'vue'
+import { computed } from 'vue'
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("div", null, _toDisplayString($setup.count) + " " + _toDisplayString($setup.double), 1 /* TEXT */))
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  setup(__props) {
+
+const count = ref(0)
+const double = computed(() => count.value * 2)
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(count.value) + " " + _toDisplayString(double.value), 1 /* TEXT */))
+}
 }
 
-__sfc__.render = render
-export default __sfc__
+})

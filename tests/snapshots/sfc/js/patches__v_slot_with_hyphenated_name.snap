@@ -1,32 +1,20 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 219
 expression: js_output
 ---
 import { openBlock as _openBlock, createBlock as _createBlock, createElementVNode as _createElementVNode, toDisplayString as _toDisplayString, withCtx as _withCtx } from "vue"
 
-import { defineComponent as _defineComponent } from "vue";
-import DataTable from "./DataTable.vue";
-const __sfc__ = /*@__PURE__*/ _defineComponent({
-  __name: "test",
-  setup(__props, { expose: __expose, emit: __emit }) {
-    __expose();
-    const __returned__ = { DataTable };
-    Object.defineProperty(__returned__, "__isScriptSetup", {
-      enumerable: false,
-      value: true
-    });
-    return __returned__;
-  }
-});
+import DataTable from './DataTable.vue'
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createBlock($setup.DataTable, null, {
-    "item-header": _withCtx(({ item }) => [
-      _createElementVNode("span", null, _toDisplayString(_ctx.item.title), 1 /* TEXT */)
-    ]),
-    _: 1 /* STABLE */
-  }))
+export default {
+  __name: 'test',
+  setup(__props) {
+
+
+return (_ctx, _cache) => {
+  return (_openBlock(), _createBlock(DataTable, null, { "item-header": _withCtx(({ item }) => [ _createElementVNode("span", null, _toDisplayString(item.title), 1 /* TEXT */) ]), _: 1 /* STABLE */ }))
+}
 }
 
-__sfc__.render = render
-export default __sfc__
+}

@@ -10,7 +10,6 @@ const count = ref(0)
 <template>
   <div>{{ count }}</div>
 </template>
-
 --- OUTPUT ---
 import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
 
@@ -28,7 +27,6 @@ return (_ctx, _cache) => {
 }
 
 }
-
 ===
 name: script setup with style
 options: sfc
@@ -44,7 +42,6 @@ const msg = 'hello'
 <style>
 .text { color: red; }
 </style>
-
 --- OUTPUT ---
 import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
 
@@ -63,10 +60,6 @@ return (_ctx, _cache) => {
 }
 
 }
---- CSS ---
-.text { color: red;
-}
-
 ===
 name: script setup with scoped style
 options: sfc
@@ -82,7 +75,6 @@ const msg = 'hello'
 <style scoped>
 .text { color: red; }
 </style>
-
 --- OUTPUT ---
 import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
 
@@ -101,10 +93,6 @@ return (_ctx, _cache) => {
 }
 
 }
---- CSS ---
-.text[data-v-5586f6d4] { color: red;
-}
-
 ===
 name: options API component
 options: sfc
@@ -120,16 +108,21 @@ export default {
 <template>
   <div>{{ msg }}</div>
 </template>
-
 --- OUTPUT ---
+import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
 
-export default {
+export function render(_ctx, _cache) {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(_ctx.msg), 1 /* TEXT */))
+}
+
+const _sfc_main = {
   data() {
     return { msg: 'hello' }
   }
 }
 
-
+_sfc_main.render = _sfc_render
+export default _sfc_main
 ===
 name: template only
 options: sfc
@@ -137,14 +130,12 @@ options: sfc
 <template>
   <div>Hello World</div>
 </template>
-
 --- OUTPUT ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
 
 export function render(_ctx, _cache) {
   return (_openBlock(), _createElementBlock("div", null, "Hello World"))
 }
-
 ===
 name: script and template
 options: sfc
@@ -156,12 +147,17 @@ export default { name: 'MyComponent' }
 <template>
   <div>Component</div>
 </template>
-
 --- OUTPUT ---
+import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
 
-export default { name: 'MyComponent' }
+export function render(_ctx, _cache) {
+  return (_openBlock(), _createElementBlock("div", null, "Component"))
+}
 
+const _sfc_main = { name: 'MyComponent' }
 
+_sfc_main.render = _sfc_render
+export default _sfc_main
 ===
 name: multiple style blocks
 options: sfc
@@ -177,7 +173,6 @@ options: sfc
 <style scoped>
 .b { color: blue; }
 </style>
-
 --- OUTPUT ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
 
@@ -186,14 +181,6 @@ const _hoisted_1 = { class: "a b" }
 export function render(_ctx, _cache) {
   return (_openBlock(), _createElementBlock("div", _hoisted_1, "Test"))
 }
---- CSS ---
-.a { color: red;
-}
-
-
-.b[data-v-5586f6d4] { color: blue;
-}
-
 ===
 name: lang attributes
 options: sfc
@@ -209,7 +196,6 @@ const count: number = 0
 <style lang="scss">
 .text { color: red; }
 </style>
-
 --- OUTPUT ---
 import { defineComponent as _defineComponent } from 'vue'
 import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
@@ -227,10 +213,6 @@ return (_ctx: any,_cache: any) => {
 }
 
 })
---- CSS ---
-.text { color: red;
-}
-
 ===
 name: custom blocks
 options: sfc
@@ -245,14 +227,12 @@ options: sfc
   "ja": { "hello": "こんにちは" }
 }
 </i18n>
-
 --- OUTPUT ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
 
 export function render(_ctx, _cache) {
   return (_openBlock(), _createElementBlock("div", null, "Test"))
 }
-
 ===
 name: defineProps
 options: sfc
@@ -264,7 +244,6 @@ const props = defineProps(['msg'])
 <template>
   <div>{{ props.msg }}</div>
 </template>
-
 --- OUTPUT ---
 import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
 
@@ -282,7 +261,6 @@ return (_ctx, _cache) => {
 }
 
 }
-
 ===
 name: defineEmits
 options: sfc
@@ -297,7 +275,6 @@ function onClick() {
 <template>
   <button @click="onClick">Click</button>
 </template>
-
 --- OUTPUT ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
 
@@ -318,7 +295,6 @@ return (_ctx, _cache) => {
 }
 
 }
-
 ===
 name: computed and watch
 options: sfc
@@ -333,7 +309,6 @@ watch(count, (n) => console.log(n))
 <template>
   <div>{{ double }}</div>
 </template>
-
 --- OUTPUT ---
 import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
 

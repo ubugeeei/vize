@@ -1,36 +1,27 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 196
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, resolveDirective as _resolveDirective, renderList as _renderList, toDisplayString as _toDisplayString } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
 import { ref } from 'vue'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
+export default /*@__PURE__*/_defineComponent({
   __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const items = ref([{ id: 1, name: 'Item 1' }])
-  function closeItem(id) {
-    console.log('close', id)
-  }
-  const __returned__ = { closeItem, items, ref }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
+  setup(__props) {
 
-});
-
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  const _directive_click_outside = _resolveDirective("click-outside")
-  
-  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList($setup.items, (item) => {
-    return (_openBlock(), _createElementBlock("div", {
-      key: item.id
-    }, "\n    " + _toDisplayString(item.name) + "\n  ", 1 /* TEXT */))
-  }), 128 /* KEYED_FRAGMENT */))
+const items = ref([{ id: 1, name: 'Item 1' }])
+function closeItem(id) {
+  console.log('close', id)
 }
 
-__sfc__.render = render
-export default __sfc__
+return (_ctx: any,_cache: any) => {
+  const _directive_click_outside = _resolveDirective("click-outside")
+
+  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(items.value, (item) => { return (_openBlock(), _createElementBlock("div", { key: item.id }, "\n    " + _toDisplayString(item.name) + "\n  ", 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */))
+}
+}
+
+})

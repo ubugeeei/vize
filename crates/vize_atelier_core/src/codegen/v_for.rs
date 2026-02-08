@@ -8,6 +8,108 @@ use super::element::{generate_vshow_closing, has_vshow_directive};
 use super::expression::generate_expression;
 use super::helpers::escape_js_string;
 use super::node::generate_node;
+use super::patch_flag::{calculate_element_patch_info, patch_flag_name};
+
+/// Extract parameter names from a v-for callback expression.
+/// Handles simple identifiers ("item"), destructuring patterns ("{ id, name }"),
+/// nested destructure ("{ user: { name } }"), rest elements ("{ id, ...rest }"),
+/// and array destructuring ("[first, second]").
+fn extract_for_params(expr: &ExpressionNode<'_>, params: &mut Vec<String>) {
+    let content = match expr {
+        ExpressionNode::Simple(exp) => exp.content.as_str(),
+        _ => return,
+    };
+    extract_destructure_params(content.trim(), params);
+}
+
+/// Recursively extract parameter names from a destructuring pattern string.
+pub(super) fn extract_destructure_params(trimmed: &str, params: &mut Vec<String>) {
+    if trimmed.starts_with('{') && trimmed.ends_with('}') {
+        let inner = &trimmed[1..trimmed.len() - 1];
+        // Split by commas at the top level (respecting nested braces/brackets)
+        for part in split_top_level(inner) {
+            let part = part.trim();
+            // Handle rest element: ...rest
+            if let Some(rest) = part.strip_prefix("...") {
+                let rest = rest.trim();
+                if !rest.is_empty() && is_valid_ident(rest) {
+                    params.push(rest.to_string());
+                }
+                continue;
+            }
+            // Handle default values: "item = default" — take name before =
+            if let Some(eq_pos) = part.find('=') {
+                let name = part[..eq_pos].trim();
+                if !name.is_empty() && is_valid_ident(name) {
+                    params.push(name.to_string());
+                }
+                continue;
+            }
+            // Handle renaming/nested: "original: value"
+            if let Some(colon_pos) = part.find(':') {
+                let value = part[colon_pos + 1..].trim();
+                // Value might be another destructure pattern or a simple identifier
+                if value.starts_with('{') || value.starts_with('[') {
+                    extract_destructure_params(value, params);
+                } else if is_valid_ident(value) {
+                    params.push(value.to_string());
+                }
+                continue;
+            }
+            // Simple identifier
+            if !part.is_empty() && is_valid_ident(part) {
+                params.push(part.to_string());
+            }
+        }
+    } else if trimmed.starts_with('[') && trimmed.ends_with(']') {
+        let inner = &trimmed[1..trimmed.len() - 1];
+        for part in split_top_level(inner) {
+            let part = part.trim();
+            if let Some(rest) = part.strip_prefix("...") {
+                let rest = rest.trim();
+                if !rest.is_empty() && is_valid_ident(rest) {
+                    params.push(rest.to_string());
+                }
+            } else if part.starts_with('{') || part.starts_with('[') {
+                extract_destructure_params(part, params);
+            } else if !part.is_empty() && is_valid_ident(part) {
+                params.push(part.to_string());
+            }
+        }
+    } else if is_valid_ident(trimmed) {
+        params.push(trimmed.to_string());
+    }
+}
+
+/// Split a string by commas at the top level, respecting nested braces and brackets.
+pub(super) fn split_top_level(s: &str) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let mut depth = 0i32;
+    let mut start = 0;
+    for (i, b) in s.bytes().enumerate() {
+        match b {
+            b'{' | b'[' | b'(' => depth += 1,
+            b'}' | b']' | b')' => depth -= 1,
+            b',' if depth == 0 => {
+                parts.push(&s[start..i]);
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    parts.push(&s[start..]);
+    parts
+}
+
+/// Check if a string is a valid JS identifier
+pub(super) fn is_valid_ident(s: &str) -> bool {
+    let mut chars = s.chars();
+    match chars.next() {
+        Some(c) if c.is_ascii_alphabetic() || c == '_' || c == '$' => {}
+        _ => return false,
+    }
+    chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$')
+}
 
 /// Check if content is a numeric literal (for v-for range)
 fn is_numeric_content(content: &str) -> bool {
@@ -86,9 +188,13 @@ pub fn generate_for(ctx: &mut CodegenContext, for_node: &ForNode<'_>) {
     generate_expression(ctx, &for_node.source);
     ctx.push(", (");
 
+    // Collect callback parameter names for scope registration
+    let mut callback_params: Vec<String> = Vec::new();
+
     // Value alias
     if let Some(value) = &for_node.value_alias {
         generate_expression(ctx, value);
+        extract_for_params(value, &mut callback_params);
     } else {
         ctx.push("_item");
     }
@@ -97,13 +203,18 @@ pub fn generate_for(ctx: &mut CodegenContext, for_node: &ForNode<'_>) {
     if let Some(key) = &for_node.key_alias {
         ctx.push(", ");
         generate_expression(ctx, key);
+        extract_for_params(key, &mut callback_params);
     }
 
     // Index alias
     if let Some(index) = &for_node.object_index_alias {
         ctx.push(", ");
         generate_expression(ctx, index);
+        extract_for_params(index, &mut callback_params);
     }
+
+    // Register callback params so they don't get _ctx. prefix
+    ctx.add_slot_params(&callback_params);
 
     ctx.push(") => {");
     ctx.indent();
@@ -116,6 +227,9 @@ pub fn generate_for(ctx: &mut CodegenContext, for_node: &ForNode<'_>) {
     } else {
         generate_children(ctx, &for_node.children);
     }
+
+    // Unregister callback params
+    ctx.remove_slot_params(&callback_params);
 
     ctx.deindent();
     ctx.newline();
@@ -357,6 +471,24 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
                 ctx.push(ctx.helper(RuntimeHelper::OpenBlock));
                 ctx.push("(), ");
 
+                // Template with single child element optimization:
+                // unwrap the template and generate the child directly as a block
+                let unwrapped_child: Option<&ElementNode<'_>> =
+                    if is_template && el.children.len() == 1 {
+                        if let TemplateChildNode::Element(ref child_el) = el.children[0] {
+                            if child_el.tag_type == ElementType::Element {
+                                Some(child_el)
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+                let gen_is_template = is_template && unwrapped_child.is_none();
+
                 if is_component {
                     // Component: use createBlock
                     ctx.use_helper(RuntimeHelper::CreateBlock);
@@ -373,13 +505,20 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
                         ctx.push("_component_");
                         ctx.push(&el.tag.replace('-', "_"));
                     }
-                } else if is_template {
-                    // Template: use Fragment
+                } else if gen_is_template {
+                    // Template with multiple children: use Fragment
                     ctx.use_helper(RuntimeHelper::CreateElementBlock);
                     ctx.use_helper(RuntimeHelper::Fragment);
                     ctx.push(ctx.helper(RuntimeHelper::CreateElementBlock));
                     ctx.push("(");
                     ctx.push(ctx.helper(RuntimeHelper::Fragment));
+                } else if let Some(child_el) = unwrapped_child {
+                    // Template with single child: unwrap to child element
+                    ctx.use_helper(RuntimeHelper::CreateElementBlock);
+                    ctx.push(ctx.helper(RuntimeHelper::CreateElementBlock));
+                    ctx.push("(\"");
+                    ctx.push(&child_el.tag);
+                    ctx.push("\"");
                 } else {
                     // Regular element
                     ctx.use_helper(RuntimeHelper::CreateElementBlock);
@@ -390,16 +529,19 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
                 }
 
                 // Props with key and all other props
-                generate_for_item_props(ctx, el, key_exp);
+                // For unwrapped template child, use child's props with template's key
+                let props_el = unwrapped_child.unwrap_or(el);
+                generate_for_item_props(ctx, props_el, key_exp);
 
                 // Children
-                if !el.children.is_empty() {
+                let children_el = unwrapped_child.unwrap_or(el);
+                if !children_el.children.is_empty() {
                     ctx.push(", ");
-                    if is_template {
+                    if gen_is_template {
                         // Template children are array
                         ctx.push("[");
                         ctx.indent();
-                        for (i, child) in el.children.iter().enumerate() {
+                        for (i, child) in children_el.children.iter().enumerate() {
                             if i > 0 {
                                 ctx.push(",");
                             }
@@ -410,20 +552,70 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
                         ctx.newline();
                         ctx.push("]");
                     } else {
-                        generate_children(ctx, &el.children);
+                        generate_children(ctx, &children_el.children);
                     }
                 }
 
                 // Add patch flag
-                let has_interpolation = el
-                    .children
-                    .iter()
-                    .any(|c| matches!(c, TemplateChildNode::Interpolation(_)));
-
-                if is_template {
+                if is_component {
+                    // For components inside v-for, use full patch flag calculation
+                    let (patch_flag, dynamic_props) = calculate_element_patch_info(
+                        el,
+                        ctx.options.binding_metadata.as_ref(),
+                        ctx.options.cache_handlers,
+                    );
+                    // If no children were emitted but we have patch info, emit null for children
+                    if el.children.is_empty() && (patch_flag.is_some() || dynamic_props.is_some()) {
+                        ctx.push(", null");
+                    }
+                    if let Some(flag) = patch_flag {
+                        ctx.push(", ");
+                        ctx.push(&flag.to_string());
+                        ctx.push(" /* ");
+                        ctx.push(&patch_flag_name(flag));
+                        ctx.push(" */");
+                    }
+                    if let Some(props) = dynamic_props {
+                        ctx.push(", [");
+                        for (i, prop) in props.iter().enumerate() {
+                            if i > 0 {
+                                ctx.push(", ");
+                            }
+                            ctx.push("\"");
+                            ctx.push(prop);
+                            ctx.push("\"");
+                        }
+                        ctx.push("]");
+                    }
+                } else if gen_is_template {
                     ctx.push(", 64 /* STABLE_FRAGMENT */");
-                } else if has_interpolation {
-                    ctx.push(", 1 /* TEXT */");
+                } else {
+                    // For regular elements (and unwrapped template children), use full patch flag calculation
+                    let flag_el = unwrapped_child.unwrap_or(el);
+                    let (patch_flag, dynamic_props) = calculate_element_patch_info(
+                        flag_el,
+                        ctx.options.binding_metadata.as_ref(),
+                        ctx.options.cache_handlers,
+                    );
+                    if let Some(flag) = patch_flag {
+                        ctx.push(", ");
+                        ctx.push(&flag.to_string());
+                        ctx.push(" /* ");
+                        ctx.push(&patch_flag_name(flag));
+                        ctx.push(" */");
+                    }
+                    if let Some(props) = dynamic_props {
+                        ctx.push(", [");
+                        for (i, prop) in props.iter().enumerate() {
+                            if i > 0 {
+                                ctx.push(", ");
+                            }
+                            ctx.push("\"");
+                            ctx.push(prop);
+                            ctx.push("\"");
+                        }
+                        ctx.push("]");
+                    }
                 }
 
                 ctx.push("))");

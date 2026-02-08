@@ -1,30 +1,23 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 196
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, normalizeStyle as _normalizeStyle } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
 import { ref } from 'vue'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
+export default /*@__PURE__*/_defineComponent({
   __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const width = ref(100)
-  const height = ref(50)
-  const __returned__ = { height, ref, width }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
+  setup(__props) {
 
-});
+const width = ref(100)
+const height = ref(50)
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("div", {
-    style: _normalizeStyle({ width: $setup.width, height: $setup.height })
-  }, "Styled", 4 /* STYLE */))
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", { style: _normalizeStyle({ width.value, height.value }) }, "Styled", 4 /* STYLE */))
+}
 }
 
-__sfc__.render = render
-export default __sfc__
+})

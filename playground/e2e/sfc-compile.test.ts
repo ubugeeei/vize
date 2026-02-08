@@ -144,8 +144,8 @@ const user: User = { name: 'test', age: 25 }
 `
       const result = wasm!.compileSfc(sfc, {})
       expect(result.script?.code).toBeDefined()
-      // Interface should be stripped
-      expect(result.script?.code).not.toContain('interface User')
+      // TypeScript is preserved in output (auto-detected from lang="ts")
+      expect(result.script?.code).toContain('interface User')
     })
 
     it('should handle type aliases', () => {
@@ -161,8 +161,8 @@ const status: Status = 'active'
 `
       const result = wasm!.compileSfc(sfc, {})
       expect(result.script?.code).toBeDefined()
-      // Type alias should be stripped
-      expect(result.script?.code).not.toContain('type Status')
+      // TypeScript is preserved in output (auto-detected from lang="ts")
+      expect(result.script?.code).toContain('type Status')
     })
   })
 

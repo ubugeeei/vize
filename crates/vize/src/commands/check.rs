@@ -46,7 +46,7 @@ pub struct CheckArgs {
     pub tsgo_path: Option<String>,
 
     /// Template globals to declare (e.g., "$t:(...args: any[]) => string,$route:any").
-    /// Overrides default plugin globals. Use "none" to disable all plugin globals.
+    /// Overrides vize.config.json check.globals. Use "none" to disable all globals.
     #[arg(long)]
     pub globals: Option<String>,
 }

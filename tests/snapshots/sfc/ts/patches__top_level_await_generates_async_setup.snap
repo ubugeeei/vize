@@ -1,27 +1,22 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 196
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString, unref as _unref } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
+export default /*@__PURE__*/_defineComponent({
   __name: 'test',
-  async setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const response = await fetch('/api/data')
-  const data = await response.json()
-  const __returned__ = { data, response }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
+  setup(__props) {
 
-});
+const response = await fetch('/api/data')
+const data = await response.json()
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(_unref($setup.data)), 1 /* TEXT */))
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(_unref(data)), 1 /* TEXT */))
+}
 }
 
-__sfc__.render = render
-export default __sfc__
+})

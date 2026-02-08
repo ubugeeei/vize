@@ -1,28 +1,39 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 106
+assertion_line: 150
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, renderSlot as _renderSlot } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
-  __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const __returned__ = { color, disabled, height, isWide, mini, on, outlined }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
-
-});
-
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("button", { disabled: $props.disabled }, [
-    _renderSlot(_ctx.$slots, "default")
-  ], 8 /* PROPS */, ["disabled"]))
+interface Props {
+  outlined?: boolean;
+  isWide?: boolean;
+  mini?: boolean;
+  disabled?: boolean;
+  on?: Object;
+  height?: number | string;
+  color?: string;
 }
 
-__sfc__.render = render
-export default __sfc__
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    outlined: { type: Boolean, required: false, default: false },
+    isWide: { type: Boolean, required: false, default: false },
+    mini: { type: Boolean, required: false },
+    disabled: { type: Boolean, required: false, default: false },
+    on: { type: Object, required: false, default: undefined },
+    height: { type: Number, required: false, default: '2rem' },
+    color: { type: String, required: false, default: 'primary' }
+  },
+  setup(__props: any) {
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("button", { disabled: __props.disabled }, [ _renderSlot(_ctx.$slots, "default") ], 8 /* PROPS */, ["disabled"]))
+}
+}
+
+})

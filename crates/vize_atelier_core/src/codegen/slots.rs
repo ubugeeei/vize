@@ -10,59 +10,83 @@ use super::helpers::{escape_js_string, is_valid_js_identifier};
 use super::node::generate_node;
 
 /// Get slot props expression as raw source (not transformed)
-fn get_slot_props_raw(dir: &DirectiveNode<'_>) -> Option<vize_carton::String> {
+fn get_slot_props(dir: &DirectiveNode<'_>) -> Option<vize_carton::String> {
     dir.exp.as_ref().map(|exp| match exp {
         ExpressionNode::Simple(s) => s.loc.source.clone(),
         ExpressionNode::Compound(c) => c.loc.source.clone(),
     })
 }
 
+/// Add _ctx. prefix to default value identifiers in destructuring patterns.
+/// e.g., "{ item = defaultItem }" -> "{ item = _ctx.defaultItem }"
+/// Only processes identifiers after `=` (default values), not the param names.
+fn prefix_slot_defaults(source: &str) -> std::string::String {
+    let bytes = source.as_bytes();
+    let len = bytes.len();
+    let mut result = std::string::String::with_capacity(len + 20);
+    let mut i = 0;
+
+    while i < len {
+        if bytes[i] == b'=' {
+            // Skip == and =>
+            if i + 1 < len && (bytes[i + 1] == b'=' || bytes[i + 1] == b'>') {
+                result.push(bytes[i] as char);
+                result.push(bytes[i + 1] as char);
+                i += 2;
+                continue;
+            }
+            result.push('=');
+            i += 1;
+            // Skip whitespace after =
+            while i < len && (bytes[i] == b' ' || bytes[i] == b'\t') {
+                result.push(bytes[i] as char);
+                i += 1;
+            }
+            // Check if next is a simple identifier (not a literal/number/string/object)
+            if i < len && (bytes[i].is_ascii_alphabetic() || bytes[i] == b'_' || bytes[i] == b'$') {
+                // Collect the identifier
+                let start = i;
+                while i < len
+                    && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b'_' || bytes[i] == b'$')
+                {
+                    i += 1;
+                }
+                let ident = &source[start..i];
+                // Don't prefix keywords/literals
+                if !matches!(
+                    ident,
+                    "true" | "false" | "null" | "undefined" | "NaN" | "Infinity"
+                ) {
+                    result.push_str("_ctx.");
+                }
+                result.push_str(ident);
+            }
+        } else {
+            result.push(bytes[i] as char);
+            i += 1;
+        }
+    }
+
+    result
+}
+
 /// Extract parameter names from slot props expression
 /// e.g., "{ item }" -> ["item"], "{ item, index }" -> ["item", "index"]
 /// e.g., "slotProps" -> ["slotProps"]
 fn extract_slot_params(props_str: &str) -> Vec<std::string::String> {
-    let trimmed = props_str.trim();
     let mut params = Vec::new();
-
-    if trimmed.starts_with('{') && trimmed.ends_with('}') {
-        // Destructuring pattern: { item, index }
-        let inner = &trimmed[1..trimmed.len() - 1];
-        for part in inner.split(',') {
-            let part = part.trim();
-            // Handle default values like "item = default"
-            let name = if let Some(pos) = part.find('=') {
-                part[..pos].trim()
-            } else if let Some(pos) = part.find(':') {
-                // Handle renaming like "user: { name }" - take the first part
-                part[..pos].trim()
-            } else {
-                part
-            };
-            if !name.is_empty() && is_identifier(name) {
-                params.push(name.to_string());
-            }
-        }
-    } else if is_identifier(trimmed) {
-        // Simple identifier: slotProps
-        params.push(trimmed.to_string());
-    }
-
+    super::v_for::extract_destructure_params(props_str.trim(), &mut params);
     params
-}
-
-/// Check if a string is a valid JavaScript identifier
-fn is_identifier(s: &str) -> bool {
-    let mut chars = s.chars();
-    match chars.next() {
-        Some(c) if c.is_alphabetic() || c == '_' || c == '$' => {}
-        _ => return false,
-    }
-    chars.all(|c| c.is_alphanumeric() || c == '_' || c == '$')
 }
 
 /// Check if component has slot children that need to be generated as slots object
 pub fn has_slot_children(el: &ElementNode<'_>) -> bool {
     if el.children.is_empty() {
+        return false;
+    }
+
+    // Teleport and KeepAlive pass children as arrays, not slot objects
+    if matches!(el.tag.as_str(), "Teleport" | "KeepAlive") {
         return false;
     }
 
@@ -87,7 +111,8 @@ pub fn has_dynamic_slots_flag(el: &ElementNode<'_>) -> bool {
 
 /// Generate slots object for component
 pub fn generate_slots(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
-    ctx.use_helper(RuntimeHelper::WithCtx);
+    // Note: WithCtx helper is registered at each _withCtx() output site,
+    // not here, to avoid importing it when slots don't actually use it.
 
     // Check for v-slot on component root (shorthand for default slot)
     let root_slot = el.props.iter().find_map(|p| {
@@ -109,12 +134,14 @@ pub fn generate_slots(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
         // v-slot on component root - all children go to default slot
         ctx.newline();
         ctx.push("default: ");
+        ctx.use_helper(RuntimeHelper::WithCtx);
         ctx.push(ctx.helper(RuntimeHelper::WithCtx));
         ctx.push("(");
-        // Slot props (scoped slot params) - use raw source, not transformed
-        let params = if let Some(props_str) = get_slot_props_raw(slot_dir) {
+        // Slot props (scoped slot params) - use raw source with default value prefix
+        let params = if let Some(props_str) = get_slot_props(slot_dir) {
+            let processed = prefix_slot_defaults(&props_str);
             ctx.push("(");
-            ctx.push(&props_str);
+            ctx.push(&processed);
             ctx.push(")");
             extract_slot_params(&props_str)
         } else {
@@ -186,13 +213,15 @@ pub fn generate_slots(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
                         }
 
                         ctx.push(": ");
+                        ctx.use_helper(RuntimeHelper::WithCtx);
                         ctx.push(ctx.helper(RuntimeHelper::WithCtx));
                         ctx.push("(");
 
-                        // Slot props - use raw source, not transformed
-                        let params = if let Some(props_str) = get_slot_props_raw(slot_dir) {
+                        // Slot props - use raw source with default value prefix
+                        let params = if let Some(props_str) = get_slot_props(slot_dir) {
+                            let processed = prefix_slot_defaults(&props_str);
                             ctx.push("(");
-                            ctx.push(&props_str);
+                            ctx.push(&processed);
                             ctx.push(")");
                             extract_slot_params(&props_str)
                         } else {
@@ -236,6 +265,7 @@ pub fn generate_slots(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             }
             ctx.newline();
             ctx.push("default: ");
+            ctx.use_helper(RuntimeHelper::WithCtx);
             ctx.push(ctx.helper(RuntimeHelper::WithCtx));
             ctx.push("(() => [");
             ctx.indent();
@@ -408,81 +438,60 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_is_identifier_valid() {
-        assert!(is_identifier("foo"));
-        assert!(is_identifier("_bar"));
-        assert!(is_identifier("$baz"));
-        assert!(is_identifier("foo123"));
-        assert!(is_identifier("camelCase"));
-        assert!(is_identifier("PascalCase"));
+    fn test_is_valid_js_identifier_valid() {
+        assert!(is_valid_js_identifier("foo"));
+        assert!(is_valid_js_identifier("_bar"));
+        assert!(is_valid_js_identifier("$baz"));
+        assert!(is_valid_js_identifier("foo123"));
+        assert!(is_valid_js_identifier("camelCase"));
+        assert!(is_valid_js_identifier("PascalCase"));
     }
 
     #[test]
-    fn test_is_identifier_invalid() {
-        assert!(!is_identifier("123foo")); // starts with number
-        assert!(!is_identifier("")); // empty
-        assert!(!is_identifier("foo-bar")); // contains hyphen
-        assert!(!is_identifier("foo.bar")); // contains dot
-        assert!(!is_identifier("foo bar")); // contains space
-        assert!(!is_identifier("item-header")); // hyphenated slot name
+    fn test_is_valid_js_identifier_invalid() {
+        assert!(!is_valid_js_identifier("123foo")); // starts with number
+        assert!(!is_valid_js_identifier("")); // empty
+        assert!(!is_valid_js_identifier("foo-bar")); // contains hyphen
+        assert!(!is_valid_js_identifier("foo.bar")); // contains dot
+        assert!(!is_valid_js_identifier("foo bar")); // contains space
+        assert!(!is_valid_js_identifier("item-header")); // hyphenated slot name
     }
 
     #[test]
     fn test_hyphenated_slot_names_need_quotes() {
-        // These slot names should NOT be valid identifiers
-        // and thus need to be quoted in the output
-        assert!(!is_identifier("item-header"));
-        assert!(!is_identifier("card-body"));
-        assert!(!is_identifier("main-content"));
-        assert!(!is_identifier("list-item"));
+        assert!(!is_valid_js_identifier("item-header"));
+        assert!(!is_valid_js_identifier("card-body"));
+        assert!(!is_valid_js_identifier("main-content"));
+        assert!(!is_valid_js_identifier("list-item"));
     }
 
     #[test]
     fn test_regular_slot_names_are_valid_identifiers() {
-        // These slot names ARE valid identifiers
-        // and don't need to be quoted
-        assert!(is_identifier("default"));
-        assert!(is_identifier("header"));
-        assert!(is_identifier("footer"));
-        assert!(is_identifier("content"));
+        assert!(is_valid_js_identifier("default"));
+        assert!(is_valid_js_identifier("header"));
+        assert!(is_valid_js_identifier("footer"));
+        assert!(is_valid_js_identifier("content"));
     }
 
     #[test]
-    fn test_extract_slot_params_destructuring() {
-        let params = extract_slot_params("{ item }");
-        assert_eq!(params, vec!["item"]);
-
-        let params = extract_slot_params("{ item, index }");
-        assert_eq!(params, vec!["item", "index"]);
-
-        let params = extract_slot_params("{ user, data }");
-        assert_eq!(params, vec!["user", "data"]);
-    }
-
-    #[test]
-    fn test_extract_slot_params_with_defaults() {
-        let params = extract_slot_params("{ item = default }");
-        assert_eq!(params, vec!["item"]);
-
-        let params = extract_slot_params("{ count = 0, name = 'test' }");
-        assert_eq!(params, vec!["count", "name"]);
-    }
-
-    #[test]
-    fn test_extract_slot_params_simple_identifier() {
-        let params = extract_slot_params("slotProps");
-        assert_eq!(params, vec!["slotProps"]);
-
-        let params = extract_slot_params("data");
-        assert_eq!(params, vec!["data"]);
-    }
-
-    #[test]
-    fn test_extract_slot_params_empty() {
-        let params = extract_slot_params("");
-        assert!(params.is_empty());
-
-        let params = extract_slot_params("   ");
-        assert!(params.is_empty());
+    fn test_prefix_slot_defaults() {
+        // Default values should get _ctx. prefix
+        assert_eq!(
+            prefix_slot_defaults("{ item = defaultItem }"),
+            "{ item = _ctx.defaultItem }"
+        );
+        assert_eq!(prefix_slot_defaults("{ count = 0 }"), "{ count = 0 }");
+        assert_eq!(
+            prefix_slot_defaults("{ name = 'test' }"),
+            "{ name = 'test' }"
+        );
+        // Literals should not be prefixed
+        assert_eq!(prefix_slot_defaults("{ x = true }"), "{ x = true }");
+        assert_eq!(prefix_slot_defaults("{ x = false }"), "{ x = false }");
+        assert_eq!(prefix_slot_defaults("{ x = null }"), "{ x = null }");
+        assert_eq!(
+            prefix_slot_defaults("{ x = undefined }"),
+            "{ x = undefined }"
+        );
     }
 }

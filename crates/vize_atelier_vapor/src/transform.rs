@@ -914,7 +914,7 @@ fn generate_element_template(el: &ElementNode<'_>) -> String {
             for child in el.children.iter() {
                 match child {
                     TemplateChildNode::Text(text) => {
-                        template.push_str(&text.content);
+                        template.push_str(&escape_html_text(&text.content));
                     }
                     TemplateChildNode::Element(child_el) => {
                         // Include child elements in template
@@ -931,6 +931,22 @@ fn generate_element_template(el: &ElementNode<'_>) -> String {
     }
 
     template.into()
+}
+
+/// Escape HTML special characters in text content (vuejs/core #14310)
+fn escape_html_text(s: &str) -> std::string::String {
+    let mut result = std::string::String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '&' => result.push_str("&amp;"),
+            '<' => result.push_str("&lt;"),
+            '>' => result.push_str("&gt;"),
+            '"' => result.push_str("&quot;"),
+            '\'' => result.push_str("&#39;"),
+            _ => result.push(c),
+        }
+    }
+    result
 }
 
 /// Check if an element is static (no dynamic directives)

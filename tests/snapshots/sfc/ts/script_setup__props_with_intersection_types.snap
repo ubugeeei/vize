@@ -1,26 +1,33 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 106
+assertion_line: 150
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
-  __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const __returned__ = {  }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
-
-});
-
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(_ctx.id) + " " + _toDisplayString(_ctx.name), 1 /* TEXT */))
+interface BaseProps {
+  id: string
+  name: string
+}
+interface ExtendedProps {
+  extra: boolean
 }
 
-__sfc__.render = render
-export default __sfc__
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    id: { type: String, required: true },
+    name: { type: String, required: true },
+    extra: { type: Boolean, required: true }
+  },
+  setup(__props: any) {
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(_ctx.id) + " " + _toDisplayString(_ctx.name), 1 /* TEXT */))
+}
+}
+
+})

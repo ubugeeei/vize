@@ -105,3 +105,19 @@ input = "<div v-pre>{{ this will not compile }}</div>"
 [[cases]]
 name = "v-pre with children"
 input = "<div v-pre><span>{{ raw }}</span></div>"
+
+# =============================================================================
+# v-pre edge cases (vuejs/core #8417)
+# =============================================================================
+
+[[cases]]
+name = "v-pre with on-prefixed attribute"
+input = '<div v-pre test on-test is-on-test>content</div>'
+
+[[cases]]
+name = "v-pre should not process shorthand directives"
+input = '<div v-pre :id="dynamic" @click="handler">{{ raw }}</div>'
+
+[[cases]]
+name = "v-pre nested elements preserve attributes"
+input = '<div v-pre><span :class="cls" @click="fn">{{ raw }}</span></div>'

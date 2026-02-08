@@ -1,3 +1,10 @@
+export type {
+  VizeConfig,
+  LoadConfigOptions,
+  ConfigEnv,
+  UserConfigExport,
+} from "../../vize/src/types.js";
+
 export interface SfcCompileOptionsNapi {
   filename?: string;
   sourceMap?: boolean;
@@ -137,97 +144,3 @@ export type CompileSfcBatchWithResultsFn = (
   files: BatchFileInput[],
   options?: BatchCompileOptionsNapi,
 ) => BatchCompileResultWithFiles;
-
-// ============================================================================
-// Config types
-// ============================================================================
-
-/**
- * Vize configuration options
- */
-export interface VizeConfig {
-  /**
-   * Vue compiler options
-   */
-  compiler?: {
-    /**
-     * Enable Vapor mode compilation
-     * @default false
-     */
-    vapor?: boolean;
-
-    /**
-     * Enable SSR mode
-     * @default false
-     */
-    ssr?: boolean;
-
-    /**
-     * Enable source map generation
-     * @default true in development, false in production
-     */
-    sourceMap?: boolean;
-  };
-
-  /**
-   * Vite plugin options
-   */
-  vite?: {
-    /**
-     * Files to include in compilation
-     * @default /\.vue$/
-     */
-    include?: string | RegExp | (string | RegExp)[];
-
-    /**
-     * Files to exclude from compilation
-     * @default /node_modules/
-     */
-    exclude?: string | RegExp | (string | RegExp)[];
-
-    /**
-     * Glob patterns to scan for .vue files during pre-compilation
-     * @default ['**\/*.vue']
-     */
-    scanPatterns?: string[];
-
-    /**
-     * Glob patterns to ignore during pre-compilation
-     * @default ['node_modules/**', 'dist/**', '.git/**']
-     */
-    ignorePatterns?: string[];
-  };
-
-  /**
-   * Linter options
-   */
-  linter?: {
-    /**
-     * Enable linting
-     */
-    enabled?: boolean;
-    /**
-     * Rules to enable/disable
-     */
-    rules?: Record<string, "off" | "warn" | "error">;
-  };
-}
-
-/**
- * Options for loading vize.config file
- */
-export interface LoadConfigOptions {
-  /**
-   * Config file search mode
-   * - 'root': Search only in the specified root directory
-   * - 'auto': Search from cwd upward until finding a config file
-   * - 'none': Don't load config file
-   * @default 'root'
-   */
-  mode?: "root" | "auto" | "none";
-
-  /**
-   * Custom config file path (overrides automatic search)
-   */
-  configFile?: string;
-}

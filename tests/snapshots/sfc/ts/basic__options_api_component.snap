@@ -1,6 +1,5 @@
 ---
-source: crates/vue_compiler_sfc/src/snapshot_tests.rs
-assertion_line: 126
+source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 expression: ts_output
 ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"

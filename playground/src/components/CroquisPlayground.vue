@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, watch, computed, onMounted } from "vue";
+import { ref, watch, computed, onMounted, onUnmounted, nextTick, getCurrentInstance } from "vue";
 import MonacoEditor from "./MonacoEditor.vue";
 import type { Diagnostic } from "./MonacoEditor.vue";
 import type {
   WasmModule,
-  AnalysisResult,
+  CroquisResult,
   BindingDisplay,
   BindingSource,
   ScopeDisplay,
@@ -16,10 +16,15 @@ const props = defineProps<{
 }>();
 
 const source = ref(ANALYSIS_PRESET);
-const analysisResult = ref<AnalysisResult | null>(null);
+const analysisResult = ref<CroquisResult | null>(null);
 const error = ref<string | null>(null);
 const activeTab = ref<"vir" | "stats" | "bindings" | "scopes" | "diagnostics">("vir");
 const showScopeVisualization = ref(true);
+const editorRef = ref<InstanceType<typeof MonacoEditor> | null>(null);
+
+// Computed values for display (declared early so scopeDecorations can reference scopes)
+const summary = computed(() => analysisResult.value?.croquis);
+const scopes = computed(() => summary.value?.scopes || []);
 
 // Convert scopes to Monaco editor decorations (exclude module scope and global scopes with no position)
 const scopeDecorations = computed(() => {
@@ -39,11 +44,33 @@ const scopeDecorations = computed(() => {
       kindStr: scope.kindStr,
     }));
 });
+
+// Scopes to pass to MonacoEditor (separate computed for reliable reactivity)
+const editorScopes = computed(() =>
+  showScopeVisualization.value ? scopeDecorations.value : [],
+);
+
+// Directly push scope decorations to MonacoEditor when they change
+// (handles showScopeVisualization toggle)
+watch(editorScopes, async (scopes) => {
+  await nextTick();
+  editorRef.value?.applyScopeDecorations(scopes);
+});
+
 const analysisTime = ref<number | null>(null);
+
+// Workaround for Vize compiler prop reactivity issue:
+// instance.props.compiler stays null even after parent updates,
+// but vnode.props.compiler has the correct value.
+const _instance = getCurrentInstance();
+function getCompiler(): WasmModule | null {
+  return props.compiler ?? (_instance?.vnode?.props as Record<string, unknown>)?.compiler as WasmModule | null ?? null;
+}
 
 // Perform analysis
 async function analyze() {
-  if (!props.compiler) {
+  const compiler = getCompiler();
+  if (!compiler) {
     error.value = "Compiler not loaded";
     return;
   }
@@ -52,11 +79,18 @@ async function analyze() {
   const startTime = performance.now();
 
   try {
-    const result = props.compiler.analyzeSfc(source.value, {
+    const result = compiler.analyzeSfc(source.value, {
       filename: "Component.vue",
     });
     analysisResult.value = result;
     analysisTime.value = performance.now() - startTime;
+
+    // Directly apply scope decorations after analysis
+    // (bypasses Vize compiler prop reactivity issue)
+    await nextTick();
+    if (editorRef.value && showScopeVisualization.value) {
+      editorRef.value.applyScopeDecorations(scopeDecorations.value);
+    }
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
     analysisResult.value = null;
@@ -78,24 +112,34 @@ watch(
 watch(
   () => props.compiler,
   () => {
-    if (props.compiler) {
+    if (getCompiler()) {
       analyze();
     }
   },
 );
 
-// Analyze on mount
+// Analyze on mount (with polling fallback for Vize compiler prop reactivity issue)
+let compilerPollTimer: ReturnType<typeof setInterval> | null = null;
 onMounted(() => {
-  if (props.compiler) {
+  if (getCompiler()) {
     analyze();
+  } else {
+    compilerPollTimer = setInterval(() => {
+      if (getCompiler()) {
+        if (compilerPollTimer) clearInterval(compilerPollTimer);
+        compilerPollTimer = null;
+        analyze();
+      }
+    }, 200);
   }
+});
+onUnmounted(() => {
+  if (compilerPollTimer) clearInterval(compilerPollTimer);
 });
 
 // Computed values for display
-const summary = computed(() => analysisResult.value?.summary);
 const bindings = computed(() => summary.value?.bindings || []);
 const macros = computed(() => summary.value?.macros || []);
-const scopes = computed(() => summary.value?.scopes || []);
 const css = computed(() => summary.value?.css);
 const typeExports = computed(() => summary.value?.typeExports || []);
 const invalidExports = computed(() => summary.value?.invalidExports || []);
@@ -506,9 +550,10 @@ function getScopeColorClass(kind: string): string {
       </div>
       <div class="editor-container">
         <MonacoEditor
+          ref="editorRef"
           v-model="source"
           language="vue"
-          :scopes="showScopeVisualization ? scopeDecorations : []"
+          :scopes="editorScopes"
           :diagnostics="monacoDiagnostics"
         />
       </div>
@@ -578,11 +623,16 @@ function getScopeColorClass(kind: string): string {
                   v-for="line in virLines"
                   :key="line.index"
                   :class="['vir-line', `vir-line-${line.lineType}`]"
-                ><template v-if="line.tokens.length > 0"><span
+                >
+                  <template v-if="line.tokens.length > 0"
+                    ><span
                       v-for="(token, ti) in line.tokens"
                       :key="ti"
                       :class="['vir-token', `vir-${token.type}`]"
-                    >{{ token.text }}</span></template><template v-else><span>&#160;</span></template></div>
+                      >{{ token.text }}</span
+                    ></template
+                  ><template v-else><span>&#160;</span></template>
+                </div>
               </div>
             </div>
           </div>

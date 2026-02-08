@@ -682,6 +682,7 @@ fn infer_binding_type(init: &Expression<'_>, kind: VariableDeclarationKind) -> B
                 "ref" | "shallowRef" | "customRef" | "toRef" => return BindingType::SetupRef,
                 "computed" | "toRefs" => return BindingType::SetupRef,
                 "reactive" | "shallowReactive" => return BindingType::SetupReactiveConst,
+                "defineModel" => return BindingType::SetupRef,
                 _ => {}
             }
         }

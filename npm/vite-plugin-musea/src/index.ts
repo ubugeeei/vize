@@ -17,6 +17,7 @@ import type { Plugin, ViteDevServer, ResolvedConfig } from "vite";
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
+import { vizeConfigStore } from "@vizejs/vite-plugin";
 
 import type {
   MuseaOptions,
@@ -69,10 +70,7 @@ export {
   type StyleDictionaryOutput,
 } from "./style-dictionary.js";
 
-export {
-  MuseaA11yRunner,
-  type A11ySummary,
-} from "./a11y.js";
+export { MuseaA11yRunner, type A11ySummary } from "./a11y.js";
 
 export {
   generateArtFile,
@@ -144,7 +142,11 @@ interface NativeBinding {
   generateArtDoc?: (
     source: string,
     artOptions?: { filename?: string },
-    docOptions?: { include_source?: boolean; include_templates?: boolean; include_metadata?: boolean },
+    docOptions?: {
+      include_source?: boolean;
+      include_templates?: boolean;
+      include_metadata?: boolean;
+    },
   ) => {
     markdown: string;
     filename: string;
@@ -182,12 +184,12 @@ function loadNative(): NativeBinding {
  * Create Musea Vite plugin.
  */
 export function musea(options: MuseaOptions = {}): Plugin[] {
-  const include = options.include ?? ["**/*.art.vue"];
-  const exclude = options.exclude ?? ["node_modules/**", "dist/**"];
-  const basePath = options.basePath ?? "/__musea__";
-  const storybookCompat = options.storybookCompat ?? false;
+  let include = options.include ?? ["**/*.art.vue"];
+  let exclude = options.exclude ?? ["node_modules/**", "dist/**"];
+  let basePath = options.basePath ?? "/__musea__";
+  let storybookCompat = options.storybookCompat ?? false;
   const storybookOutDir = options.storybookOutDir ?? ".storybook/stories";
-  const inlineArt = options.inlineArt ?? false;
+  let inlineArt = options.inlineArt ?? false;
 
   let config: ResolvedConfig;
   let server: ViteDevServer | null = null;
@@ -212,6 +214,19 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
 
     configResolved(resolvedConfig) {
       config = resolvedConfig;
+
+      // Merge musea config from vize.config.ts (plugin args > config file > defaults)
+      const vizeConfig = vizeConfigStore.get(resolvedConfig.root);
+      if (vizeConfig?.musea) {
+        const mc = vizeConfig.musea;
+        // Only apply config file values when plugin options were not explicitly set
+        if (!options.include && mc.include) include = mc.include;
+        if (!options.exclude && mc.exclude) exclude = mc.exclude;
+        if (!options.basePath && mc.basePath) basePath = mc.basePath;
+        if (options.storybookCompat === undefined && mc.storybookCompat !== undefined)
+          storybookCompat = mc.storybookCompat;
+        if (options.inlineArt === undefined && mc.inlineArt !== undefined) inlineArt = mc.inlineArt;
+      }
     },
 
     configureServer(devServer) {
@@ -454,7 +469,10 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
             // GET /api/arts/:path/palette
             const artPath = decodeURIComponent(paletteMatch[1]);
             const art = artFiles.get(artPath);
-            if (!art) { sendError("Art not found", 404); return; }
+            if (!art) {
+              sendError("Art not found", 404);
+              return;
+            }
 
             try {
               const source = await fs.promises.readFile(artPath, "utf-8");
@@ -463,7 +481,13 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
                 const palette = binding.generateArtPalette(source, { filename: artPath });
                 sendJson(palette);
               } else {
-                sendJson({ title: art.metadata.title, controls: [], groups: [], json: "{}", typescript: "" });
+                sendJson({
+                  title: art.metadata.title,
+                  controls: [],
+                  groups: [],
+                  json: "{}",
+                  typescript: "",
+                });
               }
             } catch (e) {
               sendError(e instanceof Error ? e.message : String(e));
@@ -475,17 +499,21 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
             // GET /api/arts/:path/analysis
             const artPath = decodeURIComponent(analysisMatch[1]);
             const art = artFiles.get(artPath);
-            if (!art) { sendError("Art not found", 404); return; }
+            if (!art) {
+              sendError("Art not found", 404);
+              return;
+            }
 
             try {
               // Determine the component file path: inline art uses the file itself, .art.vue uses the component attribute
-              const resolvedComponentPath = art.isInline && art.componentPath
-                ? art.componentPath
-                : art.metadata.component
-                  ? (path.isAbsolute(art.metadata.component)
-                    ? art.metadata.component
-                    : path.resolve(path.dirname(artPath), art.metadata.component))
-                  : null;
+              const resolvedComponentPath =
+                art.isInline && art.componentPath
+                  ? art.componentPath
+                  : art.metadata.component
+                    ? path.isAbsolute(art.metadata.component)
+                      ? art.metadata.component
+                      : path.resolve(path.dirname(artPath), art.metadata.component)
+                    : null;
 
               if (resolvedComponentPath) {
                 const source = await fs.promises.readFile(resolvedComponentPath, "utf-8");
@@ -509,7 +537,10 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
             // GET /api/arts/:path/docs
             const artPath = decodeURIComponent(docsMatch[1]);
             const art = artFiles.get(artPath);
-            if (!art) { sendError("Art not found", 404); return; }
+            if (!art) {
+              sendError("Art not found", 404);
+              return;
+            }
 
             try {
               const source = await fs.promises.readFile(artPath, "utf-8");
@@ -518,7 +549,11 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
                 const doc = binding.generateArtDoc(source, { filename: artPath });
                 sendJson(doc);
               } else {
-                sendJson({ markdown: "", title: art.metadata.title, variant_count: art.variants.length });
+                sendJson({
+                  markdown: "",
+                  title: art.metadata.title,
+                  variant_count: art.variants.length,
+                });
               }
             } catch (e) {
               sendError(e instanceof Error ? e.message : String(e));
@@ -531,7 +566,10 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
             const artPath = decodeURIComponent(a11yMatch[1]);
             const _variantName = decodeURIComponent(a11yMatch[2]);
             const art = artFiles.get(artPath);
-            if (!art) { sendError("Art not found", 404); return; }
+            if (!art) {
+              sendError("Art not found", 404);
+              return;
+            }
 
             // Return empty a11y results (populated after VRT --a11y run)
             sendJson({ violations: [], passes: 0, incomplete: 0 });
@@ -552,19 +590,32 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
         // POST /api/preview-with-props
         if (req.url === "/preview-with-props" && req.method === "POST") {
           let body = "";
-          req.on("data", (chunk) => { body += chunk; });
+          req.on("data", (chunk) => {
+            body += chunk;
+          });
           req.on("end", () => {
             try {
               const { artPath: reqArtPath, variantName, props: propsOverride } = JSON.parse(body);
               const art = artFiles.get(reqArtPath);
-              if (!art) { sendError("Art not found", 404); return; }
+              if (!art) {
+                sendError("Art not found", 404);
+                return;
+              }
 
               const variant = art.variants.find((v) => v.name === variantName);
-              if (!variant) { sendError("Variant not found", 404); return; }
+              if (!variant) {
+                sendError("Variant not found", 404);
+                return;
+              }
 
               // Generate preview module with props override
               const variantComponentName = toPascalCase(variant.name);
-              const moduleCode = generatePreviewModuleWithProps(art, variantComponentName, variant.name, propsOverride);
+              const moduleCode = generatePreviewModuleWithProps(
+                art,
+                variantComponentName,
+                variant.name,
+                propsOverride,
+              );
               res.setHeader("Content-Type", "application/javascript");
               res.end(moduleCode);
             } catch (e) {
@@ -577,7 +628,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
         // POST /api/generate
         if (req.url === "/generate" && req.method === "POST") {
           let body = "";
-          req.on("data", (chunk) => { body += chunk; });
+          req.on("data", (chunk) => {
+            body += chunk;
+          });
           req.on("end", async () => {
             try {
               const { componentPath: reqComponentPath, options: autogenOptions } = JSON.parse(body);
@@ -838,7 +891,12 @@ function matchGlob(filepath: string, pattern: string): boolean {
   return new RegExp(`^${regex}$`).test(filepath);
 }
 
-async function scanArtFiles(root: string, include: string[], exclude: string[], scanInlineArt = false): Promise<string[]> {
+async function scanArtFiles(
+  root: string,
+  include: string[],
+  exclude: string[],
+  scanInlineArt = false,
+): Promise<string[]> {
   const files: string[] = [];
 
   async function scan(dir: string): Promise<void> {
@@ -869,7 +927,12 @@ async function scanArtFiles(root: string, include: string[], exclude: string[], 
             break;
           }
         }
-      } else if (scanInlineArt && entry.isFile() && entry.name.endsWith(".vue") && !entry.name.endsWith(".art.vue")) {
+      } else if (
+        scanInlineArt &&
+        entry.isFile() &&
+        entry.name.endsWith(".vue") &&
+        !entry.name.endsWith(".art.vue")
+      ) {
         // Inline art: check if .vue file contains <art block
         const content = await fs.promises.readFile(fullPath, "utf-8");
         if (content.includes("<art")) {
@@ -1984,7 +2047,9 @@ export const variants = ${JSON.stringify(art.variants)};
 
     // Replace <Self> with the actual component name (for inline art)
     if (componentName) {
-      template = template.replace(/<Self/g, `<${componentName}`).replace(/<\/Self>/g, `</${componentName}>`);
+      template = template
+        .replace(/<Self/g, `<${componentName}`)
+        .replace(/<\/Self>/g, `</${componentName}>`);
     }
 
     // Escape the template for use in a JS string

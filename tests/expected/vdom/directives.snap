@@ -311,3 +311,55 @@ export function render(_ctx, _cache) {
     _createElementVNode("span", null, "{{ raw }}")
   ]))
 }
+
+===
+name: v-pre with on-prefixed attribute
+options: default
+--- INPUT ---
+<div v-pre test on-test is-on-test>content</div>
+--- OUTPUT ---
+import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+const _hoisted_1 = {
+  test: "",
+  "on-test": "",
+  "is-on-test": ""
+}
+
+export function render(_ctx, _cache) {
+  return (_openBlock(), _createElementBlock("div", _hoisted_1, "content"))
+}
+
+===
+name: v-pre should not process shorthand directives
+options: default
+--- INPUT ---
+<div v-pre :id="dynamic" @click="handler">{{ raw }}</div>
+--- OUTPUT ---
+import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+const _hoisted_1 = {
+  ":id": "dynamic",
+  "@click": "handler"
+}
+
+export function render(_ctx, _cache) {
+  return (_openBlock(), _createElementBlock("div", _hoisted_1, "{{ raw }}"))
+}
+
+===
+name: v-pre nested elements preserve attributes
+options: default
+--- INPUT ---
+<div v-pre><span :class="cls" @click="fn">{{ raw }}</span></div>
+--- OUTPUT ---
+import { createElementVNode as _createElementVNode, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+export function render(_ctx, _cache) {
+  return (_openBlock(), _createElementBlock("div", null, [...(_cache[0] || (_cache[0] = [
+    _createElementVNode("span", {
+      ":class": "cls",
+      "@click": "fn"
+    }, "{{ raw }}", -1 /* CACHED */)
+  ]))]))
+}

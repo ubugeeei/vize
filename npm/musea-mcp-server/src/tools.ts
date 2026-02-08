@@ -257,7 +257,10 @@ export async function handleToolCall(
       const artPath = args?.path as string;
       if (!artPath) throw new McpError(ErrorCode.InvalidParams, "path is required");
       if (!binding.generateArtPalette) {
-        throw new McpError(ErrorCode.InternalError, "generateArtPalette not available in native binding");
+        throw new McpError(
+          ErrorCode.InternalError,
+          "generateArtPalette not available in native binding",
+        );
       }
 
       const absolutePath = path.resolve(ctx.projectRoot, artPath);
@@ -446,7 +449,10 @@ export async function handleToolCall(
         throw new McpError(ErrorCode.InternalError, "analyzeSfc not available in native binding");
       }
       if (!binding.generateVariants) {
-        throw new McpError(ErrorCode.InternalError, "generateVariants not available in native binding");
+        throw new McpError(
+          ErrorCode.InternalError,
+          "generateVariants not available in native binding",
+        );
       }
 
       const absolutePath = path.resolve(ctx.projectRoot, componentRelPath);
@@ -508,16 +514,23 @@ export async function handleToolCall(
       const artPath = args?.path as string;
       if (!artPath) throw new McpError(ErrorCode.InvalidParams, "path is required");
       if (!binding.generateArtDoc) {
-        throw new McpError(ErrorCode.InternalError, "generateArtDoc not available in native binding");
+        throw new McpError(
+          ErrorCode.InternalError,
+          "generateArtDoc not available in native binding",
+        );
       }
 
       const absolutePath = path.resolve(ctx.projectRoot, artPath);
       const source = await fs.promises.readFile(absolutePath, "utf-8");
-      const doc = binding.generateArtDoc(source, { filename: absolutePath }, {
-        include_source: args?.includeSource as boolean | undefined,
-        include_templates: args?.includeTemplates as boolean | undefined,
-        include_metadata: true,
-      });
+      const doc = binding.generateArtDoc(
+        source,
+        { filename: absolutePath },
+        {
+          include_source: args?.includeSource as boolean | undefined,
+          include_templates: args?.includeTemplates as boolean | undefined,
+          include_metadata: true,
+        },
+      );
 
       return {
         content: [
@@ -540,7 +553,10 @@ export async function handleToolCall(
 
     case "generate_catalog": {
       if (!binding.generateArtCatalog) {
-        throw new McpError(ErrorCode.InternalError, "generateArtCatalog not available in native binding");
+        throw new McpError(
+          ErrorCode.InternalError,
+          "generateArtCatalog not available in native binding",
+        );
       }
 
       const arts = await ctx.scanArtFiles();
@@ -602,9 +618,7 @@ export async function handleToolCall(
       }
 
       return {
-        content: [
-          { type: "text", text: JSON.stringify({ categories }, null, 2) },
-        ],
+        content: [{ type: "text", text: JSON.stringify({ categories }, null, 2) }],
       };
     }
 

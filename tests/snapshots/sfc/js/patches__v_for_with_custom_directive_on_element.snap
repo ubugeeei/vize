@@ -1,37 +1,22 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 219
 expression: js_output
 ---
 import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, resolveDirective as _resolveDirective, renderList as _renderList, toDisplayString as _toDisplayString, unref as _unref } from "vue"
 
-import { defineComponent as _defineComponent } from "vue";
-const __sfc__ = /*@__PURE__*/ _defineComponent({
-  __name: "test",
-  setup(__props, { expose: __expose, emit: __emit }) {
-    __expose();
-    const list = [
-      1,
-      2,
-      3
-    ];
-    const __returned__ = { list };
-    Object.defineProperty(__returned__, "__isScriptSetup", {
-      enumerable: false,
-      value: true
-    });
-    return __returned__;
-  }
-});
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
+export default {
+  __name: 'test',
+  setup(__props) {
+
+const list = [1, 2, 3]
+
+return (_ctx, _cache) => {
   const _directive_focus = _resolveDirective("focus")
-  
-  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_unref($setup.list), (n) => {
-    return (_openBlock(), _createElementBlock("span", {
-      key: n
-    }, _toDisplayString(n), 1 /* TEXT */))
-  }), 128 /* KEYED_FRAGMENT */))
+
+  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_unref(list), (n) => { return (_openBlock(), _createElementBlock("span", { key: n }, _toDisplayString(n), 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */))
+}
 }
 
-__sfc__.render = render
-export default __sfc__
+}

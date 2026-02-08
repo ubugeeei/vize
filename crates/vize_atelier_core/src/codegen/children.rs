@@ -9,13 +9,26 @@ use super::node::generate_node;
 
 /// Generate children array
 pub fn generate_children(ctx: &mut CodegenContext, children: &[TemplateChildNode<'_>]) {
+    generate_children_inner(ctx, children, false);
+}
+
+/// Generate children, forcing array form with createTextVNode (for withDirectives elements)
+pub fn generate_children_force_array(ctx: &mut CodegenContext, children: &[TemplateChildNode<'_>]) {
+    generate_children_inner(ctx, children, true);
+}
+
+fn generate_children_inner(
+    ctx: &mut CodegenContext,
+    children: &[TemplateChildNode<'_>],
+    force_array: bool,
+) {
     if children.is_empty() {
         ctx.push("null");
         return;
     }
 
-    // Check if single text/interpolation child can be inlined
-    if children.len() == 1 {
+    // Check if single text/interpolation child can be inlined (unless forced to array)
+    if !force_array && children.len() == 1 {
         match &children[0] {
             TemplateChildNode::Text(text) => {
                 ctx.push("\"");
@@ -36,7 +49,7 @@ pub fn generate_children(ctx: &mut CodegenContext, children: &[TemplateChildNode
         }
     }
 
-    // Check if all children are text/interpolation - if so, use string concatenation
+    // Check if all children are text/interpolation - if so, use string concatenation (unless forced to array)
     let all_text_or_interp = children.iter().all(|child| {
         matches!(
             child,
@@ -44,7 +57,7 @@ pub fn generate_children(ctx: &mut CodegenContext, children: &[TemplateChildNode
         )
     });
 
-    if all_text_or_interp {
+    if !force_array && all_text_or_interp {
         // Generate concatenated expression: "text" + _toDisplayString(expr) + "more"
         for (i, child) in children.iter().enumerate() {
             if i > 0 {

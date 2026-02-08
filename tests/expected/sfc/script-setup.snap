@@ -1137,3 +1137,1655 @@ return (_ctx: any,_cache: any) => {
 }
 
 })
+===
+name: generic component basic
+options: sfc
+--- INPUT ---
+<script setup lang="ts" generic="T">
+defineProps<{
+  items: T[]
+  selected: T
+}>()
+</script>
+
+<template>
+  <div v-for="item in items" :key="String(item)">{{ item }}</div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { renderList as _renderList, Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    items: { type: Array, required: true },
+    selected: { type: null, required: true }
+  },
+  setup(__props: any) {
+
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(__props.items, (item) => {
+    return (_openBlock(), _createElementBlock("div", {
+      key: String(item)
+    }, _toDisplayString(item), 1 /* TEXT */))
+  }), 128 /* KEYED_FRAGMENT */))
+}
+}
+
+})
+===
+name: generic component with extends
+options: sfc
+--- INPUT ---
+<script setup lang="ts" generic="T extends string | number">
+defineProps<{
+  value: T
+  options: T[]
+}>()
+</script>
+
+<template>
+  <select>
+    <option v-for="opt in options" :key="opt" :value="opt">{{ opt }}</option>
+  </select>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { renderList as _renderList, Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
+
+const _hoisted_1 = ["value"]
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    value: { type: null, required: true },
+    options: { type: Array, required: true }
+  },
+  setup(__props: any) {
+
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("select", null, [
+    (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(__props.options, (opt) => {
+      return (_openBlock(), _createElementBlock("option", {
+        key: opt,
+        value: opt
+      }, _toDisplayString(opt), 9 /* TEXT, PROPS */, _hoisted_1))
+    }), 128 /* KEYED_FRAGMENT */))
+  ]))
+}
+}
+
+})
+===
+name: generic component with multiple type params
+options: sfc
+--- INPUT ---
+<script setup lang="ts" generic="T extends object, K extends keyof T">
+defineProps<{
+  items: T[]
+  keyField: K
+}>()
+</script>
+
+<template>
+  <div v-for="item in items" :key="String(item[keyField])">{{ item }}</div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { renderList as _renderList, Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    items: { type: Array, required: true },
+    keyField: { type: null, required: true }
+  },
+  setup(__props: any) {
+
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(__props.items, (item) => {
+    return (_openBlock(), _createElementBlock("div", {
+      key: String(item[__props.keyField])
+    }, _toDisplayString(item), 1 /* TEXT */))
+  }), 128 /* KEYED_FRAGMENT */))
+}
+}
+
+})
+===
+name: generic component with complex constraint
+options: sfc
+--- INPUT ---
+<script setup lang="ts" generic="FormShape extends object">
+import { ref } from 'vue'
+
+defineProps<{
+  initialState: FormShape
+  onSubmit: (data: FormShape) => void
+}>()
+
+const formData = ref<FormShape | null>(null)
+</script>
+
+<template>
+  <form @submit.prevent>
+    <slot :data="formData" />
+  </form>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { renderSlot as _renderSlot, withModifiers as _withModifiers, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+import { ref } from 'vue'
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    initialState: { type: null, required: true },
+    onSubmit: { type: Function, required: true }
+  },
+  setup(__props: any) {
+
+
+
+const formData = ref<FormShape | null>(null)
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("form", {
+    onSubmit: _cache[0] || (_cache[0] = _withModifiers(() => {}, ["prevent"]))
+  }, [
+    _renderSlot(_ctx.$slots, "default", { data: formData.value })
+  ], 32 /* NEED_HYDRATION */))
+}
+}
+
+})
+===
+name: generic component with default type
+options: sfc
+--- INPUT ---
+<script setup lang="ts" generic="T = string">
+defineProps<{
+  value: T
+}>()
+</script>
+
+<template>
+  <div>{{ value }}</div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    value: { type: null, required: true }
+  },
+  setup(__props: any) {
+
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(__props.value), 1 /* TEXT */))
+}
+}
+
+})
+===
+name: props with nested object types
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+defineProps<{
+  config: {
+    state: string
+    disabled: boolean
+    onSuccess?: () => void
+  }
+}>()
+</script>
+
+<template>
+  <div>{{ config.state }}</div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    config: { type: Object, required: true }
+  },
+  setup(__props: any) {
+
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(__props.config.state), 1 /* TEXT */))
+}
+}
+
+})
+===
+name: props with arrow function types
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+defineProps<{
+  onSuccess: () => void
+  onError: (error: Error) => void
+  transform: (value: string) => number
+}>()
+</script>
+
+<template>
+  <div>Component</div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    onSuccess: { type: Function, required: true },
+    onError: { type: Function, required: true },
+    transform: { type: Function, required: true }
+  },
+  setup(__props: any) {
+
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, "Component"))
+}
+}
+
+})
+===
+name: props with union types
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+type ButtonVariant =
+  | { type: "link"; href: string }
+  | { type: "button"; onClick: () => void }
+
+defineProps<{
+  variant: ButtonVariant
+}>()
+</script>
+
+<template>
+  <div>{{ variant.type }}</div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+type ButtonVariant =
+  | { type: "link"; href: string }
+  | { type: "button"; onClick: () => void }
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    variant: { type: Object, required: true }
+  },
+  setup(__props: any) {
+
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(__props.variant.type), 1 /* TEXT */))
+}
+}
+
+})
+===
+name: props with intersection types
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+interface BaseProps {
+  id: string
+  name: string
+}
+
+interface ExtendedProps {
+  extra: boolean
+}
+
+defineProps<BaseProps & ExtendedProps>()
+</script>
+
+<template>
+  <div>{{ id }} {{ name }}</div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+interface BaseProps {
+  id: string
+  name: string
+}
+
+interface ExtendedProps {
+  extra: boolean
+}
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    id: { type: String, required: true },
+    name: { type: String, required: true },
+    extra: { type: Boolean, required: true }
+  },
+  setup(__props: any) {
+
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(__props.id) + " " + _toDisplayString(__props.name), 1 /* TEXT */))
+}
+}
+
+})
+===
+name: props with readonly arrays
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+defineProps<{
+  options: readonly { value: string | number; label: string }[]
+}>()
+</script>
+
+<template>
+  <select>
+    <option v-for="opt in options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+  </select>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { renderList as _renderList, Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
+
+const _hoisted_1 = ["value"]
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    options: { type: Array, required: true }
+  },
+  setup(__props: any) {
+
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("select", null, [
+    (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(__props.options, (opt) => {
+      return (_openBlock(), _createElementBlock("option", {
+        key: opt.value,
+        value: opt.value
+      }, _toDisplayString(opt.label), 9 /* TEXT, PROPS */, _hoisted_1))
+    }), 128 /* KEYED_FRAGMENT */))
+  ]))
+}
+}
+
+})
+===
+name: props with method signatures in object
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+defineProps<{
+  context: {
+    open(): void
+    close(): void
+    isOpened: boolean
+  }
+}>()
+</script>
+
+<template>
+  <div v-if="context.isOpened">Open</div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { openBlock as _openBlock, createElementBlock as _createElementBlock, createCommentVNode as _createCommentVNode } from "vue"
+
+const _hoisted_1 = { key: 0 }
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    context: { type: Object, required: true }
+  },
+  setup(__props: any) {
+
+
+
+return (_ctx: any,_cache: any) => {
+  return (__props.context.isOpened)
+    ? (_openBlock(), _createElementBlock("div", _hoisted_1, "Open"))
+    : _createCommentVNode("v-if", true)
+}
+}
+
+})
+===
+name: withDefaults with optional props
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+interface Props {
+  msg: string
+  count?: number
+  disabled?: boolean
+}
+
+withDefaults(defineProps<Props>(), {
+  count: 0,
+  disabled: false
+})
+</script>
+
+<template>
+  <div>{{ msg }}</div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+interface Props {
+  msg: string
+  count?: number
+  disabled?: boolean
+}
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    msg: { type: String, required: true },
+    count: { type: Number, required: false, default: 0 },
+    disabled: { type: Boolean, required: false, default: false }
+  },
+  setup(__props: any) {
+
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(__props.msg), 1 /* TEXT */))
+}
+}
+
+})
+===
+name: withDefaults with function default
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+interface Props {
+  items?: string[]
+}
+
+withDefaults(defineProps<Props>(), {
+  items: () => []
+})
+</script>
+
+<template>
+  <div v-for="item in items" :key="item">{{ item }}</div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { renderList as _renderList, Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
+
+interface Props {
+  items?: string[]
+}
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    items: { type: Array, required: false, default: () => [] }
+  },
+  setup(__props: any) {
+
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(__props.items, (item) => {
+    return (_openBlock(), _createElementBlock("div", { key: item }, _toDisplayString(item), 1 /* TEXT */))
+  }), 128 /* KEYED_FRAGMENT */))
+}
+}
+
+})
+===
+name: multiple top-level await calls
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+const user = await fetchUser()
+const posts = await fetchPosts(user.id)
+</script>
+
+<template>
+  <div>{{ user.name }} has {{ posts.length }} posts</div>
+</template>
+--- OUTPUT ---
+import { withAsyncContext as _withAsyncContext, defineComponent as _defineComponent } from 'vue'
+import { unref as _unref, toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  async setup(__props) {
+
+let __temp: any, __restore: any
+
+const user = (
+  ([__temp,__restore] = _withAsyncContext(() => fetchUser())),
+  __temp = await __temp,
+  __restore(),
+  __temp
+)
+const posts = (
+  ([__temp,__restore] = _withAsyncContext(() => fetchPosts(user.id))),
+  __temp = await __temp,
+  __restore(),
+  __temp
+)
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(_unref(user).name) + " has " + _toDisplayString(_unref(posts).length) + " posts", 1 /* TEXT */))
+}
+}
+
+})
+===
+name: top-level await with destructuring
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+const { data, error } = await useFetch('/api/data')
+</script>
+
+<template>
+  <div v-if="error">Error: {{ error }}</div>
+  <div v-else>{{ data }}</div>
+</template>
+--- OUTPUT ---
+import { withAsyncContext as _withAsyncContext, defineComponent as _defineComponent } from 'vue'
+import { unref as _unref, toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock, createCommentVNode as _createCommentVNode } from "vue"
+
+const _hoisted_1 = { key: 0 }
+const _hoisted_2 = { key: 1 }
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  async setup(__props) {
+
+let __temp: any, __restore: any
+
+const { data, error } = (
+  ([__temp,__restore] = _withAsyncContext(() => useFetch('/api/data'))),
+  __temp = await __temp,
+  __restore(),
+  __temp
+)
+
+return (_ctx: any,_cache: any) => {
+  return (_unref(error))
+    ? (_openBlock(), _createElementBlock("div", _hoisted_1, "Error: " + _toDisplayString(_unref(error)), 1 /* TEXT */))
+    : (_openBlock(), _createElementBlock("div", _hoisted_2, _toDisplayString(_unref(data)), 1 /* TEXT */))
+}
+}
+
+})
+===
+name: top-level await in initialization
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+import { ref } from 'vue'
+
+await initializeApp()
+const store = useStore()
+await store.loadData()
+
+const count = ref(0)
+</script>
+
+<template>
+  <div>{{ count }}</div>
+</template>
+--- OUTPUT ---
+import { withAsyncContext as _withAsyncContext, defineComponent as _defineComponent } from 'vue'
+import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+import { ref } from 'vue'
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  async setup(__props) {
+
+let __temp: any, __restore: any
+
+;(
+  ([__temp,__restore] = _withAsyncContext(() => initializeApp())),
+  await __temp,
+  __restore()
+)
+const store = useStore()
+;(
+  ([__temp,__restore] = _withAsyncContext(() => store.loadData())),
+  await __temp,
+  __restore()
+)
+
+const count = ref(0)
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(count.value), 1 /* TEXT */))
+}
+}
+
+})
+===
+name: defineEmits with typed function signatures
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+const emit = defineEmits<{
+  (e: 'update', value: string): void
+  (e: 'delete', id: number): void
+  (e: 'submit'): void
+}>()
+</script>
+
+<template>
+  <button @click="emit('submit')">Submit</button>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  emits: ["update", "delete", "submit"],
+  setup(__props, { emit: __emit }) {
+
+const emit = __emit
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("button", {
+    onClick: _cache[0] || (_cache[0] = ($event: any) => (emit('submit')))
+  }, "Submit"))
+}
+}
+
+})
+===
+name: defineEmits with Vue 3.3+ shorthand
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+const emit = defineEmits<{
+  change: [value: string]
+  submit: []
+  update: [id: number, data: object]
+}>()
+</script>
+
+<template>
+  <button @click="emit('submit')">Submit</button>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  emits: ["change", "submit", "update"],
+  setup(__props, { emit: __emit }) {
+
+const emit = __emit
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("button", {
+    onClick: _cache[0] || (_cache[0] = ($event: any) => (emit('submit')))
+  }, "Submit"))
+}
+}
+
+})
+===
+name: interface with callback function type
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+interface Props {
+  refreshMethod: (loaded: Function) => Promise<void> | void;
+}
+const props = defineProps<Props>();
+</script>
+
+<template>
+  <div @click="props.refreshMethod(() => {})">Refresh</div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+interface Props {
+  refreshMethod: (loaded: Function) => Promise<void> | void;
+}
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    refreshMethod: { type: Function, required: true }
+  },
+  setup(__props: any) {
+
+const props = __props;
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", {
+    onClick: _cache[0] || (_cache[0] = ($event: any) => (props.refreshMethod(() => {})))
+  }, "Refresh"))
+}
+}
+
+})
+===
+name: interface with async callback
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+interface Props {
+  onSubmit: (data: FormData) => Promise<void>;
+  onError?: (error: Error) => void;
+}
+defineProps<Props>();
+</script>
+
+<template>
+  <form>Submit</form>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+interface Props {
+  onSubmit: (data: FormData) => Promise<void>;
+  onError?: (error: Error) => void;
+}
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    onSubmit: { type: Function, required: true },
+    onError: { type: Function, required: false }
+  },
+  setup(__props: any) {
+
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("form", null, "Submit"))
+}
+}
+
+})
+===
+name: array with as const
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+const SORT_TYPES = [
+  { text: 'Latest', value: 'DESC' },
+  { text: 'Oldest', value: 'ASC' }
+] as const;
+
+type SortType = typeof SORT_TYPES[number]['value'];
+const sortType = ref<SortType>('DESC');
+</script>
+
+<template>
+  <div>{{ sortType }}</div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { unref as _unref, toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+type SortType = typeof SORT_TYPES[number]['value'];
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  setup(__props) {
+
+const SORT_TYPES = [
+  { text: 'Latest', value: 'DESC' },
+  { text: 'Oldest', value: 'ASC' }
+] as const;
+
+const sortType = ref<SortType>('DESC');
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(_unref(sortType)), 1 /* TEXT */))
+}
+}
+
+})
+===
+name: withDefaults with Object type
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+interface Props {
+  outlined?: boolean;
+  disabled?: boolean;
+  on?: Object;
+  height?: number | string;
+  color?: string;
+}
+
+withDefaults(defineProps<Props>(), {
+  outlined: false,
+  disabled: false,
+  on: undefined,
+  height: '2rem',
+  color: 'primary'
+});
+</script>
+
+<template>
+  <button :disabled="disabled">Click</button>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+const _hoisted_1 = ["disabled"]
+
+interface Props {
+  outlined?: boolean;
+  disabled?: boolean;
+  on?: Object;
+  height?: number | string;
+  color?: string;
+}
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    outlined: { type: Boolean, required: false, default: false },
+    disabled: { type: Boolean, required: false, default: false },
+    on: { type: Object, required: false, default: undefined },
+    height: { type: [Number, String], required: false, default: '2rem' },
+    color: { type: String, required: false, default: 'primary' }
+  },
+  setup(__props: any) {
+
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("button", { disabled: __props.disabled }, "Click", 8 /* PROPS */, _hoisted_1))
+}
+}
+
+})
+===
+name: computed with route params
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+
+const route = useRoute();
+
+const studentId = computed(() =>
+  route.params.studentId ? parseInt(route.params.studentId) : null
+);
+</script>
+
+<template>
+  <div>{{ studentId }}</div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  setup(__props) {
+
+const route = useRoute();
+
+const studentId = computed(() =>
+  route.params.studentId ? parseInt(route.params.studentId) : null
+);
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(studentId.value), 1 /* TEXT */))
+}
+}
+
+})
+===
+name: reco RoundedBtn pattern
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+interface Props {
+  outlined?: boolean;
+  isWide?: boolean;
+  mini?: boolean;
+  disabled?: boolean;
+  on?: Object;
+  height?: number | string;
+  color?: string;
+}
+
+withDefaults(defineProps<Props>(), {
+  outlined: false,
+  isWide: false,
+  isMini: false,
+  disabled: false,
+  on: undefined,
+  height: '2rem',
+  color: 'primary'
+});
+</script>
+
+<template>
+  <button :disabled="disabled">
+    <slot />
+  </button>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { renderSlot as _renderSlot, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+const _hoisted_1 = ["disabled"]
+
+interface Props {
+  outlined?: boolean;
+  isWide?: boolean;
+  mini?: boolean;
+  disabled?: boolean;
+  on?: Object;
+  height?: number | string;
+  color?: string;
+}
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    outlined: { type: Boolean, required: false, default: false },
+    isWide: { type: Boolean, required: false, default: false },
+    mini: { type: Boolean, required: false },
+    disabled: { type: Boolean, required: false, default: false },
+    on: { type: Object, required: false, default: undefined },
+    height: { type: [Number, String], required: false, default: '2rem' },
+    color: { type: String, required: false, default: 'primary' }
+  },
+  setup(__props: any) {
+
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("button", { disabled: __props.disabled }, [
+    _renderSlot(_ctx.$slots, "default")
+  ], 8 /* PROPS */, _hoisted_1))
+}
+}
+
+})
+===
+name: reco GuidanceProgressLapInputBtn pattern
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+import { computed } from 'vue';
+
+interface GuidanceProgressFormInput {
+  progressLap: number;
+  originalProgressLap: number;
+  progressUnit: { value: string };
+}
+
+interface Props {
+  guidanceProgress: GuidanceProgressFormInput;
+  disabled?: boolean;
+  readonly?: boolean;
+}
+const props = defineProps<Props>();
+
+const lapClass = computed(() => `lap-${props.guidanceProgress.progressLap}`);
+const isChangedProgressLap = computed(
+  () => props.guidanceProgress.progressLap !== props.guidanceProgress.originalProgressLap
+);
+</script>
+
+<template>
+  <button
+    :class="[{ disabled }, lapClass]"
+    :disabled="disabled"
+    @click.prevent
+  >
+    {{ guidanceProgress.progressUnit.value }}
+  </button>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { toDisplayString as _toDisplayString, withModifiers as _withModifiers, normalizeClass as _normalizeClass, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+const _hoisted_1 = ["disabled"]
+
+import { computed } from 'vue';
+
+interface GuidanceProgressFormInput {
+  progressLap: number;
+  originalProgressLap: number;
+  progressUnit: { value: string };
+}
+
+interface Props {
+  guidanceProgress: GuidanceProgressFormInput;
+  disabled?: boolean;
+  readonly?: boolean;
+}
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    guidanceProgress: { type: Object, required: true },
+    disabled: { type: Boolean, required: false },
+    readonly: { type: Boolean, required: false }
+  },
+  setup(__props: any) {
+
+const props = __props;
+
+const lapClass = computed(() => `lap-${props.guidanceProgress.progressLap}`);
+const isChangedProgressLap = computed(
+  () => props.guidanceProgress.progressLap !== props.guidanceProgress.originalProgressLap
+);
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("button", {
+    class: _normalizeClass([{ disabled: __props.disabled }, lapClass.value]),
+    disabled: __props.disabled,
+    onClick: _cache[0] || (_cache[0] = _withModifiers(() => {}, ["prevent"]))
+  }, _toDisplayString(__props.guidanceProgress.progressUnit.value), 11 /* TEXT, CLASS, PROPS */, _hoisted_1))
+}
+}
+
+})
+===
+name: nested v-if with ref should not duplicate .value
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+import { ref } from 'vue';
+const mode = ref<'a' | 'b'>('a');
+</script>
+
+<template>
+  <div>
+    <template v-if="true">
+      <div v-if="true">
+        <button :class="{ active: mode === 'a' }" @click="mode = 'b'">Test</button>
+      </div>
+      <div v-else-if="false">
+        <span>Alt</span>
+      </div>
+    </template>
+  </div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { normalizeClass as _normalizeClass, createElementVNode as _createElementVNode, openBlock as _openBlock, createElementBlock as _createElementBlock, createCommentVNode as _createCommentVNode, Fragment as _Fragment } from "vue"
+
+const _hoisted_1 = { key: 0 }
+const _hoisted_2 = { key: 1 }
+
+import { ref } from 'vue';
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  setup(__props) {
+
+const mode = ref<'a' | 'b'>('a');
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, [
+    true
+      ? (_openBlock(), _createElementBlock(_Fragment, { key: 0 }, [
+          true
+            ? (_openBlock(), _createElementBlock("div", _hoisted_1, [
+                _createElementVNode("button", {
+                  class: _normalizeClass({ active: mode.value === 'a' }),
+                  onClick: _cache[0] || (_cache[0] = ($event: any) => (mode.value = 'b'))
+                }, "Test", 2 /* CLASS */)
+              ]))
+            : false
+              ? (_openBlock(), _createElementBlock("div", _hoisted_2, [...(_cache[1] || (_cache[1] = [
+                  _createElementVNode("span", null, "Alt", -1 /* CACHED */)
+                ]))]))
+              : _createCommentVNode("v-if", true)
+        ], 64 /* STABLE_FRAGMENT */))
+      : _createCommentVNode("v-if", true)
+  ]))
+}
+}
+
+})
+===
+name: v-else-if chain with ref bindings
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+const output = ref<{ code: string } | null>({ code: 'test' });
+const activeTab = ref<'code' | 'ast' | 'helpers' | 'sfc'>('code');
+const isTypeScript = computed(() => true);
+const codeViewMode = ref<'ts' | 'js'>('ts');
+</script>
+
+<template>
+  <div>
+    <template v-if="output">
+      <div v-if="activeTab === 'code'" class="code-output">
+        <div v-if="isTypeScript" class="code-mode-toggle">
+          <button :class="['btn', { active: codeViewMode === 'ts' }]" @click="codeViewMode = 'ts'">TS</button>
+          <button :class="['btn', { active: codeViewMode === 'js' }]" @click="codeViewMode = 'js'">JS</button>
+        </div>
+      </div>
+      <div v-else-if="activeTab === 'ast'" class="ast-output">
+        <h4>AST</h4>
+      </div>
+      <div v-else-if="activeTab === 'helpers'" class="helpers-output">
+        <h4>Helpers</h4>
+      </div>
+      <div v-else-if="activeTab === 'sfc'" class="sfc-output">
+        <h4>SFC</h4>
+      </div>
+    </template>
+  </div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { normalizeClass as _normalizeClass, createElementVNode as _createElementVNode, openBlock as _openBlock, createElementBlock as _createElementBlock, createCommentVNode as _createCommentVNode, Fragment as _Fragment } from "vue"
+
+const _hoisted_1 = {
+  key: 0,
+  class: "code-output"
+}
+const _hoisted_2 = {
+  key: 0,
+  class: "code-mode-toggle"
+}
+const _hoisted_3 = {
+  key: 1,
+  class: "ast-output"
+}
+const _hoisted_4 = {
+  key: 2,
+  class: "helpers-output"
+}
+const _hoisted_5 = {
+  key: 3,
+  class: "sfc-output"
+}
+
+import { ref, computed } from 'vue';
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  setup(__props) {
+
+const output = ref<{ code: string } | null>({ code: 'test' });
+const activeTab = ref<'code' | 'ast' | 'helpers' | 'sfc'>('code');
+const isTypeScript = computed(() => true);
+const codeViewMode = ref<'ts' | 'js'>('ts');
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, [
+    (output.value)
+      ? (_openBlock(), _createElementBlock(_Fragment, { key: 0 }, [
+          (activeTab.value === 'code')
+            ? (_openBlock(), _createElementBlock("div", _hoisted_1, [
+                (isTypeScript.value)
+                  ? (_openBlock(), _createElementBlock("div", _hoisted_2, [
+                      _createElementVNode("button", {
+                        class: _normalizeClass(['btn', { active: codeViewMode.value === 'ts' }]),
+                        onClick: _cache[0] || (_cache[0] = ($event: any) => (codeViewMode.value = 'ts'))
+                      }, "TS", 2 /* CLASS */),
+                      _createElementVNode("button", {
+                        class: _normalizeClass(['btn', { active: codeViewMode.value === 'js' }]),
+                        onClick: _cache[1] || (_cache[1] = ($event: any) => (codeViewMode.value = 'js'))
+                      }, "JS", 2 /* CLASS */)
+                    ]))
+                  : _createCommentVNode("v-if", true)
+              ]))
+            : (activeTab.value === 'ast')
+              ? (_openBlock(), _createElementBlock("div", _hoisted_3, [...(_cache[2] || (_cache[2] = [
+                  _createElementVNode("h4", null, "AST", -1 /* CACHED */)
+                ]))]))
+              : (activeTab.value === 'helpers')
+                ? (_openBlock(), _createElementBlock("div", _hoisted_4, [...(_cache[3] || (_cache[3] = [
+                    _createElementVNode("h4", null, "Helpers", -1 /* CACHED */)
+                  ]))]))
+                : (activeTab.value === 'sfc')
+                  ? (_openBlock(), _createElementBlock("div", _hoisted_5, [...(_cache[4] || (_cache[4] = [
+                      _createElementVNode("h4", null, "SFC", -1 /* CACHED */)
+                    ]))]))
+                  : _createCommentVNode("v-if", true)
+        ], 64 /* STABLE_FRAGMENT */))
+      : _createCommentVNode("v-if", true)
+  ]))
+}
+}
+
+})
+===
+name: v-for with imported values should use _unref
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+import { PRESETS } from './constants'
+</script>
+
+<template>
+  <div v-for="preset in PRESETS" :key="preset.name">
+    {{ preset.label }}
+  </div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { unref as _unref, renderList as _renderList, Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
+
+import { PRESETS } from './constants'
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  setup(__props) {
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_unref(PRESETS), (preset) => {
+    return (_openBlock(), _createElementBlock("div", {
+      key: preset.name
+    }, _toDisplayString(preset.label), 1 /* TEXT */))
+  }), 128 /* KEYED_FRAGMENT */))
+}
+}
+
+})
+===
+name: v-for with multiple imported values
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+import { ITEMS, CATEGORIES } from './data'
+</script>
+
+<template>
+  <div>
+    <section v-for="category in CATEGORIES" :key="category.id">
+      <h2>{{ category.name }}</h2>
+      <ul>
+        <li v-for="item in ITEMS" :key="item.id">{{ item.name }}</li>
+      </ul>
+    </section>
+  </div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { unref as _unref, renderList as _renderList, Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString, createElementVNode as _createElementVNode } from "vue"
+
+import { ITEMS, CATEGORIES } from './data'
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  setup(__props) {
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, [
+    (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_unref(CATEGORIES), (category) => {
+      return (_openBlock(), _createElementBlock("section", {
+        key: category.id
+      }, [
+        _createElementVNode("h2", null, _toDisplayString(category.name), 1 /* TEXT */),
+        _createElementVNode("ul", null, [
+          (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_unref(ITEMS), (item) => {
+            return (_openBlock(), _createElementBlock("li", {
+              key: item.id
+            }, _toDisplayString(item.name), 1 /* TEXT */))
+          }), 128 /* KEYED_FRAGMENT */))
+        ])
+      ]))
+    }), 128 /* KEYED_FRAGMENT */))
+  ]))
+}
+}
+
+})
+===
+name: v-for with imported and local values
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+import { ref } from 'vue'
+import { OPTIONS } from './options'
+const localItems = ref(['a', 'b', 'c'])
+</script>
+
+<template>
+  <div>
+    <select>
+      <option v-for="opt in OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+    </select>
+    <ul>
+      <li v-for="item in localItems" :key="item">{{ item }}</li>
+    </ul>
+  </div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { unref as _unref, renderList as _renderList, Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString, createElementVNode as _createElementVNode } from "vue"
+
+const _hoisted_1 = ["value"]
+
+import { ref } from 'vue'
+import { OPTIONS } from './options'
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  setup(__props) {
+
+const localItems = ref(['a', 'b', 'c'])
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, [
+    _createElementVNode("select", null, [
+      (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_unref(OPTIONS), (opt) => {
+        return (_openBlock(), _createElementBlock("option", {
+          key: opt.value,
+          value: opt.value
+        }, _toDisplayString(opt.label), 9 /* TEXT, PROPS */, _hoisted_1))
+      }), 128 /* KEYED_FRAGMENT */))
+    ]),
+    _createElementVNode("ul", null, [
+      (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(localItems.value, (item) => {
+        return (_openBlock(), _createElementBlock("li", { key: item }, _toDisplayString(item), 1 /* TEXT */))
+      }), 128 /* KEYED_FRAGMENT */))
+    ])
+  ]))
+}
+}
+
+})
+===
+name: v-model on component with ref binding should not duplicate .value
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+import { ref } from 'vue';
+import MyInput from './MyInput.vue';
+const message = ref('hello');
+</script>
+
+<template>
+  <MyInput v-model="message" />
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { openBlock as _openBlock, createBlock as _createBlock } from "vue"
+
+import { ref } from 'vue';
+import MyInput from './MyInput.vue';
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  setup(__props) {
+
+const message = ref('hello');
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createBlock(MyInput, {
+    modelValue: message.value,
+    "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event: any) => ((message).value = $event))
+  }, null, 8 /* PROPS */, ["modelValue"]))
+}
+}
+
+})
+===
+name: v-model with named prop on component with ref binding
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+import { ref } from 'vue';
+import MyEditor from './MyEditor.vue';
+const content = ref('');
+const title = ref('Untitled');
+</script>
+
+<template>
+  <MyEditor v-model="content" v-model:title="title" />
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { openBlock as _openBlock, createBlock as _createBlock } from "vue"
+
+import { ref } from 'vue';
+import MyEditor from './MyEditor.vue';
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  setup(__props) {
+
+const content = ref('');
+const title = ref('Untitled');
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createBlock(MyEditor, {
+    modelValue: content.value,
+    "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event: any) => ((content).value = $event)),
+    title: title.value,
+    "onUpdate:title": _cache[1] || (_cache[1] = ($event: any) => ((title).value = $event))
+  }, null, 8 /* PROPS */, ["modelValue", "title"]))
+}
+}
+
+})
+===
+name: multiple v-model bindings on component with refs
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+import { ref } from 'vue';
+import Dialog from './Dialog.vue';
+const isOpen = ref(false);
+const formValue = ref('');
+</script>
+
+<template>
+  <Dialog v-model="isOpen" v-model:value="formValue" />
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { openBlock as _openBlock, createBlock as _createBlock } from "vue"
+
+import { ref } from 'vue';
+import Dialog from './Dialog.vue';
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  setup(__props) {
+
+const isOpen = ref(false);
+const formValue = ref('');
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createBlock(Dialog, {
+    modelValue: isOpen.value,
+    "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event: any) => ((isOpen).value = $event)),
+    value: formValue.value,
+    "onUpdate:value": _cache[1] || (_cache[1] = ($event: any) => ((formValue).value = $event))
+  }, null, 8 /* PROPS */, ["modelValue", "value"]))
+}
+}
+
+})
+===
+name: multiline union type definition
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+type ButtonVariant =
+  | { type: 'link'; href: string }
+  | { type: 'button'; onClick: () => void };
+
+const variant: ButtonVariant = { type: 'link', href: '/home' };
+</script>
+
+<template>
+  <div>{{ variant.type }}</div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+type ButtonVariant =
+  | { type: 'link'; href: string }
+  | { type: 'button'; onClick: () => void };
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  setup(__props) {
+
+const variant: ButtonVariant = { type: 'link', href: '/home' };
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(variant.type), 1 /* TEXT */))
+}
+}
+
+})
+===
+name: multiline intersection type definition
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+type Combined =
+  & { name: string }
+  & { age: number };
+
+const data: Combined = { name: 'test', age: 10 };
+</script>
+
+<template>
+  <div>{{ data.name }} - {{ data.age }}</div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+type Combined =
+  & { name: string }
+  & { age: number };
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  setup(__props) {
+
+const data: Combined = { name: 'test', age: 10 };
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(data.name) + " - " + _toDisplayString(data.age), 1 /* TEXT */))
+}
+}
+
+})
+===
+name: multiline string union type definition
+options: sfc
+--- INPUT ---
+<script setup lang="ts">
+type Status =
+  | 'loading'
+  | 'success'
+  | 'error';
+
+const status: Status = 'loading';
+</script>
+
+<template>
+  <div>{{ status }}</div>
+</template>
+--- OUTPUT ---
+import { defineComponent as _defineComponent } from 'vue'
+import { toDisplayString as _toDisplayString, openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
+
+type Status =
+  | 'loading'
+  | 'success'
+  | 'error';
+
+const status: Status = 'loading';
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  setup(__props) {
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(status)))
+}
+}
+
+})

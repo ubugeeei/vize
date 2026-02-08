@@ -1,29 +1,24 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 196
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { openBlock as _openBlock, createBlock as _createBlock, resolveComponent as _resolveComponent } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
 import { ref } from 'vue'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
+export default /*@__PURE__*/_defineComponent({
   __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const name = ref('test')
-  const __returned__ = { name, ref }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
+  setup(__props) {
 
-});
+const name = ref('test')
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
+return (_ctx: any,_cache: any) => {
   const _component_Component = _resolveComponent("Component")
-  
-  return (_openBlock(), _createBlock(_component_Component, { options: { name: $setup.name, extra: 'value' } }, null, 8 /* PROPS */, ["options"]))
+
+  return (_openBlock(), _createBlock(_component_Component, { options: { name.value, extra: 'value' } }, null, 8 /* PROPS */, ["options"]))
+}
 }
 
-__sfc__.render = render
-export default __sfc__
+})

@@ -1,27 +1,26 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 196
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString, unref as _unref } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
 import { useStore } from 'vuex'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
-  __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const store = useStore<RootState>()
-  const __returned__ = { store, useStore }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
-
-});
-
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(_unref($setup.store).state.count), 1 /* TEXT */))
+interface RootState {
+  count: number
 }
 
-__sfc__.render = render
-export default __sfc__
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  setup(__props) {
+
+const store = useStore<RootState>()
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", null, _toDisplayString(_unref(store).state.count), 1 /* TEXT */))
+}
+}
+
+})

@@ -1,28 +1,27 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 106
+assertion_line: 150
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, renderList as _renderList, toDisplayString as _toDisplayString } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
-  __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const __returned__ = { items }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
-
-});
-
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList($props.items, (item) => {
-    return (_openBlock(), _createElementBlock("div", { key: item }, _toDisplayString(item), 1 /* TEXT */))
-  }), 128 /* KEYED_FRAGMENT */))
+interface Props {
+  items?: string[]
 }
 
-__sfc__.render = render
-export default __sfc__
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    items: { type: Array, required: false, default: () => [] }
+  },
+  setup(__props: any) {
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(__props.items, (item) => { return (_openBlock(), _createElementBlock("div", { key: item }, _toDisplayString(item), 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */))
+}
+}
+
+})

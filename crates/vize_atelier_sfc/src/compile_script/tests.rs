@@ -349,22 +349,23 @@ const itemCount = computed(() => items.length)
   items?: string[]
 }"#;
         let props = extract_prop_types_from_type(type_args);
-        assert!(props.contains_key("name"), "Should extract name");
-        assert!(props.contains_key("count"), "Should extract count");
-        assert!(props.contains_key("disabled"), "Should extract disabled");
-        assert!(props.contains_key("items"), "Should extract items");
+        let find = |name: &str| props.iter().find(|(n, _)| n == name).map(|(_, v)| v);
+        assert!(find("name").is_some(), "Should extract name");
+        assert!(find("count").is_some(), "Should extract count");
+        assert!(find("disabled").is_some(), "Should extract disabled");
+        assert!(find("items").is_some(), "Should extract items");
 
         // Check types
-        assert_eq!(props.get("name").unwrap().js_type, "String");
-        assert_eq!(props.get("count").unwrap().js_type, "Number");
-        assert_eq!(props.get("disabled").unwrap().js_type, "Boolean");
-        assert_eq!(props.get("items").unwrap().js_type, "Array");
+        assert_eq!(find("name").unwrap().js_type, "String");
+        assert_eq!(find("count").unwrap().js_type, "Number");
+        assert_eq!(find("disabled").unwrap().js_type, "Boolean");
+        assert_eq!(find("items").unwrap().js_type, "Array");
 
         // Check optionality
-        assert!(!props.get("name").unwrap().optional);
-        assert!(props.get("count").unwrap().optional);
-        assert!(props.get("disabled").unwrap().optional);
-        assert!(props.get("items").unwrap().optional);
+        assert!(!find("name").unwrap().optional);
+        assert!(find("count").unwrap().optional);
+        assert!(find("disabled").unwrap().optional);
+        assert!(find("items").unwrap().optional);
     }
 
     #[test]

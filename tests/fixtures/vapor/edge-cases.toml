@@ -1,0 +1,28 @@
+# Vapor: Edge case tests from vuejs/core issues
+
+mode = "vapor"
+
+# =============================================================================
+# Text content edge cases (vuejs/core #14310)
+# =============================================================================
+
+[[cases]]
+name = "text with quotes"
+input = '<div>He said "hello"</div>'
+
+[[cases]]
+name = "text with single quotes"
+input = "<div>It's fine</div>"
+
+# =============================================================================
+# Whitespace handling
+# =============================================================================
+
+[[cases]]
+name = "whitespace between elements"
+input = '<span>Foo</span> <span>Bar</span>'
+
+[[cases]]
+name = "newline between elements"
+input = """<span>Foo</span>
+<span>Bar</span>"""

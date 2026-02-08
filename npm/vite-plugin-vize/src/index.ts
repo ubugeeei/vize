@@ -1,9 +1,10 @@
-import type { Plugin, ResolvedConfig, ViteDevServer, HmrContext } from "vite";
+import type { Plugin, ResolvedConfig, ViteDevServer, HmrContext, TransformResult } from "vite";
+import { transformWithOxc } from "vite";
 import path from "node:path";
 import fs from "node:fs";
 import { glob } from "tinyglobby";
-
-import type { VizeOptions, CompiledModule, VizeConfig, LoadConfigOptions } from "./types.js";
+import type { VizeConfig, ConfigEnv, UserConfigExport, LoadConfigOptions } from "./types.js";
+import type { VizeOptions, CompiledModule } from "./types.js";
 import { compileFile, compileBatch } from "./compiler.js";
 import { createFilter, generateOutput } from "./utils.js";
 import { detectHmrUpdateType, type HmrUpdateType } from "./hmr.js";
@@ -11,21 +12,21 @@ import { detectHmrUpdateType, type HmrUpdateType } from "./hmr.js";
 export type { VizeOptions, CompiledModule, VizeConfig, LoadConfigOptions };
 
 // ============================================================================
-// Config utilities (standalone implementation to avoid ESM/CJS issues)
+// Config utilities
 // ============================================================================
 
-const CONFIG_FILES = [
-  "vize.config.ts",
-  "vize.config.js",
-  "vize.config.mjs",
-  "vize.config.cjs",
-  "vize.config.json",
-];
+const CONFIG_FILES = ["vize.config.ts", "vize.config.js", "vize.config.mjs", "vize.config.json"];
+
+const DEFAULT_CONFIG_ENV: ConfigEnv = {
+  mode: "development",
+  command: "serve",
+};
 
 /**
- * Define a Vize configuration with type checking
+ * Define a Vize configuration with type checking.
+ * Accepts a plain object or a function that receives ConfigEnv.
  */
-export function defineConfig(config: VizeConfig): VizeConfig {
+export function defineConfig(config: UserConfigExport): UserConfigExport {
   return config;
 }
 
@@ -36,37 +37,51 @@ export async function loadConfig(
   root: string,
   options: LoadConfigOptions = {},
 ): Promise<VizeConfig | null> {
-  const { mode = "root", configFile } = options;
+  const { mode = "root", configFile, env } = options;
 
   if (mode === "none") return null;
 
-  const searchMode = mode === "auto" ? "nearest" : mode;
-
   if (configFile) {
-    const configPath = path.isAbsolute(configFile)
-      ? configFile
-      : path.resolve(root, configFile);
-    return loadConfigFile(configPath);
+    const configPath = path.isAbsolute(configFile) ? configFile : path.resolve(root, configFile);
+    return loadConfigFile(configPath, env);
   }
 
-  let searchDir = root;
-  while (true) {
-    for (const filename of CONFIG_FILES) {
-      const configPath = path.join(searchDir, filename);
-      if (fs.existsSync(configPath)) {
-        return loadConfigFile(configPath);
-      }
+  if (mode === "auto") {
+    let searchDir = root;
+    while (true) {
+      const found = findConfigInDir(searchDir);
+      if (found) return loadConfigFile(found, env);
+      const parentDir = path.dirname(searchDir);
+      if (parentDir === searchDir) break;
+      searchDir = parentDir;
     }
-    if (searchMode === "root") break;
-    const parentDir = path.dirname(searchDir);
-    if (parentDir === searchDir) break;
-    searchDir = parentDir;
+    return null;
   }
 
+  // mode === "root"
+  const found = findConfigInDir(root);
+  return found ? loadConfigFile(found, env) : null;
+}
+
+function findConfigInDir(dir: string): string | null {
+  for (const filename of CONFIG_FILES) {
+    const configPath = path.join(dir, filename);
+    if (fs.existsSync(configPath)) return configPath;
+  }
   return null;
 }
 
-async function loadConfigFile(configPath: string): Promise<VizeConfig | null> {
+async function resolveConfigExport(
+  exported: UserConfigExport,
+  env?: ConfigEnv,
+): Promise<VizeConfig> {
+  if (typeof exported === "function") {
+    return exported(env ?? DEFAULT_CONFIG_ENV);
+  }
+  return exported;
+}
+
+async function loadConfigFile(configPath: string, env?: ConfigEnv): Promise<VizeConfig | null> {
   if (!fs.existsSync(configPath)) return null;
 
   const ext = path.extname(configPath);
@@ -76,16 +91,22 @@ async function loadConfigFile(configPath: string): Promise<VizeConfig | null> {
     return JSON.parse(content) as VizeConfig;
   }
 
-  // For JS/TS files, use dynamic import
-  // Note: .ts files require a loader or bundler to work at runtime
   try {
     const module = await import(configPath);
-    return (module.default ?? module) as VizeConfig;
+    const exported: UserConfigExport = module.default ?? module;
+    return resolveConfigExport(exported, env);
   } catch (e) {
     console.warn(`[vize] Failed to load config from ${configPath}:`, e);
     return null;
   }
 }
+
+/**
+ * Shared config store for inter-plugin communication.
+ * Key = project root, Value = resolved VizeConfig.
+ * Used by musea() and other plugins to access the unified config.
+ */
+export const vizeConfigStore = new Map<string, VizeConfig>();
 
 const VIRTUAL_PREFIX = "\0vize:";
 const VIRTUAL_CSS_MODULE = "virtual:vize-styles";
@@ -234,15 +255,25 @@ export function vize(options: VizeOptions = {}): Plugin {
       isProduction = options.isProduction ?? resolvedConfig.isProduction;
       extractCss = isProduction; // Extract CSS in production by default
 
+      // Build ConfigEnv for dynamic config resolution
+      const configEnv: ConfigEnv = {
+        mode: resolvedConfig.mode,
+        command: resolvedConfig.command === "build" ? "build" : "serve",
+        isSsrBuild: !!resolvedConfig.build?.ssr,
+      };
+
       // Load config file if enabled
       let fileConfig: VizeConfig | null = null;
       if (options.configMode !== false) {
         fileConfig = await loadConfig(root, {
           mode: options.configMode ?? "root",
           configFile: options.configFile,
+          env: configEnv,
         });
         if (fileConfig) {
           logger.log("Loaded config from vize.config file");
+          // Store in shared config store for other plugins (e.g. musea)
+          vizeConfigStore.set(root, fileConfig);
         }
       }
 
@@ -263,11 +294,7 @@ export function vize(options: VizeOptions = {}): Plugin {
 
       filter = createFilter(mergedOptions.include, mergedOptions.exclude);
       scanPatterns = mergedOptions.scanPatterns ?? ["**/*.vue"];
-      ignorePatterns = mergedOptions.ignorePatterns ?? [
-        "node_modules/**",
-        "dist/**",
-        ".git/**",
-      ];
+      ignorePatterns = mergedOptions.ignorePatterns ?? ["node_modules/**", "dist/**", ".git/**"];
     },
 
     configureServer(devServer: ViteDevServer) {
@@ -313,16 +340,13 @@ export function vize(options: VizeOptions = {}): Plugin {
 
       // If importer is a virtual module, resolve imports against the real path
       if (importer?.startsWith(VIRTUAL_PREFIX)) {
-        const realImporter =
-          virtualToReal.get(importer) ?? importer.slice(VIRTUAL_PREFIX.length);
+        const realImporter = virtualToReal.get(importer) ?? importer.slice(VIRTUAL_PREFIX.length);
         // Remove .ts suffix if present
         const cleanImporter = realImporter.endsWith(".ts")
           ? realImporter.slice(0, -3)
           : realImporter;
 
-        logger.log(
-          `resolveId from virtual: id=${id}, cleanImporter=${cleanImporter}`,
-        );
+        logger.log(`resolveId from virtual: id=${id}, cleanImporter=${cleanImporter}`);
 
         // For non-vue files, resolve relative to the real importer
         if (!id.endsWith(".vue")) {
@@ -332,10 +356,7 @@ export function vize(options: VizeOptions = {}): Plugin {
             const querySuffix = queryPart ? `?${queryPart}` : "";
 
             // Relative imports - resolve and check if file exists
-            const resolved = path.resolve(
-              path.dirname(cleanImporter),
-              pathPart,
-            );
+            const resolved = path.resolve(path.dirname(cleanImporter), pathPart);
             for (const ext of ["", ".ts", ".tsx", ".js", ".jsx", ".json"]) {
               const candidate = resolved + ext;
               if (fs.existsSync(candidate)) {
@@ -363,26 +384,17 @@ export function vize(options: VizeOptions = {}): Plugin {
             // External package imports (e.g., '@mdi/js', 'vue')
             // Check if the id looks like an already-resolved path (contains /dist/ or /lib/)
             // This can happen when other plugins (like vue-i18n) have already transformed the import
-            if (
-              id.includes("/dist/") ||
-              id.includes("/lib/") ||
-              id.includes("/es/")
-            ) {
+            if (id.includes("/dist/") || id.includes("/lib/") || id.includes("/es/")) {
               // Already looks resolved, return null to let Vite handle it
               logger.log(`resolveId: skipping already-resolved path ${id}`);
               return null;
             }
             // Re-resolve with the real importer path
-            logger.log(
-              `resolveId: resolving external ${id} from ${cleanImporter}`,
-            );
+            logger.log(`resolveId: resolving external ${id} from ${cleanImporter}`);
             const resolved = await this.resolve(id, cleanImporter, {
               skipSelf: true,
             });
-            logger.log(
-              `resolveId: resolved external ${id} to`,
-              resolved?.id ?? "null",
-            );
+            logger.log(`resolveId: resolved external ${id} to`, resolved?.id ?? "null");
             return resolved;
           }
         }
@@ -441,8 +453,7 @@ export function vize(options: VizeOptions = {}): Plugin {
       if (id.includes("?vue&type=style")) {
         const [filename] = id.split("?");
         const realPath = filename.startsWith(VIRTUAL_PREFIX)
-          ? (virtualToReal.get(filename) ??
-            filename.slice(VIRTUAL_PREFIX.length))
+          ? (virtualToReal.get(filename) ?? filename.slice(VIRTUAL_PREFIX.length))
           : filename;
         const compiled = cache.get(realPath);
         if (compiled?.css) {
@@ -454,8 +465,7 @@ export function vize(options: VizeOptions = {}): Plugin {
       if (id.startsWith(VIRTUAL_PREFIX)) {
         // Remove .ts suffix if present for lookup
         const lookupId = id.endsWith(".ts") ? id.slice(0, -3) : id;
-        const realPath =
-          virtualToReal.get(id) ?? lookupId.slice(VIRTUAL_PREFIX.length);
+        const realPath = virtualToReal.get(id) ?? lookupId.slice(VIRTUAL_PREFIX.length);
         const compiled = cache.get(realPath);
 
         if (compiled) {
@@ -471,6 +481,18 @@ export function vize(options: VizeOptions = {}): Plugin {
         }
       }
 
+      return null;
+    },
+
+    // Transform virtual modules: strip TypeScript since \0-prefixed virtual modules
+    // bypass Vite's built-in transform plugins
+    async transform(code: string, id: string): Promise<TransformResult | null> {
+      if (id.startsWith(VIRTUAL_PREFIX) && id.endsWith(".ts")) {
+        const result = await transformWithOxc(code, id.slice(VIRTUAL_PREFIX.length), {
+          lang: "ts",
+        });
+        return { code: result.code, map: result.map };
+      }
       return null;
     },
 
@@ -498,14 +520,9 @@ export function vize(options: VizeOptions = {}): Plugin {
           const newCompiled = cache.get(file)!;
 
           // Detect HMR update type
-          const updateType: HmrUpdateType = detectHmrUpdateType(
-            prevCompiled,
-            newCompiled,
-          );
+          const updateType: HmrUpdateType = detectHmrUpdateType(prevCompiled, newCompiled);
 
-          logger.log(
-            `Re-compiled: ${path.relative(root, file)} (${updateType})`,
-          );
+          logger.log(`Re-compiled: ${path.relative(root, file)} (${updateType})`);
 
           // Find the virtual module for this file
           const virtualId = VIRTUAL_PREFIX + file + ".ts";
@@ -550,9 +567,7 @@ export function vize(options: VizeOptions = {}): Plugin {
           fileName: "assets/vize-components.css",
           source: allCss,
         });
-        logger.log(
-          `Extracted CSS to assets/vize-components.css (${collectedCss.size} components)`,
-        );
+        logger.log(`Extracted CSS to assets/vize-components.css (${collectedCss.size} components)`);
       }
     },
   };

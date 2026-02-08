@@ -123,13 +123,23 @@ run = "cargo run -p vize_test_runner --bin coverage"
 
 [tasks."expected:generate"]
 alias = "egen"
-description = "Generate expected outputs from Vue's official compiler"
+description = "Generate expected outputs from Vue's official compiler (all modes)"
 run = "node --experimental-strip-types scripts/generate-expected.ts"
 
 [tasks."expected:generate:sfc"]
 alias = "egens"
 description = "Generate expected outputs for SFC tests"
-run = "node --experimental-strip-types scripts/generate-expected.ts sfc/basic sfc/script-setup"
+run = "node --experimental-strip-types scripts/generate-expected.ts --mode sfc"
+
+[tasks."expected:generate:vdom"]
+alias = "egenv"
+description = "Generate expected outputs for VDOM tests"
+run = "node --experimental-strip-types scripts/generate-expected.ts --mode vdom"
+
+[tasks."expected:generate:vapor"]
+alias = "egenp"
+description = "Generate expected outputs for Vapor tests"
+run = "node --experimental-strip-types scripts/generate-expected.ts --mode vapor"
 
 # =============================================================================
 # Snapshot Management (TS/JSX/TSX outputs)

@@ -1,29 +1,21 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 106
+assertion_line: 150
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, unref as _unref } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
+export default /*@__PURE__*/_defineComponent({
   __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const emit = __emit
-  const __returned__ = { emit }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
+  setup(__props, { emit: __emit }) {
 
-});
+const emit = __emit
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("button", {
-    onClick: $event => (_unref($setup.emit)('submit'))
-  }, "Submit", 8 /* PROPS */, ["onClick"]))
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("button", { onClick: _cache[0] || (_cache[0] = ($event: any) => (_unref(emit)('submit'))) }, "Submit"))
+}
 }
 
-__sfc__.render = render
-export default __sfc__
+})

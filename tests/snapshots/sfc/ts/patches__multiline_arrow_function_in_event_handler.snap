@@ -1,33 +1,22 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 196
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
 import { ref } from 'vue'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
+export default /*@__PURE__*/_defineComponent({
   __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const count = ref(0)
-  const __returned__ = { count, ref }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
+  setup(__props) {
 
-});
+const count = ref(0)
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("button", {
-    onClick: () => {
-    const newValue = $setup.count.value + 1;
-    $setup.count.value = _ctx.newValue;
-    console.log('incremented');
-  }
-  }, "Increment", 8 /* PROPS */, ["onClick"]))
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("button", { onClick: _cache[0] || (_cache[0] = () => { const newValue = count.value + 1; count.value = _ctx.newValue; console.log('incremented'); }) }, "Increment"))
+}
 }
 
-__sfc__.render = render
-export default __sfc__
+})

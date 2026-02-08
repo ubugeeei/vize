@@ -4,12 +4,14 @@ use crate::ast::*;
 use crate::transforms::v_model::{get_vmodel_helper, parse_model_modifiers};
 use vize_carton::is_builtin_directive;
 
-use super::children::generate_children;
+use super::children::{generate_children, generate_children_force_array};
 use super::context::CodegenContext;
 use super::expression::generate_expression;
 use super::helpers::{escape_js_string, is_builtin_component};
 use super::node::generate_node;
-use super::patch_flag::{calculate_element_patch_info, patch_flag_name};
+use super::patch_flag::{
+    calculate_element_patch_info, calculate_element_patch_info_skip_is, patch_flag_name,
+};
 use super::props::{generate_props, is_supported_directive};
 use super::slots::{generate_slots, has_dynamic_slots_flag, has_slot_children};
 use super::v_for::generate_for;
@@ -262,16 +264,57 @@ pub fn generate_custom_directives_closing(ctx: &mut CodegenContext, el: &Element
         ctx.push("]");
     }
 
+    // Also include v-show in the same withDirectives array if present
+    if has_vshow_directive(el) {
+        for prop in &el.props {
+            if let PropNode::Directive(dir) = prop {
+                if dir.name.as_str() == "show" {
+                    if let Some(exp) = &dir.exp {
+                        ctx.push(",");
+                        ctx.newline();
+                        ctx.push("  [");
+                        ctx.use_helper(RuntimeHelper::VShow);
+                        ctx.push(ctx.helper(RuntimeHelper::VShow));
+                        ctx.push(", ");
+                        generate_expression(ctx, exp);
+                        ctx.push("]");
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
     ctx.newline();
     ctx.push("])");
 }
 
 /// Check if element has any renderable props (excluding v-show and other handled-separately directives)
-pub fn has_renderable_props(el: &ElementNode<'_>) -> bool {
-    el.props.iter().any(|prop| match prop {
+/// Check if a prop is the `is` attribute or `:is` binding (used by dynamic components)
+fn is_is_prop(p: &PropNode<'_>) -> bool {
+    match p {
+        PropNode::Attribute(attr) => attr.name == "is",
+        PropNode::Directive(dir) => {
+            if dir.name == "bind" {
+                if let Some(ExpressionNode::Simple(arg)) = &dir.arg {
+                    return arg.content == "is";
+                }
+            }
+            false
+        }
+    }
+}
+
+/// Check if a single prop is renderable (not v-show or unsupported directive)
+fn is_renderable_prop(prop: &PropNode<'_>) -> bool {
+    match prop {
         PropNode::Attribute(_) => true,
         PropNode::Directive(dir) => is_supported_directive(dir),
-    })
+    }
+}
+
+pub fn has_renderable_props(el: &ElementNode<'_>) -> bool {
+    el.props.iter().any(|prop| is_renderable_prop(prop))
 }
 
 /// Generate v-once element with cache wrapper
@@ -601,7 +644,12 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             let effective_has_patch_info = has_patch_info && should_emit_patch_flag;
             if !el.children.is_empty() {
                 ctx.push(", ");
-                generate_children(ctx, &el.children);
+                // Custom directives require array children with createTextVNode
+                if has_custom_dirs {
+                    generate_children_force_array(ctx, &el.children);
+                } else {
+                    generate_children(ctx, &el.children);
+                }
             } else if effective_has_patch_info {
                 ctx.push(", null");
             }
@@ -715,11 +763,20 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             }
 
             // Calculate patch flag and dynamic props for component
-            let (mut patch_flag, dynamic_props) = calculate_element_patch_info(
-                el,
-                ctx.options.binding_metadata.as_ref(),
-                ctx.options.cache_handlers,
-            );
+            // For dynamic components, skip the :is binding from patch flag calculation
+            let (mut patch_flag, dynamic_props) = if is_dynamic_component {
+                calculate_element_patch_info_skip_is(
+                    el,
+                    ctx.options.binding_metadata.as_ref(),
+                    ctx.options.cache_handlers,
+                )
+            } else {
+                calculate_element_patch_info(
+                    el,
+                    ctx.options.binding_metadata.as_ref(),
+                    ctx.options.cache_handlers,
+                )
+            };
 
             // For components with slot children, remove TEXT flag (1) since text is inside slot
             if has_slot_children(el) {
@@ -730,7 +787,8 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             }
 
             // Add DYNAMIC_SLOTS flag (1024) if component has dynamic slots
-            if has_dynamic_slots_flag(el) {
+            // KeepAlive always gets DYNAMIC_SLOTS
+            if el.tag == "KeepAlive" || has_dynamic_slots_flag(el) {
                 let dynamic_slots_flag = 1024;
                 patch_flag = Some(patch_flag.unwrap_or(0) | dynamic_slots_flag);
             }
@@ -738,9 +796,22 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             let has_patch_info = patch_flag.is_some() || dynamic_props.is_some();
 
             // Generate props (only if there are renderable props, not just v-show)
-            if has_renderable_props(el) {
+            // For dynamic components (<component :is="...">), filter out the `is` prop
+            let effective_has_props = if is_dynamic_component {
+                // Check if there are renderable props besides `is`
+                el.props
+                    .iter()
+                    .any(|p| !is_is_prop(p) && is_renderable_prop(p))
+            } else {
+                has_renderable_props(el)
+            };
+            if effective_has_props {
                 ctx.push(", ");
+                if is_dynamic_component {
+                    ctx.skip_is_prop = true;
+                }
                 generate_props(ctx, &el.props);
+                ctx.skip_is_prop = false;
             } else if !el.children.is_empty() || has_patch_info {
                 ctx.push(", null");
             }
@@ -749,6 +820,20 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             if has_slot_children(el) {
                 ctx.push(", ");
                 generate_slots(ctx, el);
+            } else if !el.children.is_empty() {
+                // Teleport, KeepAlive: pass children as array, not slot object
+                ctx.push(", [");
+                ctx.indent();
+                for (i, child) in el.children.iter().enumerate() {
+                    if i > 0 {
+                        ctx.push(",");
+                    }
+                    ctx.newline();
+                    generate_node(ctx, child);
+                }
+                ctx.deindent();
+                ctx.newline();
+                ctx.push("]");
             } else if has_patch_info {
                 ctx.push(", null");
             }

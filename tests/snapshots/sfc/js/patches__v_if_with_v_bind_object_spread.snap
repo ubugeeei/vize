@@ -5,41 +5,21 @@ expression: js_output
 ---
 import { openBlock as _openBlock, createBlock as _createBlock, createCommentVNode as _createCommentVNode, mergeProps as _mergeProps } from "vue"
 
-import { defineComponent as _defineComponent } from "vue";
-import { ref, computed } from "vue";
-import Button from "./Button.vue";
-const __sfc__ = /*@__PURE__*/ _defineComponent({
-  __name: "test",
-  setup(__props, { expose: __expose, emit: __emit }) {
-    __expose();
-    const isActive = ref(true);
-    const buttonProps = computed(() => ({
-      disabled: false,
-      type: "primary"
-    }));
-    const __returned__ = {
-      Button,
-      buttonProps,
-      computed,
-      isActive,
-      ref
-    };
-    Object.defineProperty(__returned__, "__isScriptSetup", {
-      enumerable: false,
-      value: true
-    });
-    return __returned__;
-  }
-});
+import { ref, computed } from 'vue'
+import Button from './Button.vue'
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return ($setup.isActive)
-    ? (_openBlock(), _createBlock($setup.Button, _mergeProps($setup.buttonProps, {
-      key: 0,
-      onClick: _ctx.handleClick
-    })))
-    : _createCommentVNode("v-if", true)
+export default {
+  __name: 'test',
+  setup(__props) {
+
+const isActive = ref(true)
+const buttonProps = computed(() => ({ disabled: false, type: 'primary' }))
+
+return (_ctx, _cache) => {
+  return (isActive.value)
+      ? (_openBlock(), _createBlock(Button, _mergeProps(buttonProps.value, { key: 0, onClick: _cache[0] || (_cache[0] = (...args) => (_ctx.handleClick && _ctx.handleClick(...args))) })))
+      : _createCommentVNode("v-if", true)
+}
 }
 
-__sfc__.render = render
-export default __sfc__
+}

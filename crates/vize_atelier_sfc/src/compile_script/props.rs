@@ -17,9 +17,10 @@ pub struct PropTypeInfo {
     pub optional: bool,
 }
 
-/// Extract prop types from TypeScript type definition
-pub fn extract_prop_types_from_type(type_args: &str) -> HashMap<String, PropTypeInfo> {
-    let mut props = HashMap::new();
+/// Extract prop types from TypeScript type definition.
+/// Returns a Vec to preserve definition order (important for matching Vue's output).
+pub fn extract_prop_types_from_type(type_args: &str) -> Vec<(String, PropTypeInfo)> {
+    let mut props = Vec::new();
 
     let content = type_args.trim();
     let content = if content.starts_with('{') && content.ends_with('}') {
@@ -54,7 +55,7 @@ pub fn extract_prop_types_from_type(type_args: &str) -> HashMap<String, PropType
     props
 }
 
-fn extract_prop_type_info(segment: &str, props: &mut HashMap<String, PropTypeInfo>) {
+fn extract_prop_type_info(segment: &str, props: &mut Vec<(String, PropTypeInfo)>) {
     let trimmed = segment.trim();
     if trimmed.is_empty() {
         return;
@@ -71,14 +72,17 @@ fn extract_prop_type_info(segment: &str, props: &mut HashMap<String, PropTypeInf
         if !name.is_empty() && is_valid_identifier(name) {
             let ts_type_str = type_part.trim().to_string();
             let js_type = ts_type_to_js_type(&ts_type_str);
-            props.insert(
-                name.to_string(),
-                PropTypeInfo {
-                    js_type,
-                    ts_type: Some(ts_type_str),
-                    optional,
-                },
-            );
+            // Avoid duplicates (intersection types may have overlapping props)
+            if !props.iter().any(|(n, _)| n == name) {
+                props.push((
+                    name.to_string(),
+                    PropTypeInfo {
+                        js_type,
+                        ts_type: Some(ts_type_str),
+                        optional,
+                    },
+                ));
+            }
         }
     }
 }
@@ -145,8 +149,10 @@ fn ts_type_to_js_type(ts_type: &str) -> String {
                     | "URL" | "URLSearchParams" | "FormData" | "Blob" | "File" => {
                         type_name.to_string()
                     }
-                    // User-defined interface/type - use Object (types don't exist at runtime)
-                    _ => "Object".to_string(),
+                    // User-defined interface/type or generic type parameter
+                    // - Single uppercase letter (T, U, K, V) = generic param → null
+                    // - Otherwise = user-defined type → null (types don't exist at runtime)
+                    _ => "null".to_string(),
                 }
             }
         }

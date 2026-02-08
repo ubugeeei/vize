@@ -436,6 +436,7 @@ function setValue(value: string) {
 // Expose methods for direct calls (workaround for vite-plugin-vize reactivity issue)
 defineExpose({
   applyDiagnostics,
+  applyScopeDecorations,
   setValue,
 });
 
@@ -504,7 +505,7 @@ watch(
   (scopes) => {
     applyScopeDecorations(scopes);
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 );
 
 // Overview ruler color mapping (O(1) lookup)

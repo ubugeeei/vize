@@ -2,21 +2,32 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 import { transform } from "oxc-transform";
-import type { VizeConfig, LoadConfigOptions } from "./types.js";
+import type {
+  VizeConfig,
+  LoadConfigOptions,
+  UserConfigExport,
+  ConfigEnv,
+  GlobalTypesConfig,
+  GlobalTypeDeclaration,
+} from "./types.js";
 
 const CONFIG_FILE_NAMES = [
   "vize.config.ts",
-  "vize.config.mts",
   "vize.config.js",
   "vize.config.mjs",
-  "vize.config.cjs",
   "vize.config.json",
 ];
 
+const DEFAULT_CONFIG_ENV: ConfigEnv = {
+  mode: "development",
+  command: "serve",
+};
+
 /**
- * Define a Vize configuration with type checking
+ * Define a Vize configuration with type checking.
+ * Accepts a plain object or a function that receives ConfigEnv.
  */
-export function defineConfig(config: VizeConfig): VizeConfig {
+export function defineConfig(config: UserConfigExport): UserConfigExport {
   return config;
 }
 
@@ -27,7 +38,7 @@ export async function loadConfig(
   root: string,
   options: LoadConfigOptions = {},
 ): Promise<VizeConfig | null> {
-  const { mode = "root", configFile } = options;
+  const { mode = "root", configFile, env } = options;
 
   if (mode === "none") {
     return null;
@@ -37,7 +48,7 @@ export async function loadConfig(
   if (configFile) {
     const absolutePath = path.isAbsolute(configFile) ? configFile : path.resolve(root, configFile);
     if (fs.existsSync(absolutePath)) {
-      return loadConfigFile(absolutePath);
+      return loadConfigFile(absolutePath, env);
     }
     return null;
   }
@@ -48,7 +59,7 @@ export async function loadConfig(
     if (!configPath) {
       return null;
     }
-    return loadConfigFile(configPath);
+    return loadConfigFile(configPath, env);
   }
 
   // mode === "root"
@@ -56,7 +67,7 @@ export async function loadConfig(
   if (!configPath) {
     return null;
   }
-  return loadConfigFile(configPath);
+  return loadConfigFile(configPath, env);
 }
 
 /**
@@ -93,7 +104,7 @@ function findConfigFileAuto(startDir: string): string | null {
 /**
  * Load and evaluate a config file
  */
-async function loadConfigFile(filePath: string): Promise<VizeConfig | null> {
+async function loadConfigFile(filePath: string, env?: ConfigEnv): Promise<VizeConfig | null> {
   if (!fs.existsSync(filePath)) {
     return null;
   }
@@ -105,22 +116,31 @@ async function loadConfigFile(filePath: string): Promise<VizeConfig | null> {
     return JSON.parse(content);
   }
 
-  if (ext === ".ts" || ext === ".mts") {
-    return loadTypeScriptConfig(filePath);
-  }
-
-  if (ext === ".cjs") {
-    return loadCommonJSConfig(filePath);
+  if (ext === ".ts") {
+    return loadTypeScriptConfig(filePath, env);
   }
 
   // .js, .mjs - ESM
-  return loadESMConfig(filePath);
+  return loadESMConfig(filePath, env);
+}
+
+/**
+ * Resolve a UserConfigExport to a VizeConfig
+ */
+async function resolveConfigExport(
+  exported: UserConfigExport,
+  env?: ConfigEnv,
+): Promise<VizeConfig> {
+  if (typeof exported === "function") {
+    return exported(env ?? DEFAULT_CONFIG_ENV);
+  }
+  return exported;
 }
 
 /**
  * Load TypeScript config file using oxc-transform
  */
-async function loadTypeScriptConfig(filePath: string): Promise<VizeConfig> {
+async function loadTypeScriptConfig(filePath: string, env?: ConfigEnv): Promise<VizeConfig> {
   const source = fs.readFileSync(filePath, "utf-8");
   const result = transform(filePath, source, {
     typescript: {
@@ -130,14 +150,15 @@ async function loadTypeScriptConfig(filePath: string): Promise<VizeConfig> {
 
   const code = result.code;
 
-  // Write to temp file and import
-  const tempFile = filePath.replace(/\.m?ts$/, ".temp.mjs");
+  // Write to temp file and import (use Date.now() to avoid race conditions)
+  const tempFile = filePath.replace(/\.ts$/, `.temp.${Date.now()}.mjs`);
   fs.writeFileSync(tempFile, code);
 
   try {
     const fileUrl = pathToFileURL(tempFile).href;
     const module = await import(fileUrl);
-    return module.default || module;
+    const exported: UserConfigExport = module.default || module;
+    return resolveConfigExport(exported, env);
   } finally {
     fs.unlinkSync(tempFile);
   }
@@ -146,16 +167,26 @@ async function loadTypeScriptConfig(filePath: string): Promise<VizeConfig> {
 /**
  * Load ESM config file
  */
-async function loadESMConfig(filePath: string): Promise<VizeConfig> {
+async function loadESMConfig(filePath: string, env?: ConfigEnv): Promise<VizeConfig> {
   const fileUrl = pathToFileURL(filePath).href;
   const module = await import(fileUrl);
-  return module.default || module;
+  const exported: UserConfigExport = module.default || module;
+  return resolveConfigExport(exported, env);
 }
 
 /**
- * Load CommonJS config file
+ * Normalize GlobalTypesConfig shorthand strings to GlobalTypeDeclaration objects
  */
-async function loadCommonJSConfig(filePath: string): Promise<VizeConfig> {
-  const module = await import(pathToFileURL(filePath).href);
-  return module.default || module;
+export function normalizeGlobalTypes(
+  config: GlobalTypesConfig,
+): Record<string, GlobalTypeDeclaration> {
+  const result: Record<string, GlobalTypeDeclaration> = {};
+  for (const [key, value] of Object.entries(config)) {
+    if (typeof value === "string") {
+      result[key] = { type: value };
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
 }

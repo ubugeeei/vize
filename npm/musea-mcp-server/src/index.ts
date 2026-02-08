@@ -95,7 +95,9 @@ export function createMuseaServer(config: {
 
   server.setRequestHandler(ListResourcesRequestSchema, () => listResources(ctx));
   server.setRequestHandler(ReadResourceRequestSchema, (req) => readResource(ctx, req.params.uri));
-  server.setRequestHandler(ListToolsRequestSchema, () => Promise.resolve({ tools: toolDefinitions }));
+  server.setRequestHandler(ListToolsRequestSchema, () =>
+    Promise.resolve({ tools: toolDefinitions }),
+  );
   server.setRequestHandler(CallToolRequestSchema, (req) =>
     handleToolCall(ctx, req.params.name, req.params.arguments),
   );

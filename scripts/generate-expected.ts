@@ -3,8 +3,11 @@
  * Generate expected outputs from Vue's official compiler.
  *
  * Usage:
- *   node --experimental-strip-types scripts/generate-expected.ts
- *   node --experimental-strip-types scripts/generate-expected.ts sfc/script-setup
+ *   node --experimental-strip-types scripts/generate-expected.ts              # All modes
+ *   node --experimental-strip-types scripts/generate-expected.ts sfc/basic    # Specific fixture
+ *   node --experimental-strip-types scripts/generate-expected.ts --mode vdom  # All vdom fixtures
+ *   node --experimental-strip-types scripts/generate-expected.ts --mode vapor # All vapor fixtures
+ *   node --experimental-strip-types scripts/generate-expected.ts --mode sfc   # All sfc fixtures
  */
 
 import * as fs from 'node:fs'
@@ -29,6 +32,49 @@ const expectedDir = path.join(import.meta.dirname!, '..', 'tests', 'expected')
 function loadFixture(filePath: string): TestFixture {
   const content = fs.readFileSync(filePath, 'utf-8')
   return parseTOML(content) as any
+}
+
+function compileVdom(source: string, options?: Record<string, any>): string {
+  const result = compileTemplate({
+    source,
+    filename: 'test.vue',
+    id: 'test',
+    compilerOptions: {
+      mode: 'module',
+      prefixIdentifiers: true,
+      hoistStatic: options?.hoistStatic ?? false,
+      cacheHandlers: options?.cacheHandlers ?? false,
+      ssr: options?.ssr ?? false,
+    },
+  })
+  if (result.errors.length > 0) {
+    return `Compile errors: ${result.errors.map(e => typeof e === 'string' ? e : e.message).join(', ')}`
+  }
+  return result.code
+}
+
+let _compileVaporFn: any = null
+async function loadVaporCompiler() {
+  if (!_compileVaporFn) {
+    const mod = await import('@vue/compiler-vapor')
+    _compileVaporFn = mod.compile
+  }
+  return _compileVaporFn
+}
+
+function compileVapor(source: string, _options?: Record<string, any>): string {
+  if (!_compileVaporFn) {
+    return `// @vue/compiler-vapor not loaded`
+  }
+  try {
+    const result = _compileVaporFn(source, {
+      mode: 'module',
+      prefixIdentifiers: false,
+    })
+    return result.code
+  } catch (e) {
+    return `// Compile error: ${e}`
+  }
 }
 
 function compileSFC(source: string, filename: string = 'test.vue', isTS: boolean = false): string {
@@ -96,13 +142,13 @@ function compileSFC(source: string, filename: string = 'test.vue', isTS: boolean
   return code
 }
 
-function formatSnapFile(cases: Array<{name: string, input: string, output: string, css?: string}>): string {
+function formatSnapFile(cases: Array<{name: string, input: string, output: string, mode: string, css?: string}>): string {
   let content = ''
 
   for (const testCase of cases) {
     content += `===\n`
     content += `name: ${testCase.name}\n`
-    content += `options: sfc\n`
+    content += `options: ${testCase.mode}\n`
     content += `--- INPUT ---\n`
     content += testCase.input.trim() + '\n'
     content += `--- OUTPUT ---\n`
@@ -120,15 +166,30 @@ function processFixture(fixturePath: string, outputPath: string) {
   console.log(`Processing: ${path.relative(fixturesDir, fixturePath)}`)
 
   const fixture = loadFixture(fixturePath)
-  const results: Array<{name: string, input: string, output: string}> = []
+  const mode = fixture.mode || 'vdom'
+  const results: Array<{name: string, input: string, output: string, mode: string}> = []
 
   for (const testCase of fixture.cases) {
     try {
-      const output = compileSFC(testCase.input, 'test.vue')
+      let output: string
+      switch (mode) {
+        case 'vdom':
+          output = compileVdom(testCase.input, testCase.options)
+          break
+        case 'vapor':
+          output = compileVapor(testCase.input, testCase.options)
+          break
+        case 'sfc':
+          output = compileSFC(testCase.input, 'test.vue')
+          break
+        default:
+          output = `Unknown mode: ${mode}`
+      }
       results.push({
         name: testCase.name,
         input: testCase.input,
         output,
+        mode,
       })
     } catch (error) {
       console.error(`  Error compiling "${testCase.name}":`, error)
@@ -136,6 +197,7 @@ function processFixture(fixturePath: string, outputPath: string) {
         name: testCase.name,
         input: testCase.input,
         output: `Compile error: ${error}`,
+        mode,
       })
     }
   }
@@ -149,11 +211,34 @@ function processFixture(fixturePath: string, outputPath: string) {
   console.log(`  Written: ${path.relative(expectedDir, outputPath)} (${results.length} cases)`)
 }
 
-function main() {
+function processDir(dirName: string) {
+  const dir = path.join(fixturesDir, dirName)
+  if (!fs.existsSync(dir)) return
+  const files = fs.readdirSync(dir).filter(f => f.endsWith('.toml'))
+  for (const file of files) {
+    const fixturePath = path.join(dir, file)
+    const outputPath = path.join(expectedDir, dirName, file.replace('.toml', '.snap'))
+    processFixture(fixturePath, outputPath)
+  }
+}
+
+async function main() {
+  // Pre-load vapor compiler
+  await loadVaporCompiler().catch(() => {
+    console.warn('Warning: @vue/compiler-vapor not available, vapor fixtures will be skipped')
+  })
   const args = process.argv.slice(2)
 
+  // Handle --mode flag
+  const modeIdx = args.indexOf('--mode')
+  if (modeIdx !== -1 && args[modeIdx + 1]) {
+    const mode = args[modeIdx + 1]
+    processDir(mode)
+    return
+  }
+
   // If specific fixture is provided
-  if (args.length > 0) {
+  if (args.length > 0 && !args[0].startsWith('--')) {
     for (const arg of args) {
       const fixturePath = path.join(fixturesDir, `${arg}.toml`)
       const outputPath = path.join(expectedDir, `${arg}.snap`)
@@ -168,15 +253,9 @@ function main() {
     return
   }
 
-  // Process all SFC fixtures
-  const sfcFixturesDir = path.join(fixturesDir, 'sfc')
-  if (fs.existsSync(sfcFixturesDir)) {
-    const files = fs.readdirSync(sfcFixturesDir).filter(f => f.endsWith('.toml'))
-    for (const file of files) {
-      const fixturePath = path.join(sfcFixturesDir, file)
-      const outputPath = path.join(expectedDir, 'sfc', file.replace('.toml', '.snap'))
-      processFixture(fixturePath, outputPath)
-    }
+  // Process all modes
+  for (const mode of ['vdom', 'vapor', 'sfc']) {
+    processDir(mode)
   }
 }
 

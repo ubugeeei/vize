@@ -1,36 +1,42 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 106
+assertion_line: 150
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString, normalizeClass as _normalizeClass, withModifiers as _withModifiers } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
-import { computed } from 'vue'
+import { computed } from 'vue';
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
-  __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const props = __props
-  const lapClass = computed(() => `lap-${props.guidanceProgress.progressLap}`);
-  const isChangedProgressLap = computed(
-    () => props.guidanceProgress.progressLap !== props.guidanceProgress.originalProgressLap
-  );
-  const __returned__ = { computed, disabled, guidanceProgress, isChangedProgressLap, lapClass, readonly }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
-
-});
-
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("button", {
-    class: _normalizeClass([{ disabled: $props.disabled }, $setup.lapClass]),
-    disabled: $props.disabled,
-    onClick: _withModifiers(() => {}, ["prevent"])
-  }, "\n    " + _toDisplayString($props.guidanceProgress.progressUnit.value) + "\n  ", 11 /* TEXT, CLASS, PROPS */, ["disabled", "onClick"]))
+interface GuidanceProgressFormInput {
+  progressLap: number;
+  originalProgressLap: number;
+  progressUnit: { value: string };
+}
+interface Props {
+  guidanceProgress: GuidanceProgressFormInput;
+  disabled?: boolean;
+  readonly?: boolean;
 }
 
-__sfc__.render = render
-export default __sfc__
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    guidanceProgress: { type: null, required: true },
+    disabled: { type: Boolean, required: false },
+    readonly: { type: Boolean, required: false }
+  },
+  setup(__props: any) {
+
+const props = __props
+const lapClass = computed(() => `lap-${props.guidanceProgress.progressLap}`);
+const isChangedProgressLap = computed(
+  () => props.guidanceProgress.progressLap !== props.guidanceProgress.originalProgressLap
+);
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("button", { class: _normalizeClass([{ disabled: __props.disabled }, lapClass.value]), disabled: __props.disabled, onClick: _withModifiers(() => {}, ["prevent"]) }, "\n    " + _toDisplayString(__props.guidanceProgress.progressUnit.value) + "\n  ", 11 /* TEXT, CLASS, PROPS */, ["disabled", "onClick"]))
+}
+}
+
+})

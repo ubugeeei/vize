@@ -7,7 +7,27 @@
  */
 
 // Types
-export type { VizeConfig, CompilerConfig, VitePluginConfig, LoadConfigOptions } from "./types.js";
+export type {
+  VizeConfig,
+  CompilerConfig,
+  VitePluginConfig,
+  LinterConfig,
+  TypeCheckerConfig,
+  FormatterConfig,
+  LspConfig,
+  MuseaConfig,
+  MuseaVrtConfig,
+  MuseaA11yConfig,
+  MuseaAutogenConfig,
+  GlobalTypesConfig,
+  GlobalTypeDeclaration,
+  LoadConfigOptions,
+  ConfigEnv,
+  UserConfigExport,
+  MaybePromise,
+  RuleSeverity,
+  RuleCategory,
+} from "./types.js";
 
 // Config utilities
-export { defineConfig, loadConfig } from "./config.js";
+export { defineConfig, loadConfig, normalizeGlobalTypes } from "./config.js";

@@ -405,15 +405,57 @@ pub fn generate_simple_expression(ctx: &mut CodegenContext, exp: &SimpleExpressi
         ctx.push("\"");
     } else {
         // Strip TypeScript if needed
-        if ctx.options.is_ts && exp.content.contains(" as ") {
-            let stripped = crate::transforms::strip_typescript_from_expression(&exp.content);
-            ctx.push(&stripped);
+        let content = if ctx.options.is_ts && exp.content.contains(" as ") {
+            crate::transforms::strip_typescript_from_expression(&exp.content)
         } else {
-            // Expression content should already be processed by transform phase
-            // (e.g., "msg" -> "_ctx.msg" if prefix_identifiers is enabled)
-            ctx.push(&exp.content);
+            exp.content.to_string()
+        };
+
+        // Replace _ctx.X with X when X is a known slot/v-for parameter.
+        // This handles destructured variables that the transform phase
+        // incorrectly prefixed with _ctx. because it didn't know the scope.
+        if ctx.has_slot_params() && content.contains("_ctx.") {
+            ctx.push(&strip_ctx_for_slot_params(ctx, &content));
+        } else {
+            ctx.push(&content);
         }
     }
+}
+
+/// Strip `_ctx.` prefix for identifiers that are slot/v-for parameters.
+/// E.g., `_ctx.id` -> `id` if `id` is a slot param.
+/// Handles compound expressions like `_ctx.id + _ctx.name`.
+fn strip_ctx_for_slot_params(ctx: &CodegenContext, content: &str) -> String {
+    let mut result = String::with_capacity(content.len());
+    let bytes = content.as_bytes();
+    let prefix = b"_ctx.";
+    let mut i = 0;
+
+    while i < bytes.len() {
+        if i + prefix.len() <= bytes.len() && &bytes[i..i + prefix.len()] == prefix {
+            // Found _ctx. — extract the identifier after it
+            let start = i + prefix.len();
+            let mut end = start;
+            while end < bytes.len()
+                && (bytes[end].is_ascii_alphanumeric() || bytes[end] == b'_' || bytes[end] == b'$')
+            {
+                end += 1;
+            }
+            let ident = &content[start..end];
+            if !ident.is_empty() && ctx.is_slot_param(ident) {
+                // Skip _ctx. prefix — just push the identifier
+                result.push_str(ident);
+                i = end;
+            } else {
+                result.push_str("_ctx.");
+                i = start;
+            }
+        } else {
+            result.push(bytes[i] as char);
+            i += 1;
+        }
+    }
+    result
 }
 
 /// Check if a string is a simple member expression like _ctx.foo or $setup.bar

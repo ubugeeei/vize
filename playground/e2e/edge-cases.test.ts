@@ -132,7 +132,8 @@ const name = user?.name?.first
 `
       const result = wasm!.compileSfc(sfc, {})
       expect(result.script?.code).toBeDefined()
-      expect(result.script?.code).not.toContain('interface User')
+      // TypeScript is preserved in output (auto-detected from lang="ts")
+      expect(result.script?.code).toContain('interface User')
     })
 
     it('should handle enum declarations', () => {

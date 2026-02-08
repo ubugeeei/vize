@@ -1,0 +1,59 @@
+===
+name: text with quotes
+options: vapor
+--- INPUT ---
+<div>He said "hello"</div>
+--- OUTPUT ---
+import { template as _template } from 'vue';
+const t0 = _template("<div>He said &quot;hello&quot;</div>", true)
+
+export function render(_ctx) {
+  const n0 = t0()
+  return n0
+}
+===
+name: text with single quotes
+options: vapor
+--- INPUT ---
+<div>It's fine</div>
+--- OUTPUT ---
+import { template as _template } from 'vue';
+const t0 = _template("<div>It&#39;s fine</div>", true)
+
+export function render(_ctx) {
+  const n0 = t0()
+  return n0
+}
+===
+name: whitespace between elements
+options: vapor
+--- INPUT ---
+<span>Foo</span> <span>Bar</span>
+--- OUTPUT ---
+import { template as _template } from 'vue';
+const t0 = _template("<span>Foo</span>")
+const t1 = _template(" ")
+const t2 = _template("<span>Bar</span>")
+
+export function render(_ctx) {
+  const n0 = t0()
+  const n1 = t1()
+  const n2 = t2()
+  return [n0, n1, n2]
+}
+===
+name: newline between elements
+options: vapor
+--- INPUT ---
+<span>Foo</span>
+<span>Bar</span>
+--- OUTPUT ---
+import { template as _template } from 'vue';
+const t0 = _template("<span>Foo</span>")
+const t1 = _template("<span>Bar</span>")
+
+export function render(_ctx) {
+  const n0 = t0()
+  const n1 = t1()
+  return [n0, n1]
+}

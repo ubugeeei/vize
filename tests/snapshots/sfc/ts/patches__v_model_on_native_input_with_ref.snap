@@ -1,31 +1,22 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 196
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, withDirectives as _withDirectives, vModelText as _vModelText } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
 import { ref } from 'vue'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
+export default /*@__PURE__*/_defineComponent({
   __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const inputValue = ref('')
-  const __returned__ = { inputValue, ref }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
+  setup(__props) {
 
-});
+const inputValue = ref('')
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return _withDirectives((_openBlock(), _createElementBlock("input", {
-    "onUpdate:modelValue": $event => (($setup.inputValue) = $event)
-  }, null, 8 /* PROPS */, ["onUpdate:modelValue"])), [
-    [_vModelText, $setup.inputValue]
-  ])
+return (_ctx: any,_cache: any) => {
+  return _withDirectives((_openBlock(), _createElementBlock("input", { "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event: any) => ((inputValue).value = $event)) }, null, 512 /* NEED_PATCH */)), [ [_vModelText, inputValue.value] ])
+}
 }
 
-__sfc__.render = render
-export default __sfc__
+})

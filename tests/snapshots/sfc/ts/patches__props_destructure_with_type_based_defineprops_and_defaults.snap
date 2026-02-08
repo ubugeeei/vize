@@ -1,37 +1,25 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
+assertion_line: 196
 expression: ts_output
 ---
+import { mergeDefaults as _mergeDefaults } from 'vue'
+import { defineComponent as _defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, normalizeClass as _normalizeClass } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
-import { mergeDefaults as _mergeDefaults } from 'vue'
 
-// Reactive Props Destructure (Vue 3.5+)
-
-const __sfc__ = /*@__PURE__*/_defineComponent({
+export default /*@__PURE__*/_defineComponent({
   __name: 'test',
-  props: /*@__PURE__*/_mergeDefaults({ color: {}, size: {} }, {
-  color: "primary",
-  size: "medium"
-}),
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-    __props.color?: "primary" | "secondary";
-    __props.size?: "small" | "medium" | "large";
-  }>();
-  const __returned__ = {  }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
+  props: {
+    color: { type: String, required: false, default: "primary" },
+    size: { type: String, required: false, default: "medium" }
+  },
+  setup(__props: any) {
 
-});
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("div", {
-    class: _normalizeClass([$props.color, $props.size])
-  }, "Styled", 2 /* CLASS */))
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", { class: _normalizeClass([__props.color, __props.size]) }, "Styled", 2 /* CLASS */))
+}
 }
 
-__sfc__.render = render
-export default __sfc__
+})

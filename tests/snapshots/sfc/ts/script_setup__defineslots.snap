@@ -1,26 +1,20 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 106
+assertion_line: 150
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { renderSlot as _renderSlot } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
+export default /*@__PURE__*/_defineComponent({
   __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const __returned__ = { slots }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
+  setup(__props) {
 
-});
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
+return (_ctx: any,_cache: any) => {
   return _renderSlot(_ctx.$slots, "default")
 }
+}
 
-__sfc__.render = render
-export default __sfc__
+})

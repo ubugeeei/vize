@@ -13,9 +13,7 @@ export interface TokenCategory {
   subcategories?: TokenCategory[];
 }
 
-export async function parseTokensFromPath(
-  tokensPath: string,
-): Promise<TokenCategory[]> {
+export async function parseTokensFromPath(tokensPath: string): Promise<TokenCategory[]> {
   const stat = await fs.promises.stat(tokensPath);
 
   if (stat.isDirectory()) {
@@ -23,10 +21,7 @@ export async function parseTokensFromPath(
     const categories: TokenCategory[] = [];
 
     for (const entry of entries) {
-      if (
-        entry.isFile() &&
-        (entry.name.endsWith(".json") || entry.name.endsWith(".tokens.json"))
-      ) {
+      if (entry.isFile() && (entry.name.endsWith(".json") || entry.name.endsWith(".tokens.json"))) {
         const filePath = path.join(tokensPath, entry.name);
         const content = await fs.promises.readFile(filePath, "utf-8");
         const tokens = JSON.parse(content);
@@ -86,9 +81,7 @@ function isTokenLeaf(value: unknown): boolean {
   return "value" in obj && (typeof obj.value === "string" || typeof obj.value === "number");
 }
 
-function extractTokenValues(
-  obj: Record<string, unknown>,
-): Record<string, TokenValue> {
+function extractTokenValues(obj: Record<string, unknown>): Record<string, TokenValue> {
   const tokens: Record<string, TokenValue> = {};
   for (const [key, value] of Object.entries(obj)) {
     if (isTokenLeaf(value)) {
@@ -103,9 +96,7 @@ function extractTokenValues(
   return tokens;
 }
 
-function extractSubcats(
-  obj: Record<string, unknown>,
-): TokenCategory[] | undefined {
+function extractSubcats(obj: Record<string, unknown>): TokenCategory[] | undefined {
   const subcategories: TokenCategory[] = [];
   for (const [key, value] of Object.entries(obj)) {
     if (!isTokenLeaf(value) && typeof value === "object" && value !== null) {
@@ -123,9 +114,7 @@ function extractSubcats(
   return subcategories.length > 0 ? subcategories : undefined;
 }
 
-function flattenTokenStructure(
-  tokens: Record<string, unknown>,
-): TokenCategory[] {
+function flattenTokenStructure(tokens: Record<string, unknown>): TokenCategory[] {
   const categories: TokenCategory[] = [];
   for (const [key, value] of Object.entries(tokens)) {
     if (isTokenLeaf(value)) continue;

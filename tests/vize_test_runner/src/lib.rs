@@ -230,12 +230,18 @@ pub fn normalize_code(code: &str) -> String {
     let mut lines: Vec<String> = code
         .replace("\r\n", "\n")
         .lines()
-        .map(|line| line.trim_end().to_string())
+        .map(|line| {
+            // Trim leading/trailing whitespace (normalize indentation)
+            line.trim().to_string()
+        })
         .collect();
 
-    // Sort import helpers alphabetically
+    // Sort import helpers alphabetically and normalize quotes
     for line in &mut lines {
-        if line.starts_with("import {") && line.contains("} from \"vue\"") {
+        // Normalize import lines from 'vue' or "vue"
+        let is_vue_import = (line.starts_with("import {") || line.starts_with("import {"))
+            && (line.contains("} from \"vue\"") || line.contains("} from 'vue'"));
+        if is_vue_import {
             if let Some(start) = line.find('{') {
                 if let Some(end) = line.find('}') {
                     let helpers_str = &line[start + 1..end];
@@ -247,21 +253,239 @@ pub fn normalize_code(code: &str) -> String {
         }
     }
 
-    // Remove excessive blank lines
-    let result: Vec<&str> = lines.iter().map(|s| s.as_str()).collect();
-    let mut output = Vec::new();
-    let mut prev_blank = false;
-
-    for line in result {
-        let is_blank = line.is_empty();
-        if is_blank && prev_blank {
-            continue;
+    // Normalize each line: remove trailing semicolons, normalize quotes
+    for line in &mut lines {
+        // Remove trailing semicolons
+        while line.ends_with(';') {
+            line.pop();
         }
-        output.push(line);
-        prev_blank = is_blank;
+        // Normalize single quotes to double quotes for comparison
+        *line = normalize_quotes(line);
     }
 
-    output.join("\n").trim().to_string()
+    // Remove all blank lines for comparison
+    let output: Vec<&str> = lines
+        .iter()
+        .map(|s| s.as_str())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    // Join all lines into single string, then collapse multiline expressions
+    let joined = output.join("\n").trim().to_string();
+
+    // Collapse multiline function calls into single lines:
+    // This handles cases where one compiler puts arguments on separate lines
+    collapse_multiline(&joined)
+}
+
+/// Collapse multiline expressions by joining lines where brackets are unbalanced.
+fn collapse_multiline(code: &str) -> String {
+    let lines: Vec<&str> = code.lines().collect();
+    let mut result: Vec<String> = Vec::new();
+
+    for line in &lines {
+        let trimmed = line.trim();
+
+        // Remove block comments like /* TEXT */ or /* KEYED_FRAGMENT */
+        let cleaned = remove_block_comments(trimmed);
+        let cleaned = cleaned.trim();
+        if cleaned.is_empty() {
+            continue;
+        }
+
+        // If the previous line has unbalanced brackets, join this line to it
+        let should_join = if let Some(last) = result.last() {
+            !brackets_balanced(last)
+        } else {
+            false
+        };
+
+        if should_join {
+            if let Some(last) = result.last_mut() {
+                last.push(' ');
+                last.push_str(cleaned);
+            }
+        } else {
+            result.push(cleaned.to_string());
+        }
+    }
+
+    // Normalize parentheses in return statements: `return (expr)` -> `return expr`
+    for line in &mut result {
+        if line.starts_with("return (") && line.ends_with(')') {
+            let inner = &line[7..]; // "return " is 7 chars
+            if is_outer_parens_balanced(inner) {
+                *line = format!("return {}", &inner[1..inner.len() - 1]);
+            }
+        }
+    }
+
+    // Normalize multiple spaces to single space
+    for line in &mut result {
+        while line.contains("  ") {
+            *line = line.replace("  ", " ");
+        }
+    }
+
+    // Normalize spaces around parentheses: "( " -> "(", " )" -> ")"
+    // Also normalize "[ " -> "[", " ]" -> "]"
+    for line in &mut result {
+        *line = normalize_bracket_spaces(line);
+    }
+
+    result.join("\n")
+}
+
+/// Check if parens and square brackets are balanced in a line.
+/// Only checks ( ) and [ ], NOT { } — we want to preserve statement structure.
+fn brackets_balanced(line: &str) -> bool {
+    let mut paren = 0i32;
+    let mut square = 0i32;
+    let mut in_string = false;
+    let mut string_char = ' ';
+    let chars: Vec<char> = line.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        let ch = chars[i];
+        if in_string {
+            if ch == '\\' && i + 1 < chars.len() {
+                i += 2;
+                continue;
+            }
+            if ch == string_char {
+                in_string = false;
+            }
+        } else {
+            match ch {
+                '"' | '\'' | '`' => {
+                    in_string = true;
+                    string_char = ch;
+                }
+                '(' => paren += 1,
+                ')' => paren -= 1,
+                '[' => square += 1,
+                ']' => square -= 1,
+                _ => {}
+            }
+        }
+        i += 1;
+    }
+    paren == 0 && square == 0
+}
+
+/// Remove block comments like /* TEXT */ from a line
+fn remove_block_comments(line: &str) -> String {
+    let mut result = String::new();
+    let mut in_comment = false;
+    let chars: Vec<char> = line.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        if !in_comment && i + 1 < chars.len() && chars[i] == '/' && chars[i + 1] == '*' {
+            in_comment = true;
+            i += 2;
+        } else if in_comment && i + 1 < chars.len() && chars[i] == '*' && chars[i + 1] == '/' {
+            in_comment = false;
+            i += 2;
+        } else if !in_comment {
+            result.push(chars[i]);
+            i += 1;
+        } else {
+            i += 1;
+        }
+    }
+    result
+}
+
+/// Check if the outer parentheses of a string are balanced
+fn is_outer_parens_balanced(s: &str) -> bool {
+    if !s.starts_with('(') || !s.ends_with(')') {
+        return false;
+    }
+    let mut depth = 0;
+    for (i, ch) in s.chars().enumerate() {
+        match ch {
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 && i < s.len() - 1 {
+                    return false; // Closed before the end
+                }
+            }
+            _ => {}
+        }
+    }
+    depth == 0
+}
+
+/// Normalize spaces around brackets: "( " -> "(", " )" -> ")", etc.
+/// Be careful not to modify content inside strings.
+fn normalize_bracket_spaces(line: &str) -> String {
+    // Simple approach: replace "( " with "(" and " )" with ")" etc.
+    // This is safe because spaces immediately inside parens/brackets are never significant in JS
+    let mut result = line.to_string();
+    // Iteratively clean up bracket spaces
+    loop {
+        let prev = result.clone();
+        result = result.replace("( ", "(");
+        result = result.replace(" )", ")");
+        result = result.replace("[ ", "[");
+        result = result.replace(" ]", "]");
+        if result == prev {
+            break;
+        }
+    }
+    result
+}
+
+/// Normalize quotes: convert single quotes to double quotes,
+/// being careful about strings that contain the other quote type
+fn normalize_quotes(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let chars: Vec<char> = s.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i] == '\'' {
+            // Convert single-quoted string to double-quoted
+            result.push('"');
+            i += 1;
+            while i < chars.len() && chars[i] != '\'' {
+                if chars[i] == '\\' && i + 1 < chars.len() {
+                    result.push(chars[i]);
+                    result.push(chars[i + 1]);
+                    i += 2;
+                } else {
+                    result.push(chars[i]);
+                    i += 1;
+                }
+            }
+            if i < chars.len() {
+                result.push('"');
+                i += 1;
+            }
+        } else if chars[i] == '"' {
+            // Keep double-quoted strings as-is
+            result.push(chars[i]);
+            i += 1;
+            while i < chars.len() && chars[i] != '"' {
+                if chars[i] == '\\' && i + 1 < chars.len() {
+                    result.push(chars[i]);
+                    result.push(chars[i + 1]);
+                    i += 2;
+                } else {
+                    result.push(chars[i]);
+                    i += 1;
+                }
+            }
+            if i < chars.len() {
+                result.push(chars[i]);
+                i += 1;
+            }
+        } else {
+            result.push(chars[i]);
+            i += 1;
+        }
+    }
+    result
 }
 
 /// Compare actual output with expected

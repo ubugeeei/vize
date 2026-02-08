@@ -1,9 +1,11 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 106
+assertion_line: 150
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, renderList as _renderList, toDisplayString as _toDisplayString } from "vue"
+
 
 import type { RouteLocation } from "vue-router";
 
@@ -13,28 +15,18 @@ interface TabItem {
 }
 
 export type { TabItem };
-import { defineComponent as _defineComponent } from 'vue'
 
-// Reactive Props Destructure (Vue 3.5+)
-
-const __sfc__ = /*@__PURE__*/_defineComponent({
+export default /*@__PURE__*/_defineComponent({
   __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-    __props.items: Array<TabItem>;
-  }>();
-  const __returned__ = {  }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
+  props: {
+    items: { type: Array, required: true }
+  },
+  setup(__props: any) {
 
-});
 
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList($props.items, (item) => {
-    return (_openBlock(), _createElementBlock("div", { key: item.name }, "\n    " + _toDisplayString(item.label) + "\n  ", 1 /* TEXT */))
-  }), 128 /* KEYED_FRAGMENT */))
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(__props.items, (item) => { return (_openBlock(), _createElementBlock("div", { key: item.name }, "\n    " + _toDisplayString(item.label) + "\n  ", 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */))
+}
 }
 
-__sfc__.render = render
-export default __sfc__
+})

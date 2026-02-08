@@ -1,29 +1,28 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 106
+assertion_line: 150
 expression: ts_output
 ---
+import { defineComponent as _defineComponent } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
 
-const __sfc__ = /*@__PURE__*/_defineComponent({
-  __name: 'test',
-  setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const props = __props
-  const __returned__ = { refreshMethod }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
-  }
-
-});
-
-export function render(_ctx, _cache, $props, $setup, $data, $options) {
-  return (_openBlock(), _createElementBlock("div", {
-    onClick: $setup.props.refreshMethod(() => {})
-  }, "Refresh", 8 /* PROPS */, ["onClick"]))
+interface Props {
+  refreshMethod: (loaded: Function) => Promise<void> | void;
 }
 
-__sfc__.render = render
-export default __sfc__
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
+  props: {
+    refreshMethod: { type: Object, required: true }
+  },
+  setup(__props: any) {
+
+const props = __props
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", { onClick: _cache[0] || (_cache[0] = props.refreshMethod(() => {})) }, "Refresh"))
+}
+}
+
+})

@@ -192,6 +192,7 @@ fn generate_imports(ctx: &GenerateContext) -> String {
             "setClass" => 30,
             "setProp" => 31,
             "setStyle" => 32,
+            "setAttr" => 33,
             "createInvoker" => 40,
             "delegateEvents" => 41,
             "setInsertionState" => 78,
@@ -362,6 +363,7 @@ fn generate_operation_inline(ctx: &mut GenerateContext, op: &OperationNode<'_>) 
         OperationNode::SetProp(set_prop) => {
             let element = format!("n{}", set_prop.element);
             let key = &set_prop.prop.key.content;
+            let is_svg = is_svg_tag(set_prop.tag.as_str());
             let value = if let Some(first) = set_prop.prop.values.first() {
                 if first.is_static {
                     format!("\"{}\"", first.content)
@@ -373,8 +375,21 @@ fn generate_operation_inline(ctx: &mut GenerateContext, op: &OperationNode<'_>) 
             };
 
             if key.as_str() == "class" {
-                ctx.use_helper("setClass");
-                format!("_setClass({}, {})", element, value)
+                if is_svg {
+                    ctx.use_helper("setAttr");
+                    format!("_setAttr({}, \"class\", {})", element, value)
+                } else {
+                    ctx.use_helper("setClass");
+                    format!("_setClass({}, {})", element, value)
+                }
+            } else if key.as_str() == "style" {
+                if is_svg {
+                    ctx.use_helper("setAttr");
+                    format!("_setAttr({}, \"style\", {})", element, value)
+                } else {
+                    ctx.use_helper("setStyle");
+                    format!("_setStyle({}, {})", element, value)
+                }
             } else {
                 ctx.use_helper("setProp");
                 format!("_setProp({}, \"{}\", {})", element, key, value)
@@ -415,6 +430,7 @@ fn generate_operation_inline(ctx: &mut GenerateContext, op: &OperationNode<'_>) 
 fn generate_set_prop(ctx: &mut GenerateContext, set_prop: &SetPropIRNode<'_>) {
     let element = format!("n{}", set_prop.element);
     let key = &set_prop.prop.key.content;
+    let is_svg = is_svg_tag(set_prop.tag.as_str());
 
     let value = if let Some(first) = set_prop.prop.values.first() {
         if first.is_static {
@@ -426,10 +442,22 @@ fn generate_set_prop(ctx: &mut GenerateContext, set_prop: &SetPropIRNode<'_>) {
         String::from("undefined")
     };
 
-    // Use specialized helper for class binding
     if key.as_str() == "class" {
-        ctx.use_helper("setClass");
-        ctx.push_line(&format!("_setClass({}, {})", element, value));
+        if is_svg {
+            ctx.use_helper("setAttr");
+            ctx.push_line(&format!("_setAttr({}, \"class\", {})", element, value));
+        } else {
+            ctx.use_helper("setClass");
+            ctx.push_line(&format!("_setClass({}, {})", element, value));
+        }
+    } else if key.as_str() == "style" {
+        if is_svg {
+            ctx.use_helper("setAttr");
+            ctx.push_line(&format!("_setAttr({}, \"style\", {})", element, value));
+        } else {
+            ctx.use_helper("setStyle");
+            ctx.push_line(&format!("_setStyle({}, {})", element, value));
+        }
     } else {
         ctx.use_helper("setProp");
         ctx.push_line(&format!("_setProp({}, \"{}\", {})", element, key, value));
@@ -498,6 +526,9 @@ fn generate_set_event(ctx: &mut GenerateContext, set_event: &SetEventIRNode<'_>)
     let invoker_body = if handler.contains("$event") {
         // Handler uses $event - pass it as parameter
         format!("$event => (_ctx.{})", handler)
+    } else if handler.contains("?.") {
+        // Optional call expression like foo?.() or foo?.bar() - cache it
+        format!("(...args) => (_ctx.{})", handler)
     } else if is_inline_statement(&handler) {
         // Inline statement like count++ or foo = bar
         format!("() => (_ctx.{})", handler)
@@ -737,7 +768,7 @@ fn generate_for(
     let source = if for_node.source.is_static {
         ["\"", for_node.source.content.as_str(), "\""].concat()
     } else {
-        for_node.source.content.to_string()
+        ["(_ctx.", for_node.source.content.as_str(), " || [])"].concat()
     };
 
     let value_name = for_node
@@ -855,6 +886,44 @@ fn escape_template(s: &str) -> String {
         .replace('"', "\\\"")
         .replace('\n', "\\n")
         .replace('\r', "\\r")
+}
+
+/// Check if a tag is an SVG element
+fn is_svg_tag(tag: &str) -> bool {
+    matches!(
+        tag,
+        "svg"
+            | "circle"
+            | "ellipse"
+            | "line"
+            | "path"
+            | "polygon"
+            | "polyline"
+            | "rect"
+            | "g"
+            | "defs"
+            | "symbol"
+            | "use"
+            | "text"
+            | "tspan"
+            | "image"
+            | "clipPath"
+            | "mask"
+            | "filter"
+            | "linearGradient"
+            | "radialGradient"
+            | "stop"
+            | "foreignObject"
+            | "animate"
+            | "animateMotion"
+            | "animateTransform"
+            | "set"
+            | "desc"
+            | "title"
+            | "metadata"
+            | "marker"
+            | "pattern"
+    )
 }
 
 #[cfg(test)]

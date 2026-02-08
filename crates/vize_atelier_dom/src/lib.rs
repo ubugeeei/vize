@@ -141,6 +141,7 @@ pub fn compile_template_with_options<'a>(
         ssr: options.ssr,
         is_ts: options.is_ts,
         inline: options.inline,
+        cache_handlers: options.cache_handlers,
         binding_metadata: codegen_binding_metadata,
         ..Default::default()
     };
