@@ -702,9 +702,13 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
             const protocol = devServer.config.server.https ? "https" : "http";
             const rawHost = address.address;
             // Normalize IPv6/IPv4 localhost addresses to "localhost"
-            const host = rawHost === "::" || rawHost === "::1" || rawHost === "0.0.0.0" || rawHost === "127.0.0.1"
-              ? "localhost"
-              : rawHost;
+            const host =
+              rawHost === "::" ||
+              rawHost === "::1" ||
+              rawHost === "0.0.0.0" ||
+              rawHost === "127.0.0.1"
+                ? "localhost"
+                : rawHost;
             const port = address.port;
             const url = `${protocol}://${host}:${port}${basePath}`;
 
@@ -1712,14 +1716,65 @@ export async function loadArts() {
 const MUSEA_ADDONS_INIT_CODE = `
 function __museaInitAddons(container) {
   // === DOM event capture ===
-  const CAPTURE_EVENTS = ['click','dblclick','input','change','submit','focus','blur','keydown','keyup'];
+  const CAPTURE_EVENTS = ['click','dblclick','input','change','submit','focus','blur','keydown','keyup','mousedown','mouseup','mousemove','mouseenter','mouseleave','wheel','contextmenu','pointerdown','pointerup','pointermove'];
   for (const evt of CAPTURE_EVENTS) {
     container.addEventListener(evt, (e) => {
+      // Extract raw event properties
+      const rawEvent = {
+        type: e.type,
+        bubbles: e.bubbles,
+        cancelable: e.cancelable,
+        composed: e.composed,
+        defaultPrevented: e.defaultPrevented,
+        eventPhase: e.eventPhase,
+        isTrusted: e.isTrusted,
+        timeStamp: e.timeStamp,
+      };
+      // Mouse/Pointer event properties
+      if ('clientX' in e) {
+        rawEvent.clientX = e.clientX;
+        rawEvent.clientY = e.clientY;
+        rawEvent.screenX = e.screenX;
+        rawEvent.screenY = e.screenY;
+        rawEvent.pageX = e.pageX;
+        rawEvent.pageY = e.pageY;
+        rawEvent.offsetX = e.offsetX;
+        rawEvent.offsetY = e.offsetY;
+        rawEvent.button = e.button;
+        rawEvent.buttons = e.buttons;
+        rawEvent.altKey = e.altKey;
+        rawEvent.ctrlKey = e.ctrlKey;
+        rawEvent.metaKey = e.metaKey;
+        rawEvent.shiftKey = e.shiftKey;
+      }
+      // Keyboard event properties
+      if ('key' in e) {
+        rawEvent.key = e.key;
+        rawEvent.code = e.code;
+        rawEvent.repeat = e.repeat;
+        rawEvent.altKey = e.altKey;
+        rawEvent.ctrlKey = e.ctrlKey;
+        rawEvent.metaKey = e.metaKey;
+        rawEvent.shiftKey = e.shiftKey;
+      }
+      // Input event properties
+      if ('inputType' in e) {
+        rawEvent.inputType = e.inputType;
+        rawEvent.data = e.data;
+      }
+      // Wheel event properties
+      if ('deltaX' in e) {
+        rawEvent.deltaX = e.deltaX;
+        rawEvent.deltaY = e.deltaY;
+        rawEvent.deltaZ = e.deltaZ;
+        rawEvent.deltaMode = e.deltaMode;
+      }
       const payload = {
         name: evt,
         target: e.target?.tagName,
         timestamp: Date.now(),
-        source: 'dom'
+        source: 'dom',
+        rawEvent
       };
       if (e.target && 'value' in e.target) {
         payload.value = e.target.value;

@@ -133,7 +133,7 @@ export function useEventCapture(options: EventCaptureOptions = {}) {
 
   const clearVariantEvents = (variantId: string) => {
     variantEvents.value.delete(variantId)
-    events.value = [...events.value.filter(e => e.variantId !== variantId)]
+    events.value = events.value.filter(e => e.variantId !== variantId)
   }
 
   const getVariantEvents = (variantId: string): CapturedEvent[] => {

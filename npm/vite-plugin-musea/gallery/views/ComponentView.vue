@@ -205,67 +205,67 @@ const handleVariantSelect = (variantName: string) => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 1rem 1.5rem;
+  padding: 0.25rem 0.75rem;
   overflow: hidden;
 }
 
 .component-header {
-  margin-bottom: 1rem;
+  margin-bottom: 0.25rem;
   flex-shrink: 0;
 }
 
 .component-title-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  gap: 0.375rem;
+  margin-bottom: 0.125rem;
 }
 
 .component-title {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .component-description {
   color: var(--musea-text-muted);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   max-width: 600px;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.125rem;
 }
 
 .component-meta {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.375rem;
   flex-wrap: wrap;
 }
 
 .meta-tag {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.625rem;
+  gap: 0.125rem;
+  padding: 0.0625rem 0.375rem;
   background: var(--musea-bg-secondary);
   border: 1px solid var(--musea-border);
   border-radius: var(--musea-radius-sm);
-  font-size: 0.75rem;
+  font-size: 0.625rem;
   color: var(--musea-text-muted);
 }
 
 .meta-tag svg {
-  width: 12px;
-  height: 12px;
+  width: 9px;
+  height: 9px;
 }
 
 .component-view :deep(.addon-toolbar) {
-  margin-bottom: 1rem;
+  margin-bottom: 0.25rem;
 }
 
 .component-tabs {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.125rem;
   border-bottom: 1px solid var(--musea-border);
-  margin-bottom: 1rem;
+  margin-bottom: 0.25rem;
   flex-shrink: 0;
 }
 
@@ -278,13 +278,13 @@ const handleVariantSelect = (variantName: string) => {
 .tab-btn {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
   background: none;
   border: none;
   color: var(--musea-text-muted);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  padding: 0.75rem 1rem;
+  padding: 0.375rem 0.5rem;
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: all var(--musea-transition);
@@ -317,7 +317,7 @@ const handleVariantSelect = (variantName: string) => {
 .variants-view {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.5rem;
 }
 
 .variant-preview-area {
@@ -329,7 +329,7 @@ const handleVariantSelect = (variantName: string) => {
 }
 
 .variant-preview-area :deep(.variant-preview) {
-  min-height: 200px;
+  min-height: 120px;
 }
 
 .gallery-grid {
