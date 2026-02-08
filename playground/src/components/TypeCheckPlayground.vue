@@ -9,6 +9,7 @@ import type {
   TypeCheckCapabilities,
 } from "../wasm/index";
 import { TYPECHECK_PRESET, TYPECHECK_TYPED_PRESET } from "./presets/typecheck";
+import { mdiCheckDecagram, mdiCheck, mdiCloseCircle, mdiAlert, mdiInformation } from "@mdi/js";
 
 interface Diagnostic {
   message: string;
@@ -954,13 +955,13 @@ function formatMessage(message: string): string {
 function getSeverityIcon(severity: "error" | "warning" | "info" | "hint"): string {
   switch (severity) {
     case "error":
-      return "\u2717";
+      return mdiCloseCircle;
     case "warning":
-      return "\u26A0";
+      return mdiAlert;
     case "info":
-      return "\u24D8";
+      return mdiInformation;
     default:
-      return "\u2022";
+      return mdiInformation;
   }
 }
 
@@ -1041,7 +1042,7 @@ onUnmounted(() => {
     <div class="panel output-panel">
       <div class="panel-header">
         <div class="header-title">
-          <span class="icon">&#x2714;</span>
+          <svg class="icon" viewBox="0 0 24 24"><path :d="mdiCheckDecagram" fill="currentColor" /></svg>
           <h2>Type Analysis</h2>
           <span v-if="checkTime !== null" class="perf-badge"> {{ checkTime.toFixed(2) }}ms </span>
           <template v-if="typeCheckResult">
@@ -1115,7 +1116,7 @@ onUnmounted(() => {
             </div>
 
             <div v-if="diagnostics.length === 0" class="success-state">
-              <span class="success-icon">&#x2713;</span>
+              <svg class="success-icon" viewBox="0 0 24 24"><path :d="mdiCheck" fill="currentColor" /></svg>
               <span>No type issues found</span>
             </div>
 
@@ -1126,7 +1127,7 @@ onUnmounted(() => {
                 :class="['diagnostic-item', `severity-${diagnostic.severity}`]"
               >
                 <div class="diagnostic-header">
-                  <span class="severity-icon">{{ getSeverityIcon(diagnostic.severity) }}</span>
+                  <svg class="severity-icon" viewBox="0 0 24 24"><path :d="getSeverityIcon(diagnostic.severity)" fill="currentColor" /></svg>
                   <code v-if="diagnostic.code" class="error-code">TS{{ diagnostic.code }}</code>
                   <span class="location-badge">
                     {{ diagnostic.startLine }}:{{ diagnostic.startColumn }}
@@ -1248,7 +1249,8 @@ onUnmounted(() => {
 }
 
 .header-title .icon {
-  font-size: 1rem;
+  width: 1rem;
+  height: 1rem;
   color: var(--accent-blue);
 }
 
@@ -1449,7 +1451,8 @@ onUnmounted(() => {
 }
 
 .success-icon {
-  font-size: 1.25rem;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 /* Diagnostics List */
@@ -1464,19 +1467,6 @@ onUnmounted(() => {
   background: var(--bg-secondary);
   border: 1px solid var(--border-primary);
   border-radius: 4px;
-  border-left: 3px solid;
-}
-
-.diagnostic-item.severity-error {
-  border-left-color: #ef4444;
-}
-
-.diagnostic-item.severity-warning {
-  border-left-color: #f59e0b;
-}
-
-.diagnostic-item.severity-info {
-  border-left-color: #60a5fa;
 }
 
 .diagnostic-header {
@@ -1487,8 +1477,9 @@ onUnmounted(() => {
 }
 
 .severity-icon {
-  font-size: 0.75rem;
-  font-weight: bold;
+  width: 0.75rem;
+  height: 0.75rem;
+  flex-shrink: 0;
 }
 
 .severity-error .severity-icon {

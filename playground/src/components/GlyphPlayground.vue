@@ -4,6 +4,7 @@ import MonacoEditor from "./MonacoEditor.vue";
 import CodeHighlight from "./CodeHighlight.vue";
 import type { WasmModule, FormatOptions, FormatResult } from "../wasm/index";
 import { GLYPH_PRESET } from "./presets/glyph";
+import { mdiFileEdit, mdiAutoFix, mdiCheck } from "@mdi/js";
 
 const props = defineProps<{
   compiler: WasmModule | null;
@@ -116,7 +117,7 @@ watch(
     <div class="panel input-panel">
       <div class="panel-header">
         <div class="header-title">
-          <span class="icon">&#x270E;</span>
+          <svg class="icon" viewBox="0 0 24 24"><path :d="mdiFileEdit" fill="currentColor" /></svg>
           <h2>Source</h2>
         </div>
         <div class="panel-actions">
@@ -132,7 +133,7 @@ watch(
     <div class="panel output-panel">
       <div class="panel-header">
         <div class="header-title">
-          <span class="icon">&#x2728;</span>
+          <svg class="icon" viewBox="0 0 24 24"><path :d="mdiAutoFix" fill="currentColor" /></svg>
           <h2>Code Formatting</h2>
           <span v-if="formatTime !== null" class="perf-badge"> {{ formatTime.toFixed(2) }}ms </span>
           <span
@@ -200,7 +201,7 @@ watch(
               </span>
             </div>
             <div v-if="!formatResult.changed" class="success-state">
-              <span class="success-icon">&#x2713;</span>
+              <svg class="success-icon" viewBox="0 0 24 24"><path :d="mdiCheck" fill="currentColor" /></svg>
               <span>No changes needed</span>
             </div>
             <div v-else class="diff-view">
@@ -376,7 +377,8 @@ watch(
 }
 
 .header-title .icon {
-  font-size: 1rem;
+  width: 1rem;
+  height: 1rem;
   color: var(--accent-rust);
 }
 
@@ -592,7 +594,8 @@ watch(
 }
 
 .success-icon {
-  font-size: 1.25rem;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .diff-view {
