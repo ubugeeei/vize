@@ -3,18 +3,18 @@ source: crates/vize_croquis/src/script_parser/mod.rs
 expression: output
 ---
 === Bindings ===
-MyAlias: SetupConst
+MyAlias: SetupMaybeRef
 MyComponent: SetupConst
-computed: SetupConst
+computed: SetupMaybeRef
 count: Props
 counter: SetupRef
 doubled: SetupRef
 emit: SetupConst
 increment: SetupConst
 msg: Props
-props: SetupConst
-ref: SetupConst
-watch: SetupConst
+props: SetupReactiveConst
+ref: SetupMaybeRef
+watch: SetupMaybeRef
 
 === Macros ===
 Props count: 2

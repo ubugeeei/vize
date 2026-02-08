@@ -1,11 +1,12 @@
 //! DOM compiler options.
 
 use serde::{Deserialize, Serialize};
-use vize_atelier_core::options::CodegenMode;
-use vize_carton::{FxHashMap, String};
+use vize_atelier_core::options::{BindingMetadata, CodegenMode};
+use vize_carton::String;
+use vize_croquis::Croquis;
 
 /// DOM compiler options
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DomCompilerOptions {
     /// Output mode: function or module
@@ -45,12 +46,36 @@ pub struct DomCompilerOptions {
     pub inline: bool,
 
     /// Binding metadata from script setup
-    #[serde(default)]
-    pub binding_metadata: Option<BindingMetadataMap>,
+    #[serde(skip)]
+    pub binding_metadata: Option<BindingMetadata>,
 
     /// Whether is TypeScript
     #[serde(default)]
     pub is_ts: bool,
+
+    /// Semantic analysis data from Croquis (optional, enhances transforms)
+    #[serde(skip)]
+    pub croquis: Option<Box<Croquis>>,
+}
+
+impl Clone for DomCompilerOptions {
+    fn clone(&self) -> Self {
+        Self {
+            mode: self.mode,
+            prefix_identifiers: self.prefix_identifiers,
+            hoist_static: self.hoist_static,
+            cache_handlers: self.cache_handlers,
+            scope_id: self.scope_id.clone(),
+            ssr: self.ssr,
+            source_map: self.source_map,
+            comments: self.comments,
+            inline: self.inline,
+            binding_metadata: self.binding_metadata.clone(),
+            is_ts: self.is_ts,
+            // Croquis is not cloneable; it will be consumed when passed to the compiler
+            croquis: None,
+        }
+    }
 }
 
 impl Default for DomCompilerOptions {
@@ -67,15 +92,9 @@ impl Default for DomCompilerOptions {
             inline: false,
             binding_metadata: None,
             is_ts: false,
+            croquis: None,
         }
     }
-}
-
-/// Binding metadata map from script setup
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct BindingMetadataMap {
-    pub bindings: FxHashMap<String, String>,
 }
 
 /// DOM-specific element checks

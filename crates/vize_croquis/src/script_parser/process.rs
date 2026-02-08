@@ -28,6 +28,8 @@ use super::extract::{
 };
 use super::walk::{extract_function_params, walk_call_arguments, walk_expression, walk_statement};
 use super::ScriptParseResult;
+use crate::macros::MacroKind;
+use crate::reactivity::ReactiveKind;
 
 /// Process a single statement
 pub fn process_statement(result: &mut ScriptParseResult, stmt: &Statement<'_>, source: &str) {
@@ -135,11 +137,18 @@ pub fn process_statement(result: &mut ScriptParseResult, stmt: &Statement<'_>, s
                         .binding_spans
                         .insert(CompactString::new(name), (local_span.start, local_span.end));
 
-                    // Add binding to external module scope
+                    // Determine binding type based on specifier kind:
+                    // - Named imports (ImportSpecifier) → SetupMaybeRef (could be ref/reactive)
+                    // - Default/Namespace imports → SetupConst
                     let binding_type = if is_type_only || is_type_spec {
                         BindingType::ExternalModule
                     } else {
-                        BindingType::SetupConst
+                        match spec {
+                            oxc_ast::ast::ImportDeclarationSpecifier::ImportSpecifier(_) => {
+                                BindingType::SetupMaybeRef
+                            }
+                            _ => BindingType::SetupConst, // default/namespace
+                        }
                     };
                     result.scopes.add_binding(
                         CompactString::new(name),
@@ -148,7 +157,7 @@ pub fn process_statement(result: &mut ScriptParseResult, stmt: &Statement<'_>, s
 
                     // Only add to bindings if not type-only
                     if !is_type_only && !is_type_spec {
-                        result.bindings.add(name, BindingType::SetupConst);
+                        result.bindings.add(name, binding_type);
                     }
                 }
             }
@@ -251,77 +260,90 @@ fn process_variable_declarator(
 
             // Check if the init is a macro or reactivity call
             // Use extract_call_expression to handle type assertions (as/satisfies)
-            let call_extracted =
-                if let Some(call) = declarator.init.as_ref().and_then(extract_call_expression) {
-                    // Check for macro calls (defineProps, defineEmits, etc.)
-                    if process_call_expression(result, call, source) {
-                        // Macro was processed, add binding
-                        let binding_type = get_binding_type_from_kind(kind);
-                        result.bindings.add(name, binding_type);
-                        // Walk into the call's callback arguments to track nested scopes
-                        walk_call_arguments(result, call, source);
-                        return;
-                    }
-
-                    // Check for reactivity wrappers (also handles aliases)
-                    if let Some((reactive_kind, binding_type)) =
-                        detect_reactivity_call(call, &result.reactivity_aliases)
-                    {
-                        // Detect setup context violations for module-level state
-                        detect_setup_context_violation(result, call);
-
+            let call_extracted = if let Some(call) =
+                declarator.init.as_ref().and_then(extract_call_expression)
+            {
+                // Check for macro calls (defineProps, defineEmits, etc.)
+                if let Some(macro_kind) = process_call_expression(result, call, source) {
+                    // Assign binding type based on macro kind
+                    let binding_type = match macro_kind {
+                        MacroKind::DefineProps | MacroKind::WithDefaults => {
+                            BindingType::SetupReactiveConst
+                        }
+                        MacroKind::DefineModel => BindingType::SetupRef,
+                        _ => get_binding_type_from_kind(kind),
+                    };
+                    // defineModel returns a ref, register in reactivity tracker
+                    if macro_kind == MacroKind::DefineModel {
                         result
                             .reactivity
-                            .register(CompactString::new(name), reactive_kind, 0);
-                        result.bindings.add(name, binding_type);
-                        // Walk into the call's callback arguments to track nested scopes
-                        walk_call_arguments(result, call, source);
-                        return;
+                            .register(CompactString::new(name), ReactiveKind::Ref, 0);
                     }
+                    result.bindings.add(name, binding_type);
+                    // Walk into the call's callback arguments to track nested scopes
+                    walk_call_arguments(result, call, source);
+                    return;
+                }
 
-                    // Check for inject() call - track with local_name for indirect destructure detection
-                    // Also handles inject aliases (e.g., const a = inject; const state = a('key'))
-                    if let Expression::Identifier(callee_id) = &call.callee {
-                        let callee_name = callee_id.name.as_str();
-                        let is_inject =
-                            callee_name == "inject" || result.inject_aliases.contains(callee_name);
-                        if is_inject && !call.arguments.is_empty() {
-                            // Detect setup context violation for inject
-                            detect_setup_context_violation(result, call);
+                // Check for reactivity wrappers (also handles aliases)
+                if let Some((reactive_kind, binding_type)) =
+                    detect_reactivity_call(call, &result.reactivity_aliases)
+                {
+                    // Detect setup context violations for module-level state
+                    detect_setup_context_violation(result, call);
 
-                            if let Some(key) = extract_provide_key(&call.arguments[0], source) {
-                                let default_value = call.arguments.get(1).map(|arg| {
-                                    CompactString::new(extract_argument_source(arg, source))
-                                });
-                                let local_name = CompactString::new(name);
-                                // Track inject variable name for indirect destructure detection
-                                result.inject_var_names.insert(local_name.clone());
-                                result.provide_inject.add_inject(
-                                    key,
-                                    local_name, // local_name is the binding name
-                                    default_value,
-                                    None, // expected_type
-                                    InjectPattern::Simple,
-                                    None, // from_composable
-                                    call.span.start,
-                                    call.span.end,
-                                );
-                                // Walk into the call's callback arguments to track nested scopes
-                                walk_call_arguments(result, call, source);
-                                // Add binding and return
-                                let binding_type = get_binding_type_from_kind(kind);
-                                result.bindings.add(name, binding_type);
-                                return;
-                            }
+                    result
+                        .reactivity
+                        .register(CompactString::new(name), reactive_kind, 0);
+                    result.bindings.add(name, binding_type);
+                    // Walk into the call's callback arguments to track nested scopes
+                    walk_call_arguments(result, call, source);
+                    return;
+                }
+
+                // Check for inject() call - track with local_name for indirect destructure detection
+                // Also handles inject aliases (e.g., const a = inject; const state = a('key'))
+                if let Expression::Identifier(callee_id) = &call.callee {
+                    let callee_name = callee_id.name.as_str();
+                    let is_inject =
+                        callee_name == "inject" || result.inject_aliases.contains(callee_name);
+                    if is_inject && !call.arguments.is_empty() {
+                        // Detect setup context violation for inject
+                        detect_setup_context_violation(result, call);
+
+                        if let Some(key) = extract_provide_key(&call.arguments[0], source) {
+                            let default_value = call.arguments.get(1).map(|arg| {
+                                CompactString::new(extract_argument_source(arg, source))
+                            });
+                            let local_name = CompactString::new(name);
+                            // Track inject variable name for indirect destructure detection
+                            result.inject_var_names.insert(local_name.clone());
+                            result.provide_inject.add_inject(
+                                key,
+                                local_name, // local_name is the binding name
+                                default_value,
+                                None, // expected_type
+                                InjectPattern::Simple,
+                                None, // from_composable
+                                call.span.start,
+                                call.span.end,
+                            );
+                            // Walk into the call's callback arguments to track nested scopes
+                            walk_call_arguments(result, call, source);
+                            // Add binding and return
+                            let binding_type = get_binding_type_from_kind(kind);
+                            result.bindings.add(name, binding_type);
+                            return;
                         }
                     }
+                }
 
-                    // Not a known macro/reactivity/inject, but still walk for nested scopes
-                    walk_call_arguments(result, call, source);
-                    true // Call was extracted and processed
-                } else {
-                    false
-                };
+                // Not a known macro/reactivity/inject, but still walk for nested scopes
+                walk_call_arguments(result, call, source);
+                true // Call was extracted and processed
+            } else {
+                false
+            };
 
             // Walk other expression types for nested scopes
             // Skip if we already extracted and processed a call expression to avoid double processing
@@ -372,8 +394,22 @@ fn process_variable_declarator(
                 }
             }
 
-            // Regular binding
-            let binding_type = get_binding_type_from_kind(kind);
+            // Regular binding - for const, detect literal/function expressions
+            let binding_type = if kind == VariableDeclarationKind::Const {
+                if let Some(init) = &declarator.init {
+                    if is_literal_expression(init) {
+                        BindingType::LiteralConst
+                    } else if is_function_expression(init) {
+                        BindingType::SetupConst
+                    } else {
+                        BindingType::SetupMaybeRef
+                    }
+                } else {
+                    BindingType::SetupConst
+                }
+            } else {
+                get_binding_type_from_kind(kind)
+            };
             result.bindings.add(name, binding_type);
         }
 
@@ -645,4 +681,30 @@ fn get_binding_pattern_name(kind: &BindingPatternKind<'_>) -> Option<String> {
         }
         _ => None,
     }
+}
+
+/// Check if an expression is a literal value (number, string, boolean, null, template literal
+/// without expressions, or unary minus on a numeric literal)
+fn is_literal_expression(expr: &Expression<'_>) -> bool {
+    match expr {
+        Expression::StringLiteral(_)
+        | Expression::NumericLiteral(_)
+        | Expression::BooleanLiteral(_)
+        | Expression::NullLiteral(_)
+        | Expression::BigIntLiteral(_) => true,
+        Expression::TemplateLiteral(tpl) => tpl.expressions.is_empty(),
+        Expression::UnaryExpression(unary) => {
+            unary.operator == oxc_ast::ast::UnaryOperator::UnaryNegation
+                && matches!(unary.argument, Expression::NumericLiteral(_))
+        }
+        _ => false,
+    }
+}
+
+/// Check if an expression is a function expression (arrow function or function expression)
+fn is_function_expression(expr: &Expression<'_>) -> bool {
+    matches!(
+        expr,
+        Expression::ArrowFunctionExpression(_) | Expression::FunctionExpression(_)
+    )
 }

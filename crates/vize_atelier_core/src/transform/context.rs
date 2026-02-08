@@ -1,6 +1,7 @@
 //! TransformContext implementation.
 
 use vize_carton::{Box, Bump, CompactString, String};
+use vize_croquis::reactivity::ReactiveKind;
 use vize_croquis::{BindingType, Croquis, ScopeBinding, ScopeKind, VForScopeData};
 
 use crate::ast::*;
@@ -157,6 +158,21 @@ impl<'a> TransformContext<'a> {
                 Some(BindingType::Props | BindingType::PropsAliased)
             )
         }
+    }
+
+    /// Get the ReactiveKind for a name (from Croquis ReactivityTracker)
+    pub fn get_reactive_kind(&self, name: &str) -> Option<ReactiveKind> {
+        self.analysis?.reactivity.lookup(name).map(|s| s.kind)
+    }
+
+    /// Check if a binding is read-only (Computed, Readonly, ShallowReadonly)
+    pub fn is_readonly_binding(&self, name: &str) -> bool {
+        self.get_reactive_kind(name).is_some_and(|k| {
+            matches!(
+                k,
+                ReactiveKind::Computed | ReactiveKind::Readonly | ReactiveKind::ShallowReadonly
+            )
+        })
     }
 
     /// Check if a component is registered (from analysis or binding metadata)

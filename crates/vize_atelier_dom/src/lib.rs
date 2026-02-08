@@ -29,6 +29,7 @@ use vize_atelier_core::{
     transform::transform as do_transform,
 };
 use vize_carton::Bump;
+use vize_croquis::Croquis;
 
 /// Compile a Vue template for DOM with default options
 pub fn compile_template<'a>(
@@ -67,33 +68,7 @@ pub fn compile_template_with_options<'a>(
     }
 
     // Transform with DOM-specific transforms
-    // Convert BindingMetadataMap to BindingMetadata if present
-    let binding_metadata = options.binding_metadata.as_ref().map(|map| {
-        use vize_atelier_core::options::{BindingMetadata, BindingType};
-        let mut bindings = vize_carton::FxHashMap::default();
-        for (name, type_str) in &map.bindings {
-            let binding_type = match type_str.as_str() {
-                "setup-let" => BindingType::SetupLet,
-                "setup-const" => BindingType::SetupConst,
-                "setup-reactive-const" => BindingType::SetupReactiveConst,
-                "setup-maybe-ref" => BindingType::SetupMaybeRef,
-                "setup-ref" => BindingType::SetupRef,
-                "props" => BindingType::Props,
-                "props-aliased" => BindingType::PropsAliased,
-                "data" => BindingType::Data,
-                "options" => BindingType::Options,
-                "literal-const" => BindingType::LiteralConst,
-                _ => BindingType::SetupMaybeRef, // Default for unknown types
-            };
-            bindings.insert(name.to_string(), binding_type);
-        }
-        BindingMetadata {
-            bindings,
-            props_aliases: vize_carton::FxHashMap::default(),
-            is_script_setup: true,
-        }
-    });
-
+    // BindingMetadata is passed directly (no string conversion needed)
     let transform_opts = TransformOptions {
         prefix_identifiers: options.prefix_identifiers,
         hoist_static: options.hoist_static,
@@ -102,38 +77,14 @@ pub fn compile_template_with_options<'a>(
         ssr: options.ssr,
         is_ts: options.is_ts,
         inline: options.inline,
-        binding_metadata,
+        binding_metadata: options.binding_metadata.clone(),
         ..Default::default()
     };
-    do_transform(allocator, &mut root, transform_opts);
+    // Allocate Croquis in the arena so it shares the allocator lifetime
+    let analysis: Option<&Croquis> = options.croquis.map(|c| &*allocator.alloc(*c));
+    do_transform(allocator, &mut root, transform_opts, analysis);
 
-    // Codegen - recompute binding_metadata for codegen (since transform consumed it)
-    let codegen_binding_metadata = options.binding_metadata.as_ref().map(|map| {
-        use vize_atelier_core::options::{BindingMetadata, BindingType};
-        let mut bindings = vize_carton::FxHashMap::default();
-        for (name, type_str) in &map.bindings {
-            let binding_type = match type_str.as_str() {
-                "setup-let" => BindingType::SetupLet,
-                "setup-const" => BindingType::SetupConst,
-                "setup-reactive-const" => BindingType::SetupReactiveConst,
-                "setup-maybe-ref" => BindingType::SetupMaybeRef,
-                "setup-ref" => BindingType::SetupRef,
-                "props" => BindingType::Props,
-                "props-aliased" => BindingType::PropsAliased,
-                "data" => BindingType::Data,
-                "options" => BindingType::Options,
-                "literal-const" => BindingType::LiteralConst,
-                _ => BindingType::SetupMaybeRef,
-            };
-            bindings.insert(name.to_string(), binding_type);
-        }
-        BindingMetadata {
-            bindings,
-            props_aliases: vize_carton::FxHashMap::default(),
-            is_script_setup: true,
-        }
-    });
-
+    // Codegen
     let codegen_opts = CodegenOptions {
         mode: options.mode,
         source_map: options.source_map,
@@ -142,7 +93,7 @@ pub fn compile_template_with_options<'a>(
         is_ts: options.is_ts,
         inline: options.inline,
         cache_handlers: options.cache_handlers,
-        binding_metadata: codegen_binding_metadata,
+        binding_metadata: options.binding_metadata,
         ..Default::default()
     };
     let codegen_result = generate(&root, codegen_opts);

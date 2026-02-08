@@ -209,7 +209,7 @@ macro_rules! assert_transform {
         let allocator = bumpalo::Bump::new();
         let (mut root, errors) = $crate::parser::parse(&allocator, $input);
         assert!(errors.is_empty(), "Parse errors: {:?}", errors);
-        $crate::transform::transform(&allocator, &mut root, $crate::options::TransformOptions::default());
+        $crate::transform::transform(&allocator, &mut root, $crate::options::TransformOptions::default(), None);
         assert!(root.transformed, "Expected root to be transformed");
         $(
             assert!(
@@ -223,7 +223,7 @@ macro_rules! assert_transform {
         let allocator = bumpalo::Bump::new();
         let (mut root, errors) = $crate::parser::parse(&allocator, $input);
         assert!(errors.is_empty(), "Parse errors: {:?}", errors);
-        $crate::transform::transform(&allocator, &mut root, $crate::options::TransformOptions::default());
+        $crate::transform::transform(&allocator, &mut root, $crate::options::TransformOptions::default(), None);
         $(
             assert!(
                 root.components.iter().any(|c| c.as_str() == $comp),
@@ -271,7 +271,7 @@ macro_rules! assert_codegen {
         let allocator = bumpalo::Bump::new();
         let (mut root, errors) = $crate::parser::parse(&allocator, $input);
         assert!(errors.is_empty(), "Parse errors: {:?}", errors);
-        $crate::transform::transform(&allocator, &mut root, $crate::options::TransformOptions::default());
+        $crate::transform::transform(&allocator, &mut root, $crate::options::TransformOptions::default(), None);
         let result = $crate::codegen::generate(&root, $crate::options::CodegenOptions::default());
         $(
             assert!(
@@ -286,7 +286,7 @@ macro_rules! assert_codegen {
         let allocator = bumpalo::Bump::new();
         let (mut root, errors) = $crate::parser::parse(&allocator, $input);
         assert!(errors.is_empty(), "Parse errors: {:?}", errors);
-        $crate::transform::transform(&allocator, &mut root, $crate::options::TransformOptions::default());
+        $crate::transform::transform(&allocator, &mut root, $crate::options::TransformOptions::default(), None);
         let result = $crate::codegen::generate(&root, $crate::options::CodegenOptions::default());
         assert!(
             result.code.contains($pattern),
@@ -307,6 +307,7 @@ macro_rules! compile {
             &allocator,
             &mut root,
             $crate::options::TransformOptions::default(),
+            None,
         );
         $crate::codegen::generate(&root, $crate::options::CodegenOptions::default())
     }};
@@ -319,6 +320,7 @@ macro_rules! compile {
             &allocator,
             &mut root,
             $crate::options::TransformOptions::default(),
+            None,
         );
         $crate::codegen::generate(&root, $options)
     }};

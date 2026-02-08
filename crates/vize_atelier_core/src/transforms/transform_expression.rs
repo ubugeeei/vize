@@ -576,9 +576,13 @@ impl<'a, 'ctx> IdentifierCollector<'a, 'ctx> {
 
         // Check if this is an inline mode ref binding
         if self.ctx.options.inline {
+            // Croquis first: use ReactiveKind for precise determination
+            if let Some(kind) = self.ctx.get_reactive_kind(name) {
+                return kind.needs_value_access();
+            }
+            // Fallback: binding_metadata
             if let Some(bindings) = &self.ctx.options.binding_metadata {
                 if let Some(binding_type) = bindings.bindings.get(name) {
-                    // SetupRef needs .value access
                     return matches!(binding_type, crate::options::BindingType::SetupRef);
                 }
             }
@@ -594,11 +598,14 @@ impl<'a, 'ctx> IdentifierCollector<'a, 'ctx> {
             return false;
         }
 
-        // Check if this is a let/maybe-ref binding that needs _unref()
-        // This applies in both inline and function modes
+        // If Croquis has ReactiveKind info, type is known — no _unref() needed
+        if self.ctx.get_reactive_kind(name).is_some() {
+            return false;
+        }
+
+        // Fallback: SetupLet/SetupMaybeRef have unknown type, need _unref()
         if let Some(bindings) = &self.ctx.options.binding_metadata {
             if let Some(binding_type) = bindings.bindings.get(name) {
-                // SetupLet and SetupMaybeRef need _unref()
                 return matches!(
                     binding_type,
                     crate::options::BindingType::SetupLet
@@ -926,6 +933,11 @@ fn get_identifier_prefix(name: &str, ctx: &TransformContext<'_>) -> Option<&'sta
 /// Check if a simple identifier is a ref binding in inline mode
 fn is_ref_binding_simple(name: &str, ctx: &TransformContext<'_>) -> bool {
     if ctx.options.inline {
+        // Croquis first: use ReactiveKind for precise determination
+        if let Some(kind) = ctx.get_reactive_kind(name) {
+            return kind.needs_value_access();
+        }
+        // Fallback: binding_metadata
         if let Some(bindings) = &ctx.options.binding_metadata {
             if let Some(binding_type) = bindings.bindings.get(name) {
                 return matches!(binding_type, crate::options::BindingType::SetupRef);

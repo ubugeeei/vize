@@ -171,7 +171,7 @@ pub fn compile_vdom(input: &str, options: &TestOptions) -> String {
         ssr: options.ssr.unwrap_or(false),
         ..Default::default()
     };
-    transform(&allocator, &mut root, transform_opts);
+    transform(&allocator, &mut root, transform_opts, None);
 
     let codegen_opts = CodegenOptions {
         mode: CodegenMode::Module,

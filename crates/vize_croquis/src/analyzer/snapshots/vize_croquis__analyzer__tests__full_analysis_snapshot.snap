@@ -1,18 +1,19 @@
 ---
 source: crates/vize_croquis/src/analyzer/mod.rs
+assertion_line: 487
 expression: output
 ---
 === Bindings ===
-  model: SetupConst
+  model: SetupRef
   emit: SetupConst
   count: Props
   theme: SetupConst
-  props: SetupConst
-  provide: SetupConst
-  inject: SetupConst
+  props: SetupReactiveConst
+  provide: SetupMaybeRef
+  inject: SetupMaybeRef
   msg: Props
-  computed: SetupConst
-  ref: SetupConst
+  computed: SetupMaybeRef
+  ref: SetupMaybeRef
   MyComponent: SetupConst
   doubled: SetupRef
   increment: SetupConst
@@ -24,6 +25,7 @@ expression: output
   models: 1
 
 === Reactivity ===
+  model: kind=Ref, needs_value=true
   counter: kind=Ref, needs_value=true
   doubled: kind=Computed, needs_value=true
 

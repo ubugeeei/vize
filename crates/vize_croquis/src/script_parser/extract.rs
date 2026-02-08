@@ -32,21 +32,18 @@ pub fn extract_call_expression<'a>(expr: &'a Expression<'a>) -> Option<&'a CallE
     }
 }
 
-/// Process a call expression, returns true if it was a macro call
+/// Process a call expression, returns the MacroKind if it was a macro call
 pub fn process_call_expression(
     result: &mut ScriptParseResult,
     call: &CallExpression<'_>,
     source: &str,
-) -> bool {
+) -> Option<MacroKind> {
     let callee_name = match &call.callee {
         Expression::Identifier(id) => id.name.as_str(),
-        _ => return false,
+        _ => return None,
     };
 
-    let macro_kind = match MacroKind::from_name(callee_name) {
-        Some(kind) => kind,
-        None => return false,
-    };
+    let macro_kind = MacroKind::from_name(callee_name)?;
 
     let span = call.span;
 
@@ -140,7 +137,7 @@ pub fn process_call_expression(
         _ => {}
     }
 
-    true
+    Some(macro_kind)
 }
 
 /// Extract props from TypeScript type parameters
@@ -305,7 +302,14 @@ pub fn detect_reactivity_call(
         "reactive" | "shallowReactive" => {
             Some((ReactiveKind::Reactive, BindingType::SetupReactiveConst))
         }
-        "toRef" | "toRefs" => Some((ReactiveKind::Ref, BindingType::SetupMaybeRef)),
+        "toRef" => Some((ReactiveKind::ToRef, BindingType::SetupRef)),
+        "toRefs" => Some((ReactiveKind::ToRefs, BindingType::SetupRef)),
+        "customRef" => Some((ReactiveKind::Ref, BindingType::SetupRef)),
+        "readonly" => Some((ReactiveKind::Readonly, BindingType::SetupReactiveConst)),
+        "shallowReadonly" => Some((
+            ReactiveKind::ShallowReadonly,
+            BindingType::SetupReactiveConst,
+        )),
         _ => None,
     }
 }

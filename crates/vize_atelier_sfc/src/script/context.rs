@@ -95,6 +95,8 @@ impl ScriptCompileContext {
         let source = std::mem::take(&mut self.source);
         self.parse_with_oxc(&source);
         self.source = source;
+        // ScriptCompileContext is always used for <script setup>
+        self.bindings.is_script_setup = true;
     }
 
     /// Convert to an Croquis for use in transforms and linting.

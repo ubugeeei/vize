@@ -50,7 +50,7 @@ pub fn compile(template: String, options: Option<CompilerOptions>) -> Result<Com
         ssr: opts.ssr.unwrap_or(false),
         ..Default::default()
     };
-    transform(&allocator, &mut root, transform_opts);
+    transform(&allocator, &mut root, transform_opts, None);
 
     // Codegen
     let codegen_opts = CodegenOptions {
