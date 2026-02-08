@@ -1,6 +1,6 @@
 {
   "name": "@vizejs/fresco-native",
-  "version": "0.0.1-alpha.78",
+  "version": "0.0.1-alpha.79",
   "description": "Vue TUI framework - Native bindings",
   "publishConfig": {
     "provenance": true,

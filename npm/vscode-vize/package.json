@@ -2,7 +2,7 @@
   "name": "vize",
   "displayName": "Vize",
   "description": "Vue Language Support powered by Vize - A high-performance language server for Vue SFC",
-  "version": "0.0.1-alpha.78",
+  "version": "0.0.1-alpha.79",
   "publisher": "vize",
   "license": "MIT",
   "icon": "icons/logo.png",
