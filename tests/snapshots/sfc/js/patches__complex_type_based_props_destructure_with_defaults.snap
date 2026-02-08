@@ -4,25 +4,29 @@ expression: js_output
 ---
 import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, createElementVNode as _createElementVNode, renderList as _renderList, toDisplayString as _toDisplayString, normalizeClass as _normalizeClass } from "vue"
 
-import { defineComponent as _defineComponent } from 'vue'
-import { mergeDefaults as _mergeDefaults } from 'vue'
-
-// Reactive Props Destructure (Vue 3.5+)
-
-const __sfc__ = /*@__PURE__*/_defineComponent({
-  __name: 'test',
-  props: /*@__PURE__*/_mergeDefaults({ count: {}, disabled: {}, items: {}, title: {} }, {
-  disabled: false
-  count: 0
-  items: () => []
-}),
+import { defineComponent as _defineComponent } from "vue";
+import { mergeDefaults as _mergeDefaults } from "vue";
+const __sfc__ = /*@__PURE__*/ _defineComponent({
+  __name: "test",
+  props: /*@__PURE__*/ _mergeDefaults({
+    count: {},
+    disabled: {},
+    items: {},
+    title: {}
+  }, {
+    disabled: false,
+    count: 0,
+    items: () => []
+  }),
   setup(__props, { expose: __expose, emit: __emit }) {
-  __expose();
-  const __returned__ = {  }
-  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
-  return __returned__
+    __expose();
+    const __returned__ = {};
+    Object.defineProperty(__returned__, "__isScriptSetup", {
+      enumerable: false,
+      value: true
+    });
+    return __returned__;
   }
-
 });
 
 export function render(_ctx, _cache, $props, $setup, $data, $options) {

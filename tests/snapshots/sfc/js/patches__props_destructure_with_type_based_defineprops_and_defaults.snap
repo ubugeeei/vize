@@ -12,7 +12,7 @@ import { mergeDefaults as _mergeDefaults } from 'vue'
 const __sfc__ = /*@__PURE__*/_defineComponent({
   __name: 'test',
   props: /*@__PURE__*/_mergeDefaults({ color: {}, size: {} }, {
-  color: "primary"
+  color: "primary",
   size: "medium"
 }),
   setup(__props, { expose: __expose, emit: __emit }) {
