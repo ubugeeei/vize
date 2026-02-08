@@ -17,6 +17,7 @@ import type { Plugin, ViteDevServer, ResolvedConfig } from "vite";
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
+import { vizeConfigStore } from "@vizejs/vite-plugin";
 
 import type {
   MuseaOptions,
@@ -182,12 +183,12 @@ function loadNative(): NativeBinding {
  * Create Musea Vite plugin.
  */
 export function musea(options: MuseaOptions = {}): Plugin[] {
-  const include = options.include ?? ["**/*.art.vue"];
-  const exclude = options.exclude ?? ["node_modules/**", "dist/**"];
-  const basePath = options.basePath ?? "/__musea__";
-  const storybookCompat = options.storybookCompat ?? false;
+  let include = options.include ?? ["**/*.art.vue"];
+  let exclude = options.exclude ?? ["node_modules/**", "dist/**"];
+  let basePath = options.basePath ?? "/__musea__";
+  let storybookCompat = options.storybookCompat ?? false;
   const storybookOutDir = options.storybookOutDir ?? ".storybook/stories";
-  const inlineArt = options.inlineArt ?? false;
+  let inlineArt = options.inlineArt ?? false;
 
   let config: ResolvedConfig;
   let server: ViteDevServer | null = null;
@@ -212,6 +213,18 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
 
     configResolved(resolvedConfig) {
       config = resolvedConfig;
+
+      // Merge musea config from vize.config.ts (plugin args > config file > defaults)
+      const vizeConfig = vizeConfigStore.get(resolvedConfig.root);
+      if (vizeConfig?.musea) {
+        const mc = vizeConfig.musea;
+        // Only apply config file values when plugin options were not explicitly set
+        if (!options.include && mc.include) include = mc.include;
+        if (!options.exclude && mc.exclude) exclude = mc.exclude;
+        if (!options.basePath && mc.basePath) basePath = mc.basePath;
+        if (options.storybookCompat === undefined && mc.storybookCompat !== undefined) storybookCompat = mc.storybookCompat;
+        if (options.inlineArt === undefined && mc.inlineArt !== undefined) inlineArt = mc.inlineArt;
+      }
     },
 
     configureServer(devServer) {

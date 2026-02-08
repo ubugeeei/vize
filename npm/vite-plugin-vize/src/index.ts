@@ -2,90 +2,23 @@ import type { Plugin, ResolvedConfig, ViteDevServer, HmrContext } from "vite";
 import path from "node:path";
 import fs from "node:fs";
 import { glob } from "tinyglobby";
+import { loadConfig, defineConfig } from "vize";
+import type { VizeConfig, ConfigEnv } from "vize";
 
-import type { VizeOptions, CompiledModule, VizeConfig, LoadConfigOptions } from "./types.js";
+import type { VizeOptions, CompiledModule, LoadConfigOptions } from "./types.js";
 import { compileFile, compileBatch } from "./compiler.js";
 import { createFilter, generateOutput } from "./utils.js";
 import { detectHmrUpdateType, type HmrUpdateType } from "./hmr.js";
 
 export type { VizeOptions, CompiledModule, VizeConfig, LoadConfigOptions };
-
-// ============================================================================
-// Config utilities (standalone implementation to avoid ESM/CJS issues)
-// ============================================================================
-
-const CONFIG_FILES = [
-  "vize.config.ts",
-  "vize.config.js",
-  "vize.config.mjs",
-  "vize.config.cjs",
-  "vize.config.json",
-];
+export { defineConfig, loadConfig };
 
 /**
- * Define a Vize configuration with type checking
+ * Shared config store for inter-plugin communication.
+ * Key = project root, Value = resolved VizeConfig.
+ * Used by musea() and other plugins to access the unified config.
  */
-export function defineConfig(config: VizeConfig): VizeConfig {
-  return config;
-}
-
-/**
- * Load Vize configuration from file
- */
-export async function loadConfig(
-  root: string,
-  options: LoadConfigOptions = {},
-): Promise<VizeConfig | null> {
-  const { mode = "root", configFile } = options;
-
-  if (mode === "none") return null;
-
-  const searchMode = mode === "auto" ? "nearest" : mode;
-
-  if (configFile) {
-    const configPath = path.isAbsolute(configFile)
-      ? configFile
-      : path.resolve(root, configFile);
-    return loadConfigFile(configPath);
-  }
-
-  let searchDir = root;
-  while (true) {
-    for (const filename of CONFIG_FILES) {
-      const configPath = path.join(searchDir, filename);
-      if (fs.existsSync(configPath)) {
-        return loadConfigFile(configPath);
-      }
-    }
-    if (searchMode === "root") break;
-    const parentDir = path.dirname(searchDir);
-    if (parentDir === searchDir) break;
-    searchDir = parentDir;
-  }
-
-  return null;
-}
-
-async function loadConfigFile(configPath: string): Promise<VizeConfig | null> {
-  if (!fs.existsSync(configPath)) return null;
-
-  const ext = path.extname(configPath);
-
-  if (ext === ".json") {
-    const content = fs.readFileSync(configPath, "utf-8");
-    return JSON.parse(content) as VizeConfig;
-  }
-
-  // For JS/TS files, use dynamic import
-  // Note: .ts files require a loader or bundler to work at runtime
-  try {
-    const module = await import(configPath);
-    return (module.default ?? module) as VizeConfig;
-  } catch (e) {
-    console.warn(`[vize] Failed to load config from ${configPath}:`, e);
-    return null;
-  }
-}
+export const vizeConfigStore = new Map<string, VizeConfig>();
 
 const VIRTUAL_PREFIX = "\0vize:";
 const VIRTUAL_CSS_MODULE = "virtual:vize-styles";
@@ -234,15 +167,25 @@ export function vize(options: VizeOptions = {}): Plugin {
       isProduction = options.isProduction ?? resolvedConfig.isProduction;
       extractCss = isProduction; // Extract CSS in production by default
 
+      // Build ConfigEnv for dynamic config resolution
+      const configEnv: ConfigEnv = {
+        mode: resolvedConfig.mode,
+        command: resolvedConfig.command === "build" ? "build" : "serve",
+        isSsrBuild: !!resolvedConfig.build?.ssr,
+      };
+
       // Load config file if enabled
       let fileConfig: VizeConfig | null = null;
       if (options.configMode !== false) {
         fileConfig = await loadConfig(root, {
           mode: options.configMode ?? "root",
           configFile: options.configFile,
+          env: configEnv,
         });
         if (fileConfig) {
           logger.log("Loaded config from vize.config file");
+          // Store in shared config store for other plugins (e.g. musea)
+          vizeConfigStore.set(root, fileConfig);
         }
       }
 
