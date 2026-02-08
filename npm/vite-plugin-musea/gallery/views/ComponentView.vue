@@ -1,31 +1,63 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { mdiViewGrid, mdiFolder, mdiChevronUp, mdiChevronDown } from '@mdi/js'
 import { useArts } from '../composables/useArts'
 import { useActions } from '../composables/useActions'
 import { useAddons } from '../composables/useAddons'
+import { useEventCapture } from '../composables/useEventCapture'
+import MdiIcon from '../components/MdiIcon.vue'
 import VariantCard from '../components/VariantCard.vue'
+import VariantTabs from '../components/VariantTabs.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import PropsPanel from '../components/PropsPanel.vue'
 import DocumentationPanel from '../components/DocumentationPanel.vue'
 import A11yBadge from '../components/A11yBadge.vue'
+import A11yPanel from '../components/A11yPanel.vue'
+import VrtPanel from '../components/VrtPanel.vue'
 import AddonToolbar from '../components/AddonToolbar.vue'
 import ActionsPanel from '../components/ActionsPanel.vue'
 import FullscreenPreview from '../components/FullscreenPreview.vue'
 
 const route = useRoute()
 const { getArt, load } = useArts()
-const { events, init: initActions, clear: clearActions } = useActions()
+const { events, init: initActions, clear: clearActions, setCurrentVariant: setActionsVariant } = useActions()
 const { gridDensity } = useAddons()
+const { setCurrentVariant } = useEventCapture()
 
-const activeTab = ref<'variants' | 'props' | 'docs' | 'a11y'>('variants')
+const activeTab = ref<'variants' | 'props' | 'docs' | 'a11y' | 'vrt'>('variants')
 const actionCount = computed(() => events.value.length)
 const actionsExpanded = ref(false)
+
+// Currently selected variant name
+const selectedVariantName = ref<string>('')
 
 const gridClass = computed(() => `gallery-grid density-${gridDensity.value}`)
 
 const artPath = computed(() => route.params.path as string)
 const art = computed(() => getArt(artPath.value))
+
+// Get the currently selected variant
+const selectedVariant = computed(() => {
+  if (!art.value) return null
+  return art.value.variants.find(v => v.name === selectedVariantName.value) || art.value.variants[0]
+})
+
+// Initialize selected variant when art changes
+watch(art, (newArt) => {
+  if (newArt) {
+    const defaultVariant = newArt.variants.find(v => v.isDefault) || newArt.variants[0]
+    selectedVariantName.value = defaultVariant?.name || ''
+    setCurrentVariant(selectedVariantName.value)
+    setActionsVariant(selectedVariantName.value)
+  }
+}, { immediate: true })
+
+// Update event capture when variant changes
+watch(selectedVariantName, (name) => {
+  setCurrentVariant(name)
+  setActionsVariant(name)
+})
 
 onMounted(() => {
   load()
@@ -36,6 +68,10 @@ watch(artPath, () => {
   activeTab.value = 'variants'
   clearActions()
 })
+
+const handleVariantSelect = (variantName: string) => {
+  selectedVariantName.value = variantName
+}
 </script>
 
 <template>
@@ -50,18 +86,11 @@ watch(artPath, () => {
       </p>
       <div class="component-meta">
         <span class="meta-tag">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="7" height="7" />
-            <rect x="14" y="3" width="7" height="7" />
-            <rect x="3" y="14" width="7" height="7" />
-            <rect x="14" y="14" width="7" height="7" />
-          </svg>
+          <MdiIcon :path="mdiViewGrid" :size="12" />
           {{ art.variants.length }} variant{{ art.variants.length !== 1 ? 's' : '' }}
         </span>
         <span v-if="art.metadata.category" class="meta-tag">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-          </svg>
+          <MdiIcon :path="mdiFolder" :size="12" />
           {{ art.metadata.category }}
         </span>
         <span
@@ -106,17 +135,32 @@ watch(artPath, () => {
         A11y
         <A11yBadge :art-path="art.path" />
       </button>
+      <button
+        class="tab-btn"
+        :class="{ active: activeTab === 'vrt' }"
+        @click="activeTab = 'vrt'"
+      >
+        VRT
+      </button>
     </div>
 
     <div class="component-content">
-      <div v-if="activeTab === 'variants'" :class="gridClass">
-        <VariantCard
-          v-for="variant in art.variants"
-          :key="variant.name"
-          :art-path="art.path"
-          :variant="variant"
-          :component-name="art.metadata.title"
+      <!-- Variants Tab: Show variant tabs + single preview -->
+      <div v-if="activeTab === 'variants'" class="variants-view">
+        <VariantTabs
+          :variants="art.variants"
+          :selected-variant="selectedVariantName"
+          @select="handleVariantSelect"
         />
+        <div class="variant-preview-area">
+          <VariantCard
+            v-if="selectedVariant"
+            :key="selectedVariant.name"
+            :art-path="art.path"
+            :variant="selectedVariant"
+            :component-name="art.metadata.title"
+          />
+        </div>
       </div>
 
       <PropsPanel
@@ -130,20 +174,23 @@ watch(artPath, () => {
         :art-path="art.path"
       />
 
-      <div v-if="activeTab === 'a11y'" class="a11y-placeholder">
-        <p class="a11y-info">
-          Run <code>musea-vrt --a11y</code> to generate accessibility reports, or view results in the A11y tab after running VRT tests.
-        </p>
-      </div>
+      <A11yPanel
+        v-if="activeTab === 'a11y'"
+        :art-path="art.path"
+        :default-variant-name="selectedVariant?.name"
+      />
 
+      <VrtPanel
+        v-if="activeTab === 'vrt'"
+        :art-path="art.path"
+        :default-variant-name="selectedVariant?.name"
+      />
     </div>
 
     <!-- Actions Footer Panel -->
     <div class="actions-footer" :class="{ expanded: actionsExpanded }">
       <button class="actions-footer-toggle" @click="actionsExpanded = !actionsExpanded">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-          <polyline :points="actionsExpanded ? '18 15 12 9 6 15' : '6 9 12 15 18 9'" />
-        </svg>
+        <MdiIcon :path="actionsExpanded ? mdiChevronUp : mdiChevronDown" :size="14" />
         Actions
         <span v-if="actionCount > 0" class="action-count-badge">{{ actionCount > 99 ? '99+' : actionCount }}</span>
       </button>
@@ -227,6 +274,10 @@ watch(artPath, () => {
   margin-bottom: 1.5rem;
 }
 
+.component-content {
+  min-height: 0;
+}
+
 .tab-btn {
   display: flex;
   align-items: center;
@@ -266,6 +317,16 @@ watch(artPath, () => {
   line-height: 1;
 }
 
+.variants-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.variant-preview-area {
+  min-height: 0;
+}
+
 .gallery-grid {
   display: grid;
   gap: 1.25rem;
@@ -284,23 +345,6 @@ watch(artPath, () => {
 .gallery-grid.density-spacious {
   grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
   gap: 1.75rem;
-}
-
-.a11y-placeholder {
-  padding: 2rem;
-  text-align: center;
-}
-
-.a11y-info {
-  color: var(--musea-text-muted);
-  font-size: 0.875rem;
-}
-
-.a11y-info code {
-  background: var(--musea-bg-tertiary);
-  padding: 0.125rem 0.375rem;
-  border-radius: 4px;
-  font-family: var(--musea-font-mono);
 }
 
 .actions-footer {

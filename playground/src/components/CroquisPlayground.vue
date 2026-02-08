@@ -47,9 +47,7 @@ const scopeDecorations = computed(() => {
 });
 
 // Scopes to pass to MonacoEditor (separate computed for reliable reactivity)
-const editorScopes = computed(() =>
-  showScopeVisualization.value ? scopeDecorations.value : [],
-);
+const editorScopes = computed(() => (showScopeVisualization.value ? scopeDecorations.value : []));
 
 // Directly push scope decorations to MonacoEditor when they change
 // (handles showScopeVisualization toggle)
@@ -65,7 +63,11 @@ const analysisTime = ref<number | null>(null);
 // but vnode.props.compiler has the correct value.
 const _instance = getCurrentInstance();
 function getCompiler(): WasmModule | null {
-  return props.compiler ?? (_instance?.vnode?.props as Record<string, unknown>)?.compiler as WasmModule | null ?? null;
+  return (
+    props.compiler ??
+    ((_instance?.vnode?.props as Record<string, unknown>)?.compiler as WasmModule | null) ??
+    null
+  );
 }
 
 // Perform analysis
@@ -563,7 +565,9 @@ function getScopeColorClass(kind: string): string {
     <div class="panel output-panel">
       <div class="panel-header">
         <div class="header-title">
-          <svg class="icon" viewBox="0 0 24 24"><path :d="mdiChartTimelineVariant" fill="currentColor" /></svg>
+          <svg class="icon" viewBox="0 0 24 24">
+            <path :d="mdiChartTimelineVariant" fill="currentColor" />
+          </svg>
           <h2>Semantic Analysis</h2>
           <span v-if="analysisTime !== null" class="perf-badge">
             {{ analysisTime.toFixed(2) }}ms
@@ -803,7 +807,9 @@ function getScopeColorClass(kind: string): string {
           <!-- Diagnostics Tab -->
           <div v-else-if="activeTab === 'diagnostics'" class="diagnostics-output">
             <div v-if="diagnostics.length === 0" class="success-state">
-              <svg class="success-icon" viewBox="0 0 24 24"><path :d="mdiCheck" fill="currentColor" /></svg>
+              <svg class="success-icon" viewBox="0 0 24 24">
+                <path :d="mdiCheck" fill="currentColor" />
+              </svg>
               <span>No issues found</span>
             </div>
 
@@ -814,7 +820,12 @@ function getScopeColorClass(kind: string): string {
                 :class="['diagnostic-item', `severity-${diag.severity}`]"
               >
                 <div class="diagnostic-header">
-                  <svg class="severity-icon" viewBox="0 0 24 24"><path :d="diag.severity === 'error' ? mdiCloseCircle : mdiAlert" fill="currentColor" /></svg>
+                  <svg class="severity-icon" viewBox="0 0 24 24">
+                    <path
+                      :d="diag.severity === 'error' ? mdiCloseCircle : mdiAlert"
+                      fill="currentColor"
+                    />
+                  </svg>
                   <span class="diagnostic-message">{{ diag.message }}</span>
                 </div>
                 <div class="diagnostic-location">

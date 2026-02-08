@@ -44,6 +44,13 @@ export interface MuseaOptions {
    * VRT (Visual Regression Testing) configuration.
    */
   vrt?: VrtOptions;
+
+  /**
+   * Path to Style Dictionary tokens JSON file or directory.
+   * Supports standard Style Dictionary format.
+   * @example 'src/tokens.json' or 'src/tokens/'
+   */
+  tokensPath?: string;
 }
 
 /**

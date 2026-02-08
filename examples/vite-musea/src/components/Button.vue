@@ -60,7 +60,7 @@ defineProps<{
 }
 </style>
 
-<art title="Button (Inline)" category="Inline Components" status="ready">
+<art title="Button" category="Components" status="ready">
   <variant name="Default" default>
     <Self>Default Button</Self>
   </variant>

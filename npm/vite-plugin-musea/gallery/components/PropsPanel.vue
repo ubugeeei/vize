@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, defineAsyncComponent } from 'vue'
 import { usePalette } from '../composables/usePalette'
 import { getPreviewUrl } from '../api'
 import { sendMessage } from '../composables/usePostMessage'
@@ -9,6 +9,8 @@ import BooleanControl from './controls/BooleanControl.vue'
 import RangeControl from './controls/RangeControl.vue'
 import SelectControl from './controls/SelectControl.vue'
 import ColorControl from './controls/ColorControl.vue'
+
+const MonacoEditor = defineAsyncComponent(() => import('./MonacoEditor.vue'))
 
 const props = defineProps<{
   artPath: string
@@ -179,12 +181,11 @@ function getControlComponent(kind: string) {
 
       <!-- Slot Editor -->
       <div class="props-slot-editor">
-        <div class="props-slot-header">Slot Content</div>
-        <textarea
+        <div class="props-slot-header">Slot Content (HTML)</div>
+        <MonacoEditor
           v-model="slotContent"
-          class="props-slot-textarea"
-          placeholder="Enter slot content (HTML)..."
-          rows="3"
+          language="html"
+          height="100px"
         />
       </div>
 
@@ -374,28 +375,6 @@ function getControlComponent(kind: string) {
   letter-spacing: 0.08em;
   color: var(--musea-text-muted);
   margin-bottom: 0.5rem;
-}
-
-.props-slot-textarea {
-  width: 100%;
-  background: var(--musea-bg-secondary);
-  border: 1px solid var(--musea-border);
-  border-radius: var(--musea-radius-sm);
-  color: var(--musea-text);
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-  font-size: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  resize: vertical;
-  outline: none;
-  transition: border-color var(--musea-transition);
-}
-
-.props-slot-textarea:focus {
-  border-color: var(--musea-accent);
-}
-
-.props-slot-textarea::placeholder {
-  color: var(--musea-text-muted);
 }
 
 .props-usage {

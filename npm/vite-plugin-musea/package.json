@@ -64,6 +64,7 @@
     "pngjs": "^7.0.0"
   },
   "devDependencies": {
+    "@mdi/js": "^7.4.47",
     "@types/node": "^22.14.0",
     "@types/pngjs": "^6.0.5",
     "@vitejs/plugin-vue": "^6.0.4",
@@ -71,6 +72,7 @@
     "highlight.js": "^11.11.1",
     "marked": "^17.0.1",
     "marked-highlight": "^2.2.3",
+    "monaco-editor": "^0.52.0",
     "tsdown": "^0.9.0",
     "typescript": "^5.7.0",
     "vite": "^8.0.0-beta.0",

@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { mdiHome, mdiPalette, mdiCheckCircleOutline, mdiChevronRight } from '@mdi/js'
 import type { ArtFileInfo } from '../../src/types.js'
+import MdiIcon from './MdiIcon.vue'
 
 const props = defineProps<{
   arts: ArtFileInfo[]
@@ -10,6 +12,9 @@ const props = defineProps<{
 const route = useRoute()
 const router = useRouter()
 
+// Track expanded categories
+const expandedCategories = ref<Set<string>>(new Set())
+
 const categoryList = computed(() => {
   const map = new Map<string, ArtFileInfo[]>()
   for (const art of props.arts) {
@@ -17,10 +22,26 @@ const categoryList = computed(() => {
     if (!map.has(cat)) map.set(cat, [])
     map.get(cat)!.push(art)
   }
+  // Auto-expand all categories initially
+  for (const cat of map.keys()) {
+    expandedCategories.value.add(cat)
+  }
   return Array.from(map.entries())
 })
 
 const selectedPath = computed(() => route.params.path as string | undefined)
+
+function toggleCategory(category: string) {
+  if (expandedCategories.value.has(category)) {
+    expandedCategories.value.delete(category)
+  } else {
+    expandedCategories.value.add(category)
+  }
+}
+
+function isCategoryExpanded(category: string) {
+  return expandedCategories.value.has(category)
+}
 
 function selectArt(art: ArtFileInfo) {
   router.push({ name: 'component', params: { path: art.path } })
@@ -35,10 +56,7 @@ function selectArt(art: ArtFileInfo) {
         class="sidebar-home-link"
         :class="{ active: route.name === 'home' }"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
+        <MdiIcon :path="mdiHome" :size="16" />
         Home
       </router-link>
 
@@ -47,18 +65,17 @@ function selectArt(art: ArtFileInfo) {
         class="sidebar-home-link"
         :class="{ active: route.name === 'tokens' }"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="5" />
-          <line x1="12" y1="1" x2="12" y2="3" />
-          <line x1="12" y1="21" x2="12" y2="23" />
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-          <line x1="1" y1="12" x2="3" y2="12" />
-          <line x1="21" y1="12" x2="23" y2="12" />
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-        </svg>
+        <MdiIcon :path="mdiPalette" :size="16" />
         Design Tokens
+      </router-link>
+
+      <router-link
+        :to="{ name: 'tests' }"
+        class="sidebar-home-link"
+        :class="{ active: route.name === 'tests' }"
+      >
+        <MdiIcon :path="mdiCheckCircleOutline" :size="16" />
+        Test Summary
       </router-link>
     </div>
 
@@ -67,14 +84,16 @@ function selectArt(art: ArtFileInfo) {
       :key="category"
       class="sidebar-section"
     >
-      <div class="category-header">
-        <svg class="category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="m9 18 6-6-6-6" />
-        </svg>
-        <span>{{ category }}</span>
+      <div
+        class="category-header"
+        :class="{ 'category-header--expanded': isCategoryExpanded(category) }"
+        @click="toggleCategory(category)"
+      >
+        <MdiIcon class="category-icon" :path="mdiChevronRight" :size="16" />
+        <span class="category-label">{{ category }}</span>
         <span class="category-count">{{ items.length }}</span>
       </div>
-      <ul class="art-list">
+      <ul v-show="isCategoryExpanded(category)" class="art-list">
         <li
           v-for="art in items"
           :key="art.path"
@@ -82,8 +101,8 @@ function selectArt(art: ArtFileInfo) {
           :class="{ active: selectedPath === art.path }"
           @click="selectArt(art)"
         >
-          <span>{{ art.metadata.title }}</span>
-          <span class="art-variant-count">{{ art.variants.length }} variant{{ art.variants.length !== 1 ? 's' : '' }}</span>
+          <span class="art-name">{{ art.metadata.title }}</span>
+          <span class="art-variant-count">{{ art.variants.length }}</span>
         </li>
       </ul>
     </div>
@@ -157,6 +176,19 @@ function selectArt(art: ArtFileInfo) {
   width: 16px;
   height: 16px;
   transition: transform var(--musea-transition);
+  flex-shrink: 0;
+}
+
+.category-header--expanded .category-icon {
+  transform: rotate(90deg);
+}
+
+.category-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .category-count {
@@ -169,7 +201,9 @@ function selectArt(art: ArtFileInfo) {
 
 .art-list {
   list-style: none;
+  margin: 0;
   margin-top: 0.25rem;
+  padding: 0;
 }
 
 .art-item {
@@ -196,6 +230,14 @@ function selectArt(art: ArtFileInfo) {
   border-radius: 50%;
   background: var(--musea-border);
   transition: background var(--musea-transition);
+}
+
+.art-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .art-item:hover {

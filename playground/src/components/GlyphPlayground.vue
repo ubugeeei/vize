@@ -201,7 +201,9 @@ watch(
               </span>
             </div>
             <div v-if="!formatResult.changed" class="success-state">
-              <svg class="success-icon" viewBox="0 0 24 24"><path :d="mdiCheck" fill="currentColor" /></svg>
+              <svg class="success-icon" viewBox="0 0 24 24">
+                <path :d="mdiCheck" fill="currentColor" />
+              </svg>
               <span>No changes needed</span>
             </div>
             <div v-else class="diff-view">
