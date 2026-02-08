@@ -16,6 +16,7 @@ pub(crate) fn compile_template_block(
     has_scoped: bool,
     is_ts: bool,
     bindings: Option<&BindingMetadata>,
+    croquis: Option<vize_croquis::analysis::Croquis>,
 ) -> Result<String, SfcError> {
     let allocator = Bump::new();
 
@@ -43,38 +44,12 @@ pub(crate) fn compile_template_block(
         dom_opts.cache_handlers = true;
     }
 
-    // Pass binding metadata from script setup to template compiler
-    if let Some(script_bindings) = bindings {
-        let mut binding_map = vize_carton::FxHashMap::default();
-        for (name, binding_type) in &script_bindings.bindings {
-            let type_str = match binding_type {
-                BindingType::Data => "data",
-                BindingType::Props => "props",
-                BindingType::PropsAliased => "props-aliased",
-                BindingType::SetupLet => "setup-let",
-                BindingType::SetupConst => "setup-const",
-                BindingType::SetupReactiveConst => "setup-reactive-const",
-                BindingType::SetupMaybeRef => "setup-maybe-ref",
-                BindingType::SetupRef => "setup-ref",
-                BindingType::Options => "options",
-                BindingType::LiteralConst => "literal-const",
-                // Scope analysis types - not used in template compilation
-                BindingType::JsGlobalUniversal
-                | BindingType::JsGlobalBrowser
-                | BindingType::JsGlobalNode
-                | BindingType::JsGlobalDeno
-                | BindingType::JsGlobalBun
-                | BindingType::VueGlobal
-                | BindingType::ExternalModule => continue, // Skip these in binding metadata
-            };
-            binding_map.insert(
-                vize_carton::String::from(name.as_str()),
-                vize_carton::String::from(type_str),
-            );
-        }
-        dom_opts.binding_metadata = Some(vize_atelier_dom::BindingMetadataMap {
-            bindings: binding_map,
-        });
+    // Pass binding metadata directly (no string conversion needed)
+    dom_opts.binding_metadata = bindings.cloned();
+
+    // Pass Croquis to DOM compiler for enhanced transforms
+    if let Some(c) = croquis {
+        dom_opts.croquis = Some(Box::new(c));
     }
 
     // Compile template

@@ -122,9 +122,18 @@ impl<'a> ParentNode<'a> {
 }
 
 /// Transform the root AST node
-pub fn transform<'a>(allocator: &'a Bump, root: &mut RootNode<'a>, options: TransformOptions) {
+pub fn transform<'a>(
+    allocator: &'a Bump,
+    root: &mut RootNode<'a>,
+    options: TransformOptions,
+    analysis: Option<&'a Croquis>,
+) {
     let source = root.source.clone();
-    let mut ctx = TransformContext::new(allocator, source, options);
+    let mut ctx = if let Some(analysis) = analysis {
+        TransformContext::with_analysis(allocator, source, options, analysis)
+    } else {
+        TransformContext::new(allocator, source, options)
+    };
     ctx.root = Some(root as *mut _);
 
     // Transform the root children
@@ -212,7 +221,7 @@ mod tests {
         let (mut root, errors) = parse(&allocator, r#"<div v-if="show">visible</div>"#);
         assert!(errors.is_empty(), "Parse errors: {:?}", errors);
 
-        transform(&allocator, &mut root, TransformOptions::default());
+        transform(&allocator, &mut root, TransformOptions::default(), None);
 
         // After transform, root should have 1 child: an IfNode
         assert_eq!(
@@ -241,7 +250,7 @@ mod tests {
         );
         assert!(errors.is_empty(), "Parse errors: {:?}", errors);
 
-        transform(&allocator, &mut root, TransformOptions::default());
+        transform(&allocator, &mut root, TransformOptions::default(), None);
 
         // After transform, should have 1 IfNode with 2 branches
         assert_eq!(
@@ -279,7 +288,7 @@ mod tests {
             parse(&allocator, r#"<div v-for="item in items">{{ item }}</div>"#);
         assert!(errors.is_empty(), "Parse errors: {:?}", errors);
 
-        transform(&allocator, &mut root, TransformOptions::default());
+        transform(&allocator, &mut root, TransformOptions::default(), None);
 
         // After transform, root should have 1 child: a ForNode
         assert_eq!(
@@ -314,7 +323,7 @@ mod tests {
     fn test_codegen_v_if() {
         let allocator = Bump::new();
         let (mut root, _) = parse(&allocator, r#"<div v-if="show">visible</div>"#);
-        transform(&allocator, &mut root, TransformOptions::default());
+        transform(&allocator, &mut root, TransformOptions::default(), None);
 
         let result = generate(&root, CodegenOptions::default());
         println!("v-if codegen:\n{}", result.code);

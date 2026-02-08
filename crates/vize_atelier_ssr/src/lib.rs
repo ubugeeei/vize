@@ -85,7 +85,7 @@ pub fn compile_ssr_with_options<'a>(
         inline: options.inline,
         ..Default::default()
     };
-    do_transform(allocator, &mut root, transform_opts);
+    do_transform(allocator, &mut root, transform_opts, None);
 
     // SSR codegen
     let codegen_ctx = SsrCodegenContext::new(allocator, &options);

@@ -74,7 +74,7 @@ pub fn compile_vapor<'a>(
         inline: options.inline,
         ..Default::default()
     };
-    transform(allocator, &mut root, transform_opts);
+    transform(allocator, &mut root, transform_opts, None);
 
     // Transform to Vapor IR
     let ir = transform_to_ir(allocator, &root);

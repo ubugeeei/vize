@@ -80,7 +80,7 @@ pub fn compile_sfc(
         dom_opts.hoist_static = true;
         template_opts.compiler_options = Some(dom_opts);
         let template_result =
-            compile_template_block(template, &template_opts, &scope_id, has_scoped, is_ts, None);
+            compile_template_block(template, &template_opts, &scope_id, has_scoped, is_ts, None, None);
 
         match template_result {
             Ok(template_code) => {
@@ -142,6 +142,7 @@ pub fn compile_sfc(
                 has_scoped,
                 is_ts,
                 None, // No bindings for normal scripts
+                None, // No Croquis for normal scripts
             );
 
             match template_result {
@@ -240,6 +241,9 @@ pub fn compile_sfc(
     ctx.analyze();
     let mut script_bindings = ctx.bindings.clone();
 
+    // Generate Croquis from the already-analyzed context (no additional OXC parse)
+    let croquis = ctx.to_analysis_summary();
+
     // Also register exported bindings from normal script (e.g., export const n = 1)
     // These are accessible in the template without _ctx. prefix
     if has_script {
@@ -284,6 +288,7 @@ pub fn compile_sfc(
                 has_scoped,
                 is_ts,
                 Some(&script_bindings), // Pass bindings for proper ref handling
+                Some(croquis),          // Pass Croquis for enhanced transforms
             ))
         }
     } else {
