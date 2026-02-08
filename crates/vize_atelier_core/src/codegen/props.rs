@@ -447,9 +447,22 @@ fn generate_props_object_inner(
                 }
                 ctx.push(": ");
                 if let Some(value) = &attr.value {
-                    ctx.push("\"");
-                    ctx.push(&escape_js_string(&value.content));
-                    ctx.push("\"");
+                    // In inline mode, ref="refName" should reference the setup variable directly
+                    // instead of being a string literal, if refName is a known binding
+                    let is_ref_binding = attr.name == "ref"
+                        && ctx.options.inline
+                        && ctx
+                            .options
+                            .binding_metadata
+                            .as_ref()
+                            .is_some_and(|m| m.bindings.contains_key(value.content.as_str()));
+                    if is_ref_binding {
+                        ctx.push(&value.content);
+                    } else {
+                        ctx.push("\"");
+                        ctx.push(&escape_js_string(&value.content));
+                        ctx.push("\"");
+                    }
                 } else {
                     ctx.push("\"\"");
                 }
@@ -582,8 +595,15 @@ fn generate_merged_event_handlers(
     _static_class: Option<&str>,
     _static_style: Option<&str>,
 ) {
-    // Output the event key name (e.g., "onClick")
-    ctx.push(target_event_key);
+    // Output the event key name (e.g., "onClick" or "\"onUpdate:modelValue\"")
+    // Event names containing ':' need quotes for valid JavaScript
+    if target_event_key.contains(':') {
+        ctx.push("\"");
+        ctx.push(target_event_key);
+        ctx.push("\"");
+    } else {
+        ctx.push(target_event_key);
+    }
     ctx.push(": [");
 
     // Output each handler as an element in the array

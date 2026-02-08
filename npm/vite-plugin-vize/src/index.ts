@@ -1,4 +1,5 @@
-import type { Plugin, ResolvedConfig, ViteDevServer, HmrContext } from "vite";
+import type { Plugin, ResolvedConfig, ViteDevServer, HmrContext, TransformResult } from "vite";
+import { transformWithOxc } from "vite";
 import path from "node:path";
 import fs from "node:fs";
 import { glob } from "tinyglobby";
@@ -464,6 +465,18 @@ export function vize(options: VizeOptions = {}): Plugin {
         }
       }
 
+      return null;
+    },
+
+    // Transform virtual modules: strip TypeScript since \0-prefixed virtual modules
+    // bypass Vite's built-in transform plugins
+    async transform(code: string, id: string): Promise<TransformResult | null> {
+      if (id.startsWith(VIRTUAL_PREFIX) && id.endsWith(".ts")) {
+        const result = await transformWithOxc(code, id.slice(VIRTUAL_PREFIX.length), {
+          lang: "ts",
+        });
+        return { code: result.code, map: result.map };
+      }
       return null;
     },
 

@@ -3,69 +3,25 @@ source: crates/vize_atelier_sfc/src/snapshot_tests.rs
 assertion_line: 219
 expression: js_output
 ---
-import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, createElementVNode as _createElementVNode, renderList as _renderList, toDisplayString as _toDisplayString, normalizeClass as _normalizeClass } from "vue";
-export default {
-  __name: "test",
+import { mergeDefaults as _mergeDefaults } from 'vue'
+import { defineComponent as _defineComponent } from 'vue'
+import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, createElementVNode as _createElementVNode, renderList as _renderList, toDisplayString as _toDisplayString, normalizeClass as _normalizeClass } from "vue"
+
+
+export default /*@__PURE__*/_defineComponent({
+  __name: 'test',
   props: {
-    title: {
-      type: String,
-      required: true
-    },
-    count: {
-      type: Number,
-      required: false,
-      default: 0
-    },
-    disabled: {
-      type: Boolean,
-      required: false,
-      default: false
-    },
-    items: {
-      type: Array,
-      required: false,
-      default: () => []
-    }
+    title: { type: String, required: true },
+    count: { type: Number, required: false, default: 0 },
+    disabled: { type: Boolean, required: false, default: false },
+    items: { type: Array, required: false, default: () => [] }
   },
-  setup(__props) {
-    return (_ctx, _cache) => {
-      return _openBlock(), _createElementBlock(
-        "div",
-        { class: _normalizeClass({ disabled: __props.disabled }) },
-        [
-          _createElementVNode(
-            "h1",
-            null,
-            _toDisplayString(__props.title),
-            1
-            /* TEXT */
-),
-          _createElementVNode(
-            "span",
-            null,
-            _toDisplayString(__props.count),
-            1
-            /* TEXT */
-),
-          _createElementVNode("ul", null, [(_openBlock(true), _createElementBlock(
-            _Fragment,
-            null,
-            _renderList(__props.items, (item) => {
-              return _openBlock(), _createElementBlock(
-                "li",
-                { key: item },
-                _toDisplayString(item),
-                1
-                /* TEXT */
-);
-            }),
-            128
-            /* KEYED_FRAGMENT */
-))])
-        ],
-        2
-        /* CLASS */
-);
-    };
-  }
-};
+  setup(__props: any) {
+
+
+return (_ctx: any,_cache: any) => {
+  return (_openBlock(), _createElementBlock("div", { class: _normalizeClass({ disabled: __props.disabled }) }, [ _createElementVNode("h1", null, _toDisplayString(__props.title), 1 /* TEXT */), _createElementVNode("span", null, _toDisplayString(__props.count), 1 /* TEXT */), _createElementVNode("ul", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(__props.items, (item) => { return (_openBlock(), _createElementBlock("li", { key: item }, _toDisplayString(item), 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */)) ]) ], 2 /* CLASS */))
+}
+}
+
+})

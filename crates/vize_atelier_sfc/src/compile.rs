@@ -46,7 +46,7 @@ pub fn compile_sfc(
 
     // source_has_ts: whether source uses TypeScript (detected from lang="ts")
     // Used for: parsing source as TS, preserving TS declarations, resolving type references
-    let _source_has_ts = descriptor
+    let source_has_ts = descriptor
         .script_setup
         .as_ref()
         .and_then(|s| s.lang.as_ref())
@@ -59,8 +59,9 @@ pub fn compile_sfc(
     // is_ts controls output format:
     // - true: output TypeScript (add `: any` annotations, defineComponent wrapper)
     // - false: output JavaScript (no type annotations)
-    // Only set by explicit options, NOT auto-detected from source lang
-    let is_ts = options.script.is_ts || options.template.is_ts;
+    // Auto-detected from source lang, or set by explicit options.
+    // When true, TypeScript is preserved in output (downstream tools like Vite strip it via .ts suffix).
+    let is_ts = options.script.is_ts || options.template.is_ts || source_has_ts;
 
     // Extract component name from filename
     let component_name = extract_component_name(filename);
