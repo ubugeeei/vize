@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { ArtFileInfo } from '../../src/types.js'
 
@@ -10,6 +10,9 @@ const props = defineProps<{
 const route = useRoute()
 const router = useRouter()
 
+// Track expanded categories
+const expandedCategories = ref<Set<string>>(new Set())
+
 const categoryList = computed(() => {
   const map = new Map<string, ArtFileInfo[]>()
   for (const art of props.arts) {
@@ -17,10 +20,26 @@ const categoryList = computed(() => {
     if (!map.has(cat)) map.set(cat, [])
     map.get(cat)!.push(art)
   }
+  // Auto-expand all categories initially
+  for (const cat of map.keys()) {
+    expandedCategories.value.add(cat)
+  }
   return Array.from(map.entries())
 })
 
 const selectedPath = computed(() => route.params.path as string | undefined)
+
+function toggleCategory(category: string) {
+  if (expandedCategories.value.has(category)) {
+    expandedCategories.value.delete(category)
+  } else {
+    expandedCategories.value.add(category)
+  }
+}
+
+function isCategoryExpanded(category: string) {
+  return expandedCategories.value.has(category)
+}
 
 function selectArt(art: ArtFileInfo) {
   router.push({ name: 'component', params: { path: art.path } })
@@ -67,14 +86,18 @@ function selectArt(art: ArtFileInfo) {
       :key="category"
       class="sidebar-section"
     >
-      <div class="category-header">
+      <div
+        class="category-header"
+        :class="{ 'category-header--expanded': isCategoryExpanded(category) }"
+        @click="toggleCategory(category)"
+      >
         <svg class="category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="m9 18 6-6-6-6" />
         </svg>
-        <span>{{ category }}</span>
+        <span class="category-label">{{ category }}</span>
         <span class="category-count">{{ items.length }}</span>
       </div>
-      <ul class="art-list">
+      <ul v-show="isCategoryExpanded(category)" class="art-list">
         <li
           v-for="art in items"
           :key="art.path"
@@ -82,8 +105,8 @@ function selectArt(art: ArtFileInfo) {
           :class="{ active: selectedPath === art.path }"
           @click="selectArt(art)"
         >
-          <span>{{ art.metadata.title }}</span>
-          <span class="art-variant-count">{{ art.variants.length }} variant{{ art.variants.length !== 1 ? 's' : '' }}</span>
+          <span class="art-name">{{ art.metadata.title }}</span>
+          <span class="art-variant-count">{{ art.variants.length }}</span>
         </li>
       </ul>
     </div>
@@ -100,10 +123,14 @@ function selectArt(art: ArtFileInfo) {
   border-right: 1px solid var(--musea-border);
   overflow-y: auto;
   overflow-x: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar-section {
   padding: 0.5rem 0.75rem;
+  flex-shrink: 0;
 }
 
 .sidebar-section + .sidebar-section {
@@ -154,13 +181,26 @@ function selectArt(art: ArtFileInfo) {
 }
 
 .category-icon {
-  width: 16px;
-  height: 16px;
-  transition: transform var(--musea-transition);
+  width: 14px;
+  height: 14px;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.category-header--expanded .category-icon {
+  transform: rotate(90deg);
+}
+
+.category-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .category-count {
-  margin-left: auto;
+  flex-shrink: 0;
   background: var(--musea-bg-tertiary);
   padding: 0.125rem 0.375rem;
   border-radius: 4px;
@@ -169,14 +209,15 @@ function selectArt(art: ArtFileInfo) {
 
 .art-list {
   list-style: none;
-  margin-top: 0.25rem;
+  margin: 0;
+  padding: 0;
 }
 
 .art-item {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.375rem 0.75rem 0.375rem 2.25rem;
+  padding: 0.375rem 0.75rem 0.375rem 2rem;
   border-radius: var(--musea-radius-sm);
   cursor: pointer;
   font-size: 0.8125rem;
@@ -191,11 +232,19 @@ function selectArt(art: ArtFileInfo) {
   left: 1.25rem;
   top: 50%;
   transform: translateY(-50%);
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
   background: var(--musea-border);
   transition: background var(--musea-transition);
+}
+
+.art-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .art-item:hover {
@@ -217,14 +266,23 @@ function selectArt(art: ArtFileInfo) {
 }
 
 .art-variant-count {
-  margin-left: auto;
-  font-size: 0.6875rem;
+  flex-shrink: 0;
+  font-size: 0.625rem;
   color: var(--musea-text-muted);
-  opacity: 0;
+  background: var(--musea-bg-tertiary);
+  padding: 0.0625rem 0.375rem;
+  border-radius: 8px;
+  opacity: 0.7;
   transition: opacity var(--musea-transition);
 }
 
 .art-item:hover .art-variant-count {
+  opacity: 1;
+}
+
+.art-item.active .art-variant-count {
+  background: var(--musea-accent);
+  color: white;
   opacity: 1;
 }
 

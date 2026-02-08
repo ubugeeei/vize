@@ -16,12 +16,11 @@ function formatTime(timestamp: number): string {
   return d.toLocaleTimeString('en', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })
 }
 
-function formatPayload(event: ActionEvent): string {
-  const obj: Record<string, unknown> = {}
-  if (event.target) obj.target = event.target
-  if (event.value !== undefined) obj.value = event.value
-  if (event.args !== undefined) obj.args = event.args
-  return JSON.stringify(obj, null, 2)
+function formatRawEvent(event: ActionEvent): string {
+  if (!event.rawEvent) {
+    return JSON.stringify({ target: event.target, value: event.value }, null, 2)
+  }
+  return JSON.stringify(event.rawEvent, null, 2)
 }
 </script>
 
@@ -44,16 +43,19 @@ function formatPayload(event: ActionEvent): string {
         v-for="(event, index) in reversedEvents"
         :key="index"
         class="action-item"
+        :class="{ expanded: expandedIndex === index }"
         @click="toggleExpand(index)"
       >
         <div class="action-row">
           <span class="action-time">{{ formatTime(event.timestamp) }}</span>
-          <span class="action-source" :class="event.source">{{ event.source }}</span>
-          <span class="action-name">{{ event.name }}</span>
-          <span v-if="event.target" class="action-target">&lt;{{ event.target }}&gt;</span>
+          <span class="action-type" :class="event.source">{{ event.name }}</span>
+          <span v-if="event.target" class="action-target">{{ event.target }}</span>
+          <svg class="action-expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline :points="expandedIndex === index ? '18 15 12 9 6 15' : '6 9 12 15 18 9'" />
+          </svg>
         </div>
         <div v-if="expandedIndex === index" class="action-detail">
-          <pre class="action-payload">{{ formatPayload(event) }}</pre>
+          <pre class="action-raw">{{ formatRawEvent(event) }}</pre>
         </div>
       </div>
     </div>
@@ -62,31 +64,30 @@ function formatPayload(event: ActionEvent): string {
 
 <style scoped>
 .actions-panel {
-  min-height: 200px;
+  font-size: 0.75rem;
 }
 
 .actions-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--musea-border);
   background: var(--musea-bg-secondary);
-  border-radius: var(--musea-radius-md) var(--musea-radius-md) 0 0;
 }
 
 .actions-count {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   color: var(--musea-text-muted);
 }
 
 .actions-clear-btn {
-  padding: 0.25rem 0.5rem;
+  padding: 0.125rem 0.375rem;
   border: 1px solid var(--musea-border);
   border-radius: var(--musea-radius-sm);
   background: var(--musea-bg-tertiary);
   color: var(--musea-text-muted);
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   cursor: pointer;
   transition: all var(--musea-transition);
 }
@@ -97,20 +98,20 @@ function formatPayload(event: ActionEvent): string {
 }
 
 .actions-empty {
-  padding: 2rem;
+  padding: 1rem;
   text-align: center;
   color: var(--musea-text-muted);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
 }
 
 .actions-hint {
-  font-size: 0.75rem;
-  margin-top: 0.5rem;
+  font-size: 0.6875rem;
+  margin-top: 0.25rem;
   opacity: 0.7;
 }
 
 .actions-list {
-  max-height: 400px;
+  max-height: 200px;
   overflow-y: auto;
 }
 
@@ -124,64 +125,70 @@ function formatPayload(event: ActionEvent): string {
   background: var(--musea-bg-secondary);
 }
 
+.action-item.expanded {
+  background: var(--musea-bg-secondary);
+}
+
 .action-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.75rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.6875rem;
 }
 
 .action-time {
   color: var(--musea-text-muted);
   font-family: var(--musea-font-mono, monospace);
-  font-size: 0.6875rem;
-  flex-shrink: 0;
-}
-
-.action-source {
-  padding: 0.125rem 0.375rem;
-  border-radius: 3px;
   font-size: 0.625rem;
-  font-weight: 600;
-  text-transform: uppercase;
   flex-shrink: 0;
 }
 
-.action-source.dom {
+.action-type {
+  padding: 0.0625rem 0.25rem;
+  border-radius: 2px;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  flex-shrink: 0;
   background: rgba(59, 130, 246, 0.15);
   color: #60a5fa;
 }
 
-.action-source.vue {
+.action-type.vue {
   background: rgba(52, 211, 153, 0.15);
   color: #34d399;
 }
 
-.action-name {
-  font-weight: 600;
-  color: var(--musea-text);
+.action-target {
+  color: var(--musea-text-secondary);
+  font-family: var(--musea-font-mono, monospace);
+  font-size: 0.625rem;
 }
 
-.action-target {
+.action-expand-icon {
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
   color: var(--musea-text-muted);
-  font-family: var(--musea-font-mono, monospace);
-  font-size: 0.6875rem;
+  flex-shrink: 0;
 }
 
 .action-detail {
-  padding: 0 1rem 0.5rem 1rem;
+  padding: 0 0.75rem 0.5rem 0.75rem;
 }
 
-.action-payload {
+.action-raw {
   background: var(--musea-bg-tertiary);
   border: 1px solid var(--musea-border);
   border-radius: var(--musea-radius-sm);
-  padding: 0.5rem;
+  padding: 0.375rem 0.5rem;
   font-family: var(--musea-font-mono, monospace);
-  font-size: 0.6875rem;
+  font-size: 0.5625rem;
   color: var(--musea-text-secondary);
   overflow-x: auto;
   white-space: pre;
+  margin: 0;
+  max-height: 150px;
+  overflow-y: auto;
 }
 </style>

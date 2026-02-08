@@ -4,11 +4,15 @@ import { useRoute } from 'vue-router'
 import { useArts } from '../composables/useArts'
 import { useActions } from '../composables/useActions'
 import { useAddons } from '../composables/useAddons'
+import { useEventCapture } from '../composables/useEventCapture'
 import VariantCard from '../components/VariantCard.vue'
+import VariantTabs from '../components/VariantTabs.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import PropsPanel from '../components/PropsPanel.vue'
 import DocumentationPanel from '../components/DocumentationPanel.vue'
 import A11yBadge from '../components/A11yBadge.vue'
+import A11yPanel from '../components/A11yPanel.vue'
+import VrtPanel from '../components/VrtPanel.vue'
 import AddonToolbar from '../components/AddonToolbar.vue'
 import ActionsPanel from '../components/ActionsPanel.vue'
 import FullscreenPreview from '../components/FullscreenPreview.vue'
@@ -17,15 +21,39 @@ const route = useRoute()
 const { getArt, load } = useArts()
 const { events, init: initActions, clear: clearActions } = useActions()
 const { gridDensity } = useAddons()
+const { setCurrentVariant } = useEventCapture()
 
-const activeTab = ref<'variants' | 'props' | 'docs' | 'a11y'>('variants')
+const activeTab = ref<'variants' | 'props' | 'docs' | 'a11y' | 'vrt'>('variants')
 const actionCount = computed(() => events.value.length)
 const actionsExpanded = ref(false)
+
+// Currently selected variant name
+const selectedVariantName = ref<string>('')
 
 const gridClass = computed(() => `gallery-grid density-${gridDensity.value}`)
 
 const artPath = computed(() => route.params.path as string)
 const art = computed(() => getArt(artPath.value))
+
+// Get the currently selected variant
+const selectedVariant = computed(() => {
+  if (!art.value) return null
+  return art.value.variants.find(v => v.name === selectedVariantName.value) || art.value.variants[0]
+})
+
+// Initialize selected variant when art changes
+watch(art, (newArt) => {
+  if (newArt) {
+    const defaultVariant = newArt.variants.find(v => v.isDefault) || newArt.variants[0]
+    selectedVariantName.value = defaultVariant?.name || ''
+    setCurrentVariant(selectedVariantName.value)
+  }
+}, { immediate: true })
+
+// Update event capture when variant changes
+watch(selectedVariantName, (name) => {
+  setCurrentVariant(name)
+})
 
 onMounted(() => {
   load()
@@ -36,6 +64,10 @@ watch(artPath, () => {
   activeTab.value = 'variants'
   clearActions()
 })
+
+const handleVariantSelect = (variantName: string) => {
+  selectedVariantName.value = variantName
+}
 </script>
 
 <template>
@@ -106,17 +138,32 @@ watch(artPath, () => {
         A11y
         <A11yBadge :art-path="art.path" />
       </button>
+      <button
+        class="tab-btn"
+        :class="{ active: activeTab === 'vrt' }"
+        @click="activeTab = 'vrt'"
+      >
+        VRT
+      </button>
     </div>
 
     <div class="component-content">
-      <div v-if="activeTab === 'variants'" :class="gridClass">
-        <VariantCard
-          v-for="variant in art.variants"
-          :key="variant.name"
-          :art-path="art.path"
-          :variant="variant"
-          :component-name="art.metadata.title"
+      <!-- Variants Tab: Show variant tabs + single preview -->
+      <div v-if="activeTab === 'variants'" class="variants-view">
+        <VariantTabs
+          :variants="art.variants"
+          :selected-variant="selectedVariantName"
+          @select="handleVariantSelect"
         />
+        <div class="variant-preview-area">
+          <VariantCard
+            v-if="selectedVariant"
+            :key="selectedVariant.name"
+            :art-path="art.path"
+            :variant="selectedVariant"
+            :component-name="art.metadata.title"
+          />
+        </div>
       </div>
 
       <PropsPanel
@@ -130,12 +177,17 @@ watch(artPath, () => {
         :art-path="art.path"
       />
 
-      <div v-if="activeTab === 'a11y'" class="a11y-placeholder">
-        <p class="a11y-info">
-          Run <code>musea-vrt --a11y</code> to generate accessibility reports, or view results in the A11y tab after running VRT tests.
-        </p>
-      </div>
+      <A11yPanel
+        v-if="activeTab === 'a11y'"
+        :art-path="art.path"
+        :default-variant-name="selectedVariant?.name"
+      />
 
+      <VrtPanel
+        v-if="activeTab === 'vrt'"
+        :art-path="art.path"
+        :default-variant-name="selectedVariant?.name"
+      />
     </div>
 
     <!-- Actions Footer Panel -->
@@ -164,79 +216,89 @@ watch(artPath, () => {
 
 <style scoped>
 .component-view {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0.25rem 0.75rem;
+  overflow: hidden;
 }
 
 .component-header {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.25rem;
+  flex-shrink: 0;
 }
 
 .component-title-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  gap: 0.375rem;
+  margin-bottom: 0.125rem;
 }
 
 .component-title {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .component-description {
   color: var(--musea-text-muted);
-  font-size: 0.9375rem;
+  font-size: 0.75rem;
   max-width: 600px;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.125rem;
 }
 
 .component-meta {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.375rem;
   flex-wrap: wrap;
 }
 
 .meta-tag {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.625rem;
+  gap: 0.125rem;
+  padding: 0.0625rem 0.375rem;
   background: var(--musea-bg-secondary);
   border: 1px solid var(--musea-border);
   border-radius: var(--musea-radius-sm);
-  font-size: 0.75rem;
+  font-size: 0.625rem;
   color: var(--musea-text-muted);
 }
 
 .meta-tag svg {
-  width: 12px;
-  height: 12px;
+  width: 9px;
+  height: 9px;
 }
 
 .component-view :deep(.addon-toolbar) {
-  margin-bottom: 1rem;
+  margin-bottom: 0.25rem;
 }
 
 .component-tabs {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.125rem;
   border-bottom: 1px solid var(--musea-border);
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.25rem;
+  flex-shrink: 0;
+}
+
+.component-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .tab-btn {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
   background: none;
   border: none;
   color: var(--musea-text-muted);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  padding: 0.75rem 1rem;
+  padding: 0.375rem 0.5rem;
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: all var(--musea-transition);
@@ -266,6 +328,24 @@ watch(artPath, () => {
   line-height: 1;
 }
 
+.variants-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.variant-preview-area {
+  flex: 1;
+}
+
+.variant-preview-area :deep(.variant-card) {
+  height: 100%;
+}
+
+.variant-preview-area :deep(.variant-preview) {
+  min-height: 120px;
+}
+
 .gallery-grid {
   display: grid;
   gap: 1.25rem;
@@ -286,28 +366,14 @@ watch(artPath, () => {
   gap: 1.75rem;
 }
 
-.a11y-placeholder {
-  padding: 2rem;
-  text-align: center;
-}
-
-.a11y-info {
-  color: var(--musea-text-muted);
-  font-size: 0.875rem;
-}
-
-.a11y-info code {
-  background: var(--musea-bg-tertiary);
-  padding: 0.125rem 0.375rem;
-  border-radius: 4px;
-  font-family: var(--musea-font-mono);
-}
-
 .actions-footer {
-  margin-top: 1.5rem;
-  border: 1px solid var(--musea-border);
-  border-radius: var(--musea-radius-md);
-  overflow: hidden;
+  flex-shrink: 0;
+  border-top: 1px solid var(--musea-border);
+  background: var(--musea-bg-secondary);
+}
+
+.actions-footer.expanded {
+  flex: 0 0 auto;
 }
 
 .actions-footer-toggle {
@@ -315,11 +381,11 @@ watch(artPath, () => {
   align-items: center;
   gap: 0.5rem;
   width: 100%;
-  padding: 0.625rem 1rem;
-  background: var(--musea-bg-secondary);
+  padding: 0.5rem 1rem;
+  background: transparent;
   border: none;
   color: var(--musea-text-muted);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--musea-transition);
@@ -332,7 +398,7 @@ watch(artPath, () => {
 
 .actions-footer-content {
   border-top: 1px solid var(--musea-border);
-  max-height: 300px;
+  max-height: 250px;
   overflow-y: auto;
 }
 

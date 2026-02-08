@@ -1042,7 +1042,9 @@ onUnmounted(() => {
     <div class="panel output-panel">
       <div class="panel-header">
         <div class="header-title">
-          <svg class="icon" viewBox="0 0 24 24"><path :d="mdiCheckDecagram" fill="currentColor" /></svg>
+          <svg class="icon" viewBox="0 0 24 24">
+            <path :d="mdiCheckDecagram" fill="currentColor" />
+          </svg>
           <h2>Type Analysis</h2>
           <span v-if="checkTime !== null" class="perf-badge"> {{ checkTime.toFixed(2) }}ms </span>
           <template v-if="typeCheckResult">
@@ -1116,7 +1118,9 @@ onUnmounted(() => {
             </div>
 
             <div v-if="diagnostics.length === 0" class="success-state">
-              <svg class="success-icon" viewBox="0 0 24 24"><path :d="mdiCheck" fill="currentColor" /></svg>
+              <svg class="success-icon" viewBox="0 0 24 24">
+                <path :d="mdiCheck" fill="currentColor" />
+              </svg>
               <span>No type issues found</span>
             </div>
 
@@ -1127,7 +1131,9 @@ onUnmounted(() => {
                 :class="['diagnostic-item', `severity-${diagnostic.severity}`]"
               >
                 <div class="diagnostic-header">
-                  <svg class="severity-icon" viewBox="0 0 24 24"><path :d="getSeverityIcon(diagnostic.severity)" fill="currentColor" /></svg>
+                  <svg class="severity-icon" viewBox="0 0 24 24">
+                    <path :d="getSeverityIcon(diagnostic.severity)" fill="currentColor" />
+                  </svg>
                   <code v-if="diagnostic.code" class="error-code">TS{{ diagnostic.code }}</code>
                   <span class="location-badge">
                     {{ diagnostic.startLine }}:{{ diagnostic.startColumn }}

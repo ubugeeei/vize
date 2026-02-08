@@ -21,7 +21,7 @@ defineEmits<{
       :value="modelValue"
       :placeholder="placeholder"
       :disabled="disabled"
-      @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+      @input="$emit('update:modelValue', $event.target.value)"
     >
     <span v-if="error" class="input-error">{{ error }}</span>
   </div>

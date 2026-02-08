@@ -1,16 +1,38 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useArts } from '../composables/useArts'
 import { useSearch } from '../composables/useSearch'
 import SearchBar from './SearchBar.vue'
 import Sidebar from './Sidebar.vue'
+import SearchModal from './SearchModal.vue'
 
+const router = useRouter()
 const { arts, load } = useArts()
 const { query, results } = useSearch(arts)
 
+const searchModalOpen = ref(false)
+
+// Global keyboard shortcut for Cmd+K / Ctrl+K
+const handleKeydown = (e: KeyboardEvent) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault()
+    searchModalOpen.value = !searchModalOpen.value
+  }
+}
+
 onMounted(() => {
   load()
+  document.addEventListener('keydown', handleKeydown)
 })
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+})
+
+const handleSearchSelect = (art: { path: string }, variantName?: string) => {
+  router.push({ name: 'component', params: { path: art.path } })
+}
 </script>
 
 <template>
@@ -50,15 +72,36 @@ onMounted(() => {
         </router-link>
         <span class="header-subtitle">Component Gallery</span>
       </div>
-      <SearchBar v-model="query" />
+
+      <div class="header-center">
+        <button class="search-trigger" @click="searchModalOpen = true">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <span>Search components...</span>
+          <kbd>⌘K</kbd>
+        </button>
+      </div>
     </header>
 
     <main class="main">
+      <!-- Sidebar -->
       <Sidebar :arts="results" />
+
+      <!-- Main Content -->
       <section class="content">
         <router-view />
       </section>
     </main>
+
+    <!-- Search Modal -->
+    <SearchModal
+      :arts="arts"
+      :is-open="searchModalOpen"
+      @close="searchModalOpen = false"
+      @select="handleSearchSelect"
+    />
   </div>
 </template>
 
@@ -77,6 +120,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1.5rem;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -86,6 +130,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 1.5rem;
+}
+
+.header-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  max-width: 400px;
 }
 
 .logo {
@@ -112,26 +163,77 @@ onMounted(() => {
   border-left: 1px solid var(--musea-border);
 }
 
+.search-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.5rem 0.875rem;
+  background: var(--musea-bg-tertiary);
+  border: 1px solid var(--musea-border);
+  border-radius: 8px;
+  color: var(--musea-text-muted);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.search-trigger:hover {
+  border-color: var(--musea-accent);
+  color: var(--musea-text-secondary);
+}
+
+.search-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.search-trigger span {
+  flex: 1;
+  text-align: left;
+}
+
+.search-trigger kbd {
+  padding: 0.125rem 0.5rem;
+  background: var(--musea-bg-primary);
+  border: 1px solid var(--musea-border);
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-family: inherit;
+}
+
 .main {
   display: grid;
   grid-template-columns: var(--musea-sidebar-width) 1fr;
   flex: 1;
+  overflow: hidden;
+  height: calc(100vh - var(--musea-header-height));
+}
+
+.main > :first-child {
+  height: 100%;
+  max-height: 100%;
+  overflow-y: auto;
 }
 
 .content {
   background: var(--musea-bg-primary);
   overflow-y: auto;
-  height: calc(100vh - var(--musea-header-height));
+  height: 100%;
 }
 
 @media (max-width: 768px) {
   .main {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
   .main > :first-child {
     display: none;
   }
   .header-subtitle {
+    display: none;
+  }
+  .header-center {
     display: none;
   }
 }

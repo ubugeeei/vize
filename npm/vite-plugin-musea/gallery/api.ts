@@ -91,3 +91,39 @@ export function getPreviewUrl(artPath: string, variantName: string): string {
 export function getBasePath(): string {
   return basePath
 }
+
+export interface VrtResult {
+  artPath: string
+  variantName: string
+  viewport: string
+  passed: boolean
+  isNew?: boolean
+  diffPercentage?: number
+  error?: string
+}
+
+export interface VrtSummary {
+  total: number
+  passed: number
+  failed: number
+  new: number
+}
+
+export interface VrtApiResponse {
+  success: boolean
+  summary: VrtSummary
+  results: VrtResult[]
+}
+
+export async function runVrt(artPath?: string, updateSnapshots?: boolean): Promise<VrtApiResponse> {
+  const res = await fetch(basePath + '/api/run-vrt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ artPath, updateSnapshots }),
+  })
+  if (!res.ok) {
+    const data = await res.json()
+    throw new Error(data.error || `API error: ${res.status}`)
+  }
+  return res.json() as Promise<VrtApiResponse>
+}
