@@ -3,9 +3,9 @@ export type { CollapsibleContentProps } from './types'
 </script>
 
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { ref, computed, toRef, onBeforeUnmount } from 'vue'
 import { Primitive } from '../Primitive'
-import { Presence } from '../Presence'
+import { usePresence } from '../Presence'
 import { injectCollapsibleRootContext } from './types'
 import type { CollapsibleContentProps } from './types'
 
@@ -14,19 +14,20 @@ const { as = 'div', asChild = false, forceMount = false } = defineProps<Collapsi
 const context = injectCollapsibleRootContext('CollapsibleContent')
 
 const present = computed(() => forceMount || context.open.value)
+const { isPresent, ref: presenceRef, onAnimationStart, onAnimationEnd } = usePresence(toRef(present))
 
 const contentRef = ref<HTMLElement>()
 const contentWidth = ref(0)
 const contentHeight = ref(0)
-const isPresent = ref(present.value)
-const isOpen = computed(() => context.open.value)
 
 let resizeObserver: ResizeObserver | undefined
 
-function setContentRef(el: HTMLElement | undefined) {
-  if (el) {
-    contentRef.value = el
-    observeSize(el)
+function handleContentRef(el: any) {
+  const node = el?.$el ?? el
+  presenceRef(node)
+  if (node) {
+    contentRef.value = node
+    observeSize(node)
   }
 }
 
@@ -61,26 +62,23 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Presence :present="present">
-    <template #default="{ isPresent: presenceIsPresent, ref: presenceRef, onAnimationStart, onAnimationEnd }">
-      <Primitive
-        :id="context.contentId"
-        :as="as"
-        :as-child="asChild"
-        :ref="(el: any) => { presenceRef(el?.$el ?? el); setContentRef(el?.$el ?? el) }"
-        role="region"
-        :hidden="!presenceIsPresent ? true : undefined"
-        :data-state="context.open.value ? 'open' : 'closed'"
-        :data-disabled="context.disabled ? '' : undefined"
-        :style="{
-          '--vize-collapsible-content-height': `${contentHeight}px`,
-          '--vize-collapsible-content-width': `${contentWidth}px`,
-        }"
-        @animationstart="onAnimationStart"
-        @animationend="onAnimationEnd"
-      >
-        <slot />
-      </Primitive>
-    </template>
-  </Presence>
+  <Primitive
+    v-if="isPresent"
+    :id="context.contentId"
+    :as="as"
+    :as-child="asChild"
+    :ref="handleContentRef"
+    role="region"
+    :hidden="!isPresent ? true : undefined"
+    :data-state="context.open.value ? 'open' : 'closed'"
+    :data-disabled="context.disabled ? '' : undefined"
+    :style="{
+      '--vize-collapsible-content-height': `${contentHeight}px`,
+      '--vize-collapsible-content-width': `${contentWidth}px`,
+    }"
+    @animationstart="onAnimationStart"
+    @animationend="onAnimationEnd"
+  >
+    <slot />
+  </Primitive>
 </template>

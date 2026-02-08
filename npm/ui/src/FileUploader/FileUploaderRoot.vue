@@ -145,7 +145,7 @@ provideFileUploaderRootContext({
   >
     <slot :files="files" :is-dragging="isDragging" :open-file-picker="openFilePicker" />
     <input
-      :ref="(el: any) => { inputRef = el?.$el ?? el }"
+      :ref="(el) => { inputRef = el?.$el ?? el }"
       type="file"
       tabindex="-1"
       :multiple="multiple"

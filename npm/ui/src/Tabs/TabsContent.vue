@@ -3,9 +3,9 @@ export type { TabsContentProps } from './types'
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, toRef } from 'vue'
 import { Primitive } from '../Primitive'
-import { Presence } from '../Presence'
+import { usePresence } from '../Presence'
 import { useId } from '../shared'
 import { injectTabsRootContext } from './types'
 import type { TabsContentProps } from './types'
@@ -17,27 +17,29 @@ const rootContext = injectTabsRootContext('TabsContent')
 const triggerId = useId()
 const isSelected = computed(() => rootContext.modelValue.value === value)
 const present = computed(() => forceMount || isSelected.value)
+const { isPresent, ref: presenceRef, onAnimationStart, onAnimationEnd } = usePresence(toRef(present))
+
+function handleRef(el: any) {
+  presenceRef(el?.$el ?? el)
+}
 </script>
 
 <template>
-  <Presence :present="present">
-    <template #default="{ isPresent: presenceIsPresent, ref: presenceRef, onAnimationStart, onAnimationEnd }">
-      <Primitive
-        :id="`${triggerId}-panel-${value}`"
-        :ref="(el: any) => { presenceRef(el?.$el ?? el) }"
-        :as="as"
-        :as-child="asChild"
-        role="tabpanel"
-        :aria-labelledby="triggerId"
-        :tabindex="0"
-        :hidden="!presenceIsPresent ? true : undefined"
-        :data-state="isSelected ? 'active' : 'inactive'"
-        :data-orientation="rootContext.orientation"
-        @animationstart="onAnimationStart"
-        @animationend="onAnimationEnd"
-      >
-        <slot />
-      </Primitive>
-    </template>
-  </Presence>
+  <Primitive
+    v-if="isPresent"
+    :id="`${triggerId}-panel-${value}`"
+    :ref="handleRef"
+    :as="as"
+    :as-child="asChild"
+    role="tabpanel"
+    :aria-labelledby="triggerId"
+    :tabindex="0"
+    :hidden="!isPresent ? true : undefined"
+    :data-state="isSelected ? 'active' : 'inactive'"
+    :data-orientation="rootContext.orientation"
+    @animationstart="onAnimationStart"
+    @animationend="onAnimationEnd"
+  >
+    <slot />
+  </Primitive>
 </template>

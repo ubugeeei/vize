@@ -129,7 +129,7 @@ provideVirtualScrollContext({
 
 <template>
   <Primitive
-    :ref="(el: any) => { containerRef = el?.$el ?? el }"
+    :ref="(el) => { containerRef = el?.$el ?? el }"
     :as="as"
     :as-child="asChild"
     :tabindex="0"

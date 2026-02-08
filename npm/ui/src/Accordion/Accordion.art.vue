@@ -1,97 +1,97 @@
 <script setup>
-import { Accordion } from '../index'
+import { AccordionRoot, AccordionItem, AccordionHeader, AccordionTrigger, AccordionContent } from './index'
 </script>
 
 <art title="Accordion" component="./AccordionRoot.vue" category="Disclosure" status="ready" tags="accordion,expand,collapse,faq">
   <variant name="Single" default>
-    <Accordion.Root type="single">
-      <Accordion.Item value="item-1">
-        <Accordion.Header>
-          <Accordion.Trigger>Item 1</Accordion.Trigger>
-        </Accordion.Header>
-        <Accordion.Content>Content for item 1</Accordion.Content>
-      </Accordion.Item>
-      <Accordion.Item value="item-2">
-        <Accordion.Header>
-          <Accordion.Trigger>Item 2</Accordion.Trigger>
-        </Accordion.Header>
-        <Accordion.Content>Content for item 2</Accordion.Content>
-      </Accordion.Item>
-      <Accordion.Item value="item-3">
-        <Accordion.Header>
-          <Accordion.Trigger>Item 3</Accordion.Trigger>
-        </Accordion.Header>
-        <Accordion.Content>Content for item 3</Accordion.Content>
-      </Accordion.Item>
-    </Accordion.Root>
+    <AccordionRoot type="single">
+      <AccordionItem value="item-1">
+        <AccordionHeader>
+          <AccordionTrigger>Item 1</AccordionTrigger>
+        </AccordionHeader>
+        <AccordionContent>Content for item 1</AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="item-2">
+        <AccordionHeader>
+          <AccordionTrigger>Item 2</AccordionTrigger>
+        </AccordionHeader>
+        <AccordionContent>Content for item 2</AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="item-3">
+        <AccordionHeader>
+          <AccordionTrigger>Item 3</AccordionTrigger>
+        </AccordionHeader>
+        <AccordionContent>Content for item 3</AccordionContent>
+      </AccordionItem>
+    </AccordionRoot>
   </variant>
 
   <variant name="Multiple">
-    <Accordion.Root type="multiple">
-      <Accordion.Item value="item-1">
-        <Accordion.Header>
-          <Accordion.Trigger>Item 1</Accordion.Trigger>
-        </Accordion.Header>
-        <Accordion.Content>Content for item 1</Accordion.Content>
-      </Accordion.Item>
-      <Accordion.Item value="item-2">
-        <Accordion.Header>
-          <Accordion.Trigger>Item 2</Accordion.Trigger>
-        </Accordion.Header>
-        <Accordion.Content>Content for item 2</Accordion.Content>
-      </Accordion.Item>
-      <Accordion.Item value="item-3">
-        <Accordion.Header>
-          <Accordion.Trigger>Item 3</Accordion.Trigger>
-        </Accordion.Header>
-        <Accordion.Content>Content for item 3</Accordion.Content>
-      </Accordion.Item>
-    </Accordion.Root>
+    <AccordionRoot type="multiple">
+      <AccordionItem value="item-1">
+        <AccordionHeader>
+          <AccordionTrigger>Item 1</AccordionTrigger>
+        </AccordionHeader>
+        <AccordionContent>Content for item 1</AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="item-2">
+        <AccordionHeader>
+          <AccordionTrigger>Item 2</AccordionTrigger>
+        </AccordionHeader>
+        <AccordionContent>Content for item 2</AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="item-3">
+        <AccordionHeader>
+          <AccordionTrigger>Item 3</AccordionTrigger>
+        </AccordionHeader>
+        <AccordionContent>Content for item 3</AccordionContent>
+      </AccordionItem>
+    </AccordionRoot>
   </variant>
 
   <variant name="Default Value">
-    <Accordion.Root type="single" default-value="item-2">
-      <Accordion.Item value="item-1">
-        <Accordion.Header>
-          <Accordion.Trigger>Item 1</Accordion.Trigger>
-        </Accordion.Header>
-        <Accordion.Content>Content for item 1</Accordion.Content>
-      </Accordion.Item>
-      <Accordion.Item value="item-2">
-        <Accordion.Header>
-          <Accordion.Trigger>Item 2</Accordion.Trigger>
-        </Accordion.Header>
-        <Accordion.Content>Content for item 2</Accordion.Content>
-      </Accordion.Item>
-      <Accordion.Item value="item-3">
-        <Accordion.Header>
-          <Accordion.Trigger>Item 3</Accordion.Trigger>
-        </Accordion.Header>
-        <Accordion.Content>Content for item 3</Accordion.Content>
-      </Accordion.Item>
-    </Accordion.Root>
+    <AccordionRoot type="single" default-value="item-2">
+      <AccordionItem value="item-1">
+        <AccordionHeader>
+          <AccordionTrigger>Item 1</AccordionTrigger>
+        </AccordionHeader>
+        <AccordionContent>Content for item 1</AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="item-2">
+        <AccordionHeader>
+          <AccordionTrigger>Item 2</AccordionTrigger>
+        </AccordionHeader>
+        <AccordionContent>Content for item 2</AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="item-3">
+        <AccordionHeader>
+          <AccordionTrigger>Item 3</AccordionTrigger>
+        </AccordionHeader>
+        <AccordionContent>Content for item 3</AccordionContent>
+      </AccordionItem>
+    </AccordionRoot>
   </variant>
 
   <variant name="Collapsible">
-    <Accordion.Root type="single" collapsible>
-      <Accordion.Item value="item-1">
-        <Accordion.Header>
-          <Accordion.Trigger>Item 1</Accordion.Trigger>
-        </Accordion.Header>
-        <Accordion.Content>Content for item 1</Accordion.Content>
-      </Accordion.Item>
-      <Accordion.Item value="item-2">
-        <Accordion.Header>
-          <Accordion.Trigger>Item 2</Accordion.Trigger>
-        </Accordion.Header>
-        <Accordion.Content>Content for item 2</Accordion.Content>
-      </Accordion.Item>
-      <Accordion.Item value="item-3">
-        <Accordion.Header>
-          <Accordion.Trigger>Item 3</Accordion.Trigger>
-        </Accordion.Header>
-        <Accordion.Content>Content for item 3</Accordion.Content>
-      </Accordion.Item>
-    </Accordion.Root>
+    <AccordionRoot type="single" collapsible>
+      <AccordionItem value="item-1">
+        <AccordionHeader>
+          <AccordionTrigger>Item 1</AccordionTrigger>
+        </AccordionHeader>
+        <AccordionContent>Content for item 1</AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="item-2">
+        <AccordionHeader>
+          <AccordionTrigger>Item 2</AccordionTrigger>
+        </AccordionHeader>
+        <AccordionContent>Content for item 2</AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="item-3">
+        <AccordionHeader>
+          <AccordionTrigger>Item 3</AccordionTrigger>
+        </AccordionHeader>
+        <AccordionContent>Content for item 3</AccordionContent>
+      </AccordionItem>
+    </AccordionRoot>
   </variant>
 </art>

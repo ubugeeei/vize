@@ -1,65 +1,66 @@
 <script setup>
-import { DatePicker, Calendar } from '../index'
+import { DatePickerRoot, DatePickerTrigger, DatePickerInput, DatePickerContent } from './index'
+import { CalendarRoot, CalendarHeader, CalendarPrev, CalendarNext, CalendarHeading, CalendarGrid, CalendarGridHead, CalendarGridHeadCell, CalendarGridBody, CalendarCell, CalendarCellTrigger } from '../Calendar/index'
 </script>
 
 <art title="DatePicker" component="./DatePickerRoot.vue" category="Forms" status="ready" tags="datepicker,date,calendar,picker">
   <variant name="Default" skip-vrt>
-    <DatePicker.Root v-slot="{ open, modelValue }">
-      <DatePicker.Input />
-      <DatePicker.Trigger>📅</DatePicker.Trigger>
-      <DatePicker.Content disable-teleport>
-        <Calendar.Root v-slot="{ months, weekDays }">
-          <Calendar.Header>
-            <Calendar.Prev />
-            <Calendar.Heading />
-            <Calendar.Next />
-          </Calendar.Header>
-          <Calendar.Grid v-for="month in months" :key="`${month.year}-${month.month}`">
-            <Calendar.GridHead>
+    <DatePickerRoot v-slot="{ open, modelValue }">
+      <DatePickerInput />
+      <DatePickerTrigger>📅</DatePickerTrigger>
+      <DatePickerContent disable-teleport>
+        <CalendarRoot v-slot="{ months, weekDays }">
+          <CalendarHeader>
+            <CalendarPrev />
+            <CalendarHeading />
+            <CalendarNext />
+          </CalendarHeader>
+          <CalendarGrid v-for="month in months" :key="`${month.year}-${month.month}`">
+            <CalendarGridHead>
               <tr>
-                <Calendar.GridHeadCell v-for="day in weekDays" :key="day">{{ day }}</Calendar.GridHeadCell>
+                <CalendarGridHeadCell v-for="day in weekDays" :key="day">{{ day }}</CalendarGridHeadCell>
               </tr>
-            </Calendar.GridHead>
-            <Calendar.GridBody>
+            </CalendarGridHead>
+            <CalendarGridBody>
               <tr v-for="(week, i) in month.weeks" :key="i">
-                <Calendar.Cell v-for="dayInfo in week" :key="dayInfo.date.toISOString()" :date="dayInfo.date">
-                  <Calendar.CellTrigger :date="dayInfo.date" />
-                </Calendar.Cell>
+                <CalendarCell v-for="dayInfo in week" :key="dayInfo.date.toISOString()" :date="dayInfo.date">
+                  <CalendarCellTrigger :date="dayInfo.date" />
+                </CalendarCell>
               </tr>
-            </Calendar.GridBody>
-          </Calendar.Grid>
-        </Calendar.Root>
-      </DatePicker.Content>
-    </DatePicker.Root>
+            </CalendarGridBody>
+          </CalendarGrid>
+        </CalendarRoot>
+      </DatePickerContent>
+    </DatePickerRoot>
   </variant>
 
   <variant name="Default Open" skip-vrt>
-    <DatePicker.Root v-slot="{ open, modelValue }">
-      <DatePicker.Input />
-      <DatePicker.Trigger>📅</DatePicker.Trigger>
-      <DatePicker.Content disable-teleport force-mount>
-        <Calendar.Root v-slot="{ months, weekDays }">
-          <Calendar.Header>
-            <Calendar.Prev />
-            <Calendar.Heading />
-            <Calendar.Next />
-          </Calendar.Header>
-          <Calendar.Grid v-for="month in months" :key="`${month.year}-${month.month}`">
-            <Calendar.GridHead>
+    <DatePickerRoot v-slot="{ open, modelValue }">
+      <DatePickerInput />
+      <DatePickerTrigger>📅</DatePickerTrigger>
+      <DatePickerContent disable-teleport force-mount>
+        <CalendarRoot v-slot="{ months, weekDays }">
+          <CalendarHeader>
+            <CalendarPrev />
+            <CalendarHeading />
+            <CalendarNext />
+          </CalendarHeader>
+          <CalendarGrid v-for="month in months" :key="`${month.year}-${month.month}`">
+            <CalendarGridHead>
               <tr>
-                <Calendar.GridHeadCell v-for="day in weekDays" :key="day">{{ day }}</Calendar.GridHeadCell>
+                <CalendarGridHeadCell v-for="day in weekDays" :key="day">{{ day }}</CalendarGridHeadCell>
               </tr>
-            </Calendar.GridHead>
-            <Calendar.GridBody>
+            </CalendarGridHead>
+            <CalendarGridBody>
               <tr v-for="(week, i) in month.weeks" :key="i">
-                <Calendar.Cell v-for="dayInfo in week" :key="dayInfo.date.toISOString()" :date="dayInfo.date">
-                  <Calendar.CellTrigger :date="dayInfo.date" />
-                </Calendar.Cell>
+                <CalendarCell v-for="dayInfo in week" :key="dayInfo.date.toISOString()" :date="dayInfo.date">
+                  <CalendarCellTrigger :date="dayInfo.date" />
+                </CalendarCell>
               </tr>
-            </Calendar.GridBody>
-          </Calendar.Grid>
-        </Calendar.Root>
-      </DatePicker.Content>
-    </DatePicker.Root>
+            </CalendarGridBody>
+          </CalendarGrid>
+        </CalendarRoot>
+      </DatePickerContent>
+    </DatePickerRoot>
   </variant>
 </art>

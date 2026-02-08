@@ -1,23 +1,23 @@
 <script setup>
-import { Toggle } from '../index'
+import { ToggleRoot } from './index'
 </script>
 
 <art title="Toggle" component="./ToggleRoot.vue" category="Actions" status="ready" tags="toggle,switch,press">
   <variant name="Default" default>
-    <Toggle.Root v-slot="{ pressed }">
+    <ToggleRoot v-slot="{ pressed }">
       {{ pressed ? 'On' : 'Off' }}
-    </Toggle.Root>
+    </ToggleRoot>
   </variant>
 
   <variant name="Pressed">
-    <Toggle.Root :default-value="true" v-slot="{ pressed }">
+    <ToggleRoot :default-value="true" v-slot="{ pressed }">
       {{ pressed ? 'On' : 'Off' }}
-    </Toggle.Root>
+    </ToggleRoot>
   </variant>
 
   <variant name="Disabled">
-    <Toggle.Root disabled v-slot="{ pressed }">
+    <ToggleRoot disabled v-slot="{ pressed }">
       {{ pressed ? 'On' : 'Off' }}
-    </Toggle.Root>
+    </ToggleRoot>
   </variant>
 </art>

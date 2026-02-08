@@ -269,7 +269,7 @@ provideTreeViewRootContext({
 
 <template>
   <Primitive
-    :ref="(el: any) => { rootRef = el?.$el ?? el }"
+    :ref="(el) => { rootRef = el?.$el ?? el }"
     :as="as"
     :as-child="asChild"
     role="tree"

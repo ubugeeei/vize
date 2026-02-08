@@ -1,41 +1,41 @@
 <script setup>
-import { Form } from '../index'
+import { FormRoot, FormField, FormLabel, FormControl, FormMessage, FormSubmit } from './index'
 </script>
 
 <art title="Form" component="./FormRoot.vue" category="Forms" status="ready" tags="form,validation,schema">
   <variant name="Default" default>
-    <Form.Root>
-      <Form.Field name="email">
-        <Form.Label>Email</Form.Label>
-        <Form.Control placeholder="Enter your email" />
-        <Form.Message />
-      </Form.Field>
-    </Form.Root>
+    <FormRoot>
+      <FormField name="email">
+        <FormLabel>Email</FormLabel>
+        <FormControl placeholder="Enter your email" />
+        <FormMessage />
+      </FormField>
+    </FormRoot>
   </variant>
 
   <variant name="With Submit">
-    <Form.Root>
-      <Form.Field name="email">
-        <Form.Label>Email</Form.Label>
-        <Form.Control placeholder="Enter your email" />
-        <Form.Message />
-      </Form.Field>
-      <Form.Submit>Submit</Form.Submit>
-    </Form.Root>
+    <FormRoot>
+      <FormField name="email">
+        <FormLabel>Email</FormLabel>
+        <FormControl placeholder="Enter your email" />
+        <FormMessage />
+      </FormField>
+      <FormSubmit>Submit</FormSubmit>
+    </FormRoot>
   </variant>
 
   <variant name="Multiple Fields">
-    <Form.Root>
-      <Form.Field name="email">
-        <Form.Label>Email</Form.Label>
-        <Form.Control placeholder="Enter your email" />
-        <Form.Message />
-      </Form.Field>
-      <Form.Field name="password">
-        <Form.Label>Password</Form.Label>
-        <Form.Control as="input" type="password" placeholder="Enter your password" />
-        <Form.Message />
-      </Form.Field>
-    </Form.Root>
+    <FormRoot>
+      <FormField name="email">
+        <FormLabel>Email</FormLabel>
+        <FormControl placeholder="Enter your email" />
+        <FormMessage />
+      </FormField>
+      <FormField name="password">
+        <FormLabel>Password</FormLabel>
+        <FormControl as="input" type="password" placeholder="Enter your password" />
+        <FormMessage />
+      </FormField>
+    </FormRoot>
   </variant>
 </art>

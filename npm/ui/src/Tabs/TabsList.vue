@@ -42,7 +42,7 @@ function handleKeydown(event: KeyboardEvent) {
 
 <template>
   <Primitive
-    :ref="(el: any) => { listRef = el?.$el ?? el }"
+    :ref="(el) => { listRef = el?.$el ?? el }"
     :as="as"
     :as-child="asChild"
     role="tablist"

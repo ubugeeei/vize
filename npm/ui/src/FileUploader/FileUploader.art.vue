@@ -1,65 +1,65 @@
 <script setup>
-import { FileUploader } from '../index'
+import { FileUploaderRoot, FileUploaderDropzone, FileUploaderTrigger, FileUploaderList, FileUploaderItem, FileUploaderItemDelete } from './index'
 </script>
 
 <art title="FileUploader" component="./FileUploaderRoot.vue" category="Forms" status="ready" tags="file,upload,drag-drop">
   <variant name="Default" default>
-    <FileUploader.Root>
-      <FileUploader.Dropzone>
-        <FileUploader.Trigger>Choose files</FileUploader.Trigger>
+    <FileUploaderRoot>
+      <FileUploaderDropzone>
+        <FileUploaderTrigger>Choose files</FileUploaderTrigger>
         or drag &amp; drop
-      </FileUploader.Dropzone>
-      <FileUploader.List v-slot="{ files }">
-        <FileUploader.Item v-for="file in files" :key="file.name" :file="file">
+      </FileUploaderDropzone>
+      <FileUploaderList v-slot="{ files }">
+        <FileUploaderItem v-for="file in files" :key="file.name" :file="file">
           {{ file.name }}
-          <FileUploader.ItemDelete />
-        </FileUploader.Item>
-      </FileUploader.List>
-    </FileUploader.Root>
+          <FileUploaderItemDelete />
+        </FileUploaderItem>
+      </FileUploaderList>
+    </FileUploaderRoot>
   </variant>
 
   <variant name="With Accept">
-    <FileUploader.Root accept="image/*">
-      <FileUploader.Dropzone>
-        <FileUploader.Trigger>Choose files</FileUploader.Trigger>
+    <FileUploaderRoot accept="image/*">
+      <FileUploaderDropzone>
+        <FileUploaderTrigger>Choose files</FileUploaderTrigger>
         or drag &amp; drop
-      </FileUploader.Dropzone>
-      <FileUploader.List v-slot="{ files }">
-        <FileUploader.Item v-for="file in files" :key="file.name" :file="file">
+      </FileUploaderDropzone>
+      <FileUploaderList v-slot="{ files }">
+        <FileUploaderItem v-for="file in files" :key="file.name" :file="file">
           {{ file.name }}
-          <FileUploader.ItemDelete />
-        </FileUploader.Item>
-      </FileUploader.List>
-    </FileUploader.Root>
+          <FileUploaderItemDelete />
+        </FileUploaderItem>
+      </FileUploaderList>
+    </FileUploaderRoot>
   </variant>
 
   <variant name="Multiple">
-    <FileUploader.Root multiple>
-      <FileUploader.Dropzone>
-        <FileUploader.Trigger>Choose files</FileUploader.Trigger>
+    <FileUploaderRoot multiple>
+      <FileUploaderDropzone>
+        <FileUploaderTrigger>Choose files</FileUploaderTrigger>
         or drag &amp; drop
-      </FileUploader.Dropzone>
-      <FileUploader.List v-slot="{ files }">
-        <FileUploader.Item v-for="file in files" :key="file.name" :file="file">
+      </FileUploaderDropzone>
+      <FileUploaderList v-slot="{ files }">
+        <FileUploaderItem v-for="file in files" :key="file.name" :file="file">
           {{ file.name }}
-          <FileUploader.ItemDelete />
-        </FileUploader.Item>
-      </FileUploader.List>
-    </FileUploader.Root>
+          <FileUploaderItemDelete />
+        </FileUploaderItem>
+      </FileUploaderList>
+    </FileUploaderRoot>
   </variant>
 
   <variant name="Disabled">
-    <FileUploader.Root disabled>
-      <FileUploader.Dropzone>
-        <FileUploader.Trigger>Choose files</FileUploader.Trigger>
+    <FileUploaderRoot disabled>
+      <FileUploaderDropzone>
+        <FileUploaderTrigger>Choose files</FileUploaderTrigger>
         or drag &amp; drop
-      </FileUploader.Dropzone>
-      <FileUploader.List v-slot="{ files }">
-        <FileUploader.Item v-for="file in files" :key="file.name" :file="file">
+      </FileUploaderDropzone>
+      <FileUploaderList v-slot="{ files }">
+        <FileUploaderItem v-for="file in files" :key="file.name" :file="file">
           {{ file.name }}
-          <FileUploader.ItemDelete />
-        </FileUploader.Item>
-      </FileUploader.List>
-    </FileUploader.Root>
+          <FileUploaderItemDelete />
+        </FileUploaderItem>
+      </FileUploaderList>
+    </FileUploaderRoot>
   </variant>
 </art>

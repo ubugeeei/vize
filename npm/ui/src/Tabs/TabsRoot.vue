@@ -48,7 +48,7 @@ provideTabsRootContext({
 
 <template>
   <Primitive
-    :ref="(el: any) => { parentRef = el?.$el ?? el }"
+    :ref="(el) => { parentRef = el?.$el ?? el }"
     :as="as"
     :as-child="asChild"
     :data-orientation="orientation"

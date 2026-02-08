@@ -3,9 +3,9 @@ export type { DialogContentProps, DialogContentEmits } from './types'
 </script>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, toRef } from 'vue'
 import { Primitive } from '../Primitive'
-import { Presence } from '../Presence'
+import { usePresence } from '../Presence'
 import { FocusScope } from '../FocusScope'
 import { DismissableLayer } from '../DismissableLayer'
 import { useBodyScrollLock } from '../shared'
@@ -24,8 +24,13 @@ const emit = defineEmits<DialogContentEmits>()
 const context = injectDialogRootContext('DialogContent')
 
 const present = computed(() => forceMount || context.open.value)
+const { isPresent, ref: presenceRef, onAnimationStart, onAnimationEnd } = usePresence(toRef(present))
 
 useBodyScrollLock(computed(() => context.open.value))
+
+function handleRef(el: any) {
+  presenceRef(el?.$el ?? el)
+}
 
 function handleDismiss() {
   context.onOpenChange(false)
@@ -57,43 +62,40 @@ function handleUnmountAutoFocus(event: Event) {
 </script>
 
 <template>
-  <Presence :present="present">
-    <template #default="{ isPresent, ref: presenceRef, onAnimationStart, onAnimationEnd }">
-      <FocusScope
-        as-child
-        :loop="trapFocus"
-        :trapped="trapFocus"
-        @mount-auto-focus="handleMountAutoFocus"
-        @unmount-auto-focus="handleUnmountAutoFocus"
+  <FocusScope
+    v-if="isPresent"
+    as-child
+    :loop="trapFocus"
+    :trapped="trapFocus"
+    @mount-auto-focus="handleMountAutoFocus"
+    @unmount-auto-focus="handleUnmountAutoFocus"
+  >
+    <DismissableLayer
+      as-child
+      disable-outside-pointer-events
+      @escape-key-down="handleEscapeKeyDown"
+      @pointer-down-outside="handlePointerDownOutside"
+      @focus-outside="handleFocusOutside"
+      @interact-outside="handleInteractOutside"
+      @dismiss="handleDismiss"
+    >
+      <Primitive
+        :id="context.contentId"
+        :ref="handleRef"
+        :as="as"
+        :as-child="asChild"
+        role="dialog"
+        aria-modal="true"
+        :aria-describedby="context.descriptionId"
+        :aria-labelledby="context.titleId"
+        :hidden="!isPresent ? true : undefined"
+        :data-state="context.open.value ? 'open' : 'closed'"
+        data-dialog-content
+        @animationstart="onAnimationStart"
+        @animationend="onAnimationEnd"
       >
-        <DismissableLayer
-          as-child
-          disable-outside-pointer-events
-          @escape-key-down="handleEscapeKeyDown"
-          @pointer-down-outside="handlePointerDownOutside"
-          @focus-outside="handleFocusOutside"
-          @interact-outside="handleInteractOutside"
-          @dismiss="handleDismiss"
-        >
-          <Primitive
-            :id="context.contentId"
-            :ref="(el: any) => presenceRef(el?.$el ?? el)"
-            :as="as"
-            :as-child="asChild"
-            role="dialog"
-            aria-modal="true"
-            :aria-describedby="context.descriptionId"
-            :aria-labelledby="context.titleId"
-            :hidden="!isPresent ? true : undefined"
-            :data-state="context.open.value ? 'open' : 'closed'"
-            data-dialog-content
-            @animationstart="onAnimationStart"
-            @animationend="onAnimationEnd"
-          >
-            <slot />
-          </Primitive>
-        </DismissableLayer>
-      </FocusScope>
-    </template>
-  </Presence>
+        <slot />
+      </Primitive>
+    </DismissableLayer>
+  </FocusScope>
 </template>

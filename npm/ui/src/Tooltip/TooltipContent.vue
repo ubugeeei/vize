@@ -3,9 +3,9 @@ export type { TooltipContentSide, TooltipContentAlign, TooltipContentProps, Tool
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, toRef } from 'vue'
 import { Primitive } from '../Primitive'
-import { Presence } from '../Presence'
+import { usePresence } from '../Presence'
 import { DismissableLayer } from '../DismissableLayer'
 import { injectTooltipRootContext } from './types'
 import { injectTooltipProviderContext } from './types'
@@ -27,6 +27,11 @@ const context = injectTooltipRootContext('TooltipContent')
 const provider = injectTooltipProviderContext('TooltipContent')
 
 const present = computed(() => forceMount || context.open.value)
+const { isPresent, ref: presenceRef, onAnimationStart, onAnimationEnd } = usePresence(toRef(present))
+
+function handleRef(el: any) {
+  presenceRef(el?.$el ?? el)
+}
 
 function handleDismiss() {
   context.onOpenChange(false)
@@ -52,40 +57,37 @@ function handlePointerLeave() {
 </script>
 
 <template>
-  <Presence :present="present">
-    <template #default="{ isPresent, ref: presenceRef, onAnimationStart, onAnimationEnd }">
-      <DismissableLayer
-        as-child
-        @escape-key-down="handleEscapeKeyDown"
-        @pointer-down-outside="handlePointerDownOutside"
-        @dismiss="handleDismiss"
-      >
-        <Primitive
-          :id="context.contentId"
-          :ref="(el: any) => presenceRef(el?.$el ?? el)"
-          :as="as"
-          :as-child="asChild"
-          role="tooltip"
-          :hidden="!isPresent ? true : undefined"
-          :data-state="context.open.value ? 'open' : 'closed'"
-          :data-side="side"
-          :data-align="align"
-          data-tooltip-content
-          :style="{
-            '--vize-tooltip-content-transform-origin': 'var(--vize-tooltip-content-transform-origin)',
-            '--vize-tooltip-content-available-width': 'var(--vize-tooltip-content-available-width)',
-            '--vize-tooltip-content-available-height': 'var(--vize-tooltip-content-available-height)',
-            '--vize-tooltip-content-side-offset': `${sideOffset}px`,
-            '--vize-tooltip-content-align-offset': `${alignOffset}px`,
-          }"
-          @pointerenter="handlePointerEnter"
-          @pointerleave="handlePointerLeave"
-          @animationstart="onAnimationStart"
-          @animationend="onAnimationEnd"
-        >
-          <slot />
-        </Primitive>
-      </DismissableLayer>
-    </template>
-  </Presence>
+  <DismissableLayer
+    v-if="isPresent"
+    as-child
+    @escape-key-down="handleEscapeKeyDown"
+    @pointer-down-outside="handlePointerDownOutside"
+    @dismiss="handleDismiss"
+  >
+    <Primitive
+      :id="context.contentId"
+      :ref="handleRef"
+      :as="as"
+      :as-child="asChild"
+      role="tooltip"
+      :hidden="!isPresent ? true : undefined"
+      :data-state="context.open.value ? 'open' : 'closed'"
+      :data-side="side"
+      :data-align="align"
+      data-tooltip-content
+      :style="{
+        '--vize-tooltip-content-transform-origin': 'var(--vize-tooltip-content-transform-origin)',
+        '--vize-tooltip-content-available-width': 'var(--vize-tooltip-content-available-width)',
+        '--vize-tooltip-content-available-height': 'var(--vize-tooltip-content-available-height)',
+        '--vize-tooltip-content-side-offset': `${sideOffset}px`,
+        '--vize-tooltip-content-align-offset': `${alignOffset}px`,
+      }"
+      @pointerenter="handlePointerEnter"
+      @pointerleave="handlePointerLeave"
+      @animationstart="onAnimationStart"
+      @animationend="onAnimationEnd"
+    >
+      <slot />
+    </Primitive>
+  </DismissableLayer>
 </template>

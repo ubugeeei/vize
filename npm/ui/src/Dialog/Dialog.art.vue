@@ -1,33 +1,33 @@
 <script setup>
-import { Dialog } from '../index'
+import { DialogRoot, DialogTrigger, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogDescription, DialogClose } from './index'
 </script>
 
 <art title="Dialog" component="./DialogRoot.vue" category="Overlays" status="ready" tags="dialog,modal,popup">
   <variant name="Default" skip-vrt>
-    <Dialog.Root>
-      <Dialog.Trigger>Open Dialog</Dialog.Trigger>
-      <Dialog.Portal disabled>
-        <Dialog.Overlay />
-        <Dialog.Content>
-          <Dialog.Title>Dialog Title</Dialog.Title>
-          <Dialog.Description>Dialog description text.</Dialog.Description>
-          <Dialog.Close>Close</Dialog.Close>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <DialogRoot>
+      <DialogTrigger>Open Dialog</DialogTrigger>
+      <DialogPortal disabled>
+        <DialogOverlay />
+        <DialogContent>
+          <DialogTitle>Dialog Title</DialogTitle>
+          <DialogDescription>Dialog description text.</DialogDescription>
+          <DialogClose>Close</DialogClose>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
   </variant>
 
   <variant name="Default Open" skip-vrt>
-    <Dialog.Root :default-value="true">
-      <Dialog.Trigger>Open Dialog</Dialog.Trigger>
-      <Dialog.Portal disabled>
-        <Dialog.Overlay />
-        <Dialog.Content>
-          <Dialog.Title>Dialog Title</Dialog.Title>
-          <Dialog.Description>Dialog description text.</Dialog.Description>
-          <Dialog.Close>Close</Dialog.Close>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <DialogRoot :default-value="true">
+      <DialogTrigger>Open Dialog</DialogTrigger>
+      <DialogPortal disabled>
+        <DialogOverlay />
+        <DialogContent>
+          <DialogTitle>Dialog Title</DialogTitle>
+          <DialogDescription>Dialog description text.</DialogDescription>
+          <DialogClose>Close</DialogClose>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
   </variant>
 </art>

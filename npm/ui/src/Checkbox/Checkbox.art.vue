@@ -1,29 +1,29 @@
 <script setup>
-import { Checkbox } from '../index'
+import { CheckboxRoot, CheckboxIndicator } from './index'
 </script>
 
 <art title="Checkbox" component="./CheckboxRoot.vue" category="Forms" status="ready" tags="checkbox,input,form">
   <variant name="Default" default>
-    <Checkbox.Root>
-      <Checkbox.Indicator>✓</Checkbox.Indicator>
-    </Checkbox.Root>
+    <CheckboxRoot>
+      <CheckboxIndicator>✓</CheckboxIndicator>
+    </CheckboxRoot>
   </variant>
 
   <variant name="Checked">
-    <Checkbox.Root :default-value="true">
-      <Checkbox.Indicator>✓</Checkbox.Indicator>
-    </Checkbox.Root>
+    <CheckboxRoot :default-value="true">
+      <CheckboxIndicator>✓</CheckboxIndicator>
+    </CheckboxRoot>
   </variant>
 
   <variant name="Indeterminate">
-    <Checkbox.Root :default-value="'indeterminate'">
-      <Checkbox.Indicator>−</Checkbox.Indicator>
-    </Checkbox.Root>
+    <CheckboxRoot :default-value="'indeterminate'">
+      <CheckboxIndicator>−</CheckboxIndicator>
+    </CheckboxRoot>
   </variant>
 
   <variant name="Disabled">
-    <Checkbox.Root disabled>
-      <Checkbox.Indicator>✓</Checkbox.Indicator>
-    </Checkbox.Root>
+    <CheckboxRoot disabled>
+      <CheckboxIndicator>✓</CheckboxIndicator>
+    </CheckboxRoot>
   </variant>
 </art>

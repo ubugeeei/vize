@@ -1,23 +1,23 @@
 <script setup>
-import { Switch } from '../index'
+import { SwitchRoot, SwitchThumb } from './index'
 </script>
 
 <art title="Switch" component="./SwitchRoot.vue" category="Forms" status="ready" tags="switch,toggle,form">
   <variant name="Default" default>
-    <Switch.Root>
-      <Switch.Thumb />
-    </Switch.Root>
+    <SwitchRoot>
+      <SwitchThumb />
+    </SwitchRoot>
   </variant>
 
   <variant name="Checked">
-    <Switch.Root :default-value="true">
-      <Switch.Thumb />
-    </Switch.Root>
+    <SwitchRoot :default-value="true">
+      <SwitchThumb />
+    </SwitchRoot>
   </variant>
 
   <variant name="Disabled">
-    <Switch.Root disabled>
-      <Switch.Thumb />
-    </Switch.Root>
+    <SwitchRoot disabled>
+      <SwitchThumb />
+    </SwitchRoot>
   </variant>
 </art>

@@ -3,9 +3,9 @@ export type { AccordionContentProps } from './types'
 </script>
 
 <script setup lang="ts">
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed, toRef, onBeforeUnmount } from 'vue'
 import { Primitive } from '../Primitive'
-import { Presence } from '../Presence'
+import { usePresence } from '../Presence'
 import { injectAccordionRootContext } from './types'
 import { injectAccordionItemContext } from './types'
 import type { AccordionContentProps } from './types'
@@ -16,6 +16,7 @@ const rootContext = injectAccordionRootContext('AccordionContent')
 const itemContext = injectAccordionItemContext('AccordionContent')
 
 const present = computed(() => forceMount || itemContext.open.value)
+const { isPresent, ref: presenceRef, onAnimationStart, onAnimationEnd } = usePresence(toRef(present))
 
 const contentRef = ref<HTMLElement>()
 const contentWidth = ref(0)
@@ -23,10 +24,12 @@ const contentHeight = ref(0)
 
 let resizeObserver: ResizeObserver | undefined
 
-function setContentRef(el: HTMLElement | undefined) {
-  if (el) {
-    contentRef.value = el
-    observeSize(el)
+function handleContentRef(el: any) {
+  const node = el?.$el ?? el
+  presenceRef(node)
+  if (node) {
+    contentRef.value = node
+    observeSize(node)
   }
 }
 
@@ -61,28 +64,25 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Presence :present="present">
-    <template #default="{ isPresent: presenceIsPresent, ref: presenceRef, onAnimationStart, onAnimationEnd }">
-      <Primitive
-        :id="itemContext.contentId"
-        :as="as"
-        :as-child="asChild"
-        :ref="(el: any) => { presenceRef(el?.$el ?? el); setContentRef(el?.$el ?? el) }"
-        role="region"
-        :aria-labelledby="itemContext.triggerId"
-        :hidden="!presenceIsPresent ? true : undefined"
-        :data-state="itemContext.open.value ? 'open' : 'closed'"
-        :data-disabled="itemContext.disabled.value ? '' : undefined"
-        :data-orientation="rootContext.orientation"
-        :style="{
-          '--vize-collapsible-content-height': `${contentHeight}px`,
-          '--vize-collapsible-content-width': `${contentWidth}px`,
-        }"
-        @animationstart="onAnimationStart"
-        @animationend="onAnimationEnd"
-      >
-        <slot />
-      </Primitive>
-    </template>
-  </Presence>
+  <Primitive
+    v-if="isPresent"
+    :id="itemContext.contentId"
+    :as="as"
+    :as-child="asChild"
+    :ref="handleContentRef"
+    role="region"
+    :aria-labelledby="itemContext.triggerId"
+    :hidden="!isPresent ? true : undefined"
+    :data-state="itemContext.open.value ? 'open' : 'closed'"
+    :data-disabled="itemContext.disabled.value ? '' : undefined"
+    :data-orientation="rootContext.orientation"
+    :style="{
+      '--vize-collapsible-content-height': `${contentHeight}px`,
+      '--vize-collapsible-content-width': `${contentWidth}px`,
+    }"
+    @animationstart="onAnimationStart"
+    @animationend="onAnimationEnd"
+  >
+    <slot />
+  </Primitive>
 </template>

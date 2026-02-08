@@ -1,31 +1,31 @@
 <script setup>
-import { Popover } from '../index'
+import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent, PopoverClose, PopoverArrow } from './index'
 </script>
 
 <art title="Popover" component="./PopoverRoot.vue" category="Overlays" status="ready" tags="popover,popup,dropdown">
   <variant name="Default" skip-vrt>
-    <Popover.Root>
-      <Popover.Trigger>Open Popover</Popover.Trigger>
-      <Popover.Portal disabled>
-        <Popover.Content>
-          <Popover.Arrow />
+    <PopoverRoot>
+      <PopoverTrigger>Open Popover</PopoverTrigger>
+      <PopoverPortal disabled>
+        <PopoverContent>
+          <PopoverArrow />
           <p>Popover content goes here.</p>
-          <Popover.Close>Close</Popover.Close>
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+          <PopoverClose>Close</PopoverClose>
+        </PopoverContent>
+      </PopoverPortal>
+    </PopoverRoot>
   </variant>
 
   <variant name="Default Open" skip-vrt>
-    <Popover.Root :default-value="true">
-      <Popover.Trigger>Open Popover</Popover.Trigger>
-      <Popover.Portal disabled>
-        <Popover.Content>
-          <Popover.Arrow />
+    <PopoverRoot :default-value="true">
+      <PopoverTrigger>Open Popover</PopoverTrigger>
+      <PopoverPortal disabled>
+        <PopoverContent>
+          <PopoverArrow />
           <p>Popover content goes here.</p>
-          <Popover.Close>Close</Popover.Close>
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+          <PopoverClose>Close</PopoverClose>
+        </PopoverContent>
+      </PopoverPortal>
+    </PopoverRoot>
   </variant>
 </art>

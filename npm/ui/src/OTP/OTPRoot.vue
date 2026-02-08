@@ -198,7 +198,7 @@ provideOTPRootContext({
   >
     <slot />
     <input
-      :ref="(el: any) => { hiddenInputRef = el?.$el ?? el }"
+      :ref="(el) => { hiddenInputRef = el?.$el ?? el }"
       :inputmode="inputMode === 'numeric' ? 'numeric' : 'text'"
       :autocomplete="'one-time-code'"
       :disabled="disabled"

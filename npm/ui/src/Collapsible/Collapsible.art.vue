@@ -1,26 +1,26 @@
 <script setup>
-import { Collapsible } from '../index'
+import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from './index'
 </script>
 
 <art title="Collapsible" component="./CollapsibleRoot.vue" category="Disclosure" status="ready" tags="collapsible,expand,collapse">
   <variant name="Default" default>
-    <Collapsible.Root>
-      <Collapsible.Trigger>Toggle</Collapsible.Trigger>
-      <Collapsible.Content>Collapsible content</Collapsible.Content>
-    </Collapsible.Root>
+    <CollapsibleRoot>
+      <CollapsibleTrigger>Toggle</CollapsibleTrigger>
+      <CollapsibleContent>Collapsible content</CollapsibleContent>
+    </CollapsibleRoot>
   </variant>
 
   <variant name="Open">
-    <Collapsible.Root default-open>
-      <Collapsible.Trigger>Toggle</Collapsible.Trigger>
-      <Collapsible.Content>Collapsible content</Collapsible.Content>
-    </Collapsible.Root>
+    <CollapsibleRoot default-open>
+      <CollapsibleTrigger>Toggle</CollapsibleTrigger>
+      <CollapsibleContent>Collapsible content</CollapsibleContent>
+    </CollapsibleRoot>
   </variant>
 
   <variant name="Disabled">
-    <Collapsible.Root disabled>
-      <Collapsible.Trigger>Toggle</Collapsible.Trigger>
-      <Collapsible.Content>Collapsible content</Collapsible.Content>
-    </Collapsible.Root>
+    <CollapsibleRoot disabled>
+      <CollapsibleTrigger>Toggle</CollapsibleTrigger>
+      <CollapsibleContent>Collapsible content</CollapsibleContent>
+    </CollapsibleRoot>
   </variant>
 </art>

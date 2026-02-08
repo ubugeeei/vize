@@ -1,56 +1,56 @@
 <script setup>
-import { Carousel } from '../index'
+import { CarouselRoot, CarouselViewport, CarouselSlide, CarouselPrev, CarouselNext, CarouselDots, CarouselDot } from './index'
 </script>
 
 <art title="Carousel" component="./CarouselRoot.vue" category="Media" status="ready" tags="carousel,slider,gallery">
   <variant name="Default" default>
-    <Carousel.Root>
-      <Carousel.Viewport>
-        <Carousel.Slide>Slide 1</Carousel.Slide>
-        <Carousel.Slide>Slide 2</Carousel.Slide>
-        <Carousel.Slide>Slide 3</Carousel.Slide>
-      </Carousel.Viewport>
-      <Carousel.Prev />
-      <Carousel.Next />
-    </Carousel.Root>
+    <CarouselRoot>
+      <CarouselViewport>
+        <CarouselSlide>Slide 1</CarouselSlide>
+        <CarouselSlide>Slide 2</CarouselSlide>
+        <CarouselSlide>Slide 3</CarouselSlide>
+      </CarouselViewport>
+      <CarouselPrev />
+      <CarouselNext />
+    </CarouselRoot>
   </variant>
 
   <variant name="With Dots">
-    <Carousel.Root>
-      <Carousel.Viewport>
-        <Carousel.Slide>Slide 1</Carousel.Slide>
-        <Carousel.Slide>Slide 2</Carousel.Slide>
-        <Carousel.Slide>Slide 3</Carousel.Slide>
-      </Carousel.Viewport>
-      <Carousel.Prev />
-      <Carousel.Next />
-      <Carousel.Dots v-slot="{ dots }">
-        <Carousel.Dot v-for="dot in dots" :key="dot.index" :index="dot.index" />
-      </Carousel.Dots>
-    </Carousel.Root>
+    <CarouselRoot>
+      <CarouselViewport>
+        <CarouselSlide>Slide 1</CarouselSlide>
+        <CarouselSlide>Slide 2</CarouselSlide>
+        <CarouselSlide>Slide 3</CarouselSlide>
+      </CarouselViewport>
+      <CarouselPrev />
+      <CarouselNext />
+      <CarouselDots v-slot="{ dots }">
+        <CarouselDot v-for="dot in dots" :key="dot.index" :index="dot.index" />
+      </CarouselDots>
+    </CarouselRoot>
   </variant>
 
   <variant name="Loop">
-    <Carousel.Root loop>
-      <Carousel.Viewport>
-        <Carousel.Slide>Slide 1</Carousel.Slide>
-        <Carousel.Slide>Slide 2</Carousel.Slide>
-        <Carousel.Slide>Slide 3</Carousel.Slide>
-      </Carousel.Viewport>
-      <Carousel.Prev />
-      <Carousel.Next />
-    </Carousel.Root>
+    <CarouselRoot loop>
+      <CarouselViewport>
+        <CarouselSlide>Slide 1</CarouselSlide>
+        <CarouselSlide>Slide 2</CarouselSlide>
+        <CarouselSlide>Slide 3</CarouselSlide>
+      </CarouselViewport>
+      <CarouselPrev />
+      <CarouselNext />
+    </CarouselRoot>
   </variant>
 
   <variant name="Vertical">
-    <Carousel.Root orientation="vertical">
-      <Carousel.Viewport>
-        <Carousel.Slide>Slide 1</Carousel.Slide>
-        <Carousel.Slide>Slide 2</Carousel.Slide>
-        <Carousel.Slide>Slide 3</Carousel.Slide>
-      </Carousel.Viewport>
-      <Carousel.Prev />
-      <Carousel.Next />
-    </Carousel.Root>
+    <CarouselRoot orientation="vertical">
+      <CarouselViewport>
+        <CarouselSlide>Slide 1</CarouselSlide>
+        <CarouselSlide>Slide 2</CarouselSlide>
+        <CarouselSlide>Slide 3</CarouselSlide>
+      </CarouselViewport>
+      <CarouselPrev />
+      <CarouselNext />
+    </CarouselRoot>
   </variant>
 </art>

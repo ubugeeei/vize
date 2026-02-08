@@ -3,9 +3,9 @@ export type { DialogOverlayProps } from './types'
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, toRef } from 'vue'
 import { Primitive } from '../Primitive'
-import { Presence } from '../Presence'
+import { usePresence } from '../Presence'
 import { injectDialogRootContext } from './types'
 import type { DialogOverlayProps } from './types'
 
@@ -14,23 +14,25 @@ const { as = 'div', asChild = false, forceMount = false } = defineProps<DialogOv
 const context = injectDialogRootContext('DialogOverlay')
 
 const present = computed(() => forceMount || context.open.value)
+const { isPresent, ref: presenceRef, onAnimationStart, onAnimationEnd } = usePresence(toRef(present))
+
+function handleRef(el: any) {
+  presenceRef(el?.$el ?? el)
+}
 </script>
 
 <template>
-  <Presence :present="present">
-    <template #default="{ isPresent, ref: presenceRef, onAnimationStart, onAnimationEnd }">
-      <Primitive
-        :ref="(el: any) => presenceRef(el?.$el ?? el)"
-        :as="as"
-        :as-child="asChild"
-        :hidden="!isPresent ? true : undefined"
-        :data-state="context.open.value ? 'open' : 'closed'"
-        data-dialog-overlay
-        @animationstart="onAnimationStart"
-        @animationend="onAnimationEnd"
-      >
-        <slot />
-      </Primitive>
-    </template>
-  </Presence>
+  <Primitive
+    v-if="isPresent"
+    :ref="handleRef"
+    :as="as"
+    :as-child="asChild"
+    :hidden="!isPresent ? true : undefined"
+    :data-state="context.open.value ? 'open' : 'closed'"
+    data-dialog-overlay
+    @animationstart="onAnimationStart"
+    @animationend="onAnimationEnd"
+  >
+    <slot />
+  </Primitive>
 </template>

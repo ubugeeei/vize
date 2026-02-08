@@ -1,39 +1,39 @@
 <script setup>
-import { OTP } from '../index'
+import { OTPRoot, OTPSlot, OTPSeparator } from './index'
 </script>
 
 <art title="OTP" component="./OTPRoot.vue" category="Forms" status="ready" tags="otp,pin,code,verification">
   <variant name="Default" default>
-    <OTP.Root :length="6">
-      <OTP.Slot :index="0" />
-      <OTP.Slot :index="1" />
-      <OTP.Slot :index="2" />
-      <OTP.Slot :index="3" />
-      <OTP.Slot :index="4" />
-      <OTP.Slot :index="5" />
-    </OTP.Root>
+    <OTPRoot :length="6">
+      <OTPSlot :index="0" />
+      <OTPSlot :index="1" />
+      <OTPSlot :index="2" />
+      <OTPSlot :index="3" />
+      <OTPSlot :index="4" />
+      <OTPSlot :index="5" />
+    </OTPRoot>
   </variant>
 
   <variant name="With Separator">
-    <OTP.Root :length="6">
-      <OTP.Slot :index="0" />
-      <OTP.Slot :index="1" />
-      <OTP.Slot :index="2" />
-      <OTP.Separator />
-      <OTP.Slot :index="3" />
-      <OTP.Slot :index="4" />
-      <OTP.Slot :index="5" />
-    </OTP.Root>
+    <OTPRoot :length="6">
+      <OTPSlot :index="0" />
+      <OTPSlot :index="1" />
+      <OTPSlot :index="2" />
+      <OTPSeparator />
+      <OTPSlot :index="3" />
+      <OTPSlot :index="4" />
+      <OTPSlot :index="5" />
+    </OTPRoot>
   </variant>
 
   <variant name="Disabled">
-    <OTP.Root :length="6" disabled>
-      <OTP.Slot :index="0" />
-      <OTP.Slot :index="1" />
-      <OTP.Slot :index="2" />
-      <OTP.Slot :index="3" />
-      <OTP.Slot :index="4" />
-      <OTP.Slot :index="5" />
-    </OTP.Root>
+    <OTPRoot :length="6" disabled>
+      <OTPSlot :index="0" />
+      <OTPSlot :index="1" />
+      <OTPSlot :index="2" />
+      <OTPSlot :index="3" />
+      <OTPSlot :index="4" />
+      <OTPSlot :index="5" />
+    </OTPRoot>
   </variant>
 </art>
