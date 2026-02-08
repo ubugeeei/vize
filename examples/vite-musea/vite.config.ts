@@ -10,6 +10,7 @@ export default defineConfig({
       include: ['src/**/*.vue'],
       basePath: process.env.CI ? '/musea-examples/__musea__' : '/__musea__',
       inlineArt: true,
+      tokensPath: 'src/tokens.json',
     }),
   ],
   build: {

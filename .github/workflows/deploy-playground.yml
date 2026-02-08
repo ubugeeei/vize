@@ -74,10 +74,16 @@ jobs:
         working-directory: playground
         run: pnpm build
 
+      - name: Build musea-examples
+        working-directory: examples/vite-musea
+        run: pnpm build
+
       - name: Create site structure
         run: |
           mkdir -p site/play
+          mkdir -p site/musea-examples
           mv playground/dist/* site/play/
+          mv examples/vite-musea/dist/* site/musea-examples/
           cp playground/public/CNAME site/
 
       - name: Setup Pages

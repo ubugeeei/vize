@@ -11,6 +11,8 @@ import StatusBadge from '../components/StatusBadge.vue'
 import PropsPanel from '../components/PropsPanel.vue'
 import DocumentationPanel from '../components/DocumentationPanel.vue'
 import A11yBadge from '../components/A11yBadge.vue'
+import A11yPanel from '../components/A11yPanel.vue'
+import VrtPanel from '../components/VrtPanel.vue'
 import AddonToolbar from '../components/AddonToolbar.vue'
 import ActionsPanel from '../components/ActionsPanel.vue'
 import FullscreenPreview from '../components/FullscreenPreview.vue'
@@ -21,7 +23,7 @@ const { events, init: initActions, clear: clearActions } = useActions()
 const { gridDensity } = useAddons()
 const { setCurrentVariant } = useEventCapture()
 
-const activeTab = ref<'variants' | 'props' | 'docs' | 'a11y'>('variants')
+const activeTab = ref<'variants' | 'props' | 'docs' | 'a11y' | 'vrt'>('variants')
 const actionCount = computed(() => events.value.length)
 const actionsExpanded = ref(false)
 
@@ -136,6 +138,13 @@ const handleVariantSelect = (variantName: string) => {
         A11y
         <A11yBadge :art-path="art.path" />
       </button>
+      <button
+        class="tab-btn"
+        :class="{ active: activeTab === 'vrt' }"
+        @click="activeTab = 'vrt'"
+      >
+        VRT
+      </button>
     </div>
 
     <div class="component-content">
@@ -168,12 +177,17 @@ const handleVariantSelect = (variantName: string) => {
         :art-path="art.path"
       />
 
-      <div v-if="activeTab === 'a11y'" class="a11y-placeholder">
-        <p class="a11y-info">
-          Run <code>musea-vrt --a11y</code> to generate accessibility reports, or view results in the A11y tab after running VRT tests.
-        </p>
-      </div>
+      <A11yPanel
+        v-if="activeTab === 'a11y'"
+        :art-path="art.path"
+        :default-variant-name="selectedVariant?.name"
+      />
 
+      <VrtPanel
+        v-if="activeTab === 'vrt'"
+        :art-path="art.path"
+        :default-variant-name="selectedVariant?.name"
+      />
     </div>
 
     <!-- Actions Footer Panel -->
@@ -350,23 +364,6 @@ const handleVariantSelect = (variantName: string) => {
 .gallery-grid.density-spacious {
   grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
   gap: 1.75rem;
-}
-
-.a11y-placeholder {
-  padding: 2rem;
-  text-align: center;
-}
-
-.a11y-info {
-  color: var(--musea-text-muted);
-  font-size: 0.875rem;
-}
-
-.a11y-info code {
-  background: var(--musea-bg-tertiary);
-  padding: 0.125rem 0.375rem;
-  border-radius: 4px;
-  font-family: var(--musea-font-mono);
 }
 
 .actions-footer {

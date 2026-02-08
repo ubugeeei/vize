@@ -59,7 +59,7 @@ export {
   type VrtSummary,
 } from "./vrt.js";
 
-export {
+import {
   processStyleDictionary,
   parseTokens,
   generateTokensHtml,
@@ -69,6 +69,17 @@ export {
   type StyleDictionaryConfig,
   type StyleDictionaryOutput,
 } from "./style-dictionary.js";
+
+export {
+  processStyleDictionary,
+  parseTokens,
+  generateTokensHtml,
+  generateTokensMarkdown,
+  type DesignToken,
+  type TokenCategory,
+  type StyleDictionaryConfig,
+  type StyleDictionaryOutput,
+};
 
 export { MuseaA11yRunner, type A11ySummary } from "./a11y.js";
 
@@ -190,6 +201,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
   let storybookCompat = options.storybookCompat ?? false;
   const storybookOutDir = options.storybookOutDir ?? ".storybook/stories";
   let inlineArt = options.inlineArt ?? false;
+  const tokensPath = options.tokensPath;
 
   let config: ResolvedConfig;
   let server: ViteDevServer | null = null;
@@ -451,7 +463,19 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
 
         // GET /api/tokens - Get design tokens
         if (req.url === "/tokens" && req.method === "GET") {
-          sendJson({ categories: [] });
+          if (!tokensPath) {
+            sendJson({ categories: [] });
+            return;
+          }
+
+          try {
+            const absoluteTokensPath = path.resolve(config.root, tokensPath);
+            const categories = await parseTokens(absoluteTokensPath);
+            sendJson({ categories });
+          } catch (e) {
+            console.error("[musea] Failed to load tokens:", e);
+            sendJson({ categories: [], error: String(e) });
+          }
           return;
         }
 
@@ -547,7 +571,29 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
               const binding = loadNative();
               if (binding.generateArtDoc) {
                 const doc = binding.generateArtDoc(source, { filename: artPath });
-                sendJson(doc);
+                // Replace Self with component name and format indentation
+                let markdown = doc.markdown || "";
+                const componentName = art.metadata.title || "Component";
+                markdown = markdown
+                  .replace(/<Self(\s|>|\/)/g, `<${componentName}$1`)
+                  .replace(/<\/Self>/g, `</${componentName}>`);
+                // Fix indentation in code blocks
+                markdown = markdown.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang, code) => {
+                  const lines = code.split("\n");
+                  // Find minimum indentation (excluding empty lines)
+                  let minIndent = Infinity;
+                  for (const line of lines) {
+                    if (line.trim()) {
+                      const indent = line.match(/^(\s*)/)?.[1].length || 0;
+                      minIndent = Math.min(minIndent, indent);
+                    }
+                  }
+                  if (minIndent === Infinity) minIndent = 0;
+                  // Remove minimum indentation from all lines
+                  const formatted = lines.map((line) => line.slice(minIndent)).join("\n");
+                  return "```" + lang + "\n" + formatted + "```";
+                });
+                sendJson({ ...doc, markdown });
               } else {
                 sendJson({
                   markdown: "",
@@ -641,6 +687,55 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
                 componentName: result.componentName,
                 variants: result.variants,
                 artFileContent: result.artFileContent,
+              });
+            } catch (e) {
+              sendError(e instanceof Error ? e.message : String(e));
+            }
+          });
+          return;
+        }
+
+        // POST /api/run-vrt - Run VRT for a specific art file or all
+        if (req.url === "/run-vrt" && req.method === "POST") {
+          let body = "";
+          req.on("data", (chunk) => {
+            body += chunk;
+          });
+          req.on("end", async () => {
+            try {
+              const { artPath, updateSnapshots } = JSON.parse(body);
+              const { MuseaVrtRunner } = await import("./vrt.js");
+
+              const runner = new MuseaVrtRunner({
+                snapshotDir: path.resolve(config.root, ".vize/snapshots"),
+              });
+
+              const port = devServer.config.server.port || 5173;
+              const baseUrl = `http://localhost:${port}`;
+
+              // Get arts to test
+              let artsToTest = Array.from(artFiles.values());
+              if (artPath) {
+                artsToTest = artsToTest.filter((a) => a.path === artPath);
+              }
+
+              await runner.start();
+              const results = await runner.runTests(artsToTest, baseUrl, { updateSnapshots });
+              const summary = runner.getSummary(results);
+              await runner.stop();
+
+              sendJson({
+                success: true,
+                summary,
+                results: results.map((r) => ({
+                  artPath: r.artPath,
+                  variantName: r.variantName,
+                  viewport: r.viewport.name,
+                  passed: r.passed,
+                  isNew: r.isNew,
+                  diffPercentage: r.diffPercentage,
+                  error: r.error,
+                })),
               });
             } catch (e) {
               sendError(e instanceof Error ? e.message : String(e));
@@ -1937,6 +2032,60 @@ function __museaInitAddons(container) {
         if (window.__museaSetSlots) {
           window.__museaSetSlots(payload.slots || {});
         }
+        break;
+      }
+      case 'musea:run-a11y': {
+        // Run axe-core a11y test
+        (async () => {
+          try {
+            // Dynamically load axe-core from CDN if not already loaded
+            if (!window.axe) {
+              const script = document.createElement('script');
+              script.src = 'https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.2/axe.min.js';
+              script.crossOrigin = 'anonymous';
+              await new Promise((resolve, reject) => {
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+              });
+            }
+            // Run axe-core on the document
+            const results = await window.axe.run(document, {
+              runOnly: {
+                type: 'tag',
+                values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']
+              }
+            });
+            window.parent.postMessage({
+              type: 'musea:a11y-result',
+              payload: {
+                violations: results.violations.map(v => ({
+                  id: v.id,
+                  impact: v.impact,
+                  description: v.description,
+                  helpUrl: v.helpUrl,
+                  nodes: v.nodes.map(n => ({
+                    html: n.html,
+                    target: n.target,
+                    failureSummary: n.failureSummary
+                  }))
+                })),
+                passes: results.passes.length,
+                incomplete: results.incomplete.length
+              }
+            }, '*');
+          } catch (err) {
+            window.parent.postMessage({
+              type: 'musea:a11y-result',
+              payload: {
+                error: err instanceof Error ? err.message : String(err),
+                violations: [],
+                passes: 0,
+                incomplete: 0
+              }
+            }, '*');
+          }
+        })();
         break;
       }
     }
