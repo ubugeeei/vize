@@ -10,9 +10,7 @@ export interface ConfigEnv {
   isSsrBuild?: boolean;
 }
 
-export type UserConfigExport =
-  | VizeConfig
-  | ((env: ConfigEnv) => MaybePromise<VizeConfig>);
+export type UserConfigExport = VizeConfig | ((env: ConfigEnv) => MaybePromise<VizeConfig>);
 
 // ============================================================================
 // Rule severity
@@ -20,13 +18,7 @@ export type UserConfigExport =
 
 export type RuleSeverity = "off" | "warn" | "error";
 
-export type RuleCategory =
-  | "correctness"
-  | "suspicious"
-  | "style"
-  | "perf"
-  | "a11y"
-  | "security";
+export type RuleCategory = "correctness" | "suspicious" | "style" | "perf" | "a11y" | "security";
 
 // ============================================================================
 // VizeConfig
@@ -492,10 +484,7 @@ export interface GlobalTypeDeclaration {
 /**
  * Global types configuration
  */
-export type GlobalTypesConfig = Record<
-  string,
-  GlobalTypeDeclaration | string
->;
+export type GlobalTypesConfig = Record<string, GlobalTypeDeclaration | string>;
 
 // ============================================================================
 // LoadConfigOptions

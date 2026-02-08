@@ -1,4 +1,4 @@
-import { defineConfig } from 'vize'
+import { defineConfig } from '@vizejs/vite-plugin'
 
 // Static config example
 export default defineConfig({

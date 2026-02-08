@@ -1,10 +1,6 @@
 import fs from "node:fs";
 import * as native from "@vizejs/native";
-import type {
-  CompiledModule,
-  BatchFileInput,
-  BatchCompileResultWithFiles,
-} from "./types.js";
+import type { CompiledModule, BatchFileInput, BatchCompileResultWithFiles } from "./types.js";
 import { generateScopeId } from "./utils.js";
 
 const { compileSfc, compileSfcBatchWithResults } = native;

@@ -104,10 +104,7 @@ function findConfigFileAuto(startDir: string): string | null {
 /**
  * Load and evaluate a config file
  */
-async function loadConfigFile(
-  filePath: string,
-  env?: ConfigEnv,
-): Promise<VizeConfig | null> {
+async function loadConfigFile(filePath: string, env?: ConfigEnv): Promise<VizeConfig | null> {
   if (!fs.existsSync(filePath)) {
     return null;
   }
@@ -143,10 +140,7 @@ async function resolveConfigExport(
 /**
  * Load TypeScript config file using oxc-transform
  */
-async function loadTypeScriptConfig(
-  filePath: string,
-  env?: ConfigEnv,
-): Promise<VizeConfig> {
+async function loadTypeScriptConfig(filePath: string, env?: ConfigEnv): Promise<VizeConfig> {
   const source = fs.readFileSync(filePath, "utf-8");
   const result = transform(filePath, source, {
     typescript: {
@@ -173,10 +167,7 @@ async function loadTypeScriptConfig(
 /**
  * Load ESM config file
  */
-async function loadESMConfig(
-  filePath: string,
-  env?: ConfigEnv,
-): Promise<VizeConfig> {
+async function loadESMConfig(filePath: string, env?: ConfigEnv): Promise<VizeConfig> {
   const fileUrl = pathToFileURL(filePath).href;
   const module = await import(fileUrl);
   const exported: UserConfigExport = module.default || module;

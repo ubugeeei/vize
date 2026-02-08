@@ -15,8 +15,7 @@ export async function listResources(ctx: ServerContext) {
       uri: `musea://component/${encodeURIComponent(relativePath)}`,
       name: info.title,
       description:
-        info.description ||
-        `${info.category || "Component"} — ${info.variantCount} variant(s)`,
+        info.description || `${info.category || "Component"} — ${info.variantCount} variant(s)`,
       mimeType: "application/json",
     });
 
@@ -90,7 +89,10 @@ export async function readResource(ctx: ServerContext, uri: string) {
       const binding = ctx.loadNative();
 
       if (!binding.generateArtDoc) {
-        throw new McpError(ErrorCode.InternalError, "generateArtDoc not available in native binding");
+        throw new McpError(
+          ErrorCode.InternalError,
+          "generateArtDoc not available in native binding",
+        );
       }
 
       const doc = binding.generateArtDoc(source, { filename: absolutePath });

@@ -4,7 +4,13 @@
  */
 
 import type { Page } from "playwright";
-import type { ArtFileInfo, A11yResult, A11yViolation, A11yOptions, ViewportConfig } from "./types.js";
+import type {
+  ArtFileInfo,
+  A11yResult,
+  A11yViolation,
+  A11yOptions,
+  ViewportConfig,
+} from "./types.js";
 import type { MuseaVrtRunner } from "./vrt.js";
 import path from "node:path";
 
@@ -131,10 +137,10 @@ export class MuseaA11yRunner {
     const runOptions = this.buildAxeOptions();
 
     // Run axe-core
-    const axeResult = await page.evaluate((opts) => {
+    const axeResult = (await page.evaluate((opts) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return (window as any).axe.run(document, opts);
-    }, runOptions) as AxeResult;
+    }, runOptions)) as AxeResult;
 
     // Map to our result format
     const violations: A11yViolation[] = axeResult.violations.map((v) => ({

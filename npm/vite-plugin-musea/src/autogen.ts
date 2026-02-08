@@ -193,8 +193,7 @@ export async function writeArtFile(
 ): Promise<string> {
   const output = await generateArtFile(componentPath, options);
 
-  const targetPath =
-    outputPath ?? componentPath.replace(/\.vue$/, ".art.vue");
+  const targetPath = outputPath ?? componentPath.replace(/\.vue$/, ".art.vue");
 
   await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
   await fs.promises.writeFile(targetPath, output.artFileContent, "utf-8");
@@ -207,9 +206,7 @@ function extractPropsSimple(source: string): PropDefinition[] {
   const props: PropDefinition[] = [];
 
   // Match defineProps<{ ... }>() or defineProps({ ... })
-  const propsMatch = source.match(
-    /defineProps\s*<\s*\{([^}]*)\}\s*>/s,
-  );
+  const propsMatch = source.match(/defineProps\s*<\s*\{([^}]*)\}\s*>/s);
 
   if (propsMatch) {
     const propsBlock = propsMatch[1];
@@ -277,7 +274,8 @@ function generateArtFileJs(
       const unionValues = parseUnionType(prop.propType);
       for (const val of unionValues) {
         if (variants.length >= maxVariants) break;
-        const name = typeof val === "string" ? toPascalCase(val) : `${toPascalCase(prop.name)}_${String(val)}`;
+        const name =
+          typeof val === "string" ? toPascalCase(val) : `${toPascalCase(prop.name)}_${String(val)}`;
         variants.push({
           name,
           isDefault: false,
@@ -307,9 +305,7 @@ function generateArtFileJs(
   // Generate art file content
   let content = `<art title="${componentName}" component="${relPath}">\n`;
   for (const variant of variants) {
-    const attrs = variant.isDefault
-      ? `name="${variant.name}" default`
-      : `name="${variant.name}"`;
+    const attrs = variant.isDefault ? `name="${variant.name}" default` : `name="${variant.name}"`;
     content += `  <variant ${attrs}>\n`;
 
     const propsStr = Object.entries(variant.props)
