@@ -123,23 +123,23 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 .addon-toolbar {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  gap: 0.25rem;
+  padding: 0.125rem 0.25rem;
   background: var(--musea-bg-secondary);
   border: 1px solid var(--musea-border);
-  border-radius: var(--musea-radius-md);
+  border-radius: 2px;
   flex-wrap: wrap;
 }
 
 .toolbar-group {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.125rem;
 }
 
 .toolbar-separator {
   width: 1px;
-  height: 20px;
+  height: 14px;
   background: var(--musea-border);
   flex-shrink: 0;
 }
@@ -147,13 +147,13 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 .toolbar-toggle {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.5rem;
+  gap: 0.25rem;
+  padding: 0.125rem 0.25rem;
   border: 1px solid var(--musea-border);
-  border-radius: var(--musea-radius-sm);
+  border-radius: 2px;
   background: var(--musea-bg-tertiary);
   color: var(--musea-text-muted);
-  font-size: 0.6875rem;
+  font-size: 0.5625rem;
   cursor: pointer;
   transition: all var(--musea-transition);
 }
@@ -169,14 +169,19 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   background: var(--musea-accent-subtle);
 }
 
+.toolbar-toggle svg {
+  width: 10px;
+  height: 10px;
+}
+
 .toolbar-kbd {
   display: none;
-  padding: 0.0625rem 0.25rem;
+  padding: 0 0.125rem;
   border: 1px solid var(--musea-border);
-  border-radius: 3px;
+  border-radius: 2px;
   background: var(--musea-bg-primary);
   font-family: var(--musea-font-mono, monospace);
-  font-size: 0.5625rem;
+  font-size: 0.5rem;
   color: var(--musea-text-muted);
   line-height: 1.2;
 }
@@ -184,7 +189,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 .density-selector {
   display: flex;
   border: 1px solid var(--musea-border);
-  border-radius: var(--musea-radius-sm);
+  border-radius: 2px;
   overflow: hidden;
 }
 
@@ -192,8 +197,8 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 24px;
+  width: 18px;
+  height: 16px;
   border: none;
   background: var(--musea-bg-tertiary);
   color: var(--musea-text-muted);
@@ -212,6 +217,11 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 .density-btn.active {
   background: var(--musea-accent-subtle);
   color: var(--musea-accent);
+}
+
+.density-btn svg {
+  width: 10px;
+  height: 10px;
 }
 
 @media (min-width: 1024px) {

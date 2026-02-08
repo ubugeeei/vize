@@ -115,65 +115,66 @@ const handleSearchSelect = (art: { path: string }, variantName?: string) => {
 .header {
   background: var(--musea-bg-secondary);
   border-bottom: 1px solid var(--musea-border);
-  padding: 0 1.5rem;
-  height: var(--musea-header-height);
+  padding: 0 0.75rem;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
+  gap: 0.75rem;
   position: sticky;
   top: 0;
   z-index: 100;
+  flex-shrink: 0;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 0.75rem;
 }
 
 .header-center {
   flex: 1;
   display: flex;
   justify-content: center;
-  max-width: 400px;
+  max-width: 300px;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 1.125rem;
+  gap: 0.25rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--musea-accent);
   text-decoration: none;
 }
 
 .logo-svg {
-  width: 32px;
-  height: 32px;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
 }
 
 .header-subtitle {
   color: var(--musea-text-muted);
-  font-size: 0.8125rem;
+  font-size: 0.625rem;
   font-weight: 500;
-  padding-left: 1.5rem;
+  padding-left: 0.75rem;
   border-left: 1px solid var(--musea-border);
 }
 
 .search-trigger {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.375rem;
   width: 100%;
-  padding: 0.5rem 0.875rem;
+  padding: 0.25rem 0.5rem;
   background: var(--musea-bg-tertiary);
   border: 1px solid var(--musea-border);
-  border-radius: 8px;
+  border-radius: 4px;
   color: var(--musea-text-muted);
-  font-size: 0.8125rem;
+  font-size: 0.625rem;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -184,8 +185,8 @@ const handleSearchSelect = (art: { path: string }, variantName?: string) => {
 }
 
 .search-icon {
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   flex-shrink: 0;
 }
 
@@ -195,11 +196,11 @@ const handleSearchSelect = (art: { path: string }, variantName?: string) => {
 }
 
 .search-trigger kbd {
-  padding: 0.125rem 0.5rem;
+  padding: 0 0.25rem;
   background: var(--musea-bg-primary);
   border: 1px solid var(--musea-border);
-  border-radius: 4px;
-  font-size: 0.6875rem;
+  border-radius: 2px;
+  font-size: 0.5625rem;
   font-family: inherit;
 }
 
@@ -208,7 +209,7 @@ const handleSearchSelect = (art: { path: string }, variantName?: string) => {
   grid-template-columns: var(--musea-sidebar-width) 1fr;
   flex: 1;
   overflow: hidden;
-  height: calc(100vh - var(--musea-header-height));
+  height: calc(100vh - 32px);
 }
 
 .main > :first-child {

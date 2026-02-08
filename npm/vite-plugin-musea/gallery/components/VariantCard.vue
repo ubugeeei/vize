@@ -191,19 +191,21 @@ const window = globalThis.window
 .variant-card {
   background: var(--musea-bg-secondary);
   border: 1px solid var(--musea-border);
-  border-radius: var(--musea-radius-lg);
+  border-radius: var(--musea-radius-sm);
   overflow: hidden;
   transition: all var(--musea-transition);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .variant-card:hover {
   border-color: var(--musea-text-muted);
-  box-shadow: var(--musea-shadow);
-  transform: translateY(-2px);
 }
 
 .variant-preview {
-  aspect-ratio: 16 / 10;
+  flex: 1;
+  min-height: 0;
   background: var(--musea-bg-tertiary);
   display: flex;
   align-items: center;
@@ -213,9 +215,8 @@ const window = globalThis.window
 }
 
 .variant-preview.viewport-mode {
-  aspect-ratio: unset;
-  min-height: 200px;
-  max-height: 500px;
+  min-height: 120px;
+  max-height: 400px;
   overflow: auto;
 }
 
@@ -231,46 +232,47 @@ const window = globalThis.window
 }
 
 .variant-info {
-  padding: 1rem;
+  padding: 0.375rem 0.5rem;
   border-top: 1px solid var(--musea-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 
 .variant-left {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .variant-name {
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.6875rem;
 }
 
 .variant-badge {
-  font-size: 0.625rem;
+  font-size: 0.5rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 0.1875rem 0.5rem;
-  border-radius: 4px;
+  padding: 0.0625rem 0.25rem;
+  border-radius: 2px;
   background: var(--musea-accent-subtle);
   color: var(--musea-accent);
 }
 
 .variant-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .variant-action-btn {
-  width: 28px;
-  height: 28px;
+  width: 20px;
+  height: 20px;
   border: none;
   background: var(--musea-bg-tertiary);
-  border-radius: var(--musea-radius-sm);
+  border-radius: 2px;
   color: var(--musea-text-muted);
   cursor: pointer;
   display: flex;
@@ -290,7 +292,7 @@ const window = globalThis.window
 }
 
 .variant-action-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 10px;
+  height: 10px;
 }
 </style>

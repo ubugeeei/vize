@@ -16,12 +16,12 @@
   --musea-info: #60a5fa;
   --musea-warning: #fbbf24;
   --musea-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-  --musea-radius-sm: 6px;
-  --musea-radius-md: 8px;
-  --musea-radius-lg: 12px;
+  --musea-radius-sm: 4px;
+  --musea-radius-md: 6px;
+  --musea-radius-lg: 8px;
   --musea-transition: 0.15s ease;
   --musea-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --musea-font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-  --musea-sidebar-width: 260px;
-  --musea-header-height: 56px;
+  --musea-sidebar-width: 200px;
+  --musea-header-height: 32px;
 }

@@ -129,7 +129,7 @@ function selectArt(art: ArtFileInfo) {
 }
 
 .sidebar-section {
-  padding: 0.5rem 0.75rem;
+  padding: 0.25rem 0.375rem;
   flex-shrink: 0;
 }
 
@@ -140,14 +140,19 @@ function selectArt(art: ArtFileInfo) {
 .sidebar-home-link {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--musea-radius-sm);
-  font-size: 0.8125rem;
+  gap: 0.375rem;
+  padding: 0.25rem 0.375rem;
+  border-radius: 2px;
+  font-size: 0.625rem;
   color: var(--musea-text-secondary);
   cursor: pointer;
   transition: all var(--musea-transition);
   text-decoration: none;
+}
+
+.sidebar-home-link svg {
+  width: 10px;
+  height: 10px;
 }
 
 .sidebar-home-link:hover {
@@ -163,16 +168,16 @@ function selectArt(art: ArtFileInfo) {
 .category-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 0.75rem;
-  font-size: 0.6875rem;
+  gap: 0.25rem;
+  padding: 0.25rem 0.375rem;
+  font-size: 0.5625rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--musea-text-muted);
   cursor: pointer;
   user-select: none;
-  border-radius: var(--musea-radius-sm);
+  border-radius: 2px;
   transition: background var(--musea-transition);
 }
 
@@ -181,8 +186,8 @@ function selectArt(art: ArtFileInfo) {
 }
 
 .category-icon {
-  width: 14px;
-  height: 14px;
+  width: 10px;
+  height: 10px;
   transition: transform 0.15s ease;
   flex-shrink: 0;
 }
@@ -202,9 +207,9 @@ function selectArt(art: ArtFileInfo) {
 .category-count {
   flex-shrink: 0;
   background: var(--musea-bg-tertiary);
-  padding: 0.125rem 0.375rem;
-  border-radius: 4px;
-  font-size: 0.625rem;
+  padding: 0 0.25rem;
+  border-radius: 2px;
+  font-size: 0.5rem;
 }
 
 .art-list {
@@ -216,11 +221,11 @@ function selectArt(art: ArtFileInfo) {
 .art-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.75rem 0.375rem 2rem;
-  border-radius: var(--musea-radius-sm);
+  gap: 0.25rem;
+  padding: 0.1875rem 0.375rem 0.1875rem 1rem;
+  border-radius: 2px;
   cursor: pointer;
-  font-size: 0.8125rem;
+  font-size: 0.625rem;
   color: var(--musea-text-secondary);
   transition: all var(--musea-transition);
   position: relative;
@@ -229,11 +234,11 @@ function selectArt(art: ArtFileInfo) {
 .art-item::before {
   content: '';
   position: absolute;
-  left: 1.25rem;
+  left: 0.5rem;
   top: 50%;
   transform: translateY(-50%);
-  width: 4px;
-  height: 4px;
+  width: 3px;
+  height: 3px;
   border-radius: 50%;
   background: var(--musea-border);
   transition: background var(--musea-transition);
@@ -267,11 +272,11 @@ function selectArt(art: ArtFileInfo) {
 
 .art-variant-count {
   flex-shrink: 0;
-  font-size: 0.625rem;
+  font-size: 0.5rem;
   color: var(--musea-text-muted);
   background: var(--musea-bg-tertiary);
-  padding: 0.0625rem 0.375rem;
-  border-radius: 8px;
+  padding: 0 0.25rem;
+  border-radius: 6px;
   opacity: 0.7;
   transition: opacity var(--musea-transition);
 }
@@ -287,9 +292,9 @@ function selectArt(art: ArtFileInfo) {
 }
 
 .sidebar-empty {
-  padding: 2rem 1rem;
+  padding: 1rem 0.5rem;
   text-align: center;
   color: var(--musea-text-muted);
-  font-size: 0.8125rem;
+  font-size: 0.625rem;
 }
 </style>

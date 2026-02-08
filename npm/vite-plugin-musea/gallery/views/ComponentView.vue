@@ -219,67 +219,69 @@ const handleVariantSelect = (variantName: string) => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 0.25rem 0.75rem;
+  padding: 0.125rem 0.5rem;
   overflow: hidden;
 }
 
 .component-header {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.125rem;
   flex-shrink: 0;
 }
 
 .component-title-row {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
-  margin-bottom: 0.125rem;
+  gap: 0.25rem;
+  margin-bottom: 0;
 }
 
 .component-title {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
 .component-description {
   color: var(--musea-text-muted);
-  font-size: 0.75rem;
+  font-size: 0.625rem;
   max-width: 600px;
-  margin-bottom: 0.125rem;
+  margin-bottom: 0;
+  line-height: 1.3;
 }
 
 .component-meta {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.25rem;
   flex-wrap: wrap;
+  margin-top: 0.125rem;
 }
 
 .meta-tag {
   display: inline-flex;
   align-items: center;
   gap: 0.125rem;
-  padding: 0.0625rem 0.375rem;
+  padding: 0 0.25rem;
   background: var(--musea-bg-secondary);
   border: 1px solid var(--musea-border);
-  border-radius: var(--musea-radius-sm);
-  font-size: 0.625rem;
+  border-radius: 2px;
+  font-size: 0.5625rem;
   color: var(--musea-text-muted);
 }
 
 .meta-tag svg {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
 }
 
 .component-view :deep(.addon-toolbar) {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.125rem;
 }
 
 .component-tabs {
   display: flex;
-  gap: 0.125rem;
+  gap: 0;
   border-bottom: 1px solid var(--musea-border);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.125rem;
   flex-shrink: 0;
 }
 
@@ -292,15 +294,15 @@ const handleVariantSelect = (variantName: string) => {
 .tab-btn {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.125rem;
   background: none;
   border: none;
   color: var(--musea-text-muted);
-  font-size: 0.75rem;
+  font-size: 0.625rem;
   font-weight: 500;
-  padding: 0.375rem 0.5rem;
+  padding: 0.25rem 0.375rem;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
+  border-bottom: 1px solid transparent;
   transition: all var(--musea-transition);
 }
 
@@ -317,13 +319,13 @@ const handleVariantSelect = (variantName: string) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 0.375rem;
-  border-radius: 9px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 0.25rem;
+  border-radius: 7px;
   background: var(--musea-accent);
   color: #fff;
-  font-size: 0.625rem;
+  font-size: 0.5rem;
   font-weight: 700;
   line-height: 1;
 }
@@ -331,11 +333,13 @@ const handleVariantSelect = (variantName: string) => {
 .variants-view {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
+  height: 100%;
 }
 
 .variant-preview-area {
   flex: 1;
+  min-height: 0;
 }
 
 .variant-preview-area :deep(.variant-card) {
@@ -343,27 +347,27 @@ const handleVariantSelect = (variantName: string) => {
 }
 
 .variant-preview-area :deep(.variant-preview) {
-  min-height: 120px;
+  min-height: 80px;
 }
 
 .gallery-grid {
   display: grid;
-  gap: 1.25rem;
+  gap: 0.5rem;
 }
 
 .gallery-grid.density-compact {
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem;
 }
 
 .gallery-grid.density-comfortable {
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
 }
 
 .gallery-grid.density-spacious {
-  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
-  gap: 1.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 1rem;
 }
 
 .actions-footer {
@@ -379,13 +383,13 @@ const handleVariantSelect = (variantName: string) => {
 .actions-footer-toggle {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.375rem;
   width: 100%;
-  padding: 0.5rem 1rem;
+  padding: 0.25rem 0.5rem;
   background: transparent;
   border: none;
   color: var(--musea-text-muted);
-  font-size: 0.75rem;
+  font-size: 0.625rem;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--musea-transition);
@@ -398,7 +402,7 @@ const handleVariantSelect = (variantName: string) => {
 
 .actions-footer-content {
   border-top: 1px solid var(--musea-border);
-  max-height: 250px;
+  max-height: 180px;
   overflow-y: auto;
 }
 
@@ -407,19 +411,22 @@ const handleVariantSelect = (variantName: string) => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
+  min-height: 200px;
   text-align: center;
   color: var(--musea-text-muted);
+  font-size: 0.75rem;
 }
 
 .component-not-found h2 {
   color: var(--musea-text);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
 }
 
 .back-link {
-  margin-top: 1rem;
+  margin-top: 0.5rem;
   color: var(--musea-accent);
   text-decoration: underline;
+  font-size: 0.75rem;
 }
 </style>

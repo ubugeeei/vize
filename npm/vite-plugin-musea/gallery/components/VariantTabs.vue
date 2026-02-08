@@ -99,6 +99,7 @@ watch(() => props.variants, checkScrollButtons)
   align-items: stretch;
   background: var(--musea-bg-secondary);
   border-bottom: 1px solid var(--musea-border);
+  flex-shrink: 0;
 }
 
 .variant-tabs {
@@ -107,8 +108,8 @@ watch(() => props.variants, checkScrollButtons)
   scrollbar-width: none;
   -ms-overflow-style: none;
   flex: 1;
-  gap: 0.25rem;
-  padding: 0.375rem 0.5rem;
+  gap: 0.125rem;
+  padding: 0.125rem 0.25rem;
 }
 
 .variant-tabs::-webkit-scrollbar {
@@ -118,13 +119,13 @@ watch(() => props.variants, checkScrollButtons)
 .variant-tab {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.875rem;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--musea-radius-sm);
+  border-radius: 2px;
   color: var(--musea-text-muted);
-  font-size: 0.8125rem;
+  font-size: 0.625rem;
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
@@ -151,12 +152,12 @@ watch(() => props.variants, checkScrollButtons)
 }
 
 .variant-tab-badge {
-  font-size: 0.5625rem;
+  font-size: 0.5rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 0.125rem 0.375rem;
-  border-radius: 3px;
+  padding: 0.0625rem 0.25rem;
+  border-radius: 2px;
   background: var(--musea-accent);
   color: white;
 }
@@ -170,7 +171,7 @@ watch(() => props.variants, checkScrollButtons)
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
+  width: 20px;
   background: var(--musea-bg-secondary);
   border: none;
   color: var(--musea-text-muted);
@@ -185,8 +186,8 @@ watch(() => props.variants, checkScrollButtons)
 }
 
 .scroll-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
 }
 
 .scroll-btn--left {
