@@ -5,6 +5,7 @@ import * as monaco from "monaco-editor";
 import type { WasmModule, LintResult, LintDiagnostic, LintRule, LocaleInfo } from "../wasm/index";
 import { getWasm } from "../wasm/index";
 import { LINT_PRESET } from "./presets/patina";
+import { mdiAlert, mdiCheckCircle, mdiCheck, mdiCloseCircle } from "@mdi/js";
 
 interface Diagnostic {
   message: string;
@@ -460,7 +461,7 @@ function registerHoverProvider() {
 }
 
 function getSeverityIcon(severity: "error" | "warning"): string {
-  return severity === "error" ? "✕" : "⚠";
+  return severity === "error" ? mdiCloseCircle : mdiAlert;
 }
 
 function getSeverityClass(severity: "error" | "warning"): string {
@@ -534,7 +535,7 @@ onUnmounted(() => {
     <div class="panel input-panel">
       <div class="panel-header">
         <div class="header-title">
-          <span class="icon">&#x26A0;</span>
+          <svg class="icon" viewBox="0 0 24 24"><path :d="mdiAlert" fill="currentColor" /></svg>
           <h2>Source</h2>
         </div>
         <div class="panel-actions">
@@ -549,7 +550,7 @@ onUnmounted(() => {
     <div class="panel output-panel">
       <div class="panel-header">
         <div class="header-title">
-          <span class="icon">&#x2714;</span>
+          <svg class="icon" viewBox="0 0 24 24"><path :d="mdiCheckCircle" fill="currentColor" /></svg>
           <h2>Lint Analysis</h2>
           <span v-if="lintTime !== null" class="perf-badge"> {{ lintTime.toFixed(2) }}ms </span>
           <template v-if="lintResult">
@@ -595,7 +596,7 @@ onUnmounted(() => {
             </div>
 
             <div v-if="lintResult.diagnostics.length === 0" class="success-state">
-              <span class="success-icon">&#x2713;</span>
+              <svg class="success-icon" viewBox="0 0 24 24"><path :d="mdiCheck" fill="currentColor" /></svg>
               <span>No issues found</span>
             </div>
 
@@ -606,7 +607,7 @@ onUnmounted(() => {
                 :class="['diagnostic-item', `severity-${diagnostic.severity}`]"
               >
                 <div class="diagnostic-header">
-                  <span class="severity-icon">{{ getSeverityIcon(diagnostic.severity) }}</span>
+                  <svg class="severity-icon" viewBox="0 0 24 24"><path :d="getSeverityIcon(diagnostic.severity)" fill="currentColor" /></svg>
                   <code class="rule-id">{{ diagnostic.rule }}</code>
                   <span class="location-badge">
                     {{ diagnostic.location.start.line }}:{{ diagnostic.location.start.column }}
@@ -744,7 +745,8 @@ onUnmounted(() => {
 }
 
 .header-title .icon {
-  font-size: 1rem;
+  width: 1rem;
+  height: 1rem;
   color: var(--accent-rust);
 }
 
@@ -927,7 +929,8 @@ onUnmounted(() => {
 }
 
 .success-icon {
-  font-size: 1.25rem;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 /* Diagnostics List */
@@ -942,15 +945,6 @@ onUnmounted(() => {
   background: var(--bg-secondary);
   border: 1px solid var(--border-primary);
   border-radius: 4px;
-  border-left: 3px solid;
-}
-
-.diagnostic-item.severity-error {
-  border-left-color: #ef4444;
-}
-
-.diagnostic-item.severity-warning {
-  border-left-color: #f59e0b;
 }
 
 .diagnostic-header {
@@ -961,8 +955,9 @@ onUnmounted(() => {
 }
 
 .severity-icon {
-  font-size: 0.75rem;
-  font-weight: bold;
+  width: 0.75rem;
+  height: 0.75rem;
+  flex-shrink: 0;
 }
 
 .severity-error .severity-icon {

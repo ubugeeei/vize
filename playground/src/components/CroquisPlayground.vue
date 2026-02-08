@@ -10,6 +10,7 @@ import type {
   ScopeDisplay,
 } from "../wasm/index";
 import { ANALYSIS_PRESET } from "./presets/croquis";
+import { mdiCodeTags, mdiChartTimelineVariant, mdiCheck, mdiCloseCircle, mdiAlert } from "@mdi/js";
 
 const props = defineProps<{
   compiler: WasmModule | null;
@@ -493,7 +494,7 @@ function getScopeColorClass(kind: string): string {
     <div class="panel input-panel">
       <div class="panel-header">
         <div class="header-title">
-          <span class="icon">&#x2726;</span>
+          <svg class="icon" viewBox="0 0 24 24"><path :d="mdiCodeTags" fill="currentColor" /></svg>
           <h2>Source</h2>
         </div>
         <div class="panel-actions">
@@ -517,7 +518,7 @@ function getScopeColorClass(kind: string): string {
     <div class="panel output-panel">
       <div class="panel-header">
         <div class="header-title">
-          <span class="icon">&#x25C8;</span>
+          <svg class="icon" viewBox="0 0 24 24"><path :d="mdiChartTimelineVariant" fill="currentColor" /></svg>
           <h2>Semantic Analysis</h2>
           <span v-if="analysisTime !== null" class="perf-badge">
             {{ analysisTime.toFixed(2) }}ms
@@ -757,7 +758,7 @@ function getScopeColorClass(kind: string): string {
           <!-- Diagnostics Tab -->
           <div v-else-if="activeTab === 'diagnostics'" class="diagnostics-output">
             <div v-if="diagnostics.length === 0" class="success-state">
-              <span class="success-icon">&#x2713;</span>
+              <svg class="success-icon" viewBox="0 0 24 24"><path :d="mdiCheck" fill="currentColor" /></svg>
               <span>No issues found</span>
             </div>
 
@@ -768,9 +769,7 @@ function getScopeColorClass(kind: string): string {
                 :class="['diagnostic-item', `severity-${diag.severity}`]"
               >
                 <div class="diagnostic-header">
-                  <span class="severity-icon">{{
-                    diag.severity === "error" ? "&#x2717;" : "&#x26A0;"
-                  }}</span>
+                  <svg class="severity-icon" viewBox="0 0 24 24"><path :d="diag.severity === 'error' ? mdiCloseCircle : mdiAlert" fill="currentColor" /></svg>
                   <span class="diagnostic-message">{{ diag.message }}</span>
                 </div>
                 <div class="diagnostic-location">
@@ -829,7 +828,8 @@ function getScopeColorClass(kind: string): string {
 }
 
 .header-title .icon {
-  font-size: 1rem;
+  width: 1rem;
+  height: 1rem;
   color: var(--accent-rust);
 }
 
@@ -999,7 +999,8 @@ function getScopeColorClass(kind: string): string {
 }
 
 .success-icon {
-  font-size: 1.25rem;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 /* Stats Tab */
@@ -1131,17 +1132,14 @@ function getScopeColorClass(kind: string): string {
   gap: 0.75rem;
   padding: 0.5rem 0.75rem;
   border-radius: 6px;
-  border-left: 3px solid transparent;
 }
 
 .export-item.valid {
   background: rgba(34, 197, 94, 0.08);
-  border-left-color: #22c55e;
 }
 
 .export-item.invalid {
   background: rgba(239, 68, 68, 0.08);
-  border-left-color: #ef4444;
 }
 
 .export-kind {
@@ -1365,7 +1363,6 @@ function getScopeColorClass(kind: string): string {
   background: var(--bg-secondary);
   border: 1px solid var(--border-primary);
   border-radius: 4px;
-  border-left: 3px solid transparent;
 }
 
 .scope-header {
@@ -1414,7 +1411,6 @@ function getScopeColorClass(kind: string): string {
 /* Template scopes */
 .scope-module {
   background: rgba(167, 139, 250, 0.08);
-  border-left-color: #a78bfa;
 }
 .scope-module.scope-indicator {
   background: #a78bfa;
@@ -1422,7 +1418,6 @@ function getScopeColorClass(kind: string): string {
 
 .scope-function {
   background: rgba(251, 191, 36, 0.08);
-  border-left-color: #fbbf24;
 }
 .scope-function.scope-indicator {
   background: #fbbf24;
@@ -1430,7 +1425,6 @@ function getScopeColorClass(kind: string): string {
 
 .scope-block {
   background: rgba(148, 163, 184, 0.08);
-  border-left-color: #94a3b8;
 }
 .scope-block.scope-indicator {
   background: #94a3b8;
@@ -1438,7 +1432,6 @@ function getScopeColorClass(kind: string): string {
 
 .scope-vfor {
   background: rgba(74, 222, 128, 0.08);
-  border-left-color: #4ade80;
 }
 .scope-vfor.scope-indicator {
   background: #4ade80;
@@ -1446,7 +1439,6 @@ function getScopeColorClass(kind: string): string {
 
 .scope-vslot {
   background: rgba(45, 212, 191, 0.08);
-  border-left-color: #2dd4bf;
 }
 .scope-vslot.scope-indicator {
   background: #2dd4bf;
@@ -1454,7 +1446,6 @@ function getScopeColorClass(kind: string): string {
 
 .scope-event-handler {
   background: rgba(244, 114, 182, 0.08);
-  border-left-color: #f472b6;
 }
 .scope-event-handler.scope-indicator {
   background: #f472b6;
@@ -1462,7 +1453,6 @@ function getScopeColorClass(kind: string): string {
 
 .scope-callback {
   background: rgba(251, 146, 60, 0.08);
-  border-left-color: #fb923c;
 }
 .scope-callback.scope-indicator {
   background: #fb923c;
@@ -1471,7 +1461,6 @@ function getScopeColorClass(kind: string): string {
 /* Script scopes */
 .scope-script-setup {
   background: rgba(96, 165, 250, 0.08);
-  border-left-color: #60a5fa;
 }
 .scope-script-setup.scope-indicator {
   background: #60a5fa;
@@ -1479,7 +1468,6 @@ function getScopeColorClass(kind: string): string {
 
 .scope-non-script-setup {
   background: rgba(129, 140, 248, 0.08);
-  border-left-color: #818cf8;
 }
 .scope-non-script-setup.scope-indicator {
   background: #818cf8;
@@ -1488,7 +1476,6 @@ function getScopeColorClass(kind: string): string {
 /* SSR scopes */
 .scope-universal {
   background: rgba(34, 211, 238, 0.08);
-  border-left-color: #22d3ee;
 }
 .scope-universal.scope-indicator {
   background: #22d3ee;
@@ -1496,7 +1483,6 @@ function getScopeColorClass(kind: string): string {
 
 .scope-client-only {
   background: rgba(248, 113, 113, 0.08);
-  border-left-color: #f87171;
 }
 .scope-client-only.scope-indicator {
   background: #f87171;
@@ -1505,7 +1491,6 @@ function getScopeColorClass(kind: string): string {
 /* JS Global scopes (runtime-specific) */
 .scope-js-global-universal {
   background: rgba(253, 224, 71, 0.08);
-  border-left-color: #fde047;
 }
 .scope-js-global-universal.scope-indicator {
   background: #fde047;
@@ -1513,7 +1498,6 @@ function getScopeColorClass(kind: string): string {
 
 .scope-js-global-browser {
   background: rgba(251, 146, 60, 0.08);
-  border-left-color: #fb923c;
 }
 .scope-js-global-browser.scope-indicator {
   background: #fb923c;
@@ -1521,7 +1505,6 @@ function getScopeColorClass(kind: string): string {
 
 .scope-js-global-node {
   background: rgba(74, 222, 128, 0.08);
-  border-left-color: #4ade80;
 }
 .scope-js-global-node.scope-indicator {
   background: #4ade80;
@@ -1529,7 +1512,6 @@ function getScopeColorClass(kind: string): string {
 
 .scope-js-global-deno {
   background: rgba(96, 165, 250, 0.08);
-  border-left-color: #60a5fa;
 }
 .scope-js-global-deno.scope-indicator {
   background: #60a5fa;
@@ -1537,7 +1519,6 @@ function getScopeColorClass(kind: string): string {
 
 .scope-js-global-bun {
   background: rgba(244, 114, 182, 0.08);
-  border-left-color: #f472b6;
 }
 .scope-js-global-bun.scope-indicator {
   background: #f472b6;
@@ -1546,7 +1527,6 @@ function getScopeColorClass(kind: string): string {
 /* Vue global */
 .scope-vue-global {
   background: rgba(52, 211, 153, 0.08);
-  border-left-color: #34d399;
 }
 .scope-vue-global.scope-indicator {
   background: #34d399;
@@ -1554,7 +1534,6 @@ function getScopeColorClass(kind: string): string {
 
 .scope-external-module {
   background: rgba(192, 132, 252, 0.08);
-  border-left-color: #c084fc;
 }
 .scope-external-module.scope-indicator {
   background: #c084fc;
@@ -1562,7 +1541,6 @@ function getScopeColorClass(kind: string): string {
 
 .scope-default {
   background: var(--bg-secondary);
-  border-left-color: var(--border-primary);
 }
 .scope-default.scope-indicator {
   background: var(--text-muted);
@@ -1765,15 +1743,6 @@ function getScopeColorClass(kind: string): string {
   background: var(--bg-secondary);
   border: 1px solid var(--border-primary);
   border-radius: 4px;
-  border-left: 3px solid;
-}
-
-.diagnostic-item.severity-error {
-  border-left-color: #ef4444;
-}
-
-.diagnostic-item.severity-warning {
-  border-left-color: #f59e0b;
 }
 
 .diagnostic-header {
@@ -1783,7 +1752,9 @@ function getScopeColorClass(kind: string): string {
 }
 
 .severity-icon {
-  font-size: 0.875rem;
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
 }
 
 .severity-error .severity-icon {

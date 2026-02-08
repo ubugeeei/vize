@@ -19,6 +19,9 @@ import {
   mdiCheck,
   mdiLightbulbOn,
   mdiAlert,
+  mdiRefresh,
+  mdiArrowRight,
+  mdiPlus,
 } from "@mdi/js";
 import { PRESETS, type Preset } from "./presets/crossfile";
 
@@ -1537,8 +1540,12 @@ onUnmounted(() => {
         <div class="section-header">
           <h3>Project Files</h3>
           <div class="section-actions">
-            <button @click="addFile" class="icon-btn" title="Add file">+</button>
-            <button @click="resetProject" class="icon-btn" title="Reset">↺</button>
+            <button @click="addFile" class="icon-btn" title="Add file">
+              <svg viewBox="0 0 24 24"><path :d="mdiPlus" fill="currentColor" /></svg>
+            </button>
+            <button @click="resetProject" class="icon-btn" title="Reset">
+              <svg viewBox="0 0 24 24"><path :d="mdiRefresh" fill="currentColor" /></svg>
+            </button>
           </div>
         </div>
         <nav class="file-tree">
@@ -1567,7 +1574,7 @@ onUnmounted(() => {
               <span class="badge-count">{{ issuesByFile[name].length }}</span>
             </span>
             <button v-if="fileNames.length > 1" @click.stop="removeFile(name)" class="file-delete">
-              ×
+              <svg viewBox="0 0 24 24"><path :d="mdiClose" fill="currentColor" /></svg>
             </button>
           </div>
         </nav>
@@ -1582,7 +1589,7 @@ onUnmounted(() => {
             <span class="dep-file">{{ file }}</span>
             <div v-if="deps.length" class="dep-arrows">
               <div v-for="dep in deps" :key="dep" class="dep-edge">
-                <span class="dep-arrow">→</span>
+                <svg class="dep-arrow" viewBox="0 0 24 24"><path :d="mdiArrowRight" fill="currentColor" /></svg>
                 <span class="dep-target" @click="selectFile(dep)">{{ dep }}</span>
               </div>
             </div>
@@ -1711,7 +1718,7 @@ onUnmounted(() => {
               </div>
               <div class="issue-message">{{ issue.message }}</div>
               <div v-if="issue.suggestion" class="issue-suggestion">
-                <span class="suggestion-icon">→</span>
+                <svg class="suggestion-icon" viewBox="0 0 24 24"><path :d="mdiArrowRight" fill="currentColor" /></svg>
                 <span class="suggestion-text">{{ issue.suggestion }}</span>
               </div>
               <div v-if="issue.relatedLocations?.length" class="issue-related">
@@ -1876,6 +1883,11 @@ onUnmounted(() => {
   gap: 4px;
 }
 
+.icon-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
 .icon-btn {
   width: 20px;
   height: 20px;
@@ -1976,8 +1988,12 @@ onUnmounted(() => {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 14px;
   border-radius: 2px;
+}
+
+.file-delete svg {
+  width: 12px;
+  height: 12px;
 }
 
 .file-item:hover .file-delete {
@@ -2017,6 +2033,8 @@ onUnmounted(() => {
 }
 
 .dep-arrow {
+  width: 12px;
+  height: 12px;
   color: var(--accent-rust);
 }
 
@@ -2241,7 +2259,6 @@ onUnmounted(() => {
   margin-bottom: 4px;
   background: var(--bg-tertiary);
   border-radius: 4px;
-  border-left: 3px solid var(--type-color, var(--text-muted));
 }
 
 .group-badge {
@@ -2269,7 +2286,6 @@ onUnmounted(() => {
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.1s;
-  border-left: 3px solid transparent;
 }
 
 .issue-card:hover {
@@ -2279,16 +2295,6 @@ onUnmounted(() => {
 .issue-card.selected {
   border-color: var(--accent-rust);
   background: rgba(224, 112, 72, 0.1);
-}
-
-.issue-card.error {
-  border-left-color: #ef4444;
-}
-.issue-card.warning {
-  border-left-color: #f59e0b;
-}
-.issue-card.info {
-  border-left-color: #60a5fa;
 }
 
 .issue-header {
@@ -2348,6 +2354,8 @@ onUnmounted(() => {
 }
 
 .suggestion-icon {
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
 }
 

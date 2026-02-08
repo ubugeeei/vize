@@ -13,6 +13,7 @@ interface Diagnostic {
 import CodeHighlight from "./CodeHighlight.vue";
 import type { WasmModule, ArtDescriptor, CsfOutput } from "../wasm/index";
 import { ART_PRESET } from "./presets/musea";
+import { mdiPalette, mdiDiamond } from "@mdi/js";
 
 const props = defineProps<{
   compiler: WasmModule | null;
@@ -181,7 +182,7 @@ watch(
     <div class="panel input-panel">
       <div class="panel-header">
         <div class="header-title">
-          <span class="icon">&#x1F3A8;</span>
+          <svg class="icon" viewBox="0 0 24 24"><path :d="mdiPalette" fill="currentColor" /></svg>
           <h2>Source</h2>
         </div>
         <div class="panel-actions">
@@ -196,7 +197,7 @@ watch(
     <div class="panel output-panel">
       <div class="panel-header">
         <div class="header-title">
-          <span class="icon">&#x2756;</span>
+          <svg class="icon" viewBox="0 0 24 24"><path :d="mdiDiamond" fill="currentColor" /></svg>
           <h2>Art Analysis</h2>
           <span v-if="compileTime !== null" class="perf-badge">
             {{ compileTime.toFixed(2) }}ms
@@ -431,7 +432,8 @@ watch(
 }
 
 .header-title .icon {
-  font-size: 1rem;
+  width: 1rem;
+  height: 1rem;
   color: var(--accent-rust);
 }
 
