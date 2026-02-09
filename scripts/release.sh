@@ -139,10 +139,10 @@ for pkg in npm/*/; do
       const fs = require('fs');
       const pkg = JSON.parse(fs.readFileSync('$pkg/package.json', 'utf8'));
       pkg.version = '$NEW_VERSION';
-      // Update optionalDependencies versions for native package
+      // Update optionalDependencies versions for native packages
       if (pkg.optionalDependencies) {
         for (const dep of Object.keys(pkg.optionalDependencies)) {
-          if (dep.startsWith('@vizejs/native-')) {
+          if (dep.startsWith('@vizejs/native-') || dep.startsWith('@vizejs/fresco-native-')) {
             pkg.optionalDependencies[dep] = '$NEW_VERSION';
           }
         }
