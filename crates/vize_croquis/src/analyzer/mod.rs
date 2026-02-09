@@ -180,6 +180,7 @@ impl Analyzer {
         self.summary.scopes = result.scopes;
         self.summary.provide_inject = result.provide_inject;
         self.summary.binding_spans = result.binding_spans;
+        self.summary.setup_context = result.setup_context;
 
         self
     }
@@ -204,6 +205,7 @@ impl Analyzer {
         self.summary.scopes = result.scopes;
         self.summary.provide_inject = result.provide_inject;
         self.summary.binding_spans = result.binding_spans;
+        self.summary.setup_context = result.setup_context;
 
         self
     }

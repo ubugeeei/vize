@@ -44,7 +44,10 @@ mod virtual_ts;
 use serde::Serialize;
 use vize_carton::Bump;
 
-use checks::{check_emits_typing, check_props_typing, check_template_bindings};
+use checks::{
+    check_emits_typing, check_fallthrough_attrs, check_invalid_exports, check_props_typing,
+    check_reactivity, check_setup_context, check_template_bindings,
+};
 use virtual_ts::generate_virtual_ts_with_scopes;
 
 /// Type diagnostic severity.
@@ -147,6 +150,14 @@ pub struct SfcTypeCheckOptions {
     pub check_emits: bool,
     /// Whether to check template bindings
     pub check_template_bindings: bool,
+    /// Whether to check reactivity loss patterns
+    pub check_reactivity: bool,
+    /// Whether to check setup context violations
+    pub check_setup_context: bool,
+    /// Whether to check invalid exports in `<script setup>`
+    pub check_invalid_exports: bool,
+    /// Whether to check fallthrough attrs with multi-root
+    pub check_fallthrough_attrs: bool,
     /// Strict mode - report more potential issues
     pub strict: bool,
 }
@@ -160,6 +171,10 @@ impl SfcTypeCheckOptions {
             check_props: true,
             check_emits: true,
             check_template_bindings: true,
+            check_reactivity: true,
+            check_setup_context: true,
+            check_invalid_exports: true,
+            check_fallthrough_attrs: true,
             strict: false,
         }
     }
@@ -268,6 +283,26 @@ pub fn type_check_sfc(source: &str, options: &SfcTypeCheckOptions) -> SfcTypeChe
     // Check template bindings
     if options.check_template_bindings {
         check_template_bindings(&summary, template_offset, &mut result, options.strict);
+    }
+
+    // Check reactivity loss
+    if options.check_reactivity {
+        check_reactivity(&summary, script_offset, &mut result, options.strict);
+    }
+
+    // Check setup context violations
+    if options.check_setup_context {
+        check_setup_context(&summary, script_offset, &mut result);
+    }
+
+    // Check invalid exports in <script setup>
+    if options.check_invalid_exports {
+        check_invalid_exports(&summary, script_offset, &mut result);
+    }
+
+    // Check fallthrough attrs
+    if options.check_fallthrough_attrs {
+        check_fallthrough_attrs(&summary, &mut result, options.strict);
     }
 
     // Generate virtual TypeScript with scope information if requested
@@ -734,5 +769,162 @@ const emit = defineEmits<Emits>()
         let vts = result.virtual_ts.unwrap();
         assert!(vts.contains("props.title"));
         assert!(vts.contains("props.disabled"));
+    }
+
+    // ========== Reactivity Loss Tests ==========
+
+    #[test]
+    fn test_check_reactivity_destructure_detected() {
+        let source = r#"<script setup>
+import { reactive } from 'vue'
+const state = reactive({ count: 0 })
+const { count } = state
+</script>
+<template><div>{{ count }}</div></template>"#;
+        let options = SfcTypeCheckOptions::new("test.vue");
+        let result = type_check_sfc(source, &options);
+        let has_reactivity = result
+            .diagnostics
+            .iter()
+            .any(|d| d.code.as_deref() == Some("reactivity-loss"));
+        assert!(
+            has_reactivity,
+            "Should detect reactivity loss from destructuring"
+        );
+    }
+
+    #[test]
+    fn test_check_reactivity_no_issue() {
+        let source = r#"<script setup>
+import { ref } from 'vue'
+const count = ref(0)
+</script>
+<template><div>{{ count }}</div></template>"#;
+        let options = SfcTypeCheckOptions::new("test.vue");
+        let result = type_check_sfc(source, &options);
+        let has_reactivity = result
+            .diagnostics
+            .iter()
+            .any(|d| d.code.as_deref() == Some("reactivity-loss"));
+        assert!(!has_reactivity, "Should not detect reactivity loss");
+    }
+
+    #[test]
+    fn test_check_reactivity_strict_severity() {
+        let source = r#"<script setup>
+import { reactive } from 'vue'
+const state = reactive({ count: 0 })
+const { count } = state
+</script>
+<template><div>{{ count }}</div></template>"#;
+        let options = SfcTypeCheckOptions::new("test.vue").strict();
+        let result = type_check_sfc(source, &options);
+        let has_error = result.diagnostics.iter().any(|d| {
+            d.code.as_deref() == Some("reactivity-loss") && d.severity == SfcTypeSeverity::Error
+        });
+        assert!(has_error, "Strict mode should report as Error");
+    }
+
+    // ========== Invalid Export Tests ==========
+
+    #[test]
+    fn test_check_invalid_exports_detected() {
+        let source = r#"<script setup>
+export const foo = 'bar'
+</script>
+<template><div>Hello</div></template>"#;
+        let options = SfcTypeCheckOptions::new("test.vue");
+        let result = type_check_sfc(source, &options);
+        let has_invalid = result
+            .diagnostics
+            .iter()
+            .any(|d| d.code.as_deref() == Some("invalid-export"));
+        assert!(has_invalid, "Should detect invalid export");
+    }
+
+    #[test]
+    fn test_check_invalid_exports_type_export_ok() {
+        let source = r#"<script setup>
+export type Foo = { name: string }
+const count = ref(0)
+</script>
+<template><div>{{ count }}</div></template>"#;
+        let options = SfcTypeCheckOptions::new("test.vue");
+        let result = type_check_sfc(source, &options);
+        let has_invalid = result
+            .diagnostics
+            .iter()
+            .any(|d| d.code.as_deref() == Some("invalid-export"));
+        assert!(!has_invalid, "Type exports should be allowed");
+    }
+
+    #[test]
+    fn test_check_invalid_exports_disabled() {
+        let source = r#"<script setup>
+export const foo = 'bar'
+</script>
+<template><div>Hello</div></template>"#;
+        let mut options = SfcTypeCheckOptions::new("test.vue");
+        options.check_invalid_exports = false;
+        let result = type_check_sfc(source, &options);
+        let has_invalid = result
+            .diagnostics
+            .iter()
+            .any(|d| d.code.as_deref() == Some("invalid-export"));
+        assert!(!has_invalid, "Should not check when disabled");
+    }
+
+    // ========== Fallthrough Attrs Tests ==========
+
+    #[test]
+    fn test_check_fallthrough_attrs_multi_root() {
+        let source = r#"<script setup>
+const msg = 'hello'
+</script>
+<template>
+  <div>first</div>
+  <div>second</div>
+</template>"#;
+        let options = SfcTypeCheckOptions::new("test.vue");
+        let result = type_check_sfc(source, &options);
+        let has_fallthrough = result
+            .diagnostics
+            .iter()
+            .any(|d| d.code.as_deref() == Some("fallthrough-attrs"));
+        assert!(has_fallthrough, "Should detect multi-root fallthrough");
+    }
+
+    #[test]
+    fn test_check_fallthrough_attrs_single_root_ok() {
+        let source = r#"<script setup>
+const msg = 'hello'
+</script>
+<template>
+  <div>{{ msg }}</div>
+</template>"#;
+        let options = SfcTypeCheckOptions::new("test.vue");
+        let result = type_check_sfc(source, &options);
+        let has_fallthrough = result
+            .diagnostics
+            .iter()
+            .any(|d| d.code.as_deref() == Some("fallthrough-attrs"));
+        assert!(!has_fallthrough, "Single root should not warn");
+    }
+
+    #[test]
+    fn test_check_fallthrough_attrs_strict() {
+        let source = r#"<script setup>
+const msg = 'hello'
+</script>
+<template>
+  <div>first</div>
+  <div>second</div>
+</template>"#;
+        let options = SfcTypeCheckOptions::new("test.vue").strict();
+        let result = type_check_sfc(source, &options);
+        let has_error = result.diagnostics.iter().any(|d| {
+            d.code.as_deref() == Some("fallthrough-attrs") && d.severity == SfcTypeSeverity::Error
+        });
+        assert!(has_error, "Strict mode should report as Error");
     }
 }

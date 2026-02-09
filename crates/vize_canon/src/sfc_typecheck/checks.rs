@@ -1,6 +1,8 @@
-//! Type checking functions for props, emits, and template bindings.
+//! Type checking functions for Vue SFC diagnostics.
 
 use super::{SfcTypeCheckResult, SfcTypeDiagnostic, SfcTypeSeverity};
+use vize_croquis::reactivity::ReactivityLossKind;
+use vize_croquis::setup_context::ViolationSeverity;
 
 /// Check props typing.
 pub fn check_props_typing(
@@ -183,4 +185,138 @@ pub fn check_template_bindings(
             related: Vec::new(),
         });
     }
+}
+
+/// Check for reactivity loss patterns.
+pub fn check_reactivity(
+    summary: &vize_croquis::Croquis,
+    script_offset: u32,
+    result: &mut SfcTypeCheckResult,
+    strict: bool,
+) {
+    let severity = if strict {
+        SfcTypeSeverity::Error
+    } else {
+        SfcTypeSeverity::Warning
+    };
+
+    for loss in summary.reactivity.losses() {
+        let message = match &loss.kind {
+            ReactivityLossKind::ReactiveDestructure { source_name, .. } => {
+                format!(
+                    "Destructuring reactive object '{}' loses reactivity",
+                    source_name
+                )
+            }
+            ReactivityLossKind::RefValueDestructure { source_name, .. } => {
+                format!("Destructuring ref '{}' loses reactivity", source_name)
+            }
+            ReactivityLossKind::RefValueExtract {
+                source_name,
+                target_name,
+            } => {
+                format!(
+                    "Extracting '{}' from '{}.value' loses reactivity",
+                    target_name, source_name
+                )
+            }
+            ReactivityLossKind::ReactiveSpread { source_name } => {
+                format!(
+                    "Spreading reactive object '{}' loses reactivity",
+                    source_name
+                )
+            }
+            ReactivityLossKind::ReactiveReassign { source_name } => {
+                format!(
+                    "Reassigning reactive variable '{}' disconnects reactivity",
+                    source_name
+                )
+            }
+        };
+
+        result.add_diagnostic(SfcTypeDiagnostic {
+            severity,
+            message,
+            start: loss.start + script_offset,
+            end: loss.end + script_offset,
+            code: Some("reactivity-loss".to_string()),
+            help: None,
+            related: Vec::new(),
+        });
+    }
+}
+
+/// Check for setup context violations (CSRP / memory leaks).
+pub fn check_setup_context(
+    summary: &vize_croquis::Croquis,
+    script_offset: u32,
+    result: &mut SfcTypeCheckResult,
+) {
+    for violation in summary.setup_context.violations() {
+        let severity = match violation.kind.severity() {
+            ViolationSeverity::Error => SfcTypeSeverity::Error,
+            ViolationSeverity::Warning => SfcTypeSeverity::Warning,
+            ViolationSeverity::Info => SfcTypeSeverity::Info,
+        };
+
+        result.add_diagnostic(SfcTypeDiagnostic {
+            severity,
+            message: violation.kind.description().to_string(),
+            start: violation.start + script_offset,
+            end: violation.end + script_offset,
+            code: Some(violation.kind.to_display().to_string()),
+            help: None,
+            related: Vec::new(),
+        });
+    }
+}
+
+/// Check for invalid exports in `<script setup>`.
+pub fn check_invalid_exports(
+    summary: &vize_croquis::Croquis,
+    script_offset: u32,
+    result: &mut SfcTypeCheckResult,
+) {
+    for export in &summary.invalid_exports {
+        result.add_diagnostic(SfcTypeDiagnostic {
+            severity: SfcTypeSeverity::Error,
+            message: format!("Cannot export '{}' from <script setup>", export.name),
+            start: export.start + script_offset,
+            end: export.end + script_offset,
+            code: Some("invalid-export".to_string()),
+            help: Some(
+                "Only type exports are allowed in <script setup>. Use a separate <script> block for value exports.".to_string(),
+            ),
+            related: Vec::new(),
+        });
+    }
+}
+
+/// Check for fallthrough attrs issues with multi-root components.
+pub fn check_fallthrough_attrs(
+    summary: &vize_croquis::Croquis,
+    result: &mut SfcTypeCheckResult,
+    strict: bool,
+) {
+    if !summary.template_info.may_lose_fallthrough_attrs() {
+        return;
+    }
+
+    let severity = if strict {
+        SfcTypeSeverity::Error
+    } else {
+        SfcTypeSeverity::Warning
+    };
+
+    result.add_diagnostic(SfcTypeDiagnostic {
+        severity,
+        message: "Multi-root component may lose fallthrough attributes".to_string(),
+        start: summary.template_info.content_start,
+        end: summary.template_info.content_end,
+        code: Some("fallthrough-attrs".to_string()),
+        help: Some(
+            "Bind $attrs explicitly to one root element or use inheritAttrs: false".to_string(),
+        ),
+        related: Vec::new(),
+    });
 }
