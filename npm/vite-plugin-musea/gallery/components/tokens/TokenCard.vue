@@ -79,60 +79,58 @@ const tierLabel = computed(() => {
 
 <template>
   <div class="token-card" :class="{ 'token-card--semantic': token.$tier === 'semantic' }">
-    <div class="token-preview">
-      <!-- Color swatch -->
+    <!-- Preview -->
+    <div class="token-preview" :class="{ 'token-preview--color': previewType === 'color' }">
       <div
         v-if="previewType === 'color'"
         class="color-swatch"
         :style="{ background: String(displayValue) }"
       />
-      <!-- Spacing bar -->
-      <SpacingPreview
-        v-else-if="previewType === 'spacing'"
-        :value="displayValue"
-      />
-      <!-- Typography previews -->
-      <TypographyPreview
-        v-else-if="previewType === 'fontSize'"
-        :value="displayValue"
-        token-type="fontSize"
-      />
-      <TypographyPreview
-        v-else-if="previewType === 'fontWeight'"
-        :value="displayValue"
-        token-type="fontWeight"
-      />
-      <TypographyPreview
-        v-else-if="previewType === 'lineHeight'"
-        :value="displayValue"
-        token-type="lineHeight"
-      />
-      <!-- Shadow preview -->
-      <div
-        v-else-if="previewType === 'shadow'"
-        class="shadow-swatch"
-        :style="{ boxShadow: String(displayValue) }"
-      />
-      <!-- Border radius preview -->
-      <div
-        v-else-if="previewType === 'borderRadius'"
-        class="radius-swatch"
-        :style="{ borderRadius: String(displayValue) }"
-      />
-      <!-- Generic -->
-      <div v-else class="generic-preview">
-        <span class="generic-value-icon">T</span>
+      <div v-else class="preview-compact">
+        <SpacingPreview
+          v-if="previewType === 'spacing'"
+          :value="displayValue"
+        />
+        <TypographyPreview
+          v-else-if="previewType === 'fontSize'"
+          :value="displayValue"
+          token-type="fontSize"
+        />
+        <TypographyPreview
+          v-else-if="previewType === 'fontWeight'"
+          :value="displayValue"
+          token-type="fontWeight"
+        />
+        <TypographyPreview
+          v-else-if="previewType === 'lineHeight'"
+          :value="displayValue"
+          token-type="lineHeight"
+        />
+        <div
+          v-else-if="previewType === 'shadow'"
+          class="shadow-swatch"
+          :style="{ boxShadow: String(displayValue) }"
+        />
+        <div
+          v-else-if="previewType === 'borderRadius'"
+          class="radius-swatch"
+          :style="{ borderRadius: String(displayValue) }"
+        />
+        <div v-else class="generic-preview">
+          <span class="generic-value-icon">T</span>
+        </div>
       </div>
     </div>
 
-    <div class="token-info">
-      <div class="token-name-row">
-        <span class="token-name">{{ name }}</span>
+    <!-- Info -->
+    <div class="token-body">
+      <div class="token-header">
+        <span class="token-name" :title="name">{{ name }}</span>
         <span v-if="tierLabel" class="tier-badge" :class="'tier-badge--' + token.$tier">
           {{ tierLabel }}
         </span>
       </div>
-      <div class="token-value">{{ token.value }}</div>
+      <div class="token-value" :title="String(token.value)">{{ token.value }}</div>
       <div v-if="token.$tier === 'semantic' && token.$reference" class="token-reference">
         <span class="ref-arrow">&rarr;</span> {{ token.$reference }}
         <span v-if="token.$resolvedValue !== undefined" class="ref-resolved">
@@ -142,38 +140,42 @@ const tierLabel = computed(() => {
       <div v-if="token.description" class="token-desc">{{ token.description }}</div>
     </div>
 
-    <button
-      v-if="usageCount > 0"
-      class="usage-badge"
-      :class="{ 'usage-badge--warn': token.$tier === 'primitive' }"
-      :title="token.$tier === 'primitive' ? 'Primitive token used directly — consider using a semantic token' : 'View component usage'"
-      @click.stop="emit('showUsage')"
-    >
-      <svg v-if="token.$tier === 'primitive'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
-      </svg>
-      <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-      </svg>
-      {{ usageCount }}
-    </button>
+    <!-- Footer -->
+    <div class="token-footer">
+      <button
+        v-if="usageCount > 0"
+        class="usage-badge"
+        :class="{ 'usage-badge--warn': token.$tier === 'primitive' }"
+        :title="token.$tier === 'primitive' ? 'Primitive token used directly — consider using a semantic token' : 'View component usage'"
+        @click.stop="emit('showUsage')"
+      >
+        <svg v-if="token.$tier === 'primitive'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+        <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+        </svg>
+        {{ usageCount }}
+      </button>
+      <span v-else class="footer-spacer" />
 
-    <div class="token-actions">
-      <button class="action-btn" title="Edit" @click.stop="emit('edit')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-        </svg>
-      </button>
-      <button class="action-btn action-btn--danger" title="Delete" @click.stop="emit('delete')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="3 6 5 6 21 6" />
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-        </svg>
-      </button>
+      <div class="token-actions">
+        <button class="action-btn" title="Edit" @click.stop="emit('edit')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+        </button>
+        <button class="action-btn action-btn--danger" title="Delete" @click.stop="emit('delete')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -183,12 +185,10 @@ const tierLabel = computed(() => {
   background: var(--musea-bg-secondary);
   border: 1px solid var(--musea-border);
   border-radius: var(--musea-radius-md);
-  padding: 1rem;
   display: flex;
-  gap: 1rem;
-  align-items: center;
+  flex-direction: column;
   transition: border-color var(--musea-transition);
-  position: relative;
+  overflow: hidden;
 }
 
 .token-card:hover {
@@ -199,39 +199,49 @@ const tierLabel = computed(() => {
   opacity: 1;
 }
 
+/* Preview area */
 .token-preview {
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 48px;
+  padding: 0.75rem;
+}
+
+.token-preview--color {
+  padding: 0;
 }
 
 .color-swatch {
-  width: 48px;
+  width: 100%;
+  height: 64px;
+}
+
+.preview-compact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
   height: 48px;
-  border-radius: var(--musea-radius-md);
-  border: 1px solid var(--musea-border);
 }
 
 .shadow-swatch {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--musea-radius-md);
-  background: var(--musea-bg-secondary);
+  background: var(--musea-bg);
 }
 
 .radius-swatch {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border: 2px solid var(--musea-accent);
   background: transparent;
 }
 
 .generic-preview {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -246,32 +256,38 @@ const tierLabel = computed(() => {
   font-weight: 600;
 }
 
-.token-info {
+/* Body / info */
+.token-body {
+  padding: 0.625rem 0.875rem 0.5rem;
   flex: 1;
   min-width: 0;
 }
 
-.token-name-row {
+.token-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  margin-bottom: 0.125rem;
 }
 
 .token-name {
   font-weight: 600;
   font-family: var(--musea-font-mono);
-  font-size: 0.875rem;
-  word-break: break-all;
+  font-size: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tier-badge {
-  font-size: 0.625rem;
-  padding: 0.125rem 0.375rem;
+  font-size: 0.5625rem;
+  padding: 0.0625rem 0.3125rem;
   border-radius: 9999px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.025em;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .tier-badge--primitive {
@@ -287,15 +303,20 @@ const tierLabel = computed(() => {
 .token-value {
   color: var(--musea-text-muted);
   font-family: var(--musea-font-mono);
-  font-size: 0.75rem;
-  word-break: break-all;
+  font-size: 0.6875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .token-reference {
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   color: var(--musea-text-muted);
   font-family: var(--musea-font-mono);
   margin-top: 0.125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ref-arrow {
@@ -308,8 +329,25 @@ const tierLabel = computed(() => {
 
 .token-desc {
   color: var(--musea-text-muted);
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   margin-top: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Footer */
+.token-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.375rem 0.875rem;
+  border-top: 1px solid var(--musea-border);
+  min-height: 34px;
+}
+
+.footer-spacer {
+  flex: 1;
 }
 
 .usage-badge {
@@ -346,17 +384,18 @@ const tierLabel = computed(() => {
 
 .token-actions {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.125rem;
   opacity: 0;
   transition: opacity var(--musea-transition);
+  margin-left: auto;
 }
 
 .action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border: none;
   background: transparent;
   color: var(--musea-text-muted);

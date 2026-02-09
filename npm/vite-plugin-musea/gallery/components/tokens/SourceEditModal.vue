@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { fetchArtSource, updateArtSource } from '../../api'
+import MonacoEditor from '../MonacoEditor.vue'
 
 const props = defineProps<{
   isOpen: boolean
@@ -46,23 +47,6 @@ async function handleSave() {
     saving.value = false
   }
 }
-
-function handleKeydown(e: KeyboardEvent) {
-  if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-    e.preventDefault()
-    handleSave()
-  }
-  if (e.key === 'Tab') {
-    e.preventDefault()
-    const textarea = e.target as HTMLTextAreaElement
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    source.value = source.value.substring(0, start) + '  ' + source.value.substring(end)
-    requestAnimationFrame(() => {
-      textarea.selectionStart = textarea.selectionEnd = start + 2
-    })
-  }
-}
 </script>
 
 <template>
@@ -85,18 +69,17 @@ function handleKeydown(e: KeyboardEvent) {
 
           <div class="modal-body">
             <div v-if="loading" class="editor-loading">Loading source...</div>
-            <textarea
+            <MonacoEditor
               v-else
               v-model="source"
-              class="source-editor"
-              spellcheck="false"
-              @keydown="handleKeydown"
+              language="html"
+              height="500px"
             />
             <p v-if="error" class="editor-error">{{ error }}</p>
           </div>
 
           <div class="modal-footer">
-            <span class="save-hint">Ctrl+S / Cmd+S to save</span>
+            <span class="save-hint">Cmd+S / Ctrl+S to save</span>
             <div class="modal-footer-actions">
               <button class="btn btn--secondary" @click="emit('close')">Cancel</button>
               <button class="btn btn--primary" :disabled="saving || loading" @click="handleSave">
@@ -114,7 +97,7 @@ function handleKeydown(e: KeyboardEvent) {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -127,11 +110,12 @@ function handleKeydown(e: KeyboardEvent) {
   border: 1px solid var(--musea-border);
   border-radius: var(--musea-radius-lg, 12px);
   width: 100%;
-  max-width: 800px;
-  max-height: 85vh;
+  max-width: 900px;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
 .modal-header {
@@ -151,6 +135,7 @@ function handleKeydown(e: KeyboardEvent) {
 .modal-subtitle {
   font-size: 0.75rem;
   color: var(--musea-text-muted);
+  font-family: var(--musea-font-mono);
 }
 
 .modal-close {
@@ -184,29 +169,6 @@ function handleKeydown(e: KeyboardEvent) {
   text-align: center;
   color: var(--musea-text-muted);
   padding: 3rem 0;
-}
-
-.source-editor {
-  flex: 1;
-  min-height: 400px;
-  width: 100%;
-  background: var(--musea-bg-secondary);
-  border: 1px solid var(--musea-border);
-  border-radius: var(--musea-radius-md);
-  padding: 1rem;
-  color: var(--musea-text);
-  font-family: var(--musea-font-mono);
-  font-size: 0.8125rem;
-  line-height: 1.6;
-  resize: vertical;
-  outline: none;
-  tab-size: 2;
-  white-space: pre;
-  overflow: auto;
-}
-
-.source-editor:focus {
-  border-color: var(--musea-accent);
 }
 
 .editor-error {
