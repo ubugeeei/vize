@@ -46,7 +46,6 @@
     "vue-router": "^4.5.0"
   },
   "publishConfig": {
-    "provenance": true,
     "access": "public"
   }
 }

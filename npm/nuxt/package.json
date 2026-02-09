@@ -54,7 +54,6 @@
     "nuxt": "^3.0.0 || ^4.0.0"
   },
   "publishConfig": {
-    "provenance": true,
     "access": "public"
   }
 }

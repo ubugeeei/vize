@@ -52,7 +52,6 @@
     "typescript": "^5.7.0"
   },
   "publishConfig": {
-    "provenance": true,
     "access": "public"
   }
 }

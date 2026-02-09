@@ -3,7 +3,6 @@
   "version": "0.0.1-alpha.99",
   "description": "Vue TUI framework - Native bindings",
   "publishConfig": {
-    "provenance": true,
     "access": "public"
   },
   "main": "index.js",

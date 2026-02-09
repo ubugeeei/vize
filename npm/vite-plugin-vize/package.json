@@ -3,7 +3,6 @@
   "version": "0.0.1-alpha.99",
   "description": "High-performance native Vite plugin for Vue SFC compilation powered by Vize",
   "publishConfig": {
-    "provenance": true,
     "access": "public"
   },
   "type": "module",
