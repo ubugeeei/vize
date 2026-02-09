@@ -1111,7 +1111,7 @@ function generateGalleryHtml(basePath: string, themeConfig?: { default: string; 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Musea - Component Gallery</title>
-  <script>window.__MUSEA_BASE_PATH__='${basePath}';${themeScript}<\/script>
+  <script>window.__MUSEA_BASE_PATH__='${basePath}';${themeScript}${"<"}/script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
