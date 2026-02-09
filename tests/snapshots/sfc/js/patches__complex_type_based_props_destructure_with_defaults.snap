@@ -1,22 +1,21 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 219
 expression: js_output
 ---
 import { mergeDefaults as _mergeDefaults } from 'vue'
-import { defineComponent as _defineComponent } from 'vue'
+import { defineComponent as _defineComponent, type PropType } from 'vue'
 import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, createElementVNode as _createElementVNode, renderList as _renderList, toDisplayString as _toDisplayString, normalizeClass as _normalizeClass } from "vue"
 
 
 export default /*@__PURE__*/_defineComponent({
   __name: 'test',
   props: {
-    title: { type: String, required: true },
-    count: { type: Number, required: false, default: 0 },
-    disabled: { type: Boolean, required: false, default: false },
-    items: { type: Array, required: false, default: () => [] }
+    title: { type: String as PropType<string>, required: true },
+    count: { type: Number as PropType<number>, required: false, default: 0 },
+    disabled: { type: Boolean as PropType<boolean>, required: false, default: false },
+    items: { type: Array as PropType<string[]>, required: false, default: () => [] }
   },
-  setup(__props: any) {
+  setup(__props) {
 
 
 return (_ctx: any,_cache: any) => {

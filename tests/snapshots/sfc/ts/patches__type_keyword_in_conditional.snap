@@ -1,9 +1,8 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 196
 expression: ts_output
 ---
-import { defineComponent as _defineComponent } from 'vue'
+import { defineComponent as _defineComponent, type PropType } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, createCommentVNode as _createCommentVNode, toDisplayString as _toDisplayString } from "vue"
 
 
@@ -15,9 +14,9 @@ interface Item {
 export default /*@__PURE__*/_defineComponent({
   __name: 'test',
   props: {
-    item: { type: null, required: true }
+    item: { type: null as unknown as PropType<Item>, required: true }
   },
-  setup(__props: any) {
+  setup(__props) {
 
 const props = __props
 

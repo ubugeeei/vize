@@ -1,9 +1,8 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 150
 expression: ts_output
 ---
-import { defineComponent as _defineComponent } from 'vue'
+import { defineComponent as _defineComponent, type PropType } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock } from "vue"
 
 
@@ -14,9 +13,9 @@ interface Props {
 export default /*@__PURE__*/_defineComponent({
   __name: 'test',
   props: {
-    refreshMethod: { type: Object, required: true }
+    refreshMethod: { type: Object as PropType<(loaded: Function) => Promise<void> | void;>, required: true }
   },
-  setup(__props: any) {
+  setup(__props) {
 
 const props = __props
 

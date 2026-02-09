@@ -1,19 +1,18 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 150
 expression: ts_output
 ---
-import { defineComponent as _defineComponent } from 'vue'
+import { defineComponent as _defineComponent, type PropType } from 'vue'
 import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, renderList as _renderList, toDisplayString as _toDisplayString } from "vue"
 
 
 export default /*@__PURE__*/_defineComponent({
   __name: 'test',
   props: {
-    items: { type: Array, required: true },
-    keyField: { type: null, required: true }
+    items: { type: Array as PropType<T[]>, required: true },
+    keyField: { type: null as unknown as PropType<K>, required: true }
   },
-  setup(__props: any) {
+  setup(__props) {
 
 
 return (_ctx: any,_cache: any) => {
