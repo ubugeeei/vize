@@ -18,7 +18,7 @@ const {
 }>()
 
 const itemStyle = computed(() => ({
-  position: 'absolute' as const,
+  position: 'absolute',
   [horizontal ? 'left' : 'top']: `${virtualItem.start}px`,
   [horizontal ? 'height' : 'width']: '100%',
   [horizontal ? 'width' : 'height']: `${virtualItem.size}px`,

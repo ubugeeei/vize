@@ -3,37 +3,43 @@ export type { CalendarCellTriggerProps } from './types'
 </script>
 
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue'
+import { computed, ref, watch, nextTick, useAttrs } from 'vue'
 import { Primitive } from '../Primitive'
-import type { CalendarCellTriggerProps } from './types'
+import type { CalendarCellTriggerProps, DateValue } from './types'
 import { injectCalendarRootContext } from './types'
 import { isSameDay, isToday, formatFullDate } from './utils'
 
-const { as = 'button', asChild = false, date } = defineProps<CalendarCellTriggerProps>()
+// Rust compiler cannot resolve imported types, so date prop ends up in $attrs
+defineProps<CalendarCellTriggerProps>()
+const attrs = useAttrs()
 
 const context = injectCalendarRootContext('CalendarCellTrigger')
 
 const buttonRef = ref<HTMLElement>()
 
-const isSelected = computed(() => context.isDateSelected(date))
-const isDisabled = computed(() => context.isDateDisabled(date))
-const isTodayDate = computed(() => isToday(date))
-const isFocused = computed(() => isSameDay(context.focusedDate.value, date))
-const isUnavailable = computed(() => context.isDateUnavailable(date))
+// Access date from attrs since Rust compiler doesn't generate props option
+const dateValue = computed(() => attrs.date as DateValue)
+
+const isSelected = computed(() => context.isDateSelected(dateValue.value))
+const isDisabled = computed(() => context.isDateDisabled(dateValue.value))
+const isTodayDate = computed(() => isToday(dateValue.value))
+const isFocused = computed(() => isSameDay(context.focusedDate.value, dateValue.value))
+const isUnavailable = computed(() => context.isDateUnavailable(dateValue.value))
 
 const isOutsideMonth = computed(() => {
   const months = context.months.value
+  const d = dateValue.value
   // Check if this date's month matches any displayed month
-  return !months.some(m => m.month === date.getMonth() && m.year === date.getFullYear())
+  return !months.some(m => m.month === d.getMonth() && m.year === d.getFullYear())
 })
 
-const ariaLabel = computed(() => formatFullDate(date, context.locale))
+const ariaLabel = computed(() => formatFullDate(dateValue.value, context.locale))
 
 const tabindex = computed(() => isFocused.value ? 0 : -1)
 
 // Focus the element when it becomes the focused date
 watch(() => context.focusedDate.value, async (newDate) => {
-  if (isSameDay(newDate, date)) {
+  if (isSameDay(newDate, dateValue.value)) {
     await nextTick()
     buttonRef.value?.focus()
   }
@@ -41,8 +47,8 @@ watch(() => context.focusedDate.value, async (newDate) => {
 
 function handleClick() {
   if (isDisabled.value) return
-  context.selectDate(date)
-  context.focusDate(date)
+  context.selectDate(dateValue.value)
+  context.focusDate(dateValue.value)
 }
 
 function setRef(el: any) {
@@ -71,7 +77,7 @@ function setRef(el: any) {
     @click="handleClick"
   >
     <slot :selected="isSelected" :disabled="isDisabled" :today="isTodayDate">
-      {{ date.getDate() }}
+      {{ dateValue.getDate() }}
     </slot>
   </Primitive>
 </template>

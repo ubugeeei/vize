@@ -27,8 +27,8 @@ function updateValue(value: string) {
 }
 
 function handleKeydown(event: KeyboardEvent) {
-  const target = event.target as HTMLElement
-  const rootEl = event.currentTarget as HTMLElement
+  const target: HTMLElement = event.target
+  const rootEl: HTMLElement = event.currentTarget
   const nextElement = useArrowNavigation(event, target, rootEl, {
     orientation,
     loop,

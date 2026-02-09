@@ -22,7 +22,7 @@ function handleClick() {
 function handleKeydown(event: KeyboardEvent) {
   const target = useArrowNavigation(
     event,
-    event.currentTarget as HTMLElement,
+    event.currentTarget instanceof HTMLElement ? event.currentTarget : null,
     rootContext.parentRef.value,
     {
       orientation: rootContext.orientation,

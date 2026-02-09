@@ -9,6 +9,7 @@ export default defineConfig({
       include: ['src/**/*.vue', 'src/**/*.art.vue'],
       basePath: '/__musea__',
       inlineArt: true,
+      css: ['./src/css/index.css'],
     }),
   ],
 })

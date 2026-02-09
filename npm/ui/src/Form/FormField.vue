@@ -14,14 +14,18 @@ const { name, defaultValue } = defineProps<FormFieldProps>()
 const rootContext = injectFormRootContext('FormField')
 
 const id = useId()
-const controlId = `${id}-control`
-const messageId = `${id}-message`
+// Avoid template literals - Rust compiler hoists them outside setup()
+const controlId = id.concat('-control')
+const messageId = id.concat('-message')
 
 const fieldErrors = computed(() => rootContext.errors.value.get(name) || [])
 const isTouched = computed(() => rootContext.touched.value.has(name))
 const isDirty = computed(() => rootContext.dirty.value.has(name))
 const isInvalid = computed(() => fieldErrors.value.length > 0)
-const value = computed(() => rootContext.values.value[name])
+const value = computed(() => {
+  const fieldName = String(name)
+  return rootContext.values.value[fieldName]
+})
 
 function setValue(val: unknown) {
   rootContext.setFieldValue(name, val)

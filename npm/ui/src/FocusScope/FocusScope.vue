@@ -13,7 +13,8 @@ const { trapped = false, loop = false, as = 'div', asChild = false } = definePro
 
 const emit = defineEmits<FocusScopeEmits>()
 
-const containerRef = ref<HTMLElement>()
+const initFocusContainer: HTMLElement | undefined = undefined
+const containerRef = ref(initFocusContainer)
 let previouslyFocusedElement: HTMLElement | null = null
 
 function setContainerRef(el: HTMLElement | undefined) {
@@ -64,7 +65,7 @@ function handleKeyDown(event: KeyboardEvent) {
 function focusTrap(event: FocusEvent) {
   if (!trapped || !containerRef.value) return
 
-  const relatedTarget = event.relatedTarget as HTMLElement | null
+  const relatedTarget: HTMLElement | null = event.relatedTarget
 
   // If focus is moving outside the container, bring it back
   if (relatedTarget && !containerRef.value.contains(relatedTarget)) {

@@ -13,7 +13,8 @@ const { as = 'div', asChild = false, index } = defineProps<OTPSlotProps>()
 const context = injectOTPRootContext('OTPSlot')
 
 const char = computed(() => {
-  const rawChar = context.value.value[index] ?? ''
+  const idx = index
+  const rawChar = context.value.value[idx] ?? ''
   if (!rawChar) return ''
 
   if (context.mask === true) return '\u2022'
@@ -21,7 +22,10 @@ const char = computed(() => {
   return rawChar
 })
 
-const rawChar = computed(() => context.value.value[index] ?? '')
+const rawChar = computed(() => {
+  const idx = index
+  return context.value.value[idx] ?? ''
+})
 const hasFakeCaret = computed(() => context.isInputFocused.value && context.focusedIndex.value === index && !rawChar.value)
 const isActive = computed(() => context.isInputFocused.value && context.focusedIndex.value === index)
 const isFilled = computed(() => !!rawChar.value)

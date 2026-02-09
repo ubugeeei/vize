@@ -89,6 +89,13 @@ export interface MuseaOptions {
   tokensPath?: string;
 
   /**
+   * CSS imports to inject into preview iframes.
+   * Useful for loading default component styles (e.g. `'@vizejs/ui/css'`).
+   * @example ['@vizejs/ui/css']
+   */
+  css?: string[];
+
+  /**
    * Gallery theme configuration.
    *
    * - `'dark'` / `'light'` — use a built-in theme (default: `'dark'`)

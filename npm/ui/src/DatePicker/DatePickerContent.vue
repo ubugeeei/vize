@@ -24,7 +24,7 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 }
 
 function handlePointerDownOutside(event: PointerEvent) {
-  const target = event.target as HTMLElement
+  const target: HTMLElement = event.target
   // Ignore clicks on the trigger
   if (context.triggerRef.value?.contains(target)) return
   // Ignore clicks inside the content

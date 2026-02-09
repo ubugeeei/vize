@@ -3,49 +3,66 @@ export type { SkeletonProps } from './types'
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useAttrs } from 'vue'
 import { Primitive } from '../Primitive'
 import type { SkeletonProps } from './types'
 
-const {
-  as = 'div',
-  asChild = false,
-  loading = true,
-  animated = true,
-  width,
-  height,
-  radius,
-  circle = false,
-} = defineProps<SkeletonProps>()
+// Rust compiler cannot resolve imported types (SkeletonProps is from ./types),
+// so no runtime `props` option is generated in defineComponent.
+// All passed props end up in $attrs. We use useAttrs() to access them.
+defineProps<SkeletonProps>()
+const attrs = useAttrs()
+
+// Helper: attrs use kebab-case when props are not declared
+function attr(name: string): unknown {
+  if (name in attrs) return attrs[name]
+  const kebab = name.replace(/[A-Z]/g, (m: string) => '-' + m.toLowerCase())
+  return attrs[kebab]
+}
+
+const componentAs = computed(() => (attr('as') ?? 'div') as string)
+const componentAsChild = computed(() => !!attr('asChild'))
+const isLoading = computed(() => {
+  const v = attr('loading')
+  return v === undefined ? true : !!v
+})
+const isAnimated = computed(() => {
+  const v = attr('animated')
+  return v === undefined ? true : !!v
+})
+const isCircle = computed(() => !!attr('circle'))
 
 function toCssValue(value: string | number | undefined): string | undefined {
   if (value === undefined) return undefined
-  return typeof value === 'number' ? `${value}px` : value
+  return typeof value === 'number' ? String(value) + 'px' : value
 }
 
 const skeletonStyle = computed(() => {
-  if (!loading) return undefined
+  if (!isLoading.value) return undefined
 
-  const size = circle ? (width ?? height) : undefined
+  const w = attr('width') as string | number | undefined
+  const h = attr('height') as string | number | undefined
+  const r = attr('radius') as string | number | undefined
+  const size = isCircle.value ? (w ?? h) : undefined
 
   return {
-    width: toCssValue(circle ? size : width),
-    height: toCssValue(circle ? size : height),
-    borderRadius: circle ? '50%' : toCssValue(radius),
+    width: toCssValue(isCircle.value ? size : w),
+    height: toCssValue(isCircle.value ? size : h),
+    borderRadius: isCircle.value ? '50%' : toCssValue(r),
   }
 })
 </script>
 
 <template>
   <Primitive
-    v-if="loading"
-    :as="as"
-    :as-child="asChild"
+    v-if="isLoading"
+    :as="componentAs"
+    :as-child="componentAsChild"
     aria-busy="true"
     aria-hidden="true"
     data-vize-skeleton
-    :data-loading="loading ? '' : undefined"
-    :data-animated="animated ? '' : undefined"
+    :data-loading="isLoading ? '' : undefined"
+    :data-animated="isAnimated ? '' : undefined"
     :style="skeletonStyle"
   >
     <slot name="skeleton" />

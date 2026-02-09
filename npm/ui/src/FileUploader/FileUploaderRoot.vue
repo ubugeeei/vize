@@ -114,7 +114,7 @@ function openFilePicker() {
 }
 
 function onInputChange(event: Event) {
-  const target = event.target as HTMLInputElement
+  const target: HTMLInputElement = event.target
   if (target.files && target.files.length > 0) {
     addFiles(target.files)
   }

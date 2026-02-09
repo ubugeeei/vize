@@ -12,12 +12,13 @@ import type { TabsListProps } from './types'
 const { as = 'div', asChild = false, loop = true } = defineProps<TabsListProps>()
 
 const rootContext = injectTabsRootContext('TabsList')
-const listRef = ref<HTMLElement>()
+const initListRef: HTMLElement | undefined = undefined
+const listRef = ref(initListRef)
 
 function handleKeydown(event: KeyboardEvent) {
   const target = useArrowNavigation(
     event,
-    event.currentTarget === event.target ? null : event.target as HTMLElement,
+    event.currentTarget === event.target ? null : (event.target instanceof HTMLElement ? event.target : null),
     listRef.value,
     {
       orientation: rootContext.orientation,

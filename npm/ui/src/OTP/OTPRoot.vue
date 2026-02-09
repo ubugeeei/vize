@@ -27,7 +27,8 @@ const emit = defineEmits<{
   'complete': [value: string]
 }>()
 
-const internal = ref(defaultValue)
+const initValue: string = defaultValue ?? ''
+const internal = ref(initValue)
 const value = computed(() => modelValue !== undefined ? modelValue : internal.value)
 
 const focusedIndex = ref(-1)
@@ -81,7 +82,7 @@ function isValidChar(char: string): boolean {
 
 function onHiddenInputInput(event: Event) {
   event.preventDefault()
-  const target = event.target as HTMLInputElement
+  const target: HTMLInputElement = event.target
   const inputValue = target.value
 
   if (inputValue.length > 1) {

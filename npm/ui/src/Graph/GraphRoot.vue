@@ -4,69 +4,88 @@ export { injectGraphRootContext, provideGraphRootContext } from './types'
 </script>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, useAttrs } from 'vue'
 import type { GraphRootProps, GraphDataPoint } from './types'
 import { provideGraphRootContext } from './types'
 import { createLinearScale, extent } from './utils'
 
-const {
-  width: widthProp = '100%',
-  height: heightProp = 300,
-  padding: paddingProp,
-  data,
-  xAccessor = 'x',
-  yAccessor = 'y',
-} = defineProps<GraphRootProps>()
+// Rust compiler cannot resolve imported types (GraphRootProps is from ./types),
+// so no runtime `props` option is generated in defineComponent.
+// All passed props end up in $attrs. We use useAttrs() to access them.
+defineProps<GraphRootProps>()
+const attrs = useAttrs()
+
+// Helper: attrs use kebab-case when props are not declared
+function attr(name: string): unknown {
+  if (name in attrs) return attrs[name]
+  const kebab = name.replace(/[A-Z]/g, (m: string) => '-' + m.toLowerCase())
+  return attrs[kebab]
+}
 
 const svgRef = ref<SVGSVGElement>()
 
-const padding = {
-  top: paddingProp?.top ?? 20,
-  right: paddingProp?.right ?? 20,
-  bottom: paddingProp?.bottom ?? 30,
-  left: paddingProp?.left ?? 40,
-}
+const resolvedPadding = computed(() => {
+  const p = attr('padding') as { top?: number; right?: number; bottom?: number; left?: number } | undefined
+  return {
+    top: p?.top ?? 20,
+    right: p?.right ?? 20,
+    bottom: p?.bottom ?? 30,
+    left: p?.left ?? 40,
+  }
+})
 
 function getX(d: GraphDataPoint): number {
-  if (typeof xAccessor === 'function') return xAccessor(d)
-  return Number(d[xAccessor]) || 0
+  const acc = attr('xAccessor') ?? 'x'
+  if (typeof acc === 'function') return acc(d)
+  const key = String(acc)
+  return Number(d[key]) || 0
 }
 
 function getY(d: GraphDataPoint): number {
-  if (typeof yAccessor === 'function') return yAccessor(d)
-  return Number(d[yAccessor]) || 0
+  const acc = attr('yAccessor') ?? 'y'
+  if (typeof acc === 'function') return acc(d)
+  const key = String(acc)
+  return Number(d[key]) || 0
 }
 
+const svgWidth = computed(() => attr('width') ?? '100%')
+
 const resolvedWidth = computed(() => {
-  if (typeof widthProp === 'number') return widthProp
-  return 600 // fallback for percentage; actual sizing handled by SVG viewBox
+  const w = attr('width') ?? '100%'
+  if (typeof w === 'number') return w
+  return 600
 })
 
 const resolvedHeight = computed(() => {
-  if (typeof heightProp === 'number') return heightProp
-  return Number.parseInt(String(heightProp), 10) || 300
+  const h = attr('height') ?? 300
+  if (typeof h === 'number') return h
+  return Number.parseInt(String(h), 10) || 300
 })
 
-const innerWidth = computed(() => resolvedWidth.value - padding.left - padding.right)
-const innerHeight = computed(() => resolvedHeight.value - padding.top - padding.bottom)
+const innerWidth = computed(() => resolvedWidth.value - resolvedPadding.value.left - resolvedPadding.value.right)
+const innerHeight = computed(() => resolvedHeight.value - resolvedPadding.value.top - resolvedPadding.value.bottom)
 
 const xScale = computed(() => {
-  const [min, max] = extent(data, getX)
-  return createLinearScale([min, max], [padding.left, padding.left + innerWidth.value])
+  const d = (attr('data') ?? []) as GraphDataPoint[]
+  if (d.length === 0) return createLinearScale([0, 1], [resolvedPadding.value.left, resolvedPadding.value.left + innerWidth.value])
+  const [min, max] = extent(d, getX)
+  return createLinearScale([min, max], [resolvedPadding.value.left, resolvedPadding.value.left + innerWidth.value])
 })
 
 const yScale = computed(() => {
-  const [min, max] = extent(data, getY)
-  return createLinearScale([min, max], [padding.top + innerHeight.value, padding.top])
+  const d = (attr('data') ?? []) as GraphDataPoint[]
+  if (d.length === 0) return createLinearScale([0, 1], [resolvedPadding.value.top + innerHeight.value, resolvedPadding.value.top])
+  const [min, max] = extent(d, getY)
+  return createLinearScale([min, max], [resolvedPadding.value.top + innerHeight.value, resolvedPadding.value.top])
 })
 
 provideGraphRootContext({
   width: resolvedWidth,
   height: resolvedHeight,
-  padding,
+  padding: resolvedPadding.value,
   innerWidth,
   innerHeight,
-  data,
+  data: (attr('data') ?? []) as GraphDataPoint[],
   xScale,
   yScale,
   getX,
@@ -77,9 +96,9 @@ provideGraphRootContext({
 <template>
   <svg
     ref="svgRef"
-    :width="widthProp"
+    :width="svgWidth"
     :height="resolvedHeight"
-    :viewBox="`0 0 ${resolvedWidth} ${resolvedHeight}`"
+    :viewBox="'0 0 ' + resolvedWidth + ' ' + resolvedHeight"
     role="img"
     preserveAspectRatio="xMidYMid meet"
   >

@@ -3,17 +3,22 @@ export type { CalendarCellProps } from './types'
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useAttrs } from 'vue'
 import { Primitive } from '../Primitive'
-import type { CalendarCellProps } from './types'
+import type { CalendarCellProps, DateValue } from './types'
 import { injectCalendarRootContext } from './types'
 
-const { as = 'td', asChild = false, date } = defineProps<CalendarCellProps>()
+// Rust compiler cannot resolve imported types, so date prop ends up in $attrs
+defineProps<CalendarCellProps>()
+const attrs = useAttrs()
 
 const context = injectCalendarRootContext('CalendarCell')
 
-const isSelected = computed(() => context.isDateSelected(date))
-const isDisabled = computed(() => context.isDateDisabled(date))
+// Access date from attrs since Rust compiler doesn't generate props option
+const dateValue = computed(() => attrs.date as DateValue)
+
+const isSelected = computed(() => context.isDateSelected(dateValue.value))
+const isDisabled = computed(() => context.isDateDisabled(dateValue.value))
 </script>
 
 <template>

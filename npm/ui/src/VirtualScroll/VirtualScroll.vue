@@ -4,63 +4,84 @@ export { injectVirtualScrollContext, provideVirtualScrollContext } from './types
 </script>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, useAttrs } from 'vue'
 import { Primitive } from '../Primitive'
 import type { VirtualScrollProps, VirtualItem } from './types'
 import { provideVirtualScrollContext } from './types'
 
-const {
-  as = 'div',
-  asChild = false,
-  items,
-  itemHeight,
-  overscan = 3,
-  horizontal = false,
-} = defineProps<VirtualScrollProps>()
+// Rust compiler cannot resolve imported types (VirtualScrollProps is from ./types),
+// so no runtime `props` option is generated in defineComponent.
+// All passed props end up in $attrs. We use useAttrs() to access them.
+defineProps<VirtualScrollProps>()
+const attrs = useAttrs()
 
 const scrollOffset = ref(0)
-const containerRef = ref<HTMLElement>()
+const initContainer: HTMLElement | undefined = undefined
+const containerRef = ref(initContainer)
 const containerSize = ref(0)
 
+// Helper: attrs use kebab-case when props are not declared
+function attr(name: string): unknown {
+  if (name in attrs) return attrs[name]
+  const kebab = name.replace(/[A-Z]/g, (m: string) => '-' + m.toLowerCase())
+  return attrs[kebab]
+}
+
+const itemList = computed(() => (attr('items') ?? []) as unknown[])
+const componentAs = computed(() => (attr('as') ?? 'div') as string)
+const componentAsChild = computed(() => !!attr('asChild'))
+const isHorizontal = computed(() => !!attr('horizontal'))
+
+function getItemHeight(): number | ((index: number) => number) {
+  return (attr('itemHeight') ?? 40) as number | ((index: number) => number)
+}
+
 function getItemSize(index: number): number {
-  if (typeof itemHeight === 'function') {
-    return itemHeight(index)
+  const ih = getItemHeight()
+  if (typeof ih === 'function') {
+    return ih(index)
   }
-  return itemHeight
+  return ih
 }
 
 function getItemOffset(index: number): number {
-  if (typeof itemHeight === 'number') {
-    return index * itemHeight
+  const ih = getItemHeight()
+  if (typeof ih === 'number') {
+    return index * ih
   }
   let offset = 0
   for (let i = 0; i < index; i++) {
-    offset += itemHeight(i)
+    offset += getItemSize(i)
   }
   return offset
 }
 
 const totalSize = computed(() => {
-  if (typeof itemHeight === 'number') {
-    return items.length * itemHeight
+  const list = itemList.value
+  const ih = getItemHeight()
+  if (typeof ih === 'number') {
+    return list.length * ih
   }
   let total = 0
-  for (let i = 0; i < items.length; i++) {
-    total += itemHeight(i)
+  for (let i = 0; i < list.length; i++) {
+    total += getItemSize(i)
   }
   return total
 })
 
-const virtualItems = computed<VirtualItem[]>(() => {
-  if (items.length === 0 || containerSize.value === 0) return []
+function computeVirtualItems(): VirtualItem[] {
+  const list = itemList.value
+  const os = (attr('overscan') ?? 3) as number
+  if (list.length === 0 || containerSize.value === 0) return []
 
+  const ih = getItemHeight()
   let startIndex = 0
-  if (typeof itemHeight === 'number') {
-    startIndex = Math.floor(scrollOffset.value / itemHeight)
+  if (typeof ih === 'number') {
+    startIndex = Math.floor(scrollOffset.value / ih)
   } else {
     let accumulated = 0
-    for (let i = 0; i < items.length; i++) {
-      accumulated += itemHeight(i)
+    for (let i = 0; i < list.length; i++) {
+      accumulated += getItemSize(i)
       if (accumulated > scrollOffset.value) {
         startIndex = i
         break
@@ -68,15 +89,15 @@ const virtualItems = computed<VirtualItem[]>(() => {
     }
   }
 
-  startIndex = Math.max(0, startIndex - overscan)
+  startIndex = Math.max(0, startIndex - os)
 
   let endIndex = startIndex
   let accumulatedSize = getItemOffset(startIndex) - scrollOffset.value
-  while (endIndex < items.length && accumulatedSize < containerSize.value) {
+  while (endIndex < list.length && accumulatedSize < containerSize.value) {
     accumulatedSize += getItemSize(endIndex)
     endIndex++
   }
-  endIndex = Math.min(items.length, endIndex + overscan)
+  endIndex = Math.min(list.length, endIndex + os)
 
   const result: VirtualItem[] = []
   for (let i = startIndex; i < endIndex; i++) {
@@ -84,29 +105,31 @@ const virtualItems = computed<VirtualItem[]>(() => {
       index: i,
       start: getItemOffset(i),
       size: getItemSize(i),
-      item: items[i],
+      item: list[i],
     })
   }
 
   return result
-})
+}
+
+const virtualItems = computed(() => computeVirtualItems())
 
 function handleScroll(event: Event) {
-  const el = event.currentTarget as HTMLElement
-  scrollOffset.value = horizontal ? el.scrollLeft : el.scrollTop
+  const el: HTMLElement = event.currentTarget
+  scrollOffset.value = isHorizontal.value ? el.scrollLeft : el.scrollTop
 }
 
 let resizeObserver: ResizeObserver | undefined
 
 onMounted(() => {
   if (containerRef.value) {
-    containerSize.value = horizontal
+    containerSize.value = isHorizontal.value
       ? containerRef.value.clientWidth
       : containerRef.value.clientHeight
 
     resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        containerSize.value = horizontal
+        containerSize.value = isHorizontal.value
           ? entry.contentRect.width
           : entry.contentRect.height
       }
@@ -130,11 +153,11 @@ provideVirtualScrollContext({
 <template>
   <Primitive
     :ref="(el) => { containerRef = el?.$el ?? el }"
-    :as="as"
-    :as-child="asChild"
+    :as="componentAs"
+    :as-child="componentAsChild"
     :tabindex="0"
     role="list"
-    :aria-rowcount="items.length"
+    :aria-rowcount="itemList.length"
     :style="{
       overflow: 'auto',
       position: 'relative',
@@ -142,13 +165,13 @@ provideVirtualScrollContext({
     @scroll="handleScroll"
   >
     <slot
-      :virtual-items="virtualItems"
-      :total-size="totalSize"
-      :container-props="{
+      :virtualItems="virtualItems"
+      :totalSize="totalSize"
+      :containerProps="{
         style: {
-          position: 'relative' as const,
-          [horizontal ? 'width' : 'height']: `${totalSize}px`,
-          [horizontal ? 'height' : 'width']: '100%',
+          position: 'relative',
+          [isHorizontal ? 'width' : 'height']: totalSize + 'px',
+          [isHorizontal ? 'height' : 'width']: '100%',
         },
       }"
     />

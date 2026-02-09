@@ -22,7 +22,8 @@ const open = computed(() => {
   if (rootContext.type === 'single') {
     return rootContext.modelValue.value === value
   } else {
-    return (rootContext.modelValue.value as string[]).includes(value)
+    const arr = Array.isArray(rootContext.modelValue.value) ? rootContext.modelValue.value : []
+    return arr.includes(value)
   }
 })
 

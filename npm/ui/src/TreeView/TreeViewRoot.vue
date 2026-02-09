@@ -30,15 +30,19 @@ const emit = defineEmits<{
 
 const direction = useDirection(computed(() => dirProp))
 
-const internalSelected = ref<string[]>(defaultValue ?? [])
-const internalExpanded = ref<string[]>(defaultExpanded ?? [])
+const initSelected: string[] = defaultValue ?? []
+const internalSelected = ref(initSelected)
+const initExpanded: string[] = defaultExpanded ?? []
+const internalExpanded = ref(initExpanded)
 
-const selectedIds = computed<string[]>(() => {
-  return modelValue !== undefined ? modelValue : internalSelected.value
+const selectedIds = computed(() => {
+  const v: string[] = modelValue !== undefined ? modelValue : internalSelected.value
+  return v
 })
 
-const expandedIds = computed<string[]>(() => {
-  return expanded !== undefined ? expanded : internalExpanded.value
+const expandedIds = computed(() => {
+  const v: string[] = expanded !== undefined ? expanded : internalExpanded.value
+  return v
 })
 
 function selectNode(id: string) {
@@ -76,8 +80,10 @@ function isExpanded(id: string): boolean {
   return expandedIds.value.includes(id)
 }
 
-const focusedId = ref<string | undefined>()
-const firstItemId = ref<string | undefined>()
+const initFocusedId: string | undefined = undefined
+const focusedId = ref(initFocusedId)
+const initFirstItemId: string | undefined = undefined
+const firstItemId = ref(initFirstItemId)
 
 function registerItem(id: string) {
   if (firstItemId.value === undefined) {
@@ -89,12 +95,13 @@ function setFocused(id: string) {
   focusedId.value = id
 }
 
-const rootRef = ref<HTMLElement>()
+const initRootRef: HTMLElement | undefined = undefined
+const rootRef = ref(initRootRef)
 
 function getVisibleItems(): HTMLElement[] {
   if (!rootRef.value) return []
   const all = Array.from(
-    rootRef.value.querySelectorAll<HTMLElement>('[role="treeitem"]'),
+    rootRef.value.querySelectorAll('[role="treeitem"]'),
   )
   return all.filter((el) => {
     // Check if any ancestor group is hidden (collapsed)
@@ -113,7 +120,7 @@ function expandAllSiblings(currentEl: HTMLElement) {
   const parent = currentEl.closest('[role="group"]') ?? rootRef.value
   if (!parent) return
   const siblings = Array.from(
-    parent.querySelectorAll<HTMLElement>(':scope > [data-value]'),
+    parent.querySelectorAll(':scope > [data-value]'),
   )
   for (const sibling of siblings) {
     const val = sibling.getAttribute('data-value')
@@ -200,7 +207,7 @@ function handleKeydown(event: KeyboardEvent) {
           const parentValue = parentGroup.getAttribute('data-value')
           if (parentValue) {
             setFocused(parentValue)
-            ;(parentGroup as HTMLElement).focus()
+            if (parentGroup instanceof HTMLElement) parentGroup.focus()
           }
         }
       }

@@ -234,9 +234,11 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
   const storybookOutDir = options.storybookOutDir ?? ".storybook/stories";
   let inlineArt = options.inlineArt ?? false;
   const tokensPath = options.tokensPath;
+  const cssImportsRaw = options.css ?? [];
   const themeConfig = buildThemeConfig(options.theme);
 
   let config: ResolvedConfig;
+  let resolvedCssImports: string[] = [];
   let server: ViteDevServer | null = null;
   const artFiles = new Map<string, ArtFileInfo>();
 
@@ -259,6 +261,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
 
     configResolved(resolvedConfig) {
       config = resolvedConfig;
+      resolvedCssImports = cssImportsRaw.map((p) =>
+        p.startsWith("/") ? p : path.resolve(config.root, p),
+      );
 
       // Merge musea config from vize.config.ts (plugin args > config file > defaults)
       const vizeConfig = vizeConfigStore.get(resolvedConfig.root);
@@ -380,7 +385,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
         }
 
         const variantComponentName = toPascalCase(variant.name);
-        const moduleCode = generatePreviewModule(art, variantComponentName, variant.name);
+        const moduleCode = generatePreviewModule(art, variantComponentName, variant.name, resolvedCssImports);
 
         // Transform the module through Vite to resolve imports
         try {
@@ -697,6 +702,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
                 variantComponentName,
                 variant.name,
                 propsOverride,
+                resolvedCssImports,
               );
               res.setHeader("Content-Type", "application/javascript");
               res.end(moduleCode);
@@ -917,7 +923,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
           const art = artFiles.get(artPath);
           if (art) {
             const variantComponentName = toPascalCase(variantName);
-            return generatePreviewModule(art, variantComponentName, variantName);
+            return generatePreviewModule(art, variantComponentName, variantName, resolvedCssImports);
           }
         }
       }
@@ -2141,13 +2147,16 @@ function generatePreviewModule(
   art: ArtFileInfo,
   variantComponentName: string,
   variantName: string,
+  cssImports: string[] = [],
 ): string {
   const artModuleId = `virtual:musea-art:${art.path}`;
   const escapedVariantName = escapeTemplate(variantName);
+  const cssImportLines = cssImports.map((p) => `import '${p}';`).join("\n");
 
   return `
 import { createApp, reactive, h } from 'vue';
 import * as artModule from '${artModuleId}';
+${cssImportLines}
 
 const container = document.getElementById('app');
 
@@ -2501,14 +2510,17 @@ function generatePreviewModuleWithProps(
   variantComponentName: string,
   variantName: string,
   propsOverride: Record<string, unknown>,
+  cssImports: string[] = [],
 ): string {
   const artModuleId = `virtual:musea-art:${art.path}`;
   const escapedVariantName = escapeTemplate(variantName);
   const propsJson = JSON.stringify(propsOverride);
+  const cssImportLines = cssImports.map((p) => `import '${p}';`).join("\n");
 
   return `
 import { createApp, h } from 'vue';
 import * as artModule from '${artModuleId}';
+${cssImportLines}
 
 const container = document.getElementById('app');
 const propsOverride = ${propsJson};

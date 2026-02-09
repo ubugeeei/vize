@@ -10,7 +10,7 @@ export { injectCalendarRootContext, provideCalendarRootContext } from './types'
 </script>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, useAttrs } from 'vue'
 import { Primitive } from '../Primitive'
 import { useDirection, kbd } from '../shared'
 import type { CalendarRootProps, CalendarMonth, DateValue } from './types'
@@ -30,41 +30,46 @@ import {
   getWeekDayNames,
 } from './utils'
 
-const {
-  as = 'div',
-  asChild = false,
-  modelValue,
-  defaultValue,
-  minDate,
-  maxDate,
-  disabled = false,
-  readonly: readonlyProp = false,
-  multiple = false,
-  dir: dirProp,
-  locale = 'en-US',
-  weekStartsOn = 1,
-  numberOfMonths = 1,
-  fixedWeeks = false,
-  isDateDisabled: isDateDisabledProp,
-  isDateUnavailable: isDateUnavailableProp,
-} = defineProps<CalendarRootProps>()
+// Rust compiler cannot resolve imported types (CalendarRootProps is from ./types),
+// so no runtime `props` option is generated in defineComponent.
+// All passed props end up in $attrs. We use useAttrs() to access them.
+defineProps<CalendarRootProps>()
+const attrs = useAttrs()
+
+// Helper: attrs use kebab-case when props are not declared
+function attr(name: string): unknown {
+  if (name in attrs) return attrs[name]
+  const kebab = name.replace(/[A-Z]/g, (m: string) => '-' + m.toLowerCase())
+  return attrs[kebab]
+}
 
 const emit = defineEmits<{
   'update:modelValue': [value: DateValue | DateValue[]]
 }>()
 
-const direction = useDirection(computed(() => dirProp))
+const componentAs = computed(() => (attr('as') ?? 'div') as string)
+const componentAsChild = computed(() => !!attr('asChild'))
+const isDisabled = computed(() => !!attr('disabled'))
+const isReadonly = computed(() => !!attr('readonly'))
+const isMultiple = computed(() => !!attr('multiple'))
+const resolvedLocale = computed(() => (attr('locale') ?? 'en-US') as string)
+const resolvedWeekStartsOn = computed(() => (attr('weekStartsOn') ?? 1) as number)
+const resolvedNumberOfMonths = computed(() => (attr('numberOfMonths') ?? 1) as number)
+const resolvedFixedWeeks = computed(() => !!attr('fixedWeeks'))
+
+const direction = useDirection(computed(() => attr('dir') as string | undefined))
 
 // Internal selection state
-const internalValue = ref<DateValue[]>(
-  defaultValue !== undefined
-    ? (Array.isArray(defaultValue) ? defaultValue : [defaultValue])
-    : [],
-)
+const initDefault = attr('defaultValue')
+const initArray: DateValue[] = initDefault !== undefined
+  ? (Array.isArray(initDefault) ? initDefault : [initDefault]) as DateValue[]
+  : []
+const internalValue = ref(initArray)
 
 const selectedDates = computed<DateValue[]>(() => {
-  if (modelValue !== undefined) {
-    return Array.isArray(modelValue) ? modelValue : [modelValue]
+  const mv = attr('modelValue')
+  if (mv !== undefined) {
+    return Array.isArray(mv) ? mv : [mv]
   }
   return internalValue.value
 })
@@ -83,7 +88,7 @@ const displayMonth = ref<DateValue>(new Date(focusedDate.value))
 watch(focusedDate, (newFocused) => {
   // Check if focused date is visible in current range
   const firstMonth = displayMonth.value
-  const lastMonth = addMonths(firstMonth, numberOfMonths - 1)
+  const lastMonth = addMonths(firstMonth, resolvedNumberOfMonths.value - 1)
   const focusedInRange =
     (isSameMonth(newFocused, firstMonth) || isAfterDay(newFocused, startOfMonth(firstMonth)))
     && (isSameMonth(newFocused, lastMonth) || isBeforeDay(newFocused, endOfMonth(lastMonth)))
@@ -93,16 +98,20 @@ watch(focusedDate, (newFocused) => {
   }
 })
 
-function isDateDisabled(date: DateValue): boolean {
-  if (disabled) return true
-  if (minDate && isBeforeDay(date, minDate)) return true
-  if (maxDate && isAfterDay(date, maxDate)) return true
-  if (isDateDisabledProp && isDateDisabledProp(date)) return true
+function isDateDisabledFn(date: DateValue): boolean {
+  if (isDisabled.value) return true
+  const minD = attr('minDate') as DateValue | undefined
+  const maxD = attr('maxDate') as DateValue | undefined
+  if (minD && isBeforeDay(date, minD)) return true
+  if (maxD && isAfterDay(date, maxD)) return true
+  const customFn = attr('isDateDisabled') as ((d: DateValue) => boolean) | undefined
+  if (customFn && customFn(date)) return true
   return false
 }
 
-function isDateUnavailable(date: DateValue): boolean {
-  if (isDateUnavailableProp) return isDateUnavailableProp(date)
+function isDateUnavailableFn(date: DateValue): boolean {
+  const customFn = attr('isDateUnavailable') as ((d: DateValue) => boolean) | undefined
+  if (customFn) return customFn(date)
   return false
 }
 
@@ -111,11 +120,11 @@ function isDateSelected(date: DateValue): boolean {
 }
 
 function selectDate(date: DateValue) {
-  if (disabled || readonlyProp) return
-  if (isDateDisabled(date)) return
-  if (isDateUnavailable(date)) return
+  if (isDisabled.value || isReadonly.value) return
+  if (isDateDisabledFn(date)) return
+  if (isDateUnavailableFn(date)) return
 
-  if (multiple) {
+  if (isMultiple.value) {
     const existing = selectedDates.value.findIndex(d => isSameDay(d, date))
     let next: DateValue[]
     if (existing >= 0) {
@@ -152,25 +161,25 @@ function prevYear() {
 }
 
 // Week day names
-const weekDays = computed(() => getWeekDayNames(locale, weekStartsOn))
+const weekDays = computed(() => getWeekDayNames(resolvedLocale.value, resolvedWeekStartsOn.value))
 
 // Build month grids
 const months = computed<CalendarMonth[]>(() => {
   const result: CalendarMonth[] = []
 
-  for (let i = 0; i < numberOfMonths; i++) {
+  for (let i = 0; i < resolvedNumberOfMonths.value; i++) {
     const monthDate = addMonths(displayMonth.value, i)
     const year = monthDate.getFullYear()
     const month = monthDate.getMonth()
-    const grid = getMonthGrid(year, month, weekStartsOn, fixedWeeks)
+    const grid = getMonthGrid(year, month, resolvedWeekStartsOn.value, resolvedFixedWeeks.value)
 
     const weeks = grid.map(week =>
       week.map(date => ({
         date,
         isToday: isToday(date),
         isSelected: isDateSelected(date),
-        isDisabled: isDateDisabled(date),
-        isUnavailable: isDateUnavailable(date),
+        isDisabled: isDateDisabledFn(date),
+        isUnavailable: isDateUnavailableFn(date),
         isOutsideMonth: date.getMonth() !== month,
       })),
     )
@@ -182,7 +191,7 @@ const months = computed<CalendarMonth[]>(() => {
 })
 
 function handleKeydown(event: KeyboardEvent) {
-  if (disabled || readonlyProp) return
+  if (isDisabled.value || isReadonly.value) return
 
   const isRtl = direction.value === 'rtl'
   let handled = true
@@ -215,10 +224,10 @@ function handleKeydown(event: KeyboardEvent) {
       }
       break
     case kbd.HOME:
-      focusedDate.value = startOfWeek(focusedDate.value, weekStartsOn)
+      focusedDate.value = startOfWeek(focusedDate.value, resolvedWeekStartsOn.value)
       break
     case kbd.END: {
-      const weekEnd = addDays(startOfWeek(focusedDate.value, weekStartsOn), 6)
+      const weekEnd = addDays(startOfWeek(focusedDate.value, resolvedWeekStartsOn.value), 6)
       focusedDate.value = weekEnd
       break
     }
@@ -242,13 +251,13 @@ provideCalendarRootContext({
   focusedDate,
   months,
   weekDays,
-  locale,
-  disabled,
-  readonly: readonlyProp,
-  multiple,
+  locale: resolvedLocale.value,
+  disabled: isDisabled.value,
+  readonly: isReadonly.value,
+  multiple: isMultiple.value,
   dir: direction,
-  isDateDisabled,
-  isDateUnavailable,
+  isDateDisabled: isDateDisabledFn,
+  isDateUnavailable: isDateUnavailableFn,
   isDateSelected,
   selectDate,
   focusDate,
@@ -261,19 +270,19 @@ provideCalendarRootContext({
 
 <template>
   <Primitive
-    :as="as"
-    :as-child="asChild"
+    :as="componentAs"
+    :as-child="componentAsChild"
     role="application"
-    :data-disabled="disabled ? '' : undefined"
-    :data-readonly="readonlyProp ? '' : undefined"
+    :data-disabled="isDisabled ? '' : undefined"
+    :data-readonly="isReadonly ? '' : undefined"
     data-vize-calendar
     :dir="direction"
     @keydown="handleKeydown"
   >
     <slot
       :months="months"
-      :week-days="weekDays"
-      :focused-date="focusedDate"
+      :weekDays="weekDays"
+      :focusedDate="focusedDate"
     />
   </Primitive>
 </template>
