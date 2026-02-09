@@ -2383,7 +2383,7 @@ export default ${toPascalCase(defaultVariant.name)};
  */
 function extractScriptSetup(
   filePath: string,
-  hasScriptSetup: boolean,
+  _hasScriptSetup: boolean,
 ): {
   imports: string[];
   importedNames: string[];
