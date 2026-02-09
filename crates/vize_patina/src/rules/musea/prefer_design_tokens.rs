@@ -147,7 +147,12 @@ impl PreferDesignTokens {
                 }
 
                 // Check individual value tokens (split on whitespace for shorthand properties)
-                let line_byte_offset = css[..css.lines().take(line_idx).map(|l| l.len() + 1).sum::<usize>()].len();
+                let line_byte_offset = css[..css
+                    .lines()
+                    .take(line_idx)
+                    .map(|l| l.len() + 1)
+                    .sum::<usize>()]
+                    .len();
                 let line_start = block_offset + line_byte_offset;
                 let line_end = line_start + line.len();
 
@@ -182,12 +187,17 @@ impl PreferDesignTokens {
                     );
 
                     result.add_diagnostic(
-                        LintDiagnostic::warn(META.name, message, line_start as u32, line_end as u32)
-                            .with_help(format!(
-                                "Use `var({})` for consistent theming and maintainability",
-                                token.var_name
-                            ))
-                            .with_fix(fix),
+                        LintDiagnostic::warn(
+                            META.name,
+                            message,
+                            line_start as u32,
+                            line_end as u32,
+                        )
+                        .with_help(format!(
+                            "Use `var({})` for consistent theming and maintainability",
+                            token.var_name
+                        ))
+                        .with_fix(fix),
                     );
                     continue;
                 }
@@ -247,12 +257,11 @@ fn normalize_value(value: &str) -> String {
     let v = value.trim().to_lowercase();
 
     // Normalize hex colors: #fff -> #ffffff
-    if v.starts_with('#') {
-        let hex = &v[1..];
+    if let Some(hex) = v.strip_prefix('#') {
         if hex.len() == 3 {
             let expanded: String = hex
                 .chars()
-                .flat_map(|c| std::iter::repeat(c).take(2))
+                .flat_map(|c| std::iter::repeat_n(c, 2))
                 .collect();
             return format!("#{}", expanded);
         }
@@ -260,7 +269,7 @@ fn normalize_value(value: &str) -> String {
             // #rgba -> #rrggbbaa
             let expanded: String = hex
                 .chars()
-                .flat_map(|c| std::iter::repeat(c).take(2))
+                .flat_map(|c| std::iter::repeat_n(c, 2))
                 .collect();
             return format!("#{}", expanded);
         }
@@ -309,9 +318,7 @@ mod tests {
         let mut result = MuseaLintResult::default();
         rule.check(source, &mut result);
         assert_eq!(result.warning_count, 1, "Should detect hardcoded color");
-        assert!(result.diagnostics[0]
-            .message
-            .contains("color.primary"));
+        assert!(result.diagnostics[0].message.contains("color.primary"));
     }
 
     #[test]
@@ -347,10 +354,7 @@ mod tests {
 
         let mut result = MuseaLintResult::default();
         rule.check(source, &mut result);
-        assert_eq!(
-            result.warning_count, 1,
-            "Should detect color in shorthand"
-        );
+        assert_eq!(result.warning_count, 1, "Should detect color in shorthand");
     }
 
     #[test]
