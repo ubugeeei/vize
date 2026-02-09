@@ -6,7 +6,6 @@
 use std::collections::HashMap;
 
 /// Prop type information
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct PropTypeInfo {
     /// JavaScript type constructor name (String, Number, Boolean, Array, Object, Function)
