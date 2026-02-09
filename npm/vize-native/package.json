@@ -1,6 +1,6 @@
 {
   "name": "@vizejs/native",
-  "version": "0.0.1-alpha.88",
+  "version": "0.0.1-alpha.89",
   "description": "High-performance Vue.js compiler - Native bindings",
   "publishConfig": {
     "provenance": true,
