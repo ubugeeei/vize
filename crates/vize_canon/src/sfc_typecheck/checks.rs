@@ -320,4 +320,3 @@ pub fn check_fallthrough_attrs(
         related: Vec::new(),
     });
 }
-

@@ -75,9 +75,13 @@ pub fn type_check_napi(
     options: Option<TypeCheckOptionsNapi>,
 ) -> Result<TypeCheckResultNapi> {
     let opts = options.unwrap_or_default();
+    let filename = opts
+        .filename
+        .as_deref()
+        .unwrap_or("anonymous.vue")
+        .to_string();
 
-    let mut check_opts =
-        TypeCheckOptions::new(opts.filename.unwrap_or_else(|| "anonymous.vue".to_string()));
+    let mut check_opts = TypeCheckOptions::new(filename);
     apply_napi_options(&opts, &mut check_opts);
 
     let result = type_check_sfc(&source, &check_opts);
@@ -158,12 +162,15 @@ pub fn get_type_check_capabilities_napi() -> TypeCheckCapabilitiesNapi {
             },
             TypeCheckCapabilityNapi {
                 name: "reactivity-loss".to_string(),
-                description: "Detects patterns that lose reactivity (destructuring, spreading, reassigning)".to_string(),
+                description:
+                    "Detects patterns that lose reactivity (destructuring, spreading, reassigning)"
+                        .to_string(),
                 severity: "warning".to_string(),
             },
             TypeCheckCapabilityNapi {
                 name: "setup-context-violation".to_string(),
-                description: "Detects Vue APIs called outside setup context (CSRP, memory leaks)".to_string(),
+                description: "Detects Vue APIs called outside setup context (CSRP, memory leaks)"
+                    .to_string(),
                 severity: "warning/error".to_string(),
             },
             TypeCheckCapabilityNapi {
@@ -173,7 +180,8 @@ pub fn get_type_check_capabilities_napi() -> TypeCheckCapabilitiesNapi {
             },
             TypeCheckCapabilityNapi {
                 name: "fallthrough-attrs".to_string(),
-                description: "Detects multi-root components that may lose fallthrough attributes".to_string(),
+                description: "Detects multi-root components that may lose fallthrough attributes"
+                    .to_string(),
                 severity: "warning".to_string(),
             },
         ],

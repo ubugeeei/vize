@@ -927,5 +927,4 @@ const msg = 'hello'
         });
         assert!(has_error, "Strict mode should report as Error");
     }
-
 }
