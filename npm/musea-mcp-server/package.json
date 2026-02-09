@@ -1,6 +1,6 @@
 {
   "name": "@vizejs/musea-mcp-server",
-  "version": "0.0.1-alpha.81",
+  "version": "0.0.1-alpha.82",
   "description": "MCP server for building Vue.js design systems - component analysis, documentation, variant generation, and design tokens",
   "type": "module",
   "main": "./dist/index.js",

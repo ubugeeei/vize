@@ -2,7 +2,7 @@
   "name": "@vizejs/wasm",
   "type": "module",
   "description": "Vize WASM bindings for browser environments",
-  "version": "0.0.1-alpha.81",
+  "version": "0.0.1-alpha.82",
   "license": "MIT",
   "repository": {
     "type": "git",

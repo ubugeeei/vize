@@ -1,108 +1,134 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import type { ArtVariant } from '../../src/types.js'
-import { getPreviewUrl } from '../api'
-import { useAddons } from '../composables/useAddons'
-import { sendMessage } from '../composables/usePostMessage'
-import VariantSourceCode from './VariantSourceCode.vue'
-import MultiViewportPreview from './MultiViewportPreview.vue'
+import { computed, ref, watch } from "vue";
+import {
+  mdiContentCopy,
+  mdiCheck,
+  mdiCodeTags,
+  mdiFullscreen,
+  mdiOpenInNew,
+} from "@mdi/js";
+import type { ArtVariant } from "../../src/types.js";
+import { getPreviewUrl } from "../api";
+import { useAddons } from "../composables/useAddons";
+import { sendMessage } from "../composables/usePostMessage";
+import VariantSourceCode from "./VariantSourceCode.vue";
+import MdiIcon from "./MdiIcon.vue";
 
 const props = defineProps<{
-  artPath: string
-  variant: ArtVariant
-  componentName?: string
-}>()
+  artPath: string;
+  variant: ArtVariant;
+  componentName?: string;
+}>();
 
-const copied = ref(false)
+const copied = ref(false);
 
 function resolveSelfReferences(template: string): string {
-  if (!props.componentName) return template
+  if (!props.componentName) return template;
   return template
     .replace(/<Self(\s|>|\/)/g, `<${props.componentName}$1`)
-    .replace(/<\/Self>/g, `</${props.componentName}>`)
+    .replace(/<\/Self>/g, `</${props.componentName}>`);
 }
 
-const resolvedTemplate = computed(() => resolveSelfReferences(props.variant.template))
+const resolvedTemplate = computed(() =>
+  resolveSelfReferences(props.variant.template),
+);
 
 async function copyTemplate() {
   try {
-    await navigator.clipboard.writeText(resolvedTemplate.value)
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 2000)
+    await navigator.clipboard.writeText(resolvedTemplate.value);
+    copied.value = true;
+    setTimeout(() => {
+      copied.value = false;
+    }, 2000);
   } catch {
     // fallback
   }
 }
 
-const previewUrl = computed(() => getPreviewUrl(props.artPath, props.variant.name))
+const previewUrl = computed(() =>
+  getPreviewUrl(props.artPath, props.variant.name),
+);
 
-const iframeRef = ref<HTMLIFrameElement | null>(null)
-const iframeReady = ref(false)
-const showSource = ref(false)
+const iframeRef = ref<HTMLIFrameElement | null>(null);
+const iframeReady = ref(false);
+const showSource = ref(false);
 
 const {
   outlineEnabled,
   measureEnabled,
-  multiViewportEnabled,
   getEffectiveBackground,
   getEffectiveViewport,
   openFullscreen,
-} = useAddons()
+} = useAddons();
 
 const viewportStyle = computed(() => {
-  const vp = getEffectiveViewport()
-  if (vp.width === '100%') {
-    return { width: '100%', height: '100%' }
+  const vp = getEffectiveViewport();
+  if (vp.width === "100%") {
+    return { width: "100%", height: "100%" };
   }
-  return { width: vp.width, height: vp.height }
-})
+  return { width: vp.width, height: vp.height };
+});
 
 const isCustomViewport = computed(() => {
-  const vp = getEffectiveViewport()
-  return vp.width !== '100%'
-})
+  const vp = getEffectiveViewport();
+  return vp.width !== "100%";
+});
 
 // Listen for iframe ready
 function onIframeLoad() {
-  iframeReady.value = true
-  syncAllState()
+  iframeReady.value = true;
+  syncAllState();
 }
 
 function syncAllState() {
-  const iframe = iframeRef.value
-  if (!iframe) return
+  const iframe = iframeRef.value;
+  if (!iframe) return;
 
   // Sync background
-  const bg = getEffectiveBackground()
+  const bg = getEffectiveBackground();
   if (bg.color) {
-    sendMessage(iframe, 'musea:set-background', { color: bg.color, pattern: bg.pattern })
+    sendMessage(iframe, "musea:set-background", {
+      color: bg.color,
+      pattern: bg.pattern,
+    });
   }
 
   // Sync outline
-  sendMessage(iframe, 'musea:toggle-outline', { enabled: outlineEnabled.value })
+  sendMessage(iframe, "musea:toggle-outline", {
+    enabled: outlineEnabled.value,
+  });
 
   // Sync measure
-  sendMessage(iframe, 'musea:toggle-measure', { enabled: measureEnabled.value })
+  sendMessage(iframe, "musea:toggle-measure", {
+    enabled: measureEnabled.value,
+  });
 }
 
 // Watch addons state and send messages to iframe
-watch(() => getEffectiveBackground(), (bg) => {
-  const iframe = iframeRef.value
-  if (!iframe || !iframeReady.value) return
-  sendMessage(iframe, 'musea:set-background', { color: bg.color, pattern: bg.pattern })
-}, { deep: true })
+watch(
+  () => getEffectiveBackground(),
+  (bg) => {
+    const iframe = iframeRef.value;
+    if (!iframe || !iframeReady.value) return;
+    sendMessage(iframe, "musea:set-background", {
+      color: bg.color,
+      pattern: bg.pattern,
+    });
+  },
+  { deep: true },
+);
 
 watch(outlineEnabled, (enabled) => {
-  const iframe = iframeRef.value
-  if (!iframe || !iframeReady.value) return
-  sendMessage(iframe, 'musea:toggle-outline', { enabled })
-})
+  const iframe = iframeRef.value;
+  if (!iframe || !iframeReady.value) return;
+  sendMessage(iframe, "musea:toggle-outline", { enabled });
+});
 
 watch(measureEnabled, (enabled) => {
-  const iframe = iframeRef.value
-  if (!iframe || !iframeReady.value) return
-  sendMessage(iframe, 'musea:toggle-measure', { enabled })
-})
+  const iframe = iframeRef.value;
+  if (!iframe || !iframeReady.value) return;
+  sendMessage(iframe, "musea:toggle-measure", { enabled });
+});
 </script>
 
 <template>
@@ -118,12 +144,6 @@ watch(measureEnabled, (enabled) => {
       />
     </div>
 
-    <MultiViewportPreview
-      v-if="multiViewportEnabled"
-      :art-path="artPath"
-      :variant-name="variant.name"
-    />
-
     <div class="variant-info">
       <div class="variant-left">
         <span class="variant-name">{{ variant.name }}</span>
@@ -136,13 +156,8 @@ watch(measureEnabled, (enabled) => {
           :class="{ active: copied }"
           @click="copyTemplate"
         >
-          <svg v-if="!copied" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-          </svg>
-          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
+          <MdiIcon v-if="!copied" :path="mdiContentCopy" :size="14" />
+          <MdiIcon v-else :path="mdiCheck" :size="14" />
         </button>
         <button
           class="variant-action-btn"
@@ -150,30 +165,21 @@ watch(measureEnabled, (enabled) => {
           :class="{ active: showSource }"
           @click="showSource = !showSource"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="16 18 22 12 16 6" />
-            <polyline points="8 6 2 12 8 18" />
-          </svg>
+          <MdiIcon :path="mdiCodeTags" :size="14" />
         </button>
         <button
           class="variant-action-btn"
           title="Fullscreen"
           @click="openFullscreen(artPath, variant.name)"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-          </svg>
+          <MdiIcon :path="mdiFullscreen" :size="14" />
         </button>
         <button
           class="variant-action-btn"
           title="Open in new tab"
           @click="window.open(previewUrl, '_blank')"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-            <polyline points="15 3 21 3 21 9" />
-            <line x1="10" y1="14" x2="21" y2="3" />
-          </svg>
+          <MdiIcon :path="mdiOpenInNew" :size="14" />
         </button>
       </div>
     </div>
@@ -184,7 +190,7 @@ watch(measureEnabled, (enabled) => {
 
 <script lang="ts">
 // Expose window for template
-const window = globalThis.window
+const window = globalThis.window;
 </script>
 
 <style scoped>
@@ -220,7 +226,7 @@ const window = globalThis.window
 }
 
 .variant-preview iframe {
-  width: 100%;
+  width: 70%;
   height: 100%;
   border: none;
   background: white;

@@ -185,6 +185,7 @@ watch(() => props.artPath, async (path) => {
   padding: 1rem;
   margin-bottom: 1rem;
   overflow-x: auto;
+  white-space: pre;
 }
 
 .docs-markdown :deep(pre code) {
@@ -192,6 +193,8 @@ watch(() => props.artPath, async (path) => {
   padding: 0;
   font-size: 0.8125rem;
   line-height: 1.6;
+  white-space: pre;
+  tab-size: 2;
 }
 
 .docs-markdown :deep(table) {

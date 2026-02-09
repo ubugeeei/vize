@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
+import { mdiOpenInNew, mdiClose } from '@mdi/js'
 import { useAddons } from '../composables/useAddons'
 import { getPreviewUrl } from '../api'
+import MdiIcon from './MdiIcon.vue'
 
 const { fullscreenVariant, closeFullscreen } = useAddons()
 
@@ -30,17 +32,10 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
               title="Open in new tab"
               @click="window.open(previewUrl, '_blank')"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                <polyline points="15 3 21 3 21 9" />
-                <line x1="10" y1="14" x2="21" y2="3" />
-              </svg>
+              <MdiIcon :path="mdiOpenInNew" :size="16" />
             </button>
             <button class="fullscreen-close-btn" title="Close (Esc)" @click="closeFullscreen()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
+              <MdiIcon :path="mdiClose" :size="18" />
             </button>
           </div>
         </div>

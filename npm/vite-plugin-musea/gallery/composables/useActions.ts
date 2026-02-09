@@ -1,5 +1,43 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useMessageListener } from './usePostMessage'
+
+export interface RawEventData {
+  type: string
+  bubbles: boolean
+  cancelable: boolean
+  composed: boolean
+  defaultPrevented: boolean
+  eventPhase: number
+  isTrusted: boolean
+  timeStamp: number
+  // Mouse/Pointer
+  clientX?: number
+  clientY?: number
+  screenX?: number
+  screenY?: number
+  pageX?: number
+  pageY?: number
+  offsetX?: number
+  offsetY?: number
+  button?: number
+  buttons?: number
+  altKey?: boolean
+  ctrlKey?: boolean
+  metaKey?: boolean
+  shiftKey?: boolean
+  // Keyboard
+  key?: string
+  code?: string
+  repeat?: boolean
+  // Input
+  inputType?: string
+  data?: string | null
+  // Wheel
+  deltaX?: number
+  deltaY?: number
+  deltaZ?: number
+  deltaMode?: number
+}
 
 export interface ActionEvent {
   name: string
@@ -8,9 +46,12 @@ export interface ActionEvent {
   args?: unknown
   timestamp: number
   source: 'dom' | 'vue'
+  rawEvent?: RawEventData
+  variantName?: string
 }
 
 const events = ref<ActionEvent[]>([])
+const currentVariant = ref<string>('')
 
 export function useActions() {
   function init() {
@@ -28,9 +69,21 @@ export function useActions() {
     events.value = []
   }
 
+  function setCurrentVariant(variantName: string) {
+    currentVariant.value = variantName
+  }
+
+  const filteredEvents = computed(() => {
+    if (!currentVariant.value) return events.value
+    return events.value.filter(e => e.variantName === currentVariant.value)
+  })
+
   return {
-    events,
+    events: filteredEvents,
+    allEvents: events,
+    currentVariant,
     init,
     clear,
+    setCurrentVariant,
   }
 }

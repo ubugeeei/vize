@@ -1589,7 +1589,9 @@ onUnmounted(() => {
             <span class="dep-file">{{ file }}</span>
             <div v-if="deps.length" class="dep-arrows">
               <div v-for="dep in deps" :key="dep" class="dep-edge">
-                <svg class="dep-arrow" viewBox="0 0 24 24"><path :d="mdiArrowRight" fill="currentColor" /></svg>
+                <svg class="dep-arrow" viewBox="0 0 24 24">
+                  <path :d="mdiArrowRight" fill="currentColor" />
+                </svg>
                 <span class="dep-target" @click="selectFile(dep)">{{ dep }}</span>
               </div>
             </div>
@@ -1718,7 +1720,9 @@ onUnmounted(() => {
               </div>
               <div class="issue-message">{{ issue.message }}</div>
               <div v-if="issue.suggestion" class="issue-suggestion">
-                <svg class="suggestion-icon" viewBox="0 0 24 24"><path :d="mdiArrowRight" fill="currentColor" /></svg>
+                <svg class="suggestion-icon" viewBox="0 0 24 24">
+                  <path :d="mdiArrowRight" fill="currentColor" />
+                </svg>
                 <span class="suggestion-text">{{ issue.suggestion }}</span>
               </div>
               <div v-if="issue.relatedLocations?.length" class="issue-related">

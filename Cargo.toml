@@ -22,29 +22,29 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.1-alpha.81"
+version = "0.0.1-alpha.82"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/ubugeeei/vize"
 
 [workspace.dependencies]
 # Internal crates (path for local dev, version for crates.io)
-vize_carton = { path = "crates/vize_carton", version = "0.0.1-alpha.81" }
-vize_relief = { path = "crates/vize_relief", version = "0.0.1-alpha.81" }
-vize_armature = { path = "crates/vize_armature", version = "0.0.1-alpha.81" }
-vize_croquis = { path = "crates/vize_croquis", version = "0.0.1-alpha.81" }
-vize_atelier_core = { path = "crates/vize_atelier_core", version = "0.0.1-alpha.81" }
-vize_atelier_dom = { path = "crates/vize_atelier_dom", version = "0.0.1-alpha.81" }
-vize_atelier_vapor = { path = "crates/vize_atelier_vapor", version = "0.0.1-alpha.81" }
-vize_atelier_ssr = { path = "crates/vize_atelier_ssr", version = "0.0.1-alpha.81" }
-vize_atelier_sfc = { path = "crates/vize_atelier_sfc", version = "0.0.1-alpha.81", default-features = false }
-vize_vitrine = { path = "crates/vize_vitrine", version = "0.0.1-alpha.81", default-features = false }
-vize_musea = { path = "crates/vize_musea", version = "0.0.1-alpha.81" }
-vize_patina = { path = "crates/vize_patina", version = "0.0.1-alpha.81" }
-vize_glyph = { path = "crates/vize_glyph", version = "0.0.1-alpha.81" }
-vize_maestro = { path = "crates/vize_maestro", version = "0.0.1-alpha.81" }
-vize_canon = { path = "crates/vize_canon", version = "0.0.1-alpha.81", default-features = false }
-vize_fresco = { path = "crates/vize_fresco", version = "0.0.1-alpha.81", default-features = false }
+vize_carton = { path = "crates/vize_carton", version = "0.0.1-alpha.82" }
+vize_relief = { path = "crates/vize_relief", version = "0.0.1-alpha.82" }
+vize_armature = { path = "crates/vize_armature", version = "0.0.1-alpha.82" }
+vize_croquis = { path = "crates/vize_croquis", version = "0.0.1-alpha.82" }
+vize_atelier_core = { path = "crates/vize_atelier_core", version = "0.0.1-alpha.82" }
+vize_atelier_dom = { path = "crates/vize_atelier_dom", version = "0.0.1-alpha.82" }
+vize_atelier_vapor = { path = "crates/vize_atelier_vapor", version = "0.0.1-alpha.82" }
+vize_atelier_ssr = { path = "crates/vize_atelier_ssr", version = "0.0.1-alpha.82" }
+vize_atelier_sfc = { path = "crates/vize_atelier_sfc", version = "0.0.1-alpha.82", default-features = false }
+vize_vitrine = { path = "crates/vize_vitrine", version = "0.0.1-alpha.82", default-features = false }
+vize_musea = { path = "crates/vize_musea", version = "0.0.1-alpha.82" }
+vize_patina = { path = "crates/vize_patina", version = "0.0.1-alpha.82" }
+vize_glyph = { path = "crates/vize_glyph", version = "0.0.1-alpha.82" }
+vize_maestro = { path = "crates/vize_maestro", version = "0.0.1-alpha.82" }
+vize_canon = { path = "crates/vize_canon", version = "0.0.1-alpha.82", default-features = false }
+vize_fresco = { path = "crates/vize_fresco", version = "0.0.1-alpha.82", default-features = false }
 
 # OXC dependencies
 oxc_parser = "0.45"

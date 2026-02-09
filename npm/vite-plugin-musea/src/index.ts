@@ -59,7 +59,7 @@ export {
   type VrtSummary,
 } from "./vrt.js";
 
-export {
+import {
   processStyleDictionary,
   parseTokens,
   generateTokensHtml,
@@ -69,6 +69,17 @@ export {
   type StyleDictionaryConfig,
   type StyleDictionaryOutput,
 } from "./style-dictionary.js";
+
+export {
+  processStyleDictionary,
+  parseTokens,
+  generateTokensHtml,
+  generateTokensMarkdown,
+  type DesignToken,
+  type TokenCategory,
+  type StyleDictionaryConfig,
+  type StyleDictionaryOutput,
+};
 
 export { MuseaA11yRunner, type A11ySummary } from "./a11y.js";
 
@@ -190,6 +201,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
   let storybookCompat = options.storybookCompat ?? false;
   const storybookOutDir = options.storybookOutDir ?? ".storybook/stories";
   let inlineArt = options.inlineArt ?? false;
+  const tokensPath = options.tokensPath;
 
   let config: ResolvedConfig;
   let server: ViteDevServer | null = null;
@@ -451,7 +463,19 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
 
         // GET /api/tokens - Get design tokens
         if (req.url === "/tokens" && req.method === "GET") {
-          sendJson({ categories: [] });
+          if (!tokensPath) {
+            sendJson({ categories: [] });
+            return;
+          }
+
+          try {
+            const absoluteTokensPath = path.resolve(config.root, tokensPath);
+            const categories = await parseTokens(absoluteTokensPath);
+            sendJson({ categories });
+          } catch (e) {
+            console.error("[musea] Failed to load tokens:", e);
+            sendJson({ categories: [], error: String(e) });
+          }
           return;
         }
 
@@ -547,7 +571,29 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
               const binding = loadNative();
               if (binding.generateArtDoc) {
                 const doc = binding.generateArtDoc(source, { filename: artPath });
-                sendJson(doc);
+                // Replace Self with component name and format indentation
+                let markdown = doc.markdown || "";
+                const componentName = art.metadata.title || "Component";
+                markdown = markdown
+                  .replace(/<Self(\s|>|\/)/g, `<${componentName}$1`)
+                  .replace(/<\/Self>/g, `</${componentName}>`);
+                // Fix indentation in code blocks
+                markdown = markdown.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang, code) => {
+                  const lines = code.split("\n");
+                  // Find minimum indentation (excluding empty lines)
+                  let minIndent = Infinity;
+                  for (const line of lines) {
+                    if (line.trim()) {
+                      const indent = line.match(/^(\s*)/)?.[1].length || 0;
+                      minIndent = Math.min(minIndent, indent);
+                    }
+                  }
+                  if (minIndent === Infinity) minIndent = 0;
+                  // Remove minimum indentation from all lines
+                  const formatted = lines.map((line) => line.slice(minIndent)).join("\n");
+                  return "```" + lang + "\n" + formatted + "```";
+                });
+                sendJson({ ...doc, markdown });
               } else {
                 sendJson({
                   markdown: "",
@@ -649,6 +695,55 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
           return;
         }
 
+        // POST /api/run-vrt - Run VRT for a specific art file or all
+        if (req.url === "/run-vrt" && req.method === "POST") {
+          let body = "";
+          req.on("data", (chunk) => {
+            body += chunk;
+          });
+          req.on("end", async () => {
+            try {
+              const { artPath, updateSnapshots } = JSON.parse(body);
+              const { MuseaVrtRunner } = await import("./vrt.js");
+
+              const runner = new MuseaVrtRunner({
+                snapshotDir: path.resolve(config.root, ".vize/snapshots"),
+              });
+
+              const port = devServer.config.server.port || 5173;
+              const baseUrl = `http://localhost:${port}`;
+
+              // Get arts to test
+              let artsToTest = Array.from(artFiles.values());
+              if (artPath) {
+                artsToTest = artsToTest.filter((a) => a.path === artPath);
+              }
+
+              await runner.start();
+              const results = await runner.runTests(artsToTest, baseUrl, { updateSnapshots });
+              const summary = runner.getSummary(results);
+              await runner.stop();
+
+              sendJson({
+                success: true,
+                summary,
+                results: results.map((r) => ({
+                  artPath: r.artPath,
+                  variantName: r.variantName,
+                  viewport: r.viewport.name,
+                  passed: r.passed,
+                  isNew: r.isNew,
+                  diffPercentage: r.diffPercentage,
+                  error: r.error,
+                })),
+              });
+            } catch (e) {
+              sendError(e instanceof Error ? e.message : String(e));
+            }
+          });
+          return;
+        }
+
         next();
       });
 
@@ -693,6 +788,30 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
           console.log(`[musea] Removed: ${path.relative(config.root, file)}`);
         }
       });
+
+      // Print Musea gallery URL after server starts
+      return () => {
+        devServer.httpServer?.once("listening", () => {
+          const address = devServer.httpServer?.address();
+          if (address && typeof address === "object") {
+            const protocol = devServer.config.server.https ? "https" : "http";
+            const rawHost = address.address;
+            // Normalize IPv6/IPv4 localhost addresses to "localhost"
+            const host =
+              rawHost === "::" ||
+              rawHost === "::1" ||
+              rawHost === "0.0.0.0" ||
+              rawHost === "127.0.0.1"
+                ? "localhost"
+                : rawHost;
+            const port = address.port;
+            const url = `${protocol}://${host}:${port}${basePath}`;
+
+            console.log();
+            console.log(`  \x1b[36m➜\x1b[0m  \x1b[1mMusea Gallery:\x1b[0m \x1b[36m${url}\x1b[0m`);
+          }
+        });
+      };
     },
 
     async buildStart() {
@@ -1690,16 +1809,69 @@ export async function loadArts() {
 // Addon initialization code injected into preview iframe modules.
 // Shared between generatePreviewModule and generatePreviewModuleWithProps.
 const MUSEA_ADDONS_INIT_CODE = `
-function __museaInitAddons(container) {
+function __museaInitAddons(container, variantName) {
   // === DOM event capture ===
-  const CAPTURE_EVENTS = ['click','dblclick','input','change','submit','focus','blur','keydown','keyup'];
+  // Note: mousemove, mouseenter, mouseleave, pointermove are excluded as they are too noisy
+  const CAPTURE_EVENTS = ['click','dblclick','input','change','submit','focus','blur','keydown','keyup','mousedown','mouseup','wheel','contextmenu','pointerdown','pointerup'];
   for (const evt of CAPTURE_EVENTS) {
     container.addEventListener(evt, (e) => {
+      // Extract raw event properties
+      const rawEvent = {
+        type: e.type,
+        bubbles: e.bubbles,
+        cancelable: e.cancelable,
+        composed: e.composed,
+        defaultPrevented: e.defaultPrevented,
+        eventPhase: e.eventPhase,
+        isTrusted: e.isTrusted,
+        timeStamp: e.timeStamp,
+      };
+      // Mouse/Pointer event properties
+      if ('clientX' in e) {
+        rawEvent.clientX = e.clientX;
+        rawEvent.clientY = e.clientY;
+        rawEvent.screenX = e.screenX;
+        rawEvent.screenY = e.screenY;
+        rawEvent.pageX = e.pageX;
+        rawEvent.pageY = e.pageY;
+        rawEvent.offsetX = e.offsetX;
+        rawEvent.offsetY = e.offsetY;
+        rawEvent.button = e.button;
+        rawEvent.buttons = e.buttons;
+        rawEvent.altKey = e.altKey;
+        rawEvent.ctrlKey = e.ctrlKey;
+        rawEvent.metaKey = e.metaKey;
+        rawEvent.shiftKey = e.shiftKey;
+      }
+      // Keyboard event properties
+      if ('key' in e) {
+        rawEvent.key = e.key;
+        rawEvent.code = e.code;
+        rawEvent.repeat = e.repeat;
+        rawEvent.altKey = e.altKey;
+        rawEvent.ctrlKey = e.ctrlKey;
+        rawEvent.metaKey = e.metaKey;
+        rawEvent.shiftKey = e.shiftKey;
+      }
+      // Input event properties
+      if ('inputType' in e) {
+        rawEvent.inputType = e.inputType;
+        rawEvent.data = e.data;
+      }
+      // Wheel event properties
+      if ('deltaX' in e) {
+        rawEvent.deltaX = e.deltaX;
+        rawEvent.deltaY = e.deltaY;
+        rawEvent.deltaZ = e.deltaZ;
+        rawEvent.deltaMode = e.deltaMode;
+      }
       const payload = {
         name: evt,
         target: e.target?.tagName,
         timestamp: Date.now(),
-        source: 'dom'
+        source: 'dom',
+        rawEvent,
+        variantName
       };
       if (e.target && 'value' in e.target) {
         payload.value = e.target.value;
@@ -1864,6 +2036,59 @@ function __museaInitAddons(container) {
         }
         break;
       }
+      case 'musea:run-a11y': {
+        // Run axe-core a11y test
+        (async () => {
+          try {
+            // Dynamically load axe-core from CDN if not already loaded
+            if (!window.axe) {
+              const script = document.createElement('script');
+              script.src = 'https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.2/axe.min.js';
+              script.crossOrigin = 'anonymous';
+              await new Promise((resolve, reject) => {
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+              });
+            }
+            // Run axe-core on the .musea-variant container only (not the full document)
+            const context = document.querySelector('.musea-variant') || document;
+            const results = await window.axe.run(context, {
+              // Run all rules without restrictions for comprehensive testing
+              resultTypes: ['violations', 'incomplete', 'passes']
+            });
+            window.parent.postMessage({
+              type: 'musea:a11y-result',
+              payload: {
+                violations: results.violations.map(v => ({
+                  id: v.id,
+                  impact: v.impact,
+                  description: v.description,
+                  helpUrl: v.helpUrl,
+                  nodes: v.nodes.map(n => ({
+                    html: n.html,
+                    target: n.target,
+                    failureSummary: n.failureSummary
+                  }))
+                })),
+                passes: results.passes.length,
+                incomplete: results.incomplete.length
+              }
+            }, '*');
+          } catch (err) {
+            window.parent.postMessage({
+              type: 'musea:a11y-result',
+              payload: {
+                error: err instanceof Error ? err.message : String(err),
+                violations: [],
+                passes: 0,
+                incomplete: 0
+              }
+            }, '*');
+          }
+        })();
+        break;
+      }
     }
   });
 
@@ -1922,7 +2147,7 @@ async function mount() {
     currentApp = app;
 
     console.log('[musea-preview] Mounted variant: ${escapedVariantName}');
-    __museaInitAddons(container);
+    __museaInitAddons(container, '${escapedVariantName}');
 
     // Override set-props to remount with raw component + props
     if (RawComponent) {
@@ -2268,7 +2493,7 @@ async function mount() {
     container.className = 'musea-variant';
     app.mount(container);
     console.log('[musea-preview] Mounted variant: ${escapedVariantName} with props override');
-    __museaInitAddons(container);
+    __museaInitAddons(container, '${escapedVariantName}');
   } catch (error) {
     console.error('[musea-preview] Failed to mount:', error);
     container.innerHTML = '<div class="musea-error"><div class="musea-error-title">Failed to render</div><div>' + error.message + '</div></div>';

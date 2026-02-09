@@ -1,16 +1,40 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { mdiMagnify } from '@mdi/js'
 import { useArts } from '../composables/useArts'
 import { useSearch } from '../composables/useSearch'
 import SearchBar from './SearchBar.vue'
 import Sidebar from './Sidebar.vue'
+import SearchModal from './SearchModal.vue'
+import MdiIcon from './MdiIcon.vue'
 
+const router = useRouter()
 const { arts, load } = useArts()
 const { query, results } = useSearch(arts)
 
+const searchModalOpen = ref(false)
+
+// Global keyboard shortcut for Cmd+K / Ctrl+K
+const handleKeydown = (e: KeyboardEvent) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault()
+    searchModalOpen.value = !searchModalOpen.value
+  }
+}
+
 onMounted(() => {
   load()
+  document.addEventListener('keydown', handleKeydown)
 })
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+})
+
+const handleSearchSelect = (art: { path: string }, variantName?: string) => {
+  router.push({ name: 'component', params: { path: art.path } })
+}
 </script>
 
 <template>
@@ -50,15 +74,33 @@ onMounted(() => {
         </router-link>
         <span class="header-subtitle">Component Gallery</span>
       </div>
-      <SearchBar v-model="query" />
+
+      <div class="header-center">
+        <button class="search-trigger" @click="searchModalOpen = true">
+          <MdiIcon class="search-icon" :path="mdiMagnify" :size="16" />
+          <span>Search components...</span>
+          <kbd>⌘K</kbd>
+        </button>
+      </div>
     </header>
 
     <main class="main">
+      <!-- Sidebar -->
       <Sidebar :arts="results" />
+
+      <!-- Main Content -->
       <section class="content">
         <router-view />
       </section>
     </main>
+
+    <!-- Search Modal -->
+    <SearchModal
+      :arts="arts"
+      :is-open="searchModalOpen"
+      @close="searchModalOpen = false"
+      @select="handleSearchSelect"
+    />
   </div>
 </template>
 
@@ -88,6 +130,13 @@ onMounted(() => {
   gap: 1.5rem;
 }
 
+.header-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  max-width: 400px;
+}
+
 .logo {
   display: flex;
   align-items: center;
@@ -112,10 +161,58 @@ onMounted(() => {
   border-left: 1px solid var(--musea-border);
 }
 
+.search-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: var(--musea-bg-tertiary);
+  border: 1px solid var(--musea-border);
+  border-radius: var(--musea-radius-md);
+  color: var(--musea-text-muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--musea-transition);
+}
+
+.search-trigger:hover {
+  border-color: var(--musea-accent);
+  color: var(--musea-text-secondary);
+}
+
+.search-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.search-trigger span {
+  flex: 1;
+  text-align: left;
+}
+
+.search-trigger kbd {
+  padding: 0.125rem 0.375rem;
+  background: var(--musea-bg-primary);
+  border: 1px solid var(--musea-border);
+  border-radius: var(--musea-radius-sm);
+  font-size: 0.75rem;
+  font-family: var(--musea-font-mono);
+}
+
 .main {
   display: grid;
   grid-template-columns: var(--musea-sidebar-width) 1fr;
   flex: 1;
+  overflow: hidden;
+  height: calc(100vh - var(--musea-header-height));
+}
+
+.main > :first-child {
+  height: 100%;
+  max-height: 100%;
+  overflow-y: auto;
 }
 
 .content {
@@ -126,12 +223,15 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .main {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
   .main > :first-child {
     display: none;
   }
   .header-subtitle {
+    display: none;
+  }
+  .header-center {
     display: none;
   }
 }
