@@ -1,4 +1,40 @@
 /**
+ * Theme color definitions for Musea gallery UI.
+ * All properties are optional — unspecified colors inherit from the `base` built-in theme.
+ */
+export interface MuseaThemeColors {
+  bgPrimary?: string;
+  bgSecondary?: string;
+  bgTertiary?: string;
+  bgElevated?: string;
+  accent?: string;
+  accentHover?: string;
+  accentSubtle?: string;
+  text?: string;
+  textSecondary?: string;
+  textMuted?: string;
+  border?: string;
+  borderSubtle?: string;
+  success?: string;
+  error?: string;
+  info?: string;
+  warning?: string;
+  shadow?: string;
+}
+
+/**
+ * Custom theme definition.
+ */
+export interface MuseaTheme {
+  /** Unique name for this theme. */
+  name: string;
+  /** Built-in theme to inherit unspecified colors from. @default 'dark' */
+  base?: "dark" | "light";
+  /** Color overrides. */
+  colors: MuseaThemeColors;
+}
+
+/**
  * Musea plugin options.
  */
 export interface MuseaOptions {
@@ -51,6 +87,16 @@ export interface MuseaOptions {
    * @example 'src/tokens.json' or 'src/tokens/'
    */
   tokensPath?: string;
+
+  /**
+   * Gallery theme configuration.
+   *
+   * - `'dark'` / `'light'` — use a built-in theme (default: `'dark'`)
+   * - `'system'` — follow the OS color-scheme preference
+   * - `MuseaTheme` — single custom theme (replaces defaults)
+   * - `MuseaTheme[]` — multiple custom themes (first is default, user can switch)
+   */
+  theme?: "dark" | "light" | "system" | MuseaTheme | MuseaTheme[];
 }
 
 /**

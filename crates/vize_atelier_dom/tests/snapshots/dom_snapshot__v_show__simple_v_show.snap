@@ -1,0 +1,11 @@
+---
+source: crates/vize_atelier_dom/tests/dom_snapshot.rs
+expression: "get_compiled(r#\"<div v-show=\"visible\">content</div>\"#)"
+---
+const { openBlock: _openBlock, createElementBlock: _createElementBlock, withDirectives: _withDirectives, vShow: _vShow } = Vue
+
+function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return _withDirectives((_openBlock(), _createElementBlock("div", null, "content", 512 /* NEED_PATCH */)), [
+    [_vShow, visible]
+  ])
+}

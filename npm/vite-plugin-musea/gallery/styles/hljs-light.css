@@ -1,0 +1,188 @@
+/* highlight.js light theme overrides (GitHub Light)
+   Applied when data-musea-theme="light" or system-light is active */
+[data-musea-theme="light"] .hljs {
+  color: #24292e;
+  background: #f6f8fa;
+}
+
+[data-musea-theme="light"] .hljs-doctag,
+[data-musea-theme="light"] .hljs-keyword,
+[data-musea-theme="light"] .hljs-meta .hljs-keyword,
+[data-musea-theme="light"] .hljs-template-tag,
+[data-musea-theme="light"] .hljs-template-variable,
+[data-musea-theme="light"] .hljs-type,
+[data-musea-theme="light"] .hljs-variable.language_ {
+  color: #d73a49;
+}
+
+[data-musea-theme="light"] .hljs-title,
+[data-musea-theme="light"] .hljs-title.class_,
+[data-musea-theme="light"] .hljs-title.class_.inherited__,
+[data-musea-theme="light"] .hljs-title.function_ {
+  color: #6f42c1;
+}
+
+[data-musea-theme="light"] .hljs-attr,
+[data-musea-theme="light"] .hljs-attribute,
+[data-musea-theme="light"] .hljs-literal,
+[data-musea-theme="light"] .hljs-meta,
+[data-musea-theme="light"] .hljs-number,
+[data-musea-theme="light"] .hljs-operator,
+[data-musea-theme="light"] .hljs-variable,
+[data-musea-theme="light"] .hljs-selector-attr,
+[data-musea-theme="light"] .hljs-selector-class,
+[data-musea-theme="light"] .hljs-selector-id {
+  color: #005cc5;
+}
+
+[data-musea-theme="light"] .hljs-regexp,
+[data-musea-theme="light"] .hljs-string,
+[data-musea-theme="light"] .hljs-meta .hljs-string {
+  color: #032f62;
+}
+
+[data-musea-theme="light"] .hljs-built_in,
+[data-musea-theme="light"] .hljs-symbol {
+  color: #e36209;
+}
+
+[data-musea-theme="light"] .hljs-comment,
+[data-musea-theme="light"] .hljs-code,
+[data-musea-theme="light"] .hljs-formula {
+  color: #6a737d;
+}
+
+[data-musea-theme="light"] .hljs-name,
+[data-musea-theme="light"] .hljs-quote,
+[data-musea-theme="light"] .hljs-selector-tag,
+[data-musea-theme="light"] .hljs-selector-pseudo {
+  color: #22863a;
+}
+
+[data-musea-theme="light"] .hljs-subst {
+  color: #24292e;
+}
+
+[data-musea-theme="light"] .hljs-section {
+  color: #005cc5;
+  font-weight: bold;
+}
+
+[data-musea-theme="light"] .hljs-bullet {
+  color: #735c0f;
+}
+
+[data-musea-theme="light"] .hljs-emphasis {
+  color: #24292e;
+  font-style: italic;
+}
+
+[data-musea-theme="light"] .hljs-strong {
+  color: #24292e;
+  font-weight: bold;
+}
+
+[data-musea-theme="light"] .hljs-addition {
+  color: #22863a;
+  background-color: #f0fff4;
+}
+
+[data-musea-theme="light"] .hljs-deletion {
+  color: #b31d28;
+  background-color: #ffeef0;
+}
+
+/* Same overrides for system mode when OS prefers light */
+@media (prefers-color-scheme: light) {
+  [data-musea-theme="system"] .hljs {
+    color: #24292e;
+    background: #f6f8fa;
+  }
+
+  [data-musea-theme="system"] .hljs-doctag,
+  [data-musea-theme="system"] .hljs-keyword,
+  [data-musea-theme="system"] .hljs-meta .hljs-keyword,
+  [data-musea-theme="system"] .hljs-template-tag,
+  [data-musea-theme="system"] .hljs-template-variable,
+  [data-musea-theme="system"] .hljs-type,
+  [data-musea-theme="system"] .hljs-variable.language_ {
+    color: #d73a49;
+  }
+
+  [data-musea-theme="system"] .hljs-title,
+  [data-musea-theme="system"] .hljs-title.class_,
+  [data-musea-theme="system"] .hljs-title.class_.inherited__,
+  [data-musea-theme="system"] .hljs-title.function_ {
+    color: #6f42c1;
+  }
+
+  [data-musea-theme="system"] .hljs-attr,
+  [data-musea-theme="system"] .hljs-attribute,
+  [data-musea-theme="system"] .hljs-literal,
+  [data-musea-theme="system"] .hljs-meta,
+  [data-musea-theme="system"] .hljs-number,
+  [data-musea-theme="system"] .hljs-operator,
+  [data-musea-theme="system"] .hljs-variable,
+  [data-musea-theme="system"] .hljs-selector-attr,
+  [data-musea-theme="system"] .hljs-selector-class,
+  [data-musea-theme="system"] .hljs-selector-id {
+    color: #005cc5;
+  }
+
+  [data-musea-theme="system"] .hljs-regexp,
+  [data-musea-theme="system"] .hljs-string,
+  [data-musea-theme="system"] .hljs-meta .hljs-string {
+    color: #032f62;
+  }
+
+  [data-musea-theme="system"] .hljs-built_in,
+  [data-musea-theme="system"] .hljs-symbol {
+    color: #e36209;
+  }
+
+  [data-musea-theme="system"] .hljs-comment,
+  [data-musea-theme="system"] .hljs-code,
+  [data-musea-theme="system"] .hljs-formula {
+    color: #6a737d;
+  }
+
+  [data-musea-theme="system"] .hljs-name,
+  [data-musea-theme="system"] .hljs-quote,
+  [data-musea-theme="system"] .hljs-selector-tag,
+  [data-musea-theme="system"] .hljs-selector-pseudo {
+    color: #22863a;
+  }
+
+  [data-musea-theme="system"] .hljs-subst {
+    color: #24292e;
+  }
+
+  [data-musea-theme="system"] .hljs-section {
+    color: #005cc5;
+    font-weight: bold;
+  }
+
+  [data-musea-theme="system"] .hljs-bullet {
+    color: #735c0f;
+  }
+
+  [data-musea-theme="system"] .hljs-emphasis {
+    color: #24292e;
+    font-style: italic;
+  }
+
+  [data-musea-theme="system"] .hljs-strong {
+    color: #24292e;
+    font-weight: bold;
+  }
+
+  [data-musea-theme="system"] .hljs-addition {
+    color: #22863a;
+    background-color: #f0fff4;
+  }
+
+  [data-musea-theme="system"] .hljs-deletion {
+    color: #b31d28;
+    background-color: #ffeef0;
+  }
+}

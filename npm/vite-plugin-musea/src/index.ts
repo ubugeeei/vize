@@ -21,6 +21,8 @@ import { vizeConfigStore } from "@vizejs/vite-plugin";
 
 import type {
   MuseaOptions,
+  MuseaTheme,
+  MuseaThemeColors,
   ArtFileInfo,
   ArtMetadata,
   ArtVariant,
@@ -36,6 +38,8 @@ import type {
 
 export type {
   MuseaOptions,
+  MuseaTheme,
+  MuseaThemeColors,
   ArtFileInfo,
   ArtMetadata,
   ArtVariant,
@@ -192,6 +196,34 @@ function loadNative(): NativeBinding {
 }
 
 /**
+ * Build the theme config object from plugin options for runtime injection.
+ */
+function buildThemeConfig(
+  theme?: MuseaOptions["theme"],
+): { default: string; custom?: Record<string, { base?: "dark" | "light"; colors: Record<string, string> }> } | undefined {
+  if (!theme) return undefined;
+
+  if (typeof theme === "string") {
+    // 'dark' | 'light' | 'system'
+    return { default: theme };
+  }
+
+  // Single custom theme or array of custom themes
+  const themes = Array.isArray(theme) ? theme : [theme];
+  const custom: Record<string, { base?: "dark" | "light"; colors: Record<string, string> }> = {};
+  for (const t of themes) {
+    custom[t.name] = {
+      base: t.base,
+      colors: t.colors as Record<string, string>,
+    };
+  }
+  return {
+    default: themes[0].name,
+    custom,
+  };
+}
+
+/**
  * Create Musea Vite plugin.
  */
 export function musea(options: MuseaOptions = {}): Plugin[] {
@@ -202,6 +234,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
   const storybookOutDir = options.storybookOutDir ?? ".storybook/stories";
   let inlineArt = options.inlineArt ?? false;
   const tokensPath = options.tokensPath;
+  const themeConfig = buildThemeConfig(options.theme);
 
   let config: ResolvedConfig;
   let server: ViteDevServer | null = null;
@@ -265,10 +298,13 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
           try {
             await fs.promises.access(indexHtmlPath);
             let html = await fs.promises.readFile(indexHtmlPath, "utf-8");
-            // Inject basePath for runtime use
+            // Inject basePath and theme config for runtime use
+            const themeScript = themeConfig
+              ? `window.__MUSEA_THEME_CONFIG__=${JSON.stringify(themeConfig)};`
+              : "";
             html = html.replace(
               "</head>",
-              `<script>window.__MUSEA_BASE_PATH__='${basePath}';</script></head>`,
+              `<script>window.__MUSEA_BASE_PATH__='${basePath}';${themeScript}</script></head>`,
             );
             // Transform through Vite for HMR
             html = await devServer.transformIndexHtml(basePath + url, html);
@@ -277,7 +313,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
             return;
           } catch {
             // Fall back to inline gallery HTML
-            const html = generateGalleryHtml(basePath);
+            const html = generateGalleryHtml(basePath, themeConfig);
             res.setHeader("Content-Type", "text/html");
             res.end(html);
             return;
@@ -1065,13 +1101,17 @@ async function scanArtFiles(
   return files;
 }
 
-function generateGalleryHtml(basePath: string): string {
+function generateGalleryHtml(basePath: string, themeConfig?: { default: string; custom?: Record<string, unknown> }): string {
+  const themeScript = themeConfig
+    ? `window.__MUSEA_THEME_CONFIG__=${JSON.stringify(themeConfig)};`
+    : "";
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Musea - Component Gallery</title>
+  <script>window.__MUSEA_BASE_PATH__='${basePath}';${themeScript}${"<"}/script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">

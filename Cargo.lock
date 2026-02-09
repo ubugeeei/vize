@@ -3309,6 +3309,7 @@ name = "vize_relief"
 version = "0.0.1-alpha.82"
 dependencies = [
  "serde",
+ "serde_json",
  "thiserror 2.0.18",
  "vize_carton",
 ]

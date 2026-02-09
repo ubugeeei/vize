@@ -239,4 +239,64 @@ mod tests {
         let guard = generate_key_guard(&keys);
         assert!(guard.contains("Enter"));
     }
+
+    #[test]
+    fn test_has_options() {
+        let mut mods = EventModifiers::default();
+        assert!(!mods.has_options());
+        mods.options.passive = true;
+        assert!(mods.has_options());
+    }
+
+    #[test]
+    fn test_has_system() {
+        let mut mods = EventModifiers::default();
+        assert!(!mods.has_system());
+        mods.system.ctrl = true;
+        assert!(mods.has_system());
+    }
+
+    #[test]
+    fn test_generate_modifier_guard_stop_prevent() {
+        let mut mods = EventModifiers::default();
+        mods.propagation.stop = true;
+        mods.propagation.prevent = true;
+        let guard = generate_modifier_guard(&mods);
+        assert!(guard.contains("stopPropagation"));
+        assert!(guard.contains("preventDefault"));
+    }
+
+    #[test]
+    fn test_generate_modifier_guard_self() {
+        let mut mods = EventModifiers::default();
+        mods.self_only = true;
+        let guard = generate_modifier_guard(&mods);
+        assert!(guard.contains("$event.target !== $event.currentTarget"));
+    }
+
+    #[test]
+    fn test_generate_modifier_guard_exact() {
+        let mut mods = EventModifiers::default();
+        mods.exact = true;
+        let guard = generate_modifier_guard(&mods);
+        assert!(guard.contains("ctrlKey"));
+        assert!(guard.contains("altKey"));
+        assert!(guard.contains("shiftKey"));
+        assert!(guard.contains("metaKey"));
+    }
+
+    #[test]
+    fn test_generate_key_guard_empty() {
+        let keys: Vec<String> = vec![];
+        let guard = generate_key_guard(&keys);
+        assert!(guard.is_empty());
+    }
+
+    #[test]
+    fn test_generate_key_guard_multiple() {
+        let keys = vec![String::from("enter"), String::from("space")];
+        let guard = generate_key_guard(&keys);
+        assert!(guard.contains("Enter"));
+        assert!(guard.contains("\" \""));
+    }
 }

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { mdiMagnify } from '@mdi/js'
+import { mdiMagnify, mdiWeatherSunny, mdiWeatherNight, mdiThemeLightDark } from '@mdi/js'
 import { useArts } from '../composables/useArts'
 import { useSearch } from '../composables/useSearch'
+import { useTheme } from '../composables/useTheme'
 import SearchBar from './SearchBar.vue'
 import Sidebar from './Sidebar.vue'
 import SearchModal from './SearchModal.vue'
@@ -12,8 +13,25 @@ import MdiIcon from './MdiIcon.vue'
 const router = useRouter()
 const { arts, load } = useArts()
 const { query, results } = useSearch(arts)
+const { currentTheme, cycleTheme } = useTheme()
 
 const searchModalOpen = ref(false)
+
+const themeIcon = computed(() => {
+  switch (currentTheme.value) {
+    case 'light': return mdiWeatherSunny
+    case 'system': return mdiThemeLightDark
+    default: return mdiWeatherNight
+  }
+})
+
+const themeLabel = computed(() => {
+  switch (currentTheme.value) {
+    case 'light': return 'Light'
+    case 'system': return 'System'
+    default: return 'Dark'
+  }
+})
 
 // Global keyboard shortcut for Cmd+K / Ctrl+K
 const handleKeydown = (e: KeyboardEvent) => {
@@ -80,6 +98,12 @@ const handleSearchSelect = (art: { path: string }, variantName?: string) => {
           <MdiIcon class="search-icon" :path="mdiMagnify" :size="16" />
           <span>Search components...</span>
           <kbd>⌘K</kbd>
+        </button>
+      </div>
+
+      <div class="header-right">
+        <button class="theme-toggle" :title="`Theme: ${themeLabel}`" @click="cycleTheme">
+          <MdiIcon :path="themeIcon" :size="18" />
         </button>
       </div>
     </header>
@@ -199,6 +223,30 @@ const handleSearchSelect = (art: { path: string }, variantName?: string) => {
   border-radius: var(--musea-radius-sm);
   font-size: 0.75rem;
   font-family: var(--musea-font-mono);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--musea-bg-tertiary);
+  border: 1px solid var(--musea-border);
+  border-radius: var(--musea-radius-md);
+  color: var(--musea-text-muted);
+  cursor: pointer;
+  transition: all var(--musea-transition);
+}
+
+.theme-toggle:hover {
+  border-color: var(--musea-accent);
+  color: var(--musea-text);
 }
 
 .main {

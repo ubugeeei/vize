@@ -169,4 +169,66 @@ mod tests {
         assert_eq!(get_model_prop("input", Some("radio")), "checked");
         assert_eq!(get_model_prop("textarea", None), "value");
     }
+
+    #[test]
+    fn test_textarea_event() {
+        let default_mods = VModelModifiers::default();
+        let lazy_mods = VModelModifiers {
+            lazy: true,
+            ..Default::default()
+        };
+        assert_eq!(get_model_event("textarea", &default_mods), "input");
+        assert_eq!(get_model_event("textarea", &lazy_mods), "change");
+    }
+
+    #[test]
+    fn test_select_prop() {
+        assert_eq!(get_model_prop("select", None), "value");
+    }
+
+    #[test]
+    fn test_generate_model_props_basic() {
+        use vize_atelier_core::{
+            ElementNode, ExpressionNode, SimpleExpressionNode, SourceLocation,
+        };
+        use vize_carton::{Box, Bump};
+
+        let allocator = Bump::new();
+        let element = ElementNode::new(&allocator, "input", SourceLocation::STUB);
+        let mut dir =
+            vize_atelier_core::DirectiveNode::new(&allocator, "model", SourceLocation::STUB);
+        let exp_node = SimpleExpressionNode::new("modelValue", false, SourceLocation::STUB);
+        let boxed = Box::new_in(exp_node, &allocator);
+        dir.exp = Some(ExpressionNode::Simple(boxed));
+
+        let props = generate_model_props(&element, &dir);
+        assert_eq!(props.len(), 2);
+        assert_eq!(props[0].0.as_str(), "value");
+        assert_eq!(props[0].1.as_str(), "modelValue");
+        assert_eq!(props[1].0.as_str(), "onInput");
+        assert!(props[1].1.contains("$event.target.value"));
+    }
+
+    #[test]
+    fn test_generate_model_props_lazy() {
+        use vize_atelier_core::{
+            ElementNode, ExpressionNode, SimpleExpressionNode, SourceLocation,
+        };
+        use vize_carton::{Box, Bump};
+
+        let allocator = Bump::new();
+        let element = ElementNode::new(&allocator, "input", SourceLocation::STUB);
+        let mut dir =
+            vize_atelier_core::DirectiveNode::new(&allocator, "model", SourceLocation::STUB);
+        let exp_node = SimpleExpressionNode::new("msg", false, SourceLocation::STUB);
+        let boxed = Box::new_in(exp_node, &allocator);
+        dir.exp = Some(ExpressionNode::Simple(boxed));
+
+        // Add lazy modifier
+        let lazy_mod = SimpleExpressionNode::new("lazy", true, SourceLocation::STUB);
+        dir.modifiers.push(lazy_mod);
+
+        let props = generate_model_props(&element, &dir);
+        assert_eq!(props[1].0.as_str(), "onChange");
+    }
 }

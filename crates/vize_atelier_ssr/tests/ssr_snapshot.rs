@@ -330,3 +330,144 @@ mod slot {
         insta::assert_snapshot!(get_compiled_string(r#"<slot>fallback content</slot>"#));
     }
 }
+
+// =============================================================================
+// v-html Tests
+// =============================================================================
+
+mod v_html {
+    use super::*;
+
+    #[test]
+    fn basic_v_html() {
+        insta::assert_snapshot!(get_compiled_string(r#"<div v-html="content"></div>"#));
+    }
+
+    #[test]
+    fn v_html_with_other_attrs() {
+        insta::assert_snapshot!(get_compiled_string(
+            r#"<div id="foo" v-html="content"></div>"#
+        ));
+    }
+}
+
+// =============================================================================
+// v-text Tests
+// =============================================================================
+
+mod v_text {
+    use super::*;
+
+    #[test]
+    fn basic_v_text() {
+        insta::assert_snapshot!(get_compiled_string(r#"<div v-text="msg"></div>"#));
+    }
+
+    #[test]
+    fn v_text_with_other_attrs() {
+        insta::assert_snapshot!(get_compiled_string(r#"<div id="foo" v-text="msg"></div>"#));
+    }
+}
+
+// =============================================================================
+// Scope ID Tests
+// =============================================================================
+
+mod scope_id {
+    use vize_atelier_ssr::{compile_ssr_with_options, SsrCompilerOptions};
+    use vize_carton::Bump;
+
+    fn compile_with_scope_id(src: &str) -> String {
+        let allocator = Bump::new();
+        let options = SsrCompilerOptions {
+            scope_id: Some("data-v-abc123".into()),
+            ..Default::default()
+        };
+        let (_, errors, result) = compile_ssr_with_options(&allocator, src, options);
+
+        if !errors.is_empty() {
+            panic!("Compilation errors: {:?}", errors);
+        }
+
+        result.code
+    }
+
+    #[test]
+    fn element_with_scope_id() {
+        insta::assert_snapshot!(compile_with_scope_id("<div>hello</div>"));
+    }
+
+    #[test]
+    fn nested_with_scope_id() {
+        insta::assert_snapshot!(compile_with_scope_id("<div><span>nested</span></div>"));
+    }
+}
+
+// =============================================================================
+// CSS Variables Tests
+// =============================================================================
+
+mod css_vars {
+    use vize_atelier_ssr::{compile_ssr_with_options, SsrCompilerOptions};
+    use vize_carton::Bump;
+
+    fn compile_with_css_vars(src: &str) -> String {
+        let allocator = Bump::new();
+        let options = SsrCompilerOptions {
+            ssr_css_vars: Some(r#"{ "color": _ctx.color }"#.into()),
+            ..Default::default()
+        };
+        let (_, errors, result) = compile_ssr_with_options(&allocator, src, options);
+
+        if !errors.is_empty() {
+            panic!("Compilation errors: {:?}", errors);
+        }
+
+        result.code
+    }
+
+    #[test]
+    fn element_with_css_vars() {
+        insta::assert_snapshot!(compile_with_css_vars("<div>hello</div>"));
+    }
+}
+
+// =============================================================================
+// Fragment Tests
+// =============================================================================
+
+mod fragment {
+    use super::*;
+
+    #[test]
+    fn multiple_root_elements() {
+        insta::assert_snapshot!(compile_full("<div>a</div><div>b</div>"));
+    }
+
+    #[test]
+    fn multiple_root_with_interpolation() {
+        insta::assert_snapshot!(compile_full("<div>{{ a }}</div><div>{{ b }}</div>"));
+    }
+}
+
+// =============================================================================
+// Nested Structures Tests
+// =============================================================================
+
+mod nested {
+    use super::*;
+
+    #[test]
+    fn v_if_inside_v_for() {
+        insta::assert_snapshot!(compile_full(
+            r#"<div v-for="item in items"><span v-if="item.ok">{{ item.text }}</span></div>"#
+        ));
+    }
+
+    #[test]
+    fn v_for_inside_v_if() {
+        insta::assert_snapshot!(compile_full(
+            r#"<div v-if="show"><span v-for="item in items">{{ item }}</span></div>"#
+        ));
+    }
+}

@@ -1,0 +1,7 @@
+---
+source: crates/vize_atelier_ssr/tests/ssr_snapshot.rs
+expression: "get_compiled_string(r#\"<div id=\"foo\" v-text=\"msg\"></div>\"#)"
+---
+function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div><div id="foo"></div></div>`)
+}

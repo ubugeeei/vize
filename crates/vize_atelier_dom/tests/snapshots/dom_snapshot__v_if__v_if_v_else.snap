@@ -1,0 +1,11 @@
+---
+source: crates/vize_atelier_dom/tests/dom_snapshot.rs
+expression: "get_compiled(r#\"<div v-if=\"ok\">yes</div><div v-else>no</div>\"#)"
+---
+const { openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode } = Vue
+
+function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (ok)
+    ? (_openBlock(), _createElementBlock("div", { key: 0 }, "yes"))
+    : (_openBlock(), _createElementBlock("div", { key: 1 }, "no"))
+}

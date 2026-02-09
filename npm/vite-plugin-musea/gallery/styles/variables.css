@@ -1,3 +1,4 @@
+/* Default (dark) — applied at :root to avoid FOUC */
 :root {
   --musea-bg-primary: #0d0d0d;
   --musea-bg-secondary: #1a1815;
@@ -24,4 +25,69 @@
   --musea-font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
   --musea-sidebar-width: 260px;
   --musea-header-height: 56px;
+}
+
+/* Explicit dark theme */
+[data-musea-theme="dark"] {
+  --musea-bg-primary: #0d0d0d;
+  --musea-bg-secondary: #1a1815;
+  --musea-bg-tertiary: #252220;
+  --musea-bg-elevated: #2d2a27;
+  --musea-accent: #a34828;
+  --musea-accent-hover: #c45a32;
+  --musea-accent-subtle: rgba(163, 72, 40, 0.15);
+  --musea-text: #e6e9f0;
+  --musea-text-secondary: #c4c9d4;
+  --musea-text-muted: #7b8494;
+  --musea-border: #3a3530;
+  --musea-border-subtle: #2a2725;
+  --musea-success: #4ade80;
+  --musea-error: #f87171;
+  --musea-info: #60a5fa;
+  --musea-warning: #fbbf24;
+  --musea-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Light theme */
+[data-musea-theme="light"] {
+  --musea-bg-primary: #ffffff;
+  --musea-bg-secondary: #f8f8f7;
+  --musea-bg-tertiary: #f0eeed;
+  --musea-bg-elevated: #ffffff;
+  --musea-accent: #a34828;
+  --musea-accent-hover: #8b3d22;
+  --musea-accent-subtle: rgba(163, 72, 40, 0.08);
+  --musea-text: #1a1a1a;
+  --musea-text-secondary: #4a4a4a;
+  --musea-text-muted: #8b8b8b;
+  --musea-border: #e0dcd8;
+  --musea-border-subtle: #ebe8e5;
+  --musea-success: #16a34a;
+  --musea-error: #dc2626;
+  --musea-info: #2563eb;
+  --musea-warning: #d97706;
+  --musea-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* System preference: apply light when OS prefers light and no explicit theme is set */
+@media (prefers-color-scheme: light) {
+  [data-musea-theme="system"] {
+    --musea-bg-primary: #ffffff;
+    --musea-bg-secondary: #f8f8f7;
+    --musea-bg-tertiary: #f0eeed;
+    --musea-bg-elevated: #ffffff;
+    --musea-accent: #a34828;
+    --musea-accent-hover: #8b3d22;
+    --musea-accent-subtle: rgba(163, 72, 40, 0.08);
+    --musea-text: #1a1a1a;
+    --musea-text-secondary: #4a4a4a;
+    --musea-text-muted: #8b8b8b;
+    --musea-border: #e0dcd8;
+    --musea-border-subtle: #ebe8e5;
+    --musea-success: #16a34a;
+    --musea-error: #dc2626;
+    --musea-info: #2563eb;
+    --musea-warning: #d97706;
+    --musea-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  }
 }

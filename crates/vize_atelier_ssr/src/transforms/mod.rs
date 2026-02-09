@@ -86,5 +86,109 @@ pub fn get_v_text_exp<'a>(el: &'a ElementNode<'a>) -> Option<&'a ExpressionNode<
 
 #[cfg(test)]
 mod tests {
-    // Tests will be added along with the full transform implementation
+    use super::*;
+    use vize_atelier_core::ast::{
+        DirectiveNode, ElementNode, ExpressionNode, SimpleExpressionNode, SourceLocation,
+    };
+    use vize_carton::{Box, Bump};
+
+    fn make_element_with_directive<'a>(
+        allocator: &'a Bump,
+        tag: &str,
+        dir_name: &str,
+        exp: Option<&str>,
+    ) -> &'a ElementNode<'a> {
+        let mut el = ElementNode::new(allocator, tag, SourceLocation::STUB);
+        let mut dir = DirectiveNode::new(allocator, dir_name, SourceLocation::STUB);
+        if let Some(e) = exp {
+            let exp_node = SimpleExpressionNode::new(e, false, SourceLocation::STUB);
+            let boxed = Box::new_in(exp_node, allocator);
+            dir.exp = Some(ExpressionNode::Simple(boxed));
+        }
+        el.props
+            .push(PropNode::Directive(Box::new_in(dir, allocator)));
+        allocator.alloc(el)
+    }
+
+    fn make_plain_element<'a>(allocator: &'a Bump, tag: &str) -> &'a ElementNode<'a> {
+        let el = ElementNode::new(allocator, tag, SourceLocation::STUB);
+        allocator.alloc(el)
+    }
+
+    #[test]
+    fn test_has_v_model_true() {
+        let allocator = Bump::new();
+        let el = make_element_with_directive(&allocator, "input", "model", Some("msg"));
+        assert!(has_v_model(el));
+    }
+
+    #[test]
+    fn test_has_v_model_false() {
+        let allocator = Bump::new();
+        let el = make_plain_element(&allocator, "input");
+        assert!(!has_v_model(el));
+    }
+
+    #[test]
+    fn test_has_v_show_true() {
+        let allocator = Bump::new();
+        let el = make_element_with_directive(&allocator, "div", "show", Some("visible"));
+        assert!(has_v_show(el));
+    }
+
+    #[test]
+    fn test_has_v_show_false() {
+        let allocator = Bump::new();
+        let el = make_plain_element(&allocator, "div");
+        assert!(!has_v_show(el));
+    }
+
+    #[test]
+    fn test_has_v_html_true() {
+        let allocator = Bump::new();
+        let el = make_element_with_directive(&allocator, "div", "html", Some("content"));
+        assert!(has_v_html(el));
+    }
+
+    #[test]
+    fn test_has_v_html_false() {
+        let allocator = Bump::new();
+        let el = make_plain_element(&allocator, "div");
+        assert!(!has_v_html(el));
+    }
+
+    #[test]
+    fn test_has_v_text_true() {
+        let allocator = Bump::new();
+        let el = make_element_with_directive(&allocator, "div", "text", Some("msg"));
+        assert!(has_v_text(el));
+    }
+
+    #[test]
+    fn test_has_v_text_false() {
+        let allocator = Bump::new();
+        let el = make_plain_element(&allocator, "div");
+        assert!(!has_v_text(el));
+    }
+
+    #[test]
+    fn test_get_v_model_exp_some() {
+        let allocator = Bump::new();
+        let el = make_element_with_directive(&allocator, "input", "model", Some("msg"));
+        assert!(get_v_model_exp(el).is_some());
+    }
+
+    #[test]
+    fn test_get_v_model_exp_none() {
+        let allocator = Bump::new();
+        let el = make_plain_element(&allocator, "input");
+        assert!(get_v_model_exp(el).is_none());
+    }
+
+    #[test]
+    fn test_get_v_show_exp_some() {
+        let allocator = Bump::new();
+        let el = make_element_with_directive(&allocator, "div", "show", Some("visible"));
+        assert!(get_v_show_exp(el).is_some());
+    }
 }
