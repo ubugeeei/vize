@@ -353,10 +353,23 @@ pub fn compile_script_setup(
         }
     }
 
+    // Check if we need PropType import (type-based defineProps in non-vapor TS mode)
+    let needs_prop_type = is_ts
+        && !is_vapor
+        && ctx
+            .macros
+            .define_props
+            .as_ref()
+            .is_some_and(|p| p.type_args.is_some());
+
     // Add Vapor-specific import or defineComponent import
     if is_vapor {
         output.extend_from_slice(
             b"import { defineVaporComponent as _defineVaporComponent } from 'vue'\n",
+        );
+    } else if needs_prop_type {
+        output.extend_from_slice(
+            b"import { defineComponent as _defineComponent, type PropType } from 'vue'\n",
         );
     } else {
         output.extend_from_slice(b"import { defineComponent as _defineComponent } from 'vue'\n");
@@ -481,6 +494,20 @@ pub fn compile_script_setup(
                     output.extend_from_slice(name.as_bytes());
                     output.extend_from_slice(b": { type: ");
                     output.extend_from_slice(prop_type.js_type.as_bytes());
+                    if needs_prop_type {
+                        if let Some(ref ts_type) = prop_type.ts_type {
+                            if prop_type.js_type == "null" {
+                                output.extend_from_slice(b" as unknown as PropType<");
+                            } else {
+                                output.extend_from_slice(b" as PropType<");
+                            }
+                            // Normalize multi-line types to single line
+                            let normalized: String =
+                                ts_type.split_whitespace().collect::<Vec<_>>().join(" ");
+                            output.extend_from_slice(normalized.as_bytes());
+                            output.push(b'>');
+                        }
+                    }
                     output.extend_from_slice(b", required: ");
                     output.extend_from_slice(if prop_type.optional {
                         b"false"

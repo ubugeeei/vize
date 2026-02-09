@@ -1,20 +1,19 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 150
 expression: ts_output
 ---
 import { mergeDefaults as _mergeDefaults } from 'vue'
-import { defineComponent as _defineComponent } from 'vue'
+import { defineComponent as _defineComponent, type PropType } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, renderSlot as _renderSlot, normalizeClass as _normalizeClass } from "vue"
 
 
 export default /*@__PURE__*/_defineComponent({
   __name: 'test',
   props: {
-    color: { type: String, required: false, default: "primary" },
-    appearance: { type: String, required: false, default: "filled" }
+    color: { type: String as PropType<"primary" | "success" | "inactive">, required: false, default: "primary" },
+    appearance: { type: String as PropType<"filled" | "outlined">, required: false, default: "filled" }
   },
-  setup(__props: any) {
+  setup(__props) {
 
 
 return (_ctx: any,_cache: any) => {

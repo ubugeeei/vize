@@ -61,9 +61,24 @@ pub fn compile_script_setup_inline(
         output.extend_from_slice(b"import { useModel as _useModel } from 'vue'\n");
     }
 
+    // Check if we need PropType import (type-based defineProps in TS mode)
+    let needs_prop_type = is_ts
+        && ctx
+            .macros
+            .define_props
+            .as_ref()
+            .is_some_and(|p| p.type_args.is_some());
+
     // defineComponent import for TypeScript
     if is_ts {
-        output.extend_from_slice(b"import { defineComponent as _defineComponent } from 'vue'\n");
+        if needs_prop_type {
+            output.extend_from_slice(
+                b"import { defineComponent as _defineComponent, type PropType } from 'vue'\n",
+            );
+        } else {
+            output
+                .extend_from_slice(b"import { defineComponent as _defineComponent } from 'vue'\n");
+        }
     }
 
     // Template imports (Vue helpers)
@@ -528,7 +543,20 @@ pub fn compile_script_setup_inline(
                     props_emits_buf.extend_from_slice(name.as_bytes());
                     props_emits_buf.extend_from_slice(b": { type: ");
                     props_emits_buf.extend_from_slice(prop_type.js_type.as_bytes());
-                    // Note: Vue's compiler-sfc does NOT add `as PropType<T>` in inline mode output
+                    if needs_prop_type {
+                        if let Some(ref ts_type) = prop_type.ts_type {
+                            if prop_type.js_type == "null" {
+                                props_emits_buf.extend_from_slice(b" as unknown as PropType<");
+                            } else {
+                                props_emits_buf.extend_from_slice(b" as PropType<");
+                            }
+                            // Normalize multi-line types to single line
+                            let normalized: String =
+                                ts_type.split_whitespace().collect::<Vec<_>>().join(" ");
+                            props_emits_buf.extend_from_slice(normalized.as_bytes());
+                            props_emits_buf.push(b'>');
+                        }
+                    }
                     props_emits_buf.extend_from_slice(b", required: ");
                     props_emits_buf.extend_from_slice(if prop_type.optional {
                         b"false"
@@ -814,13 +842,14 @@ pub fn compile_script_setup_inline(
     }
 
     // Add `: any` type annotation to __props when there are typed props in TypeScript mode
+    // but NOT when needs_prop_type (defineComponent infers the type from PropType<T>)
     let has_typed_props = is_ts
         && ctx
             .macros
             .define_props
             .as_ref()
             .is_some_and(|p| p.type_args.is_some() || !p.args.is_empty());
-    let props_param = if has_typed_props {
+    let props_param = if has_typed_props && !needs_prop_type {
         "__props: any"
     } else {
         "__props"

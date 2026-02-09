@@ -1,9 +1,8 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 150
 expression: ts_output
 ---
-import { defineComponent as _defineComponent } from 'vue'
+import { defineComponent as _defineComponent, type PropType } from 'vue'
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString } from "vue"
 
 
@@ -18,11 +17,11 @@ interface ExtendedProps {
 export default /*@__PURE__*/_defineComponent({
   __name: 'test',
   props: {
-    id: { type: String, required: true },
-    name: { type: String, required: true },
-    extra: { type: Boolean, required: true }
+    id: { type: String as PropType<string>, required: true },
+    name: { type: String as PropType<string>, required: true },
+    extra: { type: Boolean as PropType<boolean>, required: true }
   },
-  setup(__props: any) {
+  setup(__props) {
 
 
 return (_ctx: any,_cache: any) => {
