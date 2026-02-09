@@ -536,7 +536,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
         // GET /api/tokens - Get design tokens
         if (req.url === "/tokens" && req.method === "GET") {
           if (!tokensPath) {
-            sendJson({ categories: [], tokenMap: {}, meta: { filePath: "", tokenCount: 0, primitiveCount: 0, semanticCount: 0 } });
+            sendJson({ categories: [], tokenMap: {}, meta: { filePath: "", tokenCount: 0, primitiveCount: 0, semanticCount: 0, componentCount: 0 } });
             return;
           }
 
@@ -549,8 +549,10 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
             const resolvedTokenMap = buildTokenMap(categories);
             let primitiveCount = 0;
             let semanticCount = 0;
+            let componentCount = 0;
             for (const token of Object.values(resolvedTokenMap)) {
-              if (token.$tier === "semantic") semanticCount++;
+              if (token.$tier === "component") componentCount++;
+              else if (token.$tier === "semantic") semanticCount++;
               else primitiveCount++;
             }
             sendJson({
@@ -561,6 +563,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
                 tokenCount: Object.keys(resolvedTokenMap).length,
                 primitiveCount,
                 semanticCount,
+                componentCount,
               },
             });
           } catch (e) {
@@ -599,7 +602,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
                 return;
               }
 
-              // Validate semantic reference
+              // Validate reference (semantic or component tokens)
               if (token.$reference) {
                 const validation = validateSemanticReference(currentMap, token.$reference, dotPath);
                 if (!validation.valid) {
@@ -607,7 +610,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
                   return;
                 }
                 token.value = `{${token.$reference}}`;
-                token.$tier = "semantic";
+                if (!token.$tier || token.$tier === "primitive") {
+                  token.$tier = "semantic";
+                }
               }
 
               setTokenAtPath(rawData, dotPath, token);
@@ -646,7 +651,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
               }
               const absoluteTokensPath = path.resolve(config.root, tokensPath);
 
-              // Validate semantic reference
+              // Validate reference (semantic or component tokens)
               if (token.$reference) {
                 const currentCategories = await parseTokens(absoluteTokensPath);
                 const currentMap = buildTokenMap(currentCategories);
@@ -656,7 +661,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
                   return;
                 }
                 token.value = `{${token.$reference}}`;
-                token.$tier = "semantic";
+                if (!token.$tier || token.$tier === "primitive") {
+                  token.$tier = "semantic";
+                }
               }
 
               const rawData = await readRawTokenFile(absoluteTokensPath);

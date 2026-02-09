@@ -121,7 +121,7 @@ export interface DesignToken {
   type?: string
   description?: string
   attributes?: Record<string, unknown>
-  $tier?: 'primitive' | 'semantic'
+  $tier?: 'primitive' | 'semantic' | 'component'
   $reference?: string
   $resolvedValue?: string | number
 }
@@ -137,6 +137,7 @@ export interface TokensMeta {
   tokenCount: number
   primitiveCount: number
   semanticCount: number
+  componentCount: number
 }
 
 export interface TokensApiResponse {

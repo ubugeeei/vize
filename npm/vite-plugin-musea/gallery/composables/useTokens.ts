@@ -4,15 +4,15 @@ import { fetchTokens, createToken, updateToken, deleteToken } from '../api'
 
 const categories = ref<TokenCategory[]>([])
 const tokenMap = ref<Record<string, DesignToken>>({})
-const meta = ref<TokensMeta>({ filePath: '', tokenCount: 0, primitiveCount: 0, semanticCount: 0 })
+const meta = ref<TokensMeta>({ filePath: '', tokenCount: 0, primitiveCount: 0, semanticCount: 0, componentCount: 0 })
 const loading = ref(false)
 const error = ref<string | null>(null)
-const activeTab = ref<'all' | 'primitive' | 'semantic'>('all')
+const activeTab = ref<'all' | 'primitive' | 'semantic' | 'component'>('all')
 const filter = ref('')
 
 let loaded = false
 
-function filterCategoryByTier(cat: TokenCategory, tier: 'primitive' | 'semantic'): TokenCategory | null {
+function filterCategoryByTier(cat: TokenCategory, tier: 'primitive' | 'semantic' | 'component'): TokenCategory | null {
   const matchingTokens: Record<string, DesignToken> = {}
   for (const [name, token] of Object.entries(cat.tokens)) {
     if (token.$tier === tier) {
@@ -68,7 +68,7 @@ export function useTokens() {
     // Filter by tier
     if (activeTab.value !== 'all') {
       result = result
-        .map(cat => filterCategoryByTier(cat, activeTab.value as 'primitive' | 'semantic'))
+        .map(cat => filterCategoryByTier(cat, activeTab.value as 'primitive' | 'semantic' | 'component'))
         .filter((cat): cat is TokenCategory => cat !== null)
     }
 
@@ -86,6 +86,12 @@ export function useTokens() {
   const primitiveTokenPaths = computed(() => {
     return Object.entries(tokenMap.value)
       .filter(([, token]) => token.$tier === 'primitive')
+      .map(([path]) => path)
+  })
+
+  const referenceableTokenPaths = computed(() => {
+    return Object.entries(tokenMap.value)
+      .filter(([, token]) => token.$tier === 'primitive' || token.$tier === 'semantic')
       .map(([path]) => path)
   })
 
@@ -144,6 +150,7 @@ export function useTokens() {
     filter,
     filteredCategories,
     primitiveTokenPaths,
+    referenceableTokenPaths,
     load,
     reload,
     addToken,

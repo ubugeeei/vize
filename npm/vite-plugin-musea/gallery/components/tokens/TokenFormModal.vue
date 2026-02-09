@@ -8,6 +8,7 @@ const props = defineProps<{
   editPath?: string
   editToken?: DesignToken
   primitiveTokenPaths: string[]
+  referenceableTokenPaths: string[]
   existingPaths: string[]
 }>()
 
@@ -20,7 +21,7 @@ const tokenPath = ref('')
 const tokenValue = ref<string>('')
 const tokenType = ref('')
 const tokenDescription = ref('')
-const tier = ref<'primitive' | 'semantic'>('primitive')
+const tier = ref<'primitive' | 'semantic' | 'component'>('primitive')
 const reference = ref('')
 const validationError = ref<string | null>(null)
 
@@ -52,9 +53,10 @@ watch(() => props.isOpen, (open) => {
 })
 
 const referenceOptions = computed(() => {
-  if (!reference.value) return props.primitiveTokenPaths
+  const paths = tier.value === 'component' ? props.referenceableTokenPaths : props.primitiveTokenPaths
+  if (!reference.value) return paths
   const q = reference.value.toLowerCase()
-  return props.primitiveTokenPaths.filter(p => p.toLowerCase().includes(q))
+  return paths.filter(p => p.toLowerCase().includes(q))
 })
 
 const title = computed(() => props.mode === 'create' ? 'Add Token' : 'Edit Token')
@@ -68,8 +70,8 @@ function validate(): boolean {
     validationError.value = 'A token already exists at this path'
     return false
   }
-  if (tier.value === 'semantic' && !reference.value.trim()) {
-    validationError.value = 'Semantic tokens require a reference'
+  if ((tier.value === 'semantic' || tier.value === 'component') && !reference.value.trim()) {
+    validationError.value = tier.value === 'component' ? 'Component tokens require a reference' : 'Semantic tokens require a reference'
     return false
   }
   if (tier.value === 'primitive' && !tokenValue.value.trim()) {
@@ -83,13 +85,14 @@ function validate(): boolean {
 function handleSubmit() {
   if (!validate()) return
 
+  const isRef = tier.value === 'semantic' || tier.value === 'component'
   const token: Omit<DesignToken, '$resolvedValue'> = {
-    value: tier.value === 'semantic' ? `{${reference.value}}` : tokenValue.value,
+    value: isRef ? `{${reference.value}}` : tokenValue.value,
     $tier: tier.value,
   }
   if (tokenType.value) token.type = tokenType.value
   if (tokenDescription.value) token.description = tokenDescription.value
-  if (tier.value === 'semantic') token.$reference = reference.value
+  if (isRef) token.$reference = reference.value
 
   emit('submit', tokenPath.value, token)
 }
@@ -136,6 +139,10 @@ function selectReference(path: string) {
                   <input v-model="tier" type="radio" value="semantic" class="tier-radio-input">
                   <span class="tier-radio-label">Semantic</span>
                 </label>
+                <label class="tier-radio" :class="{ 'tier-radio--active': tier === 'component' }">
+                  <input v-model="tier" type="radio" value="component" class="tier-radio-input">
+                  <span class="tier-radio-label">Component</span>
+                </label>
               </div>
             </div>
 
@@ -156,7 +163,7 @@ function selectReference(path: string) {
                 <input
                   v-model="reference"
                   class="form-input"
-                  placeholder="e.g. color.blue.500"
+                  :placeholder="tier === 'component' ? 'e.g. color.primary' : 'e.g. color.blue.500'"
                 >
                 <div v-if="referenceOptions.length > 0" class="reference-list">
                   <button

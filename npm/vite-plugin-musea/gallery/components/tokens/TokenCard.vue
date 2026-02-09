@@ -30,7 +30,7 @@ const isColor = computed(() => {
 })
 
 const displayValue = computed(() => {
-  if (props.token.$tier === 'semantic' && props.token.$resolvedValue !== undefined) {
+  if ((props.token.$tier === 'semantic' || props.token.$tier === 'component') && props.token.$resolvedValue !== undefined) {
     return props.token.$resolvedValue
   }
   return props.token.value
@@ -71,6 +71,7 @@ const previewType = computed<'color' | 'spacing' | 'fontSize' | 'fontWeight' | '
 })
 
 const tierLabel = computed(() => {
+  if (props.token.$tier === 'component') return 'Component'
   if (props.token.$tier === 'semantic') return 'Semantic'
   if (props.token.$tier === 'primitive') return 'Primitive'
   return null
@@ -78,7 +79,7 @@ const tierLabel = computed(() => {
 </script>
 
 <template>
-  <div class="token-card" :class="{ 'token-card--semantic': token.$tier === 'semantic' }">
+  <div class="token-card" :class="{ 'token-card--semantic': token.$tier === 'semantic', 'token-card--component': token.$tier === 'component' }">
     <!-- Preview -->
     <div class="token-preview" :class="{ 'token-preview--color': previewType === 'color' }">
       <div
@@ -131,8 +132,8 @@ const tierLabel = computed(() => {
         </span>
       </div>
       <div class="token-value" :title="String(token.value)">{{ token.value }}</div>
-      <div v-if="token.$tier === 'semantic' && token.$reference" class="token-reference">
-        <span class="ref-arrow">&rarr;</span> {{ token.$reference }}
+      <div v-if="(token.$tier === 'semantic' || token.$tier === 'component') && token.$reference" class="token-reference">
+        <span class="ref-arrow" :class="{ 'ref-arrow--component': token.$tier === 'component' }">&rarr;</span> {{ token.$reference }}
         <span v-if="token.$resolvedValue !== undefined" class="ref-resolved">
           ({{ token.$resolvedValue }})
         </span>
@@ -300,6 +301,11 @@ const tierLabel = computed(() => {
   color: #c084fc;
 }
 
+.tier-badge--component {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
 .token-value {
   color: var(--musea-text-muted);
   font-family: var(--musea-font-mono);
@@ -321,6 +327,10 @@ const tierLabel = computed(() => {
 
 .ref-arrow {
   color: #c084fc;
+}
+
+.ref-arrow--component {
+  color: #4ade80;
 }
 
 .ref-resolved {

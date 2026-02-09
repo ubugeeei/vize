@@ -16,6 +16,7 @@ const {
   filter,
   filteredCategories,
   primitiveTokenPaths,
+  referenceableTokenPaths,
   tokenMap,
   meta,
   load,
@@ -59,6 +60,7 @@ const tabs = [
   { key: 'all' as const, label: 'All' },
   { key: 'primitive' as const, label: 'Primitive' },
   { key: 'semantic' as const, label: 'Semantic' },
+  { key: 'component' as const, label: 'Component' },
 ] as const
 
 onMounted(() => {
@@ -170,6 +172,7 @@ async function handleSourceSaved() {
             <span v-if="tab.key === 'all' && meta.tokenCount" class="tab-count">{{ meta.tokenCount }}</span>
             <span v-else-if="tab.key === 'primitive' && meta.primitiveCount" class="tab-count">{{ meta.primitiveCount }}</span>
             <span v-else-if="tab.key === 'semantic' && meta.semanticCount" class="tab-count">{{ meta.semanticCount }}</span>
+            <span v-else-if="tab.key === 'component' && meta.componentCount" class="tab-count">{{ meta.componentCount }}</span>
           </button>
         </div>
 
@@ -233,6 +236,7 @@ async function handleSourceSaved() {
       :edit-path="editPath"
       :edit-token="editTokenData"
       :primitive-token-paths="primitiveTokenPaths"
+      :referenceable-token-paths="referenceableTokenPaths"
       :existing-paths="existingPaths"
       @close="showFormModal = false"
       @submit="handleFormSubmit"

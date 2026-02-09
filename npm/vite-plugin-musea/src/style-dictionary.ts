@@ -14,7 +14,7 @@ export interface DesignToken {
   type?: string;
   description?: string;
   attributes?: Record<string, unknown>;
-  $tier?: "primitive" | "semantic";
+  $tier?: "primitive" | "semantic" | "component";
   $reference?: string;
   $resolvedValue?: string | number;
 }
@@ -202,7 +202,7 @@ function normalizeToken(raw: Record<string, unknown>): DesignToken {
     description: raw.description as string | undefined,
     attributes: raw.attributes as Record<string, unknown> | undefined,
   };
-  if (raw.$tier === "primitive" || raw.$tier === "semantic") {
+  if (raw.$tier === "primitive" || raw.$tier === "semantic" || raw.$tier === "component") {
     token.$tier = raw.$tier;
   }
   if (typeof raw.$reference === "string") {
@@ -279,7 +279,10 @@ function resolveTokenReference(
   if (typeof token.value === "string") {
     const match = token.value.match(REFERENCE_PATTERN);
     if (match) {
-      token.$tier = token.$tier ?? "semantic";
+      // Preserve explicit tier (e.g. "component"), default to "semantic"
+      if (!token.$tier || token.$tier === "primitive") {
+        token.$tier = "semantic";
+      }
       token.$reference = match[1];
       token.$resolvedValue = resolveValue(match[1], tokenMap, 0, new Set());
       return;
