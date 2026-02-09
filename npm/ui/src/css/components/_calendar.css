@@ -8,7 +8,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: var(--vize-space-2);
+  padding-bottom: var(--vize-space-3);
 }
 
 :where([data-vize-calendar-heading]) {
@@ -45,31 +45,40 @@
   cursor: not-allowed;
 }
 
+/* Use CSS Grid to fix table layout broken by <div> cells inside <tr> */
 :where([data-vize-calendar-grid]) {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--vize-space-1);
   width: 100%;
-  border-collapse: collapse;
-  border-spacing: 0;
+}
+
+:where([data-vize-calendar-grid-head]),
+:where([data-vize-calendar-grid-body]),
+:where([data-vize-calendar-grid-head] tr),
+:where([data-vize-calendar-grid-body] tr) {
+  display: contents;
 }
 
 :where([data-vize-calendar-grid-head-cell]) {
   font-size: var(--vize-text-sm);
-  font-weight: 400;
+  font-weight: 500;
   color: var(--vize-muted);
   text-align: center;
-  padding: var(--vize-space-2);
+  padding: var(--vize-space-1) var(--vize-space-2) var(--vize-space-2);
 }
 
 :where([data-vize-calendar-cell]) {
   text-align: center;
-  padding: var(--vize-space-1);
+  padding: 0;
 }
 
 :where([data-vize-calendar-cell-trigger]) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 2.25rem;
+  height: 2.25rem;
   padding: 0;
   font-family: var(--vize-font);
   font-size: var(--vize-text-sm);
@@ -79,7 +88,8 @@
   border-radius: var(--vize-radius);
   cursor: pointer;
   transition: background var(--vize-duration) var(--vize-easing),
-              border-color var(--vize-duration) var(--vize-easing);
+              border-color var(--vize-duration) var(--vize-easing),
+              color var(--vize-duration) var(--vize-easing);
 }
 
 :where([data-vize-calendar-cell-trigger]:hover) {
@@ -87,17 +97,19 @@
 }
 
 :where([data-vize-calendar-cell-trigger][data-today]) {
-  border-color: var(--vize-border);
+  border-color: var(--vize-fg);
+  font-weight: 600;
 }
 
 :where([data-vize-calendar-cell-trigger][data-state="selected"]) {
   background: var(--vize-fg);
   color: var(--vize-bg);
+  font-weight: 600;
 }
 
 :where([data-vize-calendar-cell-trigger][data-outside-month]) {
   color: var(--vize-muted);
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
 :where([data-vize-calendar-cell-trigger][data-disabled]) {

@@ -1,6 +1,7 @@
 :where([data-vize-accordion]) {
   font-family: var(--vize-font);
   color: var(--vize-fg);
+  width: 100%;
 }
 
 :where([data-vize-accordion-item]) {
@@ -21,12 +22,32 @@
   padding: var(--vize-space-4) 0;
   font-family: var(--vize-font);
   font-size: var(--vize-text-base);
+  font-weight: 500;
   line-height: var(--vize-leading);
   color: var(--vize-fg);
   background: none;
   border: none;
   cursor: pointer;
+  text-align: left;
   transition: color var(--vize-duration) var(--vize-easing);
+}
+
+/* Chevron indicator */
+:where([data-vize-accordion-trigger])::after {
+  content: "";
+  display: block;
+  width: 0.75rem;
+  height: 0.75rem;
+  flex-shrink: 0;
+  margin-left: var(--vize-space-4);
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-accordion-trigger][data-state="open"])::after {
+  transform: rotate(45deg);
 }
 
 :where([data-vize-accordion-trigger]:hover) {
@@ -46,7 +67,12 @@
 :where([data-vize-accordion-content]) {
   overflow: hidden;
   font-size: var(--vize-text-sm);
+  line-height: var(--vize-leading);
   color: var(--vize-muted);
+}
+
+:where([data-vize-accordion-content] > *) {
+  padding-bottom: var(--vize-space-4);
 }
 
 :where([data-vize-accordion-content][data-state="open"]) {
