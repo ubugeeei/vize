@@ -1,0 +1,11 @@
+---
+source: crates/vize_atelier_dom/tests/dom_snapshot.rs
+expression: "get_compiled(r#\"<div :class=\"cls\"></div>\"#)"
+---
+const { openBlock: _openBlock, createElementBlock: _createElementBlock, normalizeClass: _normalizeClass } = Vue
+
+function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (_openBlock(), _createElementBlock("div", {
+    class: _normalizeClass(cls)
+  }, null, 2 /* CLASS */))
+}

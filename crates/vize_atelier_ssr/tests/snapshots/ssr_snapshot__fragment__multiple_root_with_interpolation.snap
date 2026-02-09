@@ -1,0 +1,7 @@
+---
+source: crates/vize_atelier_ssr/tests/ssr_snapshot.rs
+expression: "compile_full(\"<div>{{ a }}</div><div>{{ b }}</div>\")"
+---
+function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<!--[--><div>${_ssrInterpolate(_ctx.a)}</div><div>${_ssrInterpolate(_ctx.b)}</div><!--]-->`)
+}

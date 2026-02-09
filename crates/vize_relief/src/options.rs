@@ -289,3 +289,142 @@ pub struct CompilerOptions {
     pub transform: TransformOptions,
     pub codegen: CodegenOptions,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parser_options_default() {
+        let opts = ParserOptions::default();
+        assert_eq!(opts.mode, ParseMode::Base);
+        assert_eq!(opts.whitespace, WhitespaceStrategy::Condense);
+        assert_eq!(opts.delimiters.0.as_str(), "{{");
+        assert_eq!(opts.delimiters.1.as_str(), "}}");
+        assert!(opts.comments);
+        assert!(opts.is_native_tag.is_none());
+        assert!(opts.is_custom_element.is_none());
+        assert!(opts.on_error.is_none());
+        assert!(opts.on_warn.is_none());
+    }
+
+    #[test]
+    fn transform_options_default() {
+        let opts = TransformOptions::default();
+        assert!(!opts.prefix_identifiers);
+        assert!(!opts.hoist_static);
+        assert!(!opts.cache_handlers);
+        assert!(!opts.ssr);
+        assert!(!opts.is_ts);
+        assert!(!opts.inline);
+        assert!(opts.scope_id.is_none());
+        assert!(opts.ssr_css_vars.is_none());
+        assert!(opts.binding_metadata.is_none());
+    }
+
+    #[test]
+    fn codegen_options_default() {
+        let opts = CodegenOptions::default();
+        assert_eq!(opts.mode, CodegenMode::Function);
+        assert_eq!(opts.runtime_module_name.as_str(), "vue");
+        assert_eq!(opts.runtime_global_name.as_str(), "Vue");
+        assert!(!opts.prefix_identifiers);
+        assert!(!opts.source_map);
+        assert!(!opts.ssr);
+        assert!(!opts.is_ts);
+        assert!(!opts.inline);
+        assert!(opts.scope_id.is_none());
+        assert!(opts.binding_metadata.is_none());
+    }
+
+    #[test]
+    fn binding_type_discriminants() {
+        assert_eq!(BindingType::SetupLet as u8, 0);
+        assert_eq!(BindingType::SetupMaybeRef as u8, 1);
+        assert_eq!(BindingType::SetupRef as u8, 2);
+        assert_eq!(BindingType::SetupReactiveConst as u8, 3);
+        assert_eq!(BindingType::SetupConst as u8, 4);
+        assert_eq!(BindingType::Props as u8, 5);
+        assert_eq!(BindingType::PropsAliased as u8, 6);
+        assert_eq!(BindingType::Data as u8, 7);
+        assert_eq!(BindingType::Options as u8, 8);
+        assert_eq!(BindingType::LiteralConst as u8, 9);
+        assert_eq!(BindingType::JsGlobalUniversal as u8, 10);
+        assert_eq!(BindingType::JsGlobalBrowser as u8, 11);
+        assert_eq!(BindingType::JsGlobalNode as u8, 12);
+        assert_eq!(BindingType::JsGlobalDeno as u8, 13);
+        assert_eq!(BindingType::JsGlobalBun as u8, 14);
+        assert_eq!(BindingType::VueGlobal as u8, 15);
+        assert_eq!(BindingType::ExternalModule as u8, 16);
+    }
+
+    #[test]
+    fn binding_type_to_vir() {
+        assert_eq!(BindingType::SetupLet.to_vir(), "let");
+        assert_eq!(BindingType::SetupMaybeRef.to_vir(), "st?");
+        assert_eq!(BindingType::SetupRef.to_vir(), "st");
+        assert_eq!(BindingType::SetupReactiveConst.to_vir(), "ist");
+        assert_eq!(BindingType::SetupConst.to_vir(), "c");
+        assert_eq!(BindingType::Props.to_vir(), "ist");
+        assert_eq!(BindingType::PropsAliased.to_vir(), "ist");
+        assert_eq!(BindingType::Data.to_vir(), "data");
+        assert_eq!(BindingType::Options.to_vir(), "opt");
+        assert_eq!(BindingType::LiteralConst.to_vir(), "lit");
+        assert_eq!(BindingType::JsGlobalUniversal.to_vir(), "~js");
+        assert_eq!(BindingType::JsGlobalBrowser.to_vir(), "!js");
+        assert_eq!(BindingType::JsGlobalNode.to_vir(), "#js");
+        assert_eq!(BindingType::JsGlobalDeno.to_vir(), "#deno");
+        assert_eq!(BindingType::JsGlobalBun.to_vir(), "#bun");
+        assert_eq!(BindingType::VueGlobal.to_vir(), "vue");
+        assert_eq!(BindingType::ExternalModule.to_vir(), "ext");
+    }
+
+    #[test]
+    fn binding_metadata_default() {
+        let meta = BindingMetadata::default();
+        assert!(meta.bindings.is_empty());
+        assert!(meta.props_aliases.is_empty());
+        assert!(!meta.is_script_setup);
+    }
+
+    #[test]
+    fn codegen_mode_serde() {
+        let json_fn = serde_json::to_string(&CodegenMode::Function).unwrap();
+        assert_eq!(json_fn, "\"function\"");
+        let json_mod = serde_json::to_string(&CodegenMode::Module).unwrap();
+        assert_eq!(json_mod, "\"module\"");
+
+        let deserialized: CodegenMode = serde_json::from_str("\"function\"").unwrap();
+        assert_eq!(deserialized, CodegenMode::Function);
+        let deserialized: CodegenMode = serde_json::from_str("\"module\"").unwrap();
+        assert_eq!(deserialized, CodegenMode::Module);
+    }
+
+    #[test]
+    fn binding_type_serde_roundtrip() {
+        let all_types = [
+            BindingType::SetupLet,
+            BindingType::SetupMaybeRef,
+            BindingType::SetupRef,
+            BindingType::SetupReactiveConst,
+            BindingType::SetupConst,
+            BindingType::Props,
+            BindingType::PropsAliased,
+            BindingType::Data,
+            BindingType::Options,
+            BindingType::LiteralConst,
+            BindingType::JsGlobalUniversal,
+            BindingType::JsGlobalBrowser,
+            BindingType::JsGlobalNode,
+            BindingType::JsGlobalDeno,
+            BindingType::JsGlobalBun,
+            BindingType::VueGlobal,
+            BindingType::ExternalModule,
+        ];
+        for bt in &all_types {
+            let json = serde_json::to_string(bt).unwrap();
+            let deserialized: BindingType = serde_json::from_str(&json).unwrap();
+            assert_eq!(*bt, deserialized, "Roundtrip failed for {:?}", bt);
+        }
+    }
+}

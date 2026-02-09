@@ -238,4 +238,57 @@ mod tests {
         assert_eq!(event_modifiers::get_key_code("esc"), Some("Escape"));
         assert_eq!(event_modifiers::get_key_code("unknown"), None);
     }
+
+    #[test]
+    fn test_void_elements_all() {
+        let void_tags = [
+            "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param",
+            "source", "track", "wbr",
+        ];
+        for tag in &void_tags {
+            assert!(
+                element_checks::is_void_element(tag),
+                "{} should be void",
+                tag
+            );
+        }
+        assert!(!element_checks::is_void_element("div"));
+        assert!(!element_checks::is_void_element("span"));
+    }
+
+    #[test]
+    fn test_key_aliases_all() {
+        let aliases = [
+            "esc",
+            "space",
+            "up",
+            "down",
+            "left",
+            "right",
+            "delete",
+            "backspace",
+            "tab",
+            "enter",
+        ];
+        for alias in &aliases {
+            assert!(
+                event_modifiers::is_key_alias(alias),
+                "{} should be a key alias",
+                alias
+            );
+            assert!(
+                event_modifiers::get_key_code(alias).is_some(),
+                "{} should have a key code",
+                alias
+            );
+        }
+    }
+
+    #[test]
+    fn test_checkbox_or_radio() {
+        assert!(element_checks::is_checkbox_or_radio("checkbox"));
+        assert!(element_checks::is_checkbox_or_radio("radio"));
+        assert!(!element_checks::is_checkbox_or_radio("text"));
+        assert!(!element_checks::is_checkbox_or_radio("number"));
+    }
 }

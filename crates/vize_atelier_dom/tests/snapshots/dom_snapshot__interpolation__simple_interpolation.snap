@@ -1,0 +1,9 @@
+---
+source: crates/vize_atelier_dom/tests/dom_snapshot.rs
+expression: "get_compiled(\"{{ msg }}\")"
+---
+const { toDisplayString: _toDisplayString } = Vue
+
+function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return _toDisplayString(msg)
+}

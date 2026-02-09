@@ -1,0 +1,11 @@
+---
+source: crates/vize_atelier_dom/tests/dom_snapshot.rs
+expression: "get_compiled(r#\"<div v-for=\"item in items\">{{ item }}</div>\"#)"
+---
+const { Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, renderList: _renderList, toDisplayString: _toDisplayString } = Vue
+
+function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(items, (item) => {
+    return (_openBlock(), _createElementBlock("div", null, _toDisplayString(item), 1 /* TEXT */))
+  }), 256 /* UNKEYED_FRAGMENT */))
+}

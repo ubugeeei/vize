@@ -1,0 +1,13 @@
+---
+source: crates/vize_atelier_dom/tests/dom_snapshot.rs
+expression: "get_compiled(r#\"<input v-model=\"msg\" />\"#)"
+---
+const { openBlock: _openBlock, createElementBlock: _createElementBlock, withDirectives: _withDirectives, vModelText: _vModelText } = Vue
+
+function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return _withDirectives((_openBlock(), _createElementBlock("input", {
+    "onUpdate:modelValue": $event => ((msg) = $event)
+  }, null, 8 /* PROPS */, ["onUpdate:modelValue"])), [
+    [_vModelText, msg]
+  ])
+}

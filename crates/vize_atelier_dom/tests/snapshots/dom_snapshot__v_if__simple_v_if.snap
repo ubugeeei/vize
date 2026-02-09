@@ -1,0 +1,11 @@
+---
+source: crates/vize_atelier_dom/tests/dom_snapshot.rs
+expression: "get_compiled(r#\"<div v-if=\"ok\">hello</div>\"#)"
+---
+const { openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode } = Vue
+
+function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (ok)
+    ? (_openBlock(), _createElementBlock("div", { key: 0 }, "hello"))
+    : _createCommentVNode("v-if", true)
+}

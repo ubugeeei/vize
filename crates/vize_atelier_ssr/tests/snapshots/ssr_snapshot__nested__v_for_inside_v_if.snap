@@ -1,0 +1,17 @@
+---
+source: crates/vize_atelier_ssr/tests/ssr_snapshot.rs
+expression: "compile_full(r#\"<div v-if=\"show\"><span v-for=\"item in items\">{{ item }}</span></div>\"#)"
+---
+function ssrRender(_ctx, _push, _parent, _attrs) {
+  if (_ctx.show) {
+    _push(`<div>`)
+    _push(`<!--[-->`)
+    _ssrRenderList(_ctx.items, (item) => {
+      _push(`<span>${_ssrInterpolate(item)}</span>`)
+    })
+    _push(`<!--]-->`)
+    _push(`</div>`)
+  } else {
+    _push(`<!---->`)
+  }
+}

@@ -54,4 +54,25 @@ mod tests {
         assert_eq!(key, "innerHTML");
         assert_eq!(value, "content");
     }
+
+    #[test]
+    fn test_is_v_html_false() {
+        let allocator = Bump::new();
+        let dir = create_test_directive(&allocator, "text", "content");
+        assert!(!is_v_html(&dir));
+    }
+
+    #[test]
+    fn test_generate_html_prop_no_exp() {
+        let allocator = Bump::new();
+        let dir = DirectiveNode::new(&allocator, "html", SourceLocation::STUB);
+        assert!(generate_html_prop(&dir).is_none());
+    }
+
+    #[test]
+    fn test_generate_html_warning() {
+        let warning = generate_html_warning();
+        assert!(warning.contains("XSS"));
+        assert!(warning.contains("innerHTML"));
+    }
 }

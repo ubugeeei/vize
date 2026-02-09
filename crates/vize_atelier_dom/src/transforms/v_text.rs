@@ -62,4 +62,35 @@ mod tests {
         assert!(result.contains("_toDisplayString"));
         assert!(result.contains("msg"));
     }
+
+    #[test]
+    fn test_is_v_text_false() {
+        let allocator = Bump::new();
+        let dir = create_test_directive(&allocator, "html", "msg");
+        assert!(!is_v_text(&dir));
+    }
+
+    #[test]
+    fn test_generate_text_content_no_exp() {
+        let allocator = Bump::new();
+        let dir = DirectiveNode::new(&allocator, "text", SourceLocation::STUB);
+        let result = generate_text_content(&dir);
+        assert_eq!(result, "''");
+    }
+
+    #[test]
+    fn test_generate_text_children() {
+        let allocator = Bump::new();
+        let dir = create_test_directive(&allocator, "text", "msg");
+        let result = generate_text_children(&dir);
+        assert!(result.is_some());
+        assert!(result.unwrap().contains("_toDisplayString(msg)"));
+    }
+
+    #[test]
+    fn test_generate_text_children_no_exp() {
+        let allocator = Bump::new();
+        let dir = DirectiveNode::new(&allocator, "text", SourceLocation::STUB);
+        assert!(generate_text_children(&dir).is_none());
+    }
 }
