@@ -1107,6 +1107,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
 
     async buildStart() {
       // Scan for Art files
+      console.log(`[musea] config.root: ${config.root}, include: ${JSON.stringify(include)}`);
       const files = await scanArtFiles(config.root, include, exclude, inlineArt);
 
       console.log(`[musea] Found ${files.length} art files`);
@@ -1292,11 +1293,12 @@ function shouldProcess(file: string, include: string[], exclude: string[], root:
 
 function matchGlob(filepath: string, pattern: string): boolean {
   // Simple glob matching (supports * and **)
-  // Escape . first, then replace glob patterns
+  // Use placeholder for ** to avoid * replacement interfering
   const regex = pattern
+    .replace(/\*\*/g, "\0GLOBSTAR\0")
     .replace(/\./g, "\\.")
-    .replace(/\*\*/g, ".*")
-    .replace(/\*(?!\*)/g, "[^/]*");
+    .replace(/\*/g, "[^/]*")
+    .replace(/\0GLOBSTAR\0/g, ".*");
 
   return new RegExp(`^${regex}$`).test(filepath);
 }
