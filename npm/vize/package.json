@@ -1,6 +1,6 @@
 {
   "name": "vize",
-  "version": "0.0.1-alpha.100",
+  "version": "0.0.1-alpha.101",
   "description": "Vize - High-performance Vue.js toolchain in Rust",
   "publishConfig": {
     "access": "public"
