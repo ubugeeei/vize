@@ -1,0 +1,23 @@
+:where([data-vize-tooltip-content]) {
+  z-index: 50;
+  background: var(--vize-fg);
+  color: var(--vize-bg);
+  border-radius: var(--vize-radius);
+  padding: var(--vize-space-2) var(--vize-space-3);
+  font-family: var(--vize-font);
+  font-size: var(--vize-text-sm);
+  line-height: var(--vize-leading);
+  box-shadow: var(--vize-shadow);
+}
+
+:where([data-vize-tooltip-content][data-state="open"]) {
+  animation: vize-fade-in var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-tooltip-content][data-state="closed"]) {
+  animation: vize-fade-out var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-tooltip-arrow]) {
+  color: var(--vize-fg);
+}

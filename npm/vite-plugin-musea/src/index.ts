@@ -248,9 +248,11 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
   const storybookOutDir = options.storybookOutDir ?? ".storybook/stories";
   let inlineArt = options.inlineArt ?? false;
   const tokensPath = options.tokensPath;
+  const cssImportsRaw = options.css ?? [];
   const themeConfig = buildThemeConfig(options.theme);
 
   let config: ResolvedConfig;
+  let resolvedCssImports: string[] = [];
   let server: ViteDevServer | null = null;
   const artFiles = new Map<string, ArtFileInfo>();
 
@@ -273,6 +275,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
 
     configResolved(resolvedConfig) {
       config = resolvedConfig;
+      resolvedCssImports = cssImportsRaw.map((p) =>
+        p.startsWith("/") ? p : path.resolve(config.root, p),
+      );
 
       // Merge musea config from vize.config.ts (plugin args > config file > defaults)
       const vizeConfig = vizeConfigStore.get(resolvedConfig.root);
@@ -394,7 +399,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
         }
 
         const variantComponentName = toPascalCase(variant.name);
-        const moduleCode = generatePreviewModule(art, variantComponentName, variant.name);
+        const moduleCode = generatePreviewModule(art, variantComponentName, variant.name, resolvedCssImports);
 
         // Transform the module through Vite to resolve imports
         try {
@@ -952,6 +957,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
                 variantComponentName,
                 variant.name,
                 propsOverride,
+                resolvedCssImports,
               );
               res.setHeader("Content-Type", "application/javascript");
               res.end(moduleCode);
@@ -1173,7 +1179,7 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
           const art = artFiles.get(artPath);
           if (art) {
             const variantComponentName = toPascalCase(variantName);
-            return generatePreviewModule(art, variantComponentName, variantName);
+            return generatePreviewModule(art, variantComponentName, variantName, resolvedCssImports);
           }
         }
       }
@@ -2398,13 +2404,16 @@ function generatePreviewModule(
   art: ArtFileInfo,
   variantComponentName: string,
   variantName: string,
+  cssImports: string[] = [],
 ): string {
   const artModuleId = `virtual:musea-art:${art.path}`;
   const escapedVariantName = escapeTemplate(variantName);
+  const cssImportLines = cssImports.map((p) => `import '${p}';`).join("\n");
 
   return `
 import { createApp, reactive, h } from 'vue';
 import * as artModule from '${artModuleId}';
+${cssImportLines}
 
 const container = document.getElementById('app');
 
@@ -2518,20 +2527,48 @@ function generateArtModule(art: ArtFileInfo, filePath: string): string {
     componentName = path.basename(comp, ".vue");
   }
 
+  // Extract script setup imports and non-import code from art file
+  const scriptSetupInfo = extractScriptSetup(filePath, art.hasScriptSetup);
+
   let code = `
 // Auto-generated module for: ${path.basename(filePath)}
 import { defineComponent, h } from 'vue';
 `;
 
   if (componentImportPath && componentName) {
-    code += `import ${componentName} from '${componentImportPath}';\n`;
-    code += `export const __component__ = ${componentName};\n`;
+    // Use alias to avoid conflicts with script setup imports
+    const mainAlias = `__ArtMainComponent__`;
+    code += `import ${mainAlias} from '${componentImportPath}';\n`;
+    code += `export const __component__ = ${mainAlias};\n`;
+  }
+
+  // Add script setup imports (with resolved paths)
+  for (const imp of scriptSetupInfo.imports) {
+    code += `${imp}\n`;
   }
 
   code += `
 export const metadata = ${JSON.stringify(art.metadata)};
 export const variants = ${JSON.stringify(art.variants)};
 `;
+
+  // Collect all component names to register (PascalCase imports + main component)
+  const allComponentNames = new Set<string>();
+  if (componentName) {
+    // Re-add the main component under its original name if not already imported via script setup
+    if (!scriptSetupInfo.importedNames.includes(componentName)) {
+      code += `const ${componentName} = __ArtMainComponent__;\n`;
+    }
+    allComponentNames.add(componentName);
+  }
+  for (const name of scriptSetupInfo.importedNames) {
+    if (/^[A-Z]/.test(name)) {
+      allComponentNames.add(name);
+    }
+  }
+
+  const componentsStr = [...allComponentNames].join(", ");
+  const hasSetupCode = scriptSetupInfo.setupCode.trim().length > 0;
 
   // Generate variant components
   for (const variant of art.variants) {
@@ -2555,11 +2592,25 @@ export const variants = ${JSON.stringify(art.variants)};
     // Wrap template with the variant container
     const fullTemplate = `<div class="musea-variant" data-variant="${variant.name}">${escapedTemplate}</div>`;
 
-    if (componentName) {
+    if (hasSetupCode) {
+      // Include setup function for non-import code (e.g. const items = ...)
+      const setupReturnNames = scriptSetupInfo.localBindings.join(", ");
+      code += `
+export const ${variantComponentName} = defineComponent({
+  name: '${variantComponentName}',
+  ${componentsStr ? `components: { ${componentsStr} },` : ""}
+  setup() {
+    ${scriptSetupInfo.setupCode}
+    return { ${setupReturnNames} };
+  },
+  template: \`${fullTemplate}\`,
+});
+`;
+    } else if (componentsStr) {
       code += `
 export const ${variantComponentName} = {
   name: '${variantComponentName}',
-  components: { ${componentName} },
+  components: { ${componentsStr} },
   template: \`${fullTemplate}\`,
 };
 `;
@@ -2582,6 +2633,95 @@ export default ${toPascalCase(defaultVariant.name)};
   }
 
   return code;
+}
+
+/**
+ * Extract script setup content from an art file, separating imports from other code.
+ */
+function extractScriptSetup(
+  filePath: string,
+  _hasScriptSetup: boolean,
+): {
+  imports: string[];
+  importedNames: string[];
+  setupCode: string;
+  localBindings: string[];
+} {
+  const empty = { imports: [], importedNames: [], setupCode: "", localBindings: [] };
+
+  let fileContent: string;
+  try {
+    fileContent = fs.readFileSync(filePath, "utf-8");
+  } catch {
+    return empty;
+  }
+
+  const scriptMatch = fileContent.match(/<script\s+setup[^>]*>([\s\S]*?)<\/script>/);
+  if (!scriptMatch) return empty;
+
+  const scriptContent = scriptMatch[1];
+  const artDir = path.dirname(filePath);
+  const lines = scriptContent.split("\n");
+
+  const imports: string[] = [];
+  const importedNames: string[] = [];
+  const nonImportLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("//")) continue;
+
+    if (trimmed.startsWith("import ")) {
+      // Parse import statement and resolve relative paths
+      const resolved = resolveImportPath(trimmed, artDir);
+      imports.push(resolved);
+
+      // Extract imported names
+      const namedMatch = trimmed.match(/import\s+\{([^}]+)\}\s+from/);
+      if (namedMatch) {
+        const names = namedMatch[1].split(",").map((n) => {
+          const parts = n.trim().split(/\s+as\s+/);
+          return parts[parts.length - 1].trim();
+        });
+        importedNames.push(...names);
+      }
+      const defaultMatch = trimmed.match(/import\s+(\w+)\s+from/);
+      if (defaultMatch && !trimmed.includes("{")) {
+        importedNames.push(defaultMatch[1]);
+      }
+    } else {
+      nonImportLines.push(line);
+    }
+  }
+
+  // Extract local binding names from non-import code
+  const localBindings: string[] = [];
+  const setupCode = nonImportLines.join("\n").trim();
+  if (setupCode) {
+    const constMatches = setupCode.matchAll(/\b(?:const|let|var)\s+(\w+)\s*=/g);
+    for (const m of constMatches) {
+      localBindings.push(m[1]);
+    }
+    const funcMatches = setupCode.matchAll(/\bfunction\s+(\w+)/g);
+    for (const m of funcMatches) {
+      localBindings.push(m[1]);
+    }
+  }
+
+  return { imports, importedNames, setupCode, localBindings };
+}
+
+/**
+ * Resolve relative import paths in an import statement to absolute paths.
+ */
+function resolveImportPath(importStatement: string, fromDir: string): string {
+  return importStatement.replace(
+    /from\s+['"](\.[^'"]+)['"]/,
+    (_match, relPath) => {
+      const absPath = path.resolve(fromDir, relPath);
+      return `from '${absPath}'`;
+    },
+  );
 }
 
 async function generateStorybookFiles(
@@ -2627,14 +2767,17 @@ function generatePreviewModuleWithProps(
   variantComponentName: string,
   variantName: string,
   propsOverride: Record<string, unknown>,
+  cssImports: string[] = [],
 ): string {
   const artModuleId = `virtual:musea-art:${art.path}`;
   const escapedVariantName = escapeTemplate(variantName);
   const propsJson = JSON.stringify(propsOverride);
+  const cssImportLines = cssImports.map((p) => `import '${p}';`).join("\n");
 
   return `
 import { createApp, h } from 'vue';
 import * as artModule from '${artModuleId}';
+${cssImportLines}
 
 const container = document.getElementById('app');
 const propsOverride = ${propsJson};

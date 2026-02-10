@@ -1,0 +1,15 @@
+:where([data-vize-separator]) {
+  background: var(--vize-border);
+  border: none;
+  flex-shrink: 0;
+}
+
+:where([data-vize-separator][data-orientation="horizontal"]) {
+  height: 1px;
+  width: 100%;
+}
+
+:where([data-vize-separator][data-orientation="vertical"]) {
+  width: 1px;
+  height: 100%;
+}

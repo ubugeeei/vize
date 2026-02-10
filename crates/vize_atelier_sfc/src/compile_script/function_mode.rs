@@ -460,14 +460,20 @@ pub fn compile_script_setup(
             output.extend_from_slice(b", {\n");
 
             // Add defaults
-            for (key, binding) in &destructure.bindings {
-                if let Some(ref default_val) = binding.default {
-                    output.extend_from_slice(b"  ");
-                    output.extend_from_slice(key.as_bytes());
-                    output.extend_from_slice(b": ");
-                    output.extend_from_slice(default_val.as_bytes());
-                    output.push(b'\n');
+            let defaults: Vec<_> = destructure
+                .bindings
+                .iter()
+                .filter_map(|(k, b)| b.default.as_ref().map(|d| (k.as_str(), d.as_str())))
+                .collect();
+            for (i, (key, default_val)) in defaults.iter().enumerate() {
+                output.extend_from_slice(b"  ");
+                output.extend_from_slice(key.as_bytes());
+                output.extend_from_slice(b": ");
+                output.extend_from_slice(default_val.as_bytes());
+                if i < defaults.len() - 1 {
+                    output.push(b',');
                 }
+                output.push(b'\n');
             }
             output.extend_from_slice(b"}),\n");
         } else {

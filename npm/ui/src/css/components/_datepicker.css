@@ -1,0 +1,61 @@
+:where([data-vize-datepicker-input]) {
+  display: block;
+  width: 100%;
+  padding: var(--vize-space-2) var(--vize-space-3);
+  font-family: var(--vize-font);
+  font-size: var(--vize-text-sm);
+  line-height: var(--vize-leading);
+  color: var(--vize-fg);
+  background: var(--vize-bg);
+  border: 1px solid var(--vize-border);
+  border-radius: var(--vize-radius);
+  cursor: pointer;
+}
+
+:where([data-vize-datepicker-input]:focus-visible) {
+  outline: 2px solid var(--vize-fg);
+  outline-offset: 2px;
+}
+
+:where([data-vize-datepicker-input][data-disabled]) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+:where([data-vize-datepicker-trigger]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--vize-space-2);
+  background: none;
+  border: 1px solid var(--vize-border);
+  border-radius: var(--vize-radius);
+  cursor: pointer;
+  color: var(--vize-fg);
+  transition: background var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-datepicker-trigger]:hover) {
+  background: var(--vize-surface);
+}
+
+:where([data-vize-datepicker-trigger][data-disabled]) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+:where([data-vize-datepicker-content]) {
+  background: var(--vize-bg);
+  border: 1px solid var(--vize-border);
+  border-radius: var(--vize-radius);
+  box-shadow: var(--vize-shadow-lg);
+  padding: var(--vize-space-4);
+}
+
+:where([data-vize-datepicker-content][data-state="open"]) {
+  animation: vize-scale-in var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-datepicker-content][data-state="closed"]) {
+  animation: vize-scale-out var(--vize-duration) var(--vize-easing);
+}

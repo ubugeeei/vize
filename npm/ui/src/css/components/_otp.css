@@ -1,0 +1,40 @@
+:where([data-vize-otp]) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vize-space-2);
+  font-family: var(--vize-font);
+}
+
+:where([data-vize-otp][data-disabled]) {
+  opacity: 0.5;
+}
+
+:where([data-vize-otp-slot]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--vize-fg);
+  border: 1px solid var(--vize-border);
+  border-radius: var(--vize-radius);
+  transition: border-color var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-otp-slot][data-active]) {
+  border-color: var(--vize-fg);
+}
+
+:where([data-vize-otp-slot][data-filled]) {
+  border-color: var(--vize-muted);
+}
+
+:where([data-vize-otp-separator]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vize-muted);
+  font-size: var(--vize-text-base);
+}

@@ -1,0 +1,87 @@
+:where([data-vize-file-uploader]) {
+  font-family: var(--vize-font);
+  color: var(--vize-fg);
+}
+
+:where([data-vize-file-uploader][data-disabled]) {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+:where([data-vize-file-uploader-dropzone]) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vize-space-2);
+  padding: var(--vize-space-8);
+  border: 2px dashed var(--vize-border);
+  border-radius: var(--vize-radius);
+  cursor: pointer;
+  transition: border-color var(--vize-duration) var(--vize-easing),
+              background var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-file-uploader-dropzone]:hover) {
+  border-color: var(--vize-muted);
+}
+
+:where([data-vize-file-uploader-dropzone][data-dragging]) {
+  border-color: var(--vize-fg);
+  background: var(--vize-surface);
+}
+
+:where([data-vize-file-uploader-trigger]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vize-space-2);
+  padding: var(--vize-space-2) var(--vize-space-4);
+  font-family: var(--vize-font);
+  font-size: var(--vize-text-sm);
+  color: var(--vize-fg);
+  background: var(--vize-bg);
+  border: 1px solid var(--vize-border);
+  border-radius: var(--vize-radius);
+  cursor: pointer;
+  transition: background var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-file-uploader-trigger]:hover) {
+  background: var(--vize-surface);
+}
+
+:where([data-vize-file-uploader-list]) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vize-space-2);
+  margin-top: var(--vize-space-2);
+}
+
+:where([data-vize-file-uploader-item]) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vize-space-2);
+  padding: var(--vize-space-2) var(--vize-space-3);
+  border: 1px solid var(--vize-border);
+  border-radius: var(--vize-radius);
+  font-size: var(--vize-text-sm);
+}
+
+:where([data-vize-file-uploader-item-delete]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--vize-space-1);
+  background: none;
+  border: none;
+  border-radius: var(--vize-radius);
+  cursor: pointer;
+  color: var(--vize-muted);
+  transition: color var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-file-uploader-item-delete]:hover) {
+  color: var(--vize-fg);
+}

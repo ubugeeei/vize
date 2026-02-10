@@ -1,0 +1,72 @@
+:where([data-vize-form]) {
+  font-family: var(--vize-font);
+  color: var(--vize-fg);
+}
+
+:where([data-vize-form-label]) {
+  display: block;
+  font-size: var(--vize-text-sm);
+  font-weight: 500;
+  margin-bottom: var(--vize-space-1);
+  color: var(--vize-fg);
+}
+
+:where([data-vize-form-label][data-invalid]) {
+  color: #c00;
+}
+
+:where([data-vize-form-control]) {
+  display: block;
+  width: 100%;
+  padding: var(--vize-space-2) var(--vize-space-3);
+  font-family: var(--vize-font);
+  font-size: var(--vize-text-sm);
+  line-height: var(--vize-leading);
+  color: var(--vize-fg);
+  background: var(--vize-bg);
+  border: 1px solid var(--vize-border);
+  border-radius: var(--vize-radius);
+  transition: border-color var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-form-control]:focus-visible) {
+  outline: 2px solid var(--vize-fg);
+  outline-offset: 2px;
+}
+
+:where([data-vize-form-control][data-invalid]) {
+  border-color: #c00;
+}
+
+:where([data-vize-form-message]) {
+  display: block;
+  font-size: var(--vize-text-sm);
+  color: #c00;
+  margin-top: var(--vize-space-1);
+}
+
+:where([data-vize-form-submit]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vize-space-2);
+  padding: var(--vize-space-2) var(--vize-space-4);
+  font-family: var(--vize-font);
+  font-size: var(--vize-text-sm);
+  line-height: var(--vize-leading);
+  color: var(--vize-bg);
+  background: var(--vize-fg);
+  border: 1px solid var(--vize-fg);
+  border-radius: var(--vize-radius);
+  cursor: pointer;
+  transition: opacity var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-form-submit]:hover) {
+  opacity: 0.9;
+}
+
+:where([data-vize-form-submit][data-disabled]) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

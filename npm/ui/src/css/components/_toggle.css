@@ -1,0 +1,35 @@
+:where([data-vize-toggle]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--vize-space-2);
+  font-family: var(--vize-font);
+  font-size: var(--vize-text-sm);
+  color: var(--vize-fg);
+  background: none;
+  border: 1px solid var(--vize-border);
+  border-radius: var(--vize-radius);
+  cursor: pointer;
+  transition: background var(--vize-duration) var(--vize-easing),
+              color var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-toggle]:hover) {
+  background: var(--vize-surface);
+}
+
+:where([data-vize-toggle][data-state="on"]) {
+  background: var(--vize-surface);
+  color: var(--vize-fg);
+  border-color: var(--vize-muted);
+}
+
+:where([data-vize-toggle]:focus-visible) {
+  outline: 2px solid var(--vize-fg);
+  outline-offset: 2px;
+}
+
+:where([data-vize-toggle][data-disabled]) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -1,0 +1,44 @@
+:where([data-vize-collapsible]) {
+  font-family: var(--vize-font);
+  color: var(--vize-fg);
+}
+
+:where([data-vize-collapsible-trigger]) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--vize-space-2) 0;
+  font-family: var(--vize-font);
+  font-size: var(--vize-text-base);
+  color: var(--vize-fg);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+:where([data-vize-collapsible-trigger]:hover) {
+  color: var(--vize-muted);
+}
+
+:where([data-vize-collapsible-trigger]:focus-visible) {
+  outline: 2px solid var(--vize-fg);
+  outline-offset: 2px;
+}
+
+:where([data-vize-collapsible-trigger][data-disabled]) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+:where([data-vize-collapsible-content]) {
+  overflow: hidden;
+}
+
+:where([data-vize-collapsible-content][data-state="open"]) {
+  animation: vize-collapsible-open var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-collapsible-content][data-state="closed"]) {
+  animation: vize-collapsible-close var(--vize-duration) var(--vize-easing);
+}

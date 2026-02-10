@@ -1,0 +1,92 @@
+:where([data-vize-carousel]) {
+  position: relative;
+  font-family: var(--vize-font);
+  color: var(--vize-fg);
+}
+
+:where([data-vize-carousel-viewport]) {
+  overflow: hidden;
+  display: flex;
+}
+
+:where([data-vize-carousel-slide]) {
+  min-width: 0;
+  flex: 0 0 100%;
+}
+
+:where([data-vize-carousel][data-orientation="vertical"] [data-vize-carousel-viewport]) {
+  flex-direction: column;
+}
+
+:where([data-vize-carousel-prev]),
+:where([data-vize-carousel-next]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  background: var(--vize-bg);
+  border: 1px solid var(--vize-border);
+  border-radius: var(--vize-radius-full);
+  cursor: pointer;
+  color: var(--vize-fg);
+  box-shadow: var(--vize-shadow);
+  transition: background var(--vize-duration) var(--vize-easing),
+              box-shadow var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-carousel-prev]:hover),
+:where([data-vize-carousel-next]:hover) {
+  background: var(--vize-surface);
+  box-shadow: var(--vize-shadow-lg);
+}
+
+:where([data-vize-carousel-prev][data-disabled]),
+:where([data-vize-carousel-next][data-disabled]) {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+:where([data-vize-carousel-prev]:focus-visible),
+:where([data-vize-carousel-next]:focus-visible) {
+  outline: 2px solid var(--vize-fg);
+  outline-offset: 2px;
+}
+
+:where([data-vize-carousel-dots]) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vize-space-2);
+  padding: var(--vize-space-3) var(--vize-space-2);
+}
+
+:where([data-vize-carousel-dot]) {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 1px solid var(--vize-border);
+  border-radius: var(--vize-radius-full);
+  background: var(--vize-bg);
+  cursor: pointer;
+  transition: background var(--vize-duration) var(--vize-easing),
+              border-color var(--vize-duration) var(--vize-easing),
+              transform var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-carousel-dot]:hover) {
+  background: var(--vize-surface);
+  transform: scale(1.25);
+}
+
+:where([data-vize-carousel-dot][data-state="active"]) {
+  background: var(--vize-fg);
+  border-color: var(--vize-fg);
+}
+
+:where([data-vize-carousel-dot]:focus-visible) {
+  outline: 2px solid var(--vize-fg);
+  outline-offset: 2px;
+}

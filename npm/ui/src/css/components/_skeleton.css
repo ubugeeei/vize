@@ -1,0 +1,8 @@
+:where([data-vize-skeleton]) {
+  background: var(--vize-surface);
+  border-radius: var(--vize-radius);
+}
+
+:where([data-vize-skeleton][data-animated]) {
+  animation: vize-skeleton-pulse 1.5s ease-in-out infinite;
+}

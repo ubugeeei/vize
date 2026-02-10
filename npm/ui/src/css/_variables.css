@@ -1,0 +1,29 @@
+:where(:root) {
+  --vize-bg: #fff;
+  --vize-fg: #111;
+  --vize-border: #e0e0e0;
+  --vize-muted: #888;
+  --vize-surface: #f5f5f5;
+  --vize-overlay: rgba(0, 0, 0, 0.4);
+
+  --vize-font: system-ui, -apple-system, sans-serif;
+  --vize-text-sm: 0.875rem;
+  --vize-text-base: 1rem;
+  --vize-leading: 1.5;
+
+  --vize-space-1: 0.25rem;
+  --vize-space-2: 0.5rem;
+  --vize-space-3: 0.75rem;
+  --vize-space-4: 1rem;
+  --vize-space-6: 1.5rem;
+  --vize-space-8: 2rem;
+
+  --vize-radius: 6px;
+  --vize-radius-full: 9999px;
+
+  --vize-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --vize-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  --vize-duration: 200ms;
+  --vize-easing: cubic-bezier(0.4, 0, 0.2, 1);
+}

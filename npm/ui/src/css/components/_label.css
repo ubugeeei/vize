@@ -1,0 +1,9 @@
+:where([data-vize-label]) {
+  font-family: var(--vize-font);
+  font-size: var(--vize-text-sm);
+  font-weight: 500;
+  line-height: var(--vize-leading);
+  color: var(--vize-fg);
+  cursor: default;
+  user-select: none;
+}

@@ -128,13 +128,13 @@ export function vize(options: VizeOptions = {}): Plugin {
   // Collected CSS for production extraction
   const collectedCss = new Map<string, string>();
 
-  let isProduction: boolean;
-  let root: string;
+  let isProduction = true;
+  let root = options.root ?? process.cwd();
   let server: ViteDevServer | null = null;
-  let filter: (id: string) => boolean;
-  let scanPatterns: string[];
-  let ignorePatterns: string[];
-  let mergedOptions: VizeOptions;
+  let filter: (id: string) => boolean = createFilter(options.include, options.exclude);
+  let scanPatterns = options.scanPatterns ?? ["**/*.vue"];
+  let ignorePatterns = options.ignorePatterns ?? ["node_modules/**", "dist/**", ".git/**"];
+  let mergedOptions: VizeOptions = { ...options };
   let extractCss = false;
 
   const logger = createLogger(options.debug ?? false);
@@ -370,9 +370,25 @@ export function vize(options: VizeOptions = {}): Plugin {
             // Relative imports - resolve and check if file exists
             const resolved = path.resolve(path.dirname(cleanImporter), pathPart);
             for (const ext of ["", ".ts", ".tsx", ".js", ".jsx", ".json"]) {
-              if (fs.existsSync(resolved + ext)) {
-                const finalPath = resolved + ext + querySuffix;
-                logger.log(`resolveId: resolved relative ${id} to ${finalPath}`);
+              const candidate = resolved + ext;
+              if (fs.existsSync(candidate)) {
+                // If it's a directory, resolve index file inside it
+                if (fs.statSync(candidate).isDirectory()) {
+                  for (const indexExt of ["/index.ts", "/index.tsx", "/index.js", "/index.jsx"]) {
+                    if (fs.existsSync(candidate + indexExt)) {
+                      const finalPath = candidate + indexExt + querySuffix;
+                      logger.log(
+                        `resolveId: resolved directory ${id} to ${finalPath}`,
+                      );
+                      return finalPath;
+                    }
+                  }
+                  continue;
+                }
+                const finalPath = candidate + querySuffix;
+                logger.log(
+                  `resolveId: resolved relative ${id} to ${finalPath}`,
+                );
                 return finalPath;
               }
             }

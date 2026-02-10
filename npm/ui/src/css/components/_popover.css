@@ -1,0 +1,48 @@
+:where([data-vize-popover-trigger]) {
+  cursor: pointer;
+}
+
+:where([data-vize-popover-content]) {
+  z-index: 50;
+  background: var(--vize-bg);
+  border: 1px solid var(--vize-border);
+  border-radius: var(--vize-radius);
+  box-shadow: var(--vize-shadow-lg);
+  padding: var(--vize-space-4);
+  font-family: var(--vize-font);
+  font-size: var(--vize-text-sm);
+  color: var(--vize-fg);
+}
+
+:where([data-vize-popover-content][data-state="open"]) {
+  animation: vize-scale-in var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-popover-content][data-state="closed"]) {
+  animation: vize-scale-out var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-popover-content]:focus-visible) {
+  outline: none;
+}
+
+:where([data-vize-popover-arrow]) {
+  color: var(--vize-border);
+}
+
+:where([data-vize-popover-close]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--vize-space-1);
+  background: none;
+  border: none;
+  border-radius: var(--vize-radius);
+  cursor: pointer;
+  color: var(--vize-muted);
+  transition: color var(--vize-duration) var(--vize-easing);
+}
+
+:where([data-vize-popover-close]:hover) {
+  color: var(--vize-fg);
+}
