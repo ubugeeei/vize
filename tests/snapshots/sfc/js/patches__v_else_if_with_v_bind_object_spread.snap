@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 219
 expression: js_output
 ---
 import { openBlock as _openBlock, createBlock as _createBlock, createCommentVNode as _createCommentVNode, mergeProps as _mergeProps, unref as _unref } from "vue"
@@ -17,10 +16,19 @@ const iconProps = { size: 24, color: 'blue' }
 
 return (_ctx, _cache) => {
   return (mode.value === 'view')
-      ? (_openBlock(), _createBlock(Icon, { key: 0, name: "eye" }))
+      ? (_openBlock(), _createBlock(Icon, {
+        key: 0,
+        name: "eye"
+      }))
       : (mode.value === 'edit')
-        ? (_openBlock(), _createBlock(Icon, _mergeProps(_unref(iconProps), { key: 1, name: "pencil" })))
-      : (_openBlock(), _createBlock(Icon, { key: 2, name: "default" }))
+        ? (_openBlock(), _createBlock(Icon, _mergeProps(_unref(iconProps), {
+          key: 1,
+          name: "pencil"
+        })))
+      : (_openBlock(), _createBlock(Icon, {
+        key: 2,
+        name: "default"
+      }))
 }
 }
 

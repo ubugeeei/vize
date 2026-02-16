@@ -91,7 +91,16 @@ pub fn compile_sfc(
 
         match template_result {
             Ok(template_code) => {
-                code = template_code;
+                // Wrap template-only SFC in a proper component with export default.
+                // Convert "export function render(" to "function render(" and add component wrapper.
+                let wrapped =
+                    template_code.replace("export function render(", "function render(");
+                let mut output = String::with_capacity(wrapped.len() + 128);
+                output.push_str(&wrapped);
+                output.push_str("\nconst _sfc_main = {};\n");
+                output.push_str("_sfc_main.render = render;\n");
+                output.push_str("export default _sfc_main;\n");
+                code = output;
             }
             Err(e) => errors.push(e),
         }

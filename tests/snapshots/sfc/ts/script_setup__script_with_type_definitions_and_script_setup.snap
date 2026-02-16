@@ -24,7 +24,9 @@ export default /*@__PURE__*/_defineComponent({
 
 
 return (_ctx: any,_cache: any) => {
-  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(__props.items, (item) => { return (_openBlock(), _createElementBlock("div", { key: item.name }, "\n    " + _toDisplayString(item.label) + "\n  ", 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */))
+  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(__props.items, (item) => {
+      return (_openBlock(), _createElementBlock("div", { key: item.name }, "\n    " + _toDisplayString(item.label) + "\n  ", 1 /* TEXT */))
+    }), 128 /* KEYED_FRAGMENT */))
 }
 }
 

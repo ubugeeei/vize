@@ -17,7 +17,9 @@ export default /*@__PURE__*/_defineComponent({
 
 
 return (_ctx: any,_cache: any) => {
-  return (_openBlock(), _createElementBlock("div", { class: _normalizeClass([__props.color, __props.size]) }, "Styled", 2 /* CLASS */))
+  return (_openBlock(), _createElementBlock("div", {
+      class: _normalizeClass([__props.color, __props.size])
+    }, "Styled", 2 /* CLASS */))
 }
 }
 

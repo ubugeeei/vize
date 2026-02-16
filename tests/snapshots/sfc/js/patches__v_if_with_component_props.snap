@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 219
 expression: js_output
 ---
 import { openBlock as _openBlock, createBlock as _createBlock, createCommentVNode as _createCommentVNode, unref as _unref } from "vue"
@@ -16,7 +15,10 @@ const compiler = {}
 
 return (_ctx, _cache) => {
   return (show)
-      ? (_openBlock(), _createBlock(PatinaPlayground, { key: 0, compiler: _unref(compiler) }))
+      ? (_openBlock(), _createBlock(PatinaPlayground, {
+        key: 0,
+        compiler: _unref(compiler)
+      }))
       : _createCommentVNode("v-if", true)
 }
 }

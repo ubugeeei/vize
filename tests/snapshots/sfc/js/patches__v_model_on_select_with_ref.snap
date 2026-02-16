@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 219
 expression: js_output
 ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, withDirectives as _withDirectives, vModelSelect as _vModelSelect } from "vue"
@@ -17,7 +16,9 @@ export default {
 const selected = ref('option1')
 
 return (_ctx, _cache) => {
-  return _withDirectives((_openBlock(), _createElementBlock("select", { "onUpdate:modelValue": _cache[0] || (_cache[0] = $event => ((selected).value = $event)) }, [ _hoisted_1, _hoisted_2 ], 512 /* NEED_PATCH */)), [ [_vModelSelect, selected.value] ])
+  return _withDirectives((_openBlock(), _createElementBlock("select", {
+      "onUpdate:modelValue": _cache[0] || (_cache[0] = $event => ((selected).value = $event))
+    }, [ _hoisted_1, _hoisted_2 ], 512 /* NEED_PATCH */)), [ [_vModelSelect, selected.value] ])
 }
 }
 

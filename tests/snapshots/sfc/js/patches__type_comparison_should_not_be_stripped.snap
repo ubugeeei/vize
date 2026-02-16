@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 219
 expression: js_output
 ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, createCommentVNode as _createCommentVNode, unref as _unref } from "vue"
@@ -19,7 +18,10 @@ return (_ctx, _cache) => {
   return (_unref(isButton))
       ? (_openBlock(), _createElementBlock("button", { key: 0 }, "Button"))
       : (!_unref(isLink))
-        ? (_openBlock(), _createElementBlock("a", { key: 1, href: "#" }, "Link"))
+        ? (_openBlock(), _createElementBlock("a", {
+          key: 1,
+          href: "#"
+        }, "Link"))
       : _createCommentVNode("v-if", true)
 }
 }

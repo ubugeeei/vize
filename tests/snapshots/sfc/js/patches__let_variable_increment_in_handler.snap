@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 219
 expression: js_output
 ---
 import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString, unref as _unref } from "vue"
@@ -13,7 +12,9 @@ export default {
 let value = $ref(10)
 
 return (_ctx, _cache) => {
-  return (_openBlock(), _createElementBlock("button", { onClick: _cache[0] || (_cache[0] = $event => (value.value++)) }, _toDisplayString(_unref(value)), 1 /* TEXT */))
+  return (_openBlock(), _createElementBlock("button", {
+      onClick: _cache[0] || (_cache[0] = $event => (value.value++))
+    }, _toDisplayString(_unref(value)), 1 /* TEXT */))
 }
 }
 

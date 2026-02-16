@@ -15,7 +15,12 @@ export default /*@__PURE__*/_defineComponent({
 
 
 return (_ctx: any,_cache: any) => {
-  return (_openBlock(), _createElementBlock("select", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(__props.options, (opt) => { return (_openBlock(), _createElementBlock("option", { key: opt.value, value: opt.value }, _toDisplayString(opt.label), 9 /* TEXT, PROPS */, ["value"])) }), 128 /* KEYED_FRAGMENT */)) ]))
+  return (_openBlock(), _createElementBlock("select", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(__props.options, (opt) => {
+        return (_openBlock(), _createElementBlock("option", {
+          key: opt.value,
+          value: opt.value
+        }, _toDisplayString(opt.label), 9 /* TEXT, PROPS */, ["value"]))
+      }), 128 /* KEYED_FRAGMENT */)) ]))
 }
 }
 

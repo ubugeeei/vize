@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 196
 expression: ts_output
 ---
 import { defineComponent as _defineComponent } from 'vue'
@@ -16,7 +15,9 @@ const width = ref(100)
 const height = ref(50)
 
 return (_ctx: any,_cache: any) => {
-  return (_openBlock(), _createElementBlock("div", { style: _normalizeStyle({ width.value, height.value }) }, "Styled", 4 /* STYLE */))
+  return (_openBlock(), _createElementBlock("div", {
+      style: _normalizeStyle({ width.value, height.value })
+    }, "Styled", 4 /* STYLE */))
 }
 }
 

@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 219
 expression: js_output
 ---
 import { openBlock as _openBlock, createBlock as _createBlock, createTextVNode as _createTextVNode, withCtx as _withCtx } from "vue"
@@ -13,7 +12,18 @@ export default {
 
 
 return (_ctx, _cache) => {
-  return (_openBlock(), _createBlock(Card, null, { "card-header": _withCtx(() => [ _createTextVNode("Header") ]), "card-body": _withCtx(() => [ _createTextVNode("Body") ]), "card-footer": _withCtx(() => [ _createTextVNode("Footer") ]), _: 1 /* STABLE */ }))
+  return (_openBlock(), _createBlock(Card, null, {
+      "card-header": _withCtx(() => [
+        _createTextVNode("Header")
+      ]),
+      "card-body": _withCtx(() => [
+        _createTextVNode("Body")
+      ]),
+      "card-footer": _withCtx(() => [
+        _createTextVNode("Footer")
+      ]),
+      _: 1 /* STABLE */
+    }))
 }
 }
 

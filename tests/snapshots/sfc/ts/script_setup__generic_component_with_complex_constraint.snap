@@ -18,7 +18,9 @@ export default /*@__PURE__*/_defineComponent({
 const formData = ref<FormShape | null>(null)
 
 return (_ctx: any,_cache: any) => {
-  return (_openBlock(), _createElementBlock("form", { onSubmit: _withModifiers(() => {}, ["prevent"]) }, [ _renderSlot(_ctx.$slots, "default", { data: formData.value }) ], 40 /* PROPS, NEED_HYDRATION */, ["onSubmit"]))
+  return (_openBlock(), _createElementBlock("form", {
+      onSubmit: _withModifiers(() => {}, ["prevent"])
+    }, [ _renderSlot(_ctx.$slots, "default", { data: formData.value }) ], 40 /* PROPS, NEED_HYDRATION */, ["onSubmit"]))
 }
 }
 

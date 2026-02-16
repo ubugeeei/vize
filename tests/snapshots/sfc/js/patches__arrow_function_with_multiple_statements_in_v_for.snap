@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 219
 expression: js_output
 ---
 import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, createElementVNode as _createElementVNode, renderList as _renderList, toDisplayString as _toDisplayString } from "vue"
@@ -14,7 +13,16 @@ export default {
 const items = ref([{ id: 1, value: 0 }])
 
 return (_ctx, _cache) => {
-  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(items.value, (item) => { return (_openBlock(), _createElementBlock("div", { key: item.id }, [ _createElementVNode("button", { onClick: _cache[0] || (_cache[0] = () => { item.value++; console.log(item.id); }) }, _toDisplayString(item.value), 1 /* TEXT */) ])) }), 128 /* KEYED_FRAGMENT */))
+  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(items.value, (item) => {
+      return (_openBlock(), _createElementBlock("div", { key: item.id }, [
+        _createElementVNode("button", {
+          onClick: _cache[0] || (_cache[0] = () => {
+        item.value++;
+        console.log(item.id);
+      })
+        }, _toDisplayString(item.value), 1 /* TEXT */)
+      ]))
+    }), 128 /* KEYED_FRAGMENT */))
 }
 }
 

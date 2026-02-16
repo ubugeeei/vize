@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 150
 expression: ts_output
 ---
 import { defineComponent as _defineComponent } from 'vue'
@@ -14,7 +13,9 @@ export default /*@__PURE__*/_defineComponent({
 
 
 return (_ctx: any,_cache: any) => {
-  return (_openBlock(), _createElementBlock("button", { onClick: _cache[0] || (_cache[0] = ($event: any) => (_ctx.$emit('update'))) }, "Click"))
+  return (_openBlock(), _createElementBlock("button", {
+      onClick: _cache[0] || (_cache[0] = ($event: any) => (_ctx.$emit('update')))
+    }, "Click"))
 }
 }
 

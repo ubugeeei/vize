@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 196
 expression: ts_output
 ---
 import { defineComponent as _defineComponent } from 'vue'
@@ -18,10 +17,19 @@ const iconProps = { size: 24, color: 'blue' }
 
 return (_ctx: any,_cache: any) => {
   return (mode.value === 'view')
-      ? (_openBlock(), _createBlock(Icon, { key: 0, name: "eye" }))
+      ? (_openBlock(), _createBlock(Icon, {
+        key: 0,
+        name: "eye"
+      }))
       : (mode.value === 'edit')
-        ? (_openBlock(), _createBlock(Icon, _mergeProps(_unref(iconProps), { key: 1, name: "pencil" })))
-      : (_openBlock(), _createBlock(Icon, { key: 2, name: "default" }))
+        ? (_openBlock(), _createBlock(Icon, _mergeProps(_unref(iconProps), {
+          key: 1,
+          name: "pencil"
+        })))
+      : (_openBlock(), _createBlock(Icon, {
+        key: 2,
+        name: "default"
+      }))
 }
 }
 

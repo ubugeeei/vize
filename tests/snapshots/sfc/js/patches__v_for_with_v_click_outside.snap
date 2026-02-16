@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 219
 expression: js_output
 ---
 import { Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, resolveDirective as _resolveDirective, renderList as _renderList, toDisplayString as _toDisplayString } from "vue"
@@ -19,7 +18,11 @@ function closeItem(id) {
 return (_ctx, _cache) => {
   const _directive_click_outside = _resolveDirective("click-outside")
 
-  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(items.value, (item) => { return (_openBlock(), _createElementBlock("div", { key: item.id }, "\n    " + _toDisplayString(item.name) + "\n  ", 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */))
+  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(items.value, (item) => {
+      return (_openBlock(), _createElementBlock("div", {
+        key: item.id
+      }, "\n    " + _toDisplayString(item.name) + "\n  ", 1 /* TEXT */))
+    }), 128 /* KEYED_FRAGMENT */))
 }
 }
 

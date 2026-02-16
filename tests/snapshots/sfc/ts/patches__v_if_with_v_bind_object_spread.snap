@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 196
 expression: ts_output
 ---
 import { defineComponent as _defineComponent } from 'vue'
@@ -18,7 +17,10 @@ const buttonProps = computed(() => ({ disabled: false, type: 'primary' }))
 
 return (_ctx: any,_cache: any) => {
   return (isActive.value)
-      ? (_openBlock(), _createBlock(Button, _mergeProps(buttonProps.value, { key: 0, onClick: _cache[0] || (_cache[0] = (...args) => (_ctx.handleClick && _ctx.handleClick(...args))) })))
+      ? (_openBlock(), _createBlock(Button, _mergeProps(buttonProps.value, {
+        key: 0,
+        onClick: _cache[0] || (_cache[0] = (...args) => (_ctx.handleClick && _ctx.handleClick(...args)))
+      })))
       : _createCommentVNode("v-if", true)
 }
 }

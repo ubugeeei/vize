@@ -212,6 +212,39 @@ fn add_scope_id_to_template(template_line: &str, scope_id: &str) -> String {
     template_line.to_string()
 }
 
+/// Count net brace depth change ({  minus }) in a line, ignoring braces inside string literals.
+fn count_braces_outside_strings(line: &str) -> i32 {
+    let mut count: i32 = 0;
+    let mut in_string = false;
+    let mut string_char = '\0';
+    let mut escape = false;
+
+    for ch in line.chars() {
+        if escape {
+            escape = false;
+            continue;
+        }
+        if ch == '\\' && in_string {
+            escape = true;
+            continue;
+        }
+        match ch {
+            '\'' | '"' | '`' => {
+                if !in_string {
+                    in_string = true;
+                    string_char = ch;
+                } else if ch == string_char {
+                    in_string = false;
+                }
+            }
+            '{' if !in_string => count += 1,
+            '}' if !in_string => count -= 1,
+            _ => {}
+        }
+    }
+    count
+}
+
 /// Compact render body by removing unnecessary line breaks inside function calls and arrays
 #[allow(dead_code)]
 fn compact_render_body(render_body: &str) -> String {
@@ -219,6 +252,7 @@ fn compact_render_body(render_body: &str) -> String {
     let mut chars = render_body.chars().peekable();
     let mut paren_depth: i32 = 0;
     let mut bracket_depth: i32 = 0;
+    let mut brace_depth: i32 = 0;
     let mut in_string = false;
     let mut string_char = '\0';
     let mut in_template = false;
@@ -254,9 +288,19 @@ fn compact_render_body(render_body: &str) -> String {
                 bracket_depth = bracket_depth.saturating_sub(1);
                 result.push(ch);
             }
+            '{' if !in_string && !in_template => {
+                brace_depth += 1;
+                result.push(ch);
+            }
+            '}' if !in_string && !in_template => {
+                brace_depth = brace_depth.saturating_sub(1);
+                result.push(ch);
+            }
             '\n' => {
-                // If inside parentheses or brackets (but not strings or templates), replace newline with space
-                if (paren_depth > 0 || bracket_depth > 0) && !in_string && !in_template {
+                // If inside braces (block bodies), keep newlines to preserve statement separation
+                if brace_depth > 0 && !in_string && !in_template {
+                    result.push('\n');
+                } else if (paren_depth > 0 || bracket_depth > 0) && !in_string && !in_template {
                     result.push(' ');
                     // Skip following whitespace
                     while let Some(&next_ch) = chars.peek() {
@@ -301,13 +345,11 @@ pub(crate) fn extract_template_parts_full(template_code: &str) -> (String, Strin
         {
             in_render = true;
             brace_depth = 0;
-            brace_depth += line.matches('{').count() as i32;
-            brace_depth -= line.matches('}').count() as i32;
+            brace_depth += count_braces_outside_strings(line);
             render_fn.push_str(line);
             render_fn.push('\n');
         } else if in_render {
-            brace_depth += line.matches('{').count() as i32;
-            brace_depth -= line.matches('}').count() as i32;
+            brace_depth += count_braces_outside_strings(line);
             render_fn.push_str(line);
             render_fn.push('\n');
 
@@ -352,12 +394,9 @@ pub(crate) fn extract_template_parts(template_code: &str) -> (String, String, St
         {
             in_render = true;
             brace_depth = 0;
-            // Count opening braces
-            brace_depth += line.matches('{').count() as i32;
-            brace_depth -= line.matches('}').count() as i32;
+            brace_depth += count_braces_outside_strings(line);
         } else if in_render {
-            brace_depth += line.matches('{').count() as i32;
-            brace_depth -= line.matches('}').count() as i32;
+            brace_depth += count_braces_outside_strings(line);
 
             // Extract the return statement inside the render function (may span multiple lines)
             if in_return {
@@ -444,6 +483,63 @@ mod tests {
         let input = r#"const t0 = _template("<div class='container'>Hello</div>")"#;
         let result = add_scope_id_to_template(input, "data-v-abc123");
         assert!(result.contains("data-v-abc123"));
+    }
+
+    // --- count_braces_outside_strings tests ---
+
+    #[test]
+    fn test_count_braces_normal() {
+        assert_eq!(count_braces_outside_strings("{ a: 1 }"), 0);
+        assert_eq!(count_braces_outside_strings("{"), 1);
+        assert_eq!(count_braces_outside_strings("}"), -1);
+        assert_eq!(count_braces_outside_strings("{ { }"), 1);
+    }
+
+    #[test]
+    fn test_count_braces_ignores_string_braces() {
+        assert_eq!(
+            count_braces_outside_strings("_toDisplayString(isArray.value ? ']' : '}')"),
+            0
+        );
+        assert_eq!(count_braces_outside_strings(r#"var x = "{";"#), 0);
+        assert_eq!(count_braces_outside_strings("var x = `{`;"), 0);
+    }
+
+    #[test]
+    fn test_count_braces_mixed_string_and_code() {
+        assert_eq!(
+            count_braces_outside_strings("if (x) { var s = '}'"),
+            1
+        );
+    }
+
+    #[test]
+    fn test_count_braces_escaped_quotes() {
+        assert_eq!(count_braces_outside_strings(r"var x = '\'' + '}'"), 0);
+    }
+
+    #[test]
+    fn test_extract_template_parts_full_brace_in_string() {
+        let template_code = r#"import { toDisplayString as _toDisplayString } from 'vue'
+
+export function render(_ctx, _cache) {
+  return _toDisplayString(isArray.value ? ']' : '}')
+}"#;
+
+        let (imports, _hoisted, render_fn) = extract_template_parts_full(template_code);
+
+        assert!(imports.contains("import"));
+        assert!(
+            render_fn.contains("_toDisplayString"),
+            "Render function was truncated. Got:\n{}",
+            render_fn
+        );
+        let trimmed = render_fn.trim();
+        assert!(
+            trimmed.ends_with('}'),
+            "Render function should end with closing brace. Got:\n{}",
+            render_fn
+        );
     }
 
     #[test]

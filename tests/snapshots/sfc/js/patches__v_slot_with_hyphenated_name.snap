@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 219
 expression: js_output
 ---
 import { openBlock as _openBlock, createBlock as _createBlock, createElementVNode as _createElementVNode, toDisplayString as _toDisplayString, withCtx as _withCtx } from "vue"
@@ -13,7 +12,12 @@ export default {
 
 
 return (_ctx, _cache) => {
-  return (_openBlock(), _createBlock(DataTable, null, { "item-header": _withCtx(({ item }) => [ _createElementVNode("span", null, _toDisplayString(item.title), 1 /* TEXT */) ]), _: 1 /* STABLE */ }))
+  return (_openBlock(), _createBlock(DataTable, null, {
+      "item-header": _withCtx(({ item }) => [
+        _createElementVNode("span", null, _toDisplayString(item.title), 1 /* TEXT */)
+      ]),
+      _: 1 /* STABLE */
+    }))
 }
 }
 

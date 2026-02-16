@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 150
 expression: ts_output
 ---
 import { defineComponent as _defineComponent } from 'vue'
@@ -17,7 +16,12 @@ const content = ref('');
 const title = ref('Untitled');
 
 return (_ctx: any,_cache: any) => {
-  return (_openBlock(), _createBlock(MyEditor, { modelValue: content.value, "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event: any) => ((content).value = $event)), title: title.value, "onUpdate:title": _cache[1] || (_cache[1] = ($event: any) => ((title).value = $event)) }, null, 8 /* PROPS */, ["modelValue", "title"]))
+  return (_openBlock(), _createBlock(MyEditor, {
+      modelValue: content.value,
+      "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event: any) => ((content).value = $event)),
+      title: title.value,
+      "onUpdate:title": _cache[1] || (_cache[1] = ($event: any) => ((title).value = $event))
+    }, null, 8 /* PROPS */, ["modelValue", "title"]))
 }
 }
 

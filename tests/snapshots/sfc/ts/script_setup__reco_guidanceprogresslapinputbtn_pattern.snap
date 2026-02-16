@@ -34,7 +34,11 @@ const isChangedProgressLap = computed(
 );
 
 return (_ctx: any,_cache: any) => {
-  return (_openBlock(), _createElementBlock("button", { class: _normalizeClass([{ disabled: __props.disabled }, lapClass.value]), disabled: __props.disabled, onClick: _withModifiers(() => {}, ["prevent"]) }, "\n    " + _toDisplayString(__props.guidanceProgress.progressUnit.value) + "\n  ", 11 /* TEXT, CLASS, PROPS */, ["disabled", "onClick"]))
+  return (_openBlock(), _createElementBlock("button", {
+      class: _normalizeClass([{ disabled: __props.disabled }, lapClass.value]),
+      disabled: __props.disabled,
+      onClick: _withModifiers(() => {}, ["prevent"])
+    }, "\n    " + _toDisplayString(__props.guidanceProgress.progressUnit.value) + "\n  ", 11 /* TEXT, CLASS, PROPS */, ["disabled", "onClick"]))
 }
 }
 

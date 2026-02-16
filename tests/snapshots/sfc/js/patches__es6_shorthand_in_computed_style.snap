@@ -14,7 +14,9 @@ const width = ref(100)
 const height = ref(50)
 
 return (_ctx, _cache) => {
-  return (_openBlock(), _createElementBlock("div", { style: _normalizeStyle({ width.value, height.value }) }, "Styled", 4 /* STYLE */))
+  return (_openBlock(), _createElementBlock("div", {
+      style: _normalizeStyle({ width.value, height.value })
+    }, "Styled", 4 /* STYLE */))
 }
 }
 

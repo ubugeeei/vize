@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 150
 expression: ts_output
 ---
 import { defineComponent as _defineComponent } from 'vue'
@@ -15,7 +14,9 @@ export default /*@__PURE__*/_defineComponent({
 const msg = ref('')
 
 return (_ctx: any,_cache: any) => {
-  return _withDirectives((_openBlock(), _createElementBlock("input", { "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event: any) => ((msg).value = $event)) }, null, 512 /* NEED_PATCH */)), [ [_vModelText, msg.value] ])
+  return _withDirectives((_openBlock(), _createElementBlock("input", {
+      "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event: any) => ((msg).value = $event))
+    }, null, 512 /* NEED_PATCH */)), [ [_vModelText, msg.value] ])
 }
 }
 

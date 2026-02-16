@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 150
 expression: ts_output
 ---
 import { defineComponent as _defineComponent } from 'vue'
@@ -16,7 +15,14 @@ export default /*@__PURE__*/_defineComponent({
 const localItems = ref(['a', 'b', 'c'])
 
 return (_ctx: any,_cache: any) => {
-  return (_openBlock(), _createElementBlock("div", null, [ _createElementVNode("select", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_unref(OPTIONS), (opt) => { return (_openBlock(), _createElementBlock("option", { key: opt.value, value: opt.value }, _toDisplayString(opt.label), 9 /* TEXT, PROPS */, ["value"])) }), 128 /* KEYED_FRAGMENT */)) ]), _createElementVNode("ul", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(localItems.value, (item) => { return (_openBlock(), _createElementBlock("li", { key: item }, _toDisplayString(item), 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */)) ]) ]))
+  return (_openBlock(), _createElementBlock("div", null, [ _createElementVNode("select", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_unref(OPTIONS), (opt) => {
+          return (_openBlock(), _createElementBlock("option", {
+            key: opt.value,
+            value: opt.value
+          }, _toDisplayString(opt.label), 9 /* TEXT, PROPS */, ["value"]))
+        }), 128 /* KEYED_FRAGMENT */)) ]), _createElementVNode("ul", null, [ (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(localItems.value, (item) => {
+          return (_openBlock(), _createElementBlock("li", { key: item }, _toDisplayString(item), 1 /* TEXT */))
+        }), 128 /* KEYED_FRAGMENT */)) ]) ]))
 }
 }
 

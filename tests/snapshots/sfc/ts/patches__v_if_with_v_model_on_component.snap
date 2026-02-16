@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 196
 expression: ts_output
 ---
 import { defineComponent as _defineComponent } from 'vue'
@@ -18,7 +17,11 @@ const value = ref('')
 
 return (_ctx: any,_cache: any) => {
   return (visible.value)
-      ? (_openBlock(), _createBlock(MyInput, { key: 0, modelValue: value.value, "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event: any) => ((value).value = $event)) }))
+      ? (_openBlock(), _createBlock(MyInput, {
+        key: 0,
+        modelValue: value.value,
+        "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event: any) => ((value).value = $event))
+      }))
       : _createCommentVNode("v-if", true)
 }
 }

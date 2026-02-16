@@ -20,7 +20,9 @@ export default /*@__PURE__*/_defineComponent({
 const props = __props
 
 return (_ctx: any,_cache: any) => {
-  return (_openBlock(), _createElementBlock("div", { onClick: _cache[0] || (_cache[0] = props.refreshMethod(() => {})) }, "Refresh"))
+  return (_openBlock(), _createElementBlock("div", {
+      onClick: _cache[0] || (_cache[0] = props.refreshMethod(() => {}))
+    }, "Refresh"))
 }
 }
 

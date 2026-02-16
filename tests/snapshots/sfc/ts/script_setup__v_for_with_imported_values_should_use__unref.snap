@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 150
 expression: ts_output
 ---
 import { defineComponent as _defineComponent } from 'vue'
@@ -14,7 +13,9 @@ export default /*@__PURE__*/_defineComponent({
 
 
 return (_ctx: any,_cache: any) => {
-  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_unref(PRESETS), (preset) => { return (_openBlock(), _createElementBlock("div", { key: preset.name }, "\n    " + _toDisplayString(preset.label) + "\n  ", 1 /* TEXT */)) }), 128 /* KEYED_FRAGMENT */))
+  return (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_unref(PRESETS), (preset) => {
+      return (_openBlock(), _createElementBlock("div", { key: preset.name }, "\n    " + _toDisplayString(preset.label) + "\n  ", 1 /* TEXT */))
+    }), 128 /* KEYED_FRAGMENT */))
 }
 }
 

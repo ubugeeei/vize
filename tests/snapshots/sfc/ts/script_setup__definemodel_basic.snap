@@ -1,6 +1,5 @@
 ---
 source: crates/vize_atelier_sfc/src/snapshot_tests.rs
-assertion_line: 150
 expression: ts_output
 ---
 import { useModel as _useModel } from 'vue'
@@ -20,7 +19,9 @@ export default /*@__PURE__*/_defineComponent({
 const model = _useModel(__props, "modelValue")
 
 return (_ctx: any,_cache: any) => {
-  return _withDirectives((_openBlock(), _createElementBlock("input", { "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event: any) => ((model).value = $event)) }, null, 512 /* NEED_PATCH */)), [ [_vModelText, model.value] ])
+  return _withDirectives((_openBlock(), _createElementBlock("input", {
+      "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event: any) => ((model).value = $event))
+    }, null, 512 /* NEED_PATCH */)), [ [_vModelText, model.value] ])
 }
 }
 
