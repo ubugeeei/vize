@@ -487,7 +487,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Finish building an attribute node
-    fn finish_attribute(&mut self, attr: CurrentAttribute<'a>, _quote: QuoteType, end: usize) {
+    fn finish_attribute(&mut self, attr: CurrentAttribute<'a>, quote: QuoteType, end: usize) {
         let loc = self.create_loc(attr.name_start, end);
         let name_loc = self.create_loc(attr.name_start, attr.name_end);
 
@@ -499,6 +499,10 @@ impl<'a> Parser<'a> {
             let value_content = self.get_source(v_start, v_end);
             let value_loc = self.create_loc(v_start, v_end);
             attr_node.value = Some(TextNode::new(value_content, value_loc));
+        } else if matches!(quote, QuoteType::Double | QuoteType::Single) {
+            // alt="" or alt='' → empty string value (not boolean "true")
+            let empty_loc = self.create_loc(end, end);
+            attr_node.value = Some(TextNode::new("", empty_loc));
         }
 
         if let Some(ref mut current) = self.current_element {
@@ -1143,6 +1147,87 @@ mod tests {
         if let TemplateChildNode::Element(el) = &root.children[0] {
             assert_eq!(el.tag.as_str(), "MyComponent");
             assert_eq!(el.tag_type, ElementType::Component);
+        }
+    }
+
+    #[test]
+    fn test_empty_quoted_attribute_double() {
+        let allocator = Bump::new();
+        let (root, errors) = parse(&allocator, r#"<img alt="" />"#);
+        assert!(errors.is_empty());
+        if let TemplateChildNode::Element(el) = &root.children[0] {
+            assert_eq!(el.props.len(), 1);
+            if let PropNode::Attribute(attr) = &el.props[0] {
+                assert_eq!(attr.name.as_str(), "alt");
+                let value = attr.value.as_ref().expect("alt=\"\" should have a value");
+                assert_eq!(
+                    value.content.as_str(),
+                    "",
+                    "alt=\"\" should be empty string, not boolean"
+                );
+            } else {
+                panic!("Expected attribute prop");
+            }
+        }
+    }
+
+    #[test]
+    fn test_empty_quoted_attribute_single() {
+        let allocator = Bump::new();
+        let (root, errors) = parse(&allocator, "<img alt='' />");
+        assert!(errors.is_empty());
+        if let TemplateChildNode::Element(el) = &root.children[0] {
+            assert_eq!(el.props.len(), 1);
+            if let PropNode::Attribute(attr) = &el.props[0] {
+                assert_eq!(attr.name.as_str(), "alt");
+                let value = attr.value.as_ref().expect("alt='' should have a value");
+                assert_eq!(
+                    value.content.as_str(),
+                    "",
+                    "alt='' should be empty string, not boolean"
+                );
+            } else {
+                panic!("Expected attribute prop");
+            }
+        }
+    }
+
+    #[test]
+    fn test_empty_quoted_attribute_disabled() {
+        let allocator = Bump::new();
+        let (root, errors) = parse(&allocator, r#"<input disabled="" />"#);
+        assert!(errors.is_empty());
+        if let TemplateChildNode::Element(el) = &root.children[0] {
+            assert_eq!(el.props.len(), 1);
+            if let PropNode::Attribute(attr) = &el.props[0] {
+                assert_eq!(attr.name.as_str(), "disabled");
+                let value = attr
+                    .value
+                    .as_ref()
+                    .expect("disabled=\"\" should have a value");
+                assert_eq!(value.content.as_str(), "");
+            } else {
+                panic!("Expected attribute prop");
+            }
+        }
+    }
+
+    #[test]
+    fn test_boolean_attribute_no_value() {
+        let allocator = Bump::new();
+        let (root, errors) = parse(&allocator, "<input disabled />");
+        assert!(errors.is_empty());
+        if let TemplateChildNode::Element(el) = &root.children[0] {
+            assert_eq!(el.props.len(), 1);
+            if let PropNode::Attribute(attr) = &el.props[0] {
+                assert_eq!(attr.name.as_str(), "disabled");
+                assert!(
+                    attr.value.is_none(),
+                    "disabled without value should be boolean (None)"
+                );
+            } else {
+                panic!("Expected attribute prop");
+            }
         }
     }
 }
