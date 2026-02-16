@@ -17,6 +17,7 @@
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
+    "test:snapshot:bug40": "pnpm run build && node tests/rewrite-static-asset-urls.snapshot.test.mjs",
     "lint": "oxlint --deny-warnings --type-aware --tsconfig tsconfig.json",
     "lint:fix": "oxlint --type-aware --tsconfig tsconfig.json --fix",
     "fmt": "oxfmt --write src",

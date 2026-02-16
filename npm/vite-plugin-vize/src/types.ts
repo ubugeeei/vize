@@ -94,6 +94,15 @@ export interface VizeOptions {
   configFile?: string;
 
   /**
+   * Handle .vue files in node_modules (on-demand compilation).
+   * When true, vize will compile .vue files from node_modules that other plugins
+   * (like vite-plugin-vue-inspector) may import directly.
+   * Set to false if another Vue plugin (e.g. Nuxt) handles node_modules .vue files.
+   * @default true
+   */
+  handleNodeModulesVue?: boolean;
+
+  /**
    * Enable debug logging
    * @default false
    */

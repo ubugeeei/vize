@@ -1,0 +1,5 @@
+import __vize_static_0 from "@/assets/images/logo.svg";
+import __vize_static_1 from "@/assets/icons/help.svg";
+const _hoisted_1 = { src: __vize_static_0, alt: "" };
+const _hoisted_2 = { "src": __vize_static_1 };
+const _hoisted_3 = { src: "/assets/local.svg" };
