@@ -507,10 +507,7 @@ mod tests {
 
     #[test]
     fn test_count_braces_mixed_string_and_code() {
-        assert_eq!(
-            count_braces_outside_strings("if (x) { var s = '}'"),
-            1
-        );
+        assert_eq!(count_braces_outside_strings("if (x) { var s = '}'"), 1);
     }
 
     #[test]
