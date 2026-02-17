@@ -187,7 +187,12 @@ interface NativeBinding {
     source: string,
     options?: { filename?: string },
   ) => {
-    props: Array<{ name: string; type: string; required: boolean; default_value?: unknown }>;
+    props: Array<{
+      name: string;
+      type: string;
+      required: boolean;
+      default_value?: unknown;
+    }>;
     emits: string[];
   };
 }
@@ -216,13 +221,28 @@ function loadNative(): NativeBinding {
 function analyzeSfcFallback(
   source: string,
   _options?: { filename?: string },
-): { props: Array<{ name: string; type: string; required: boolean; default_value?: unknown }>; emits: string[] } {
+): {
+  props: Array<{
+    name: string;
+    type: string;
+    required: boolean;
+    default_value?: unknown;
+  }>;
+  emits: string[];
+} {
   try {
-    const props: Array<{ name: string; type: string; required: boolean; default_value?: unknown }> = [];
+    const props: Array<{
+      name: string;
+      type: string;
+      required: boolean;
+      default_value?: unknown;
+    }> = [];
     const emits: string[] = [];
 
     // Extract the <script setup> block
-    const scriptSetupMatch = source.match(/<script\s+[^>]*setup[^>]*>([\s\S]*?)<\/script>/);
+    const scriptSetupMatch = source.match(
+      /<script\s+[^>]*setup[^>]*>([\s\S]*?)<\/script>/,
+    );
     if (!scriptSetupMatch) {
       // Try regular <script> block
       const scriptMatch = source.match(/<script[^>]*>([\s\S]*?)<\/script>/);
@@ -232,8 +252,12 @@ function analyzeSfcFallback(
 
     // Extract defineProps type parameter
     // Handles: defineProps<{ ... }>()  and  defineProps<{ ... }>
-    const propsMatch = scriptContent.match(/defineProps\s*<\s*\{([\s\S]*?)\}>\s*\(/);
-    const propsMatch2 = scriptContent.match(/defineProps\s*<\s*\{([\s\S]*?)\}>/);
+    const propsMatch = scriptContent.match(
+      /defineProps\s*<\s*\{([\s\S]*?)\}>\s*\(/,
+    );
+    const propsMatch2 = scriptContent.match(
+      /defineProps\s*<\s*\{([\s\S]*?)\}>/,
+    );
     const propsBody = propsMatch?.[1] || propsMatch2?.[1];
 
     if (propsBody) {
@@ -244,7 +268,11 @@ function analyzeSfcFallback(
       while (i < lines.length) {
         const line = lines[i].trim();
         // Skip JSDoc comments
-        if (line.startsWith("/**") || line.startsWith("*") || line.startsWith("*/")) {
+        if (
+          line.startsWith("/**") ||
+          line.startsWith("*") ||
+          line.startsWith("*/")
+        ) {
           i++;
           continue;
         }
@@ -259,13 +287,17 @@ function analyzeSfcFallback(
           // Check for default value in destructured defineProps
           const defaultPattern = new RegExp(`\\b${name}\\s*=\\s*([^,}\\n]+)`);
           const defaultMatch = scriptContent.match(defaultPattern);
-          const defaultValue = defaultMatch ? defaultMatch[1].trim() : undefined;
+          const defaultValue = defaultMatch
+            ? defaultMatch[1].trim()
+            : undefined;
 
           props.push({
             name,
             type,
             required: !optional && defaultValue === undefined,
-            ...(defaultValue !== undefined ? { default_value: defaultValue } : {}),
+            ...(defaultValue !== undefined
+              ? { default_value: defaultValue }
+              : {}),
           });
         }
         i++;
@@ -294,7 +326,15 @@ function analyzeSfcFallback(
  */
 function buildThemeConfig(
   theme?: MuseaOptions["theme"],
-): { default: string; custom?: Record<string, { base?: "dark" | "light"; colors: Record<string, string> }> } | undefined {
+):
+  | {
+      default: string;
+      custom?: Record<
+        string,
+        { base?: "dark" | "light"; colors: Record<string, string> }
+      >;
+    }
+  | undefined {
   if (!theme) return undefined;
 
   if (typeof theme === "string") {
@@ -304,7 +344,10 @@ function buildThemeConfig(
 
   // Single custom theme or array of custom themes
   const themes = Array.isArray(theme) ? theme : [theme];
-  const custom: Record<string, { base?: "dark" | "light"; colors: Record<string, string> }> = {};
+  const custom: Record<
+    string,
+    { base?: "dark" | "light"; colors: Record<string, string> }
+  > = {};
   for (const t of themes) {
     custom[t.name] = {
       base: t.base,
@@ -366,14 +409,20 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
         if (!options.include && mc.include) include = mc.include;
         if (!options.exclude && mc.exclude) exclude = mc.exclude;
         if (!options.basePath && mc.basePath) basePath = mc.basePath;
-        if (options.storybookCompat === undefined && mc.storybookCompat !== undefined)
+        if (
+          options.storybookCompat === undefined &&
+          mc.storybookCompat !== undefined
+        )
           storybookCompat = mc.storybookCompat;
-        if (options.inlineArt === undefined && mc.inlineArt !== undefined) inlineArt = mc.inlineArt;
+        if (options.inlineArt === undefined && mc.inlineArt !== undefined)
+          inlineArt = mc.inlineArt;
       }
 
       // Resolve previewCss paths to absolute paths
       resolvedPreviewCss = previewCss.map((cssPath) =>
-        path.isAbsolute(cssPath) ? cssPath : path.resolve(resolvedConfig.root, cssPath),
+        path.isAbsolute(cssPath)
+          ? cssPath
+          : path.resolve(resolvedConfig.root, cssPath),
       );
 
       // Resolve previewSetup path
@@ -450,8 +499,14 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
                 ".woff2": "font/woff2",
                 ".woff": "font/woff",
               };
-              res.setHeader("Content-Type", mimeTypes[ext] || "application/octet-stream");
-              res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+              res.setHeader(
+                "Content-Type",
+                mimeTypes[ext] || "application/octet-stream",
+              );
+              res.setHeader(
+                "Cache-Control",
+                "public, max-age=31536000, immutable",
+              );
               res.end(content);
               return;
             }
@@ -464,89 +519,101 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
       });
 
       // Preview module route - serves the JavaScript module for a specific variant
-      devServer.middlewares.use(`${basePath}/preview-module`, async (req, res, _next) => {
-        const url = new URL(req.url || "", `http://localhost`);
-        const artPath = url.searchParams.get("art");
-        const variantName = url.searchParams.get("variant");
+      devServer.middlewares.use(
+        `${basePath}/preview-module`,
+        async (req, res, _next) => {
+          const url = new URL(req.url || "", `http://localhost`);
+          const artPath = url.searchParams.get("art");
+          const variantName = url.searchParams.get("variant");
 
-        if (!artPath || !variantName) {
-          res.statusCode = 400;
-          res.end("Missing art or variant parameter");
-          return;
-        }
-
-        const art = artFiles.get(artPath);
-        if (!art) {
-          res.statusCode = 404;
-          res.end("Art not found");
-          return;
-        }
-
-        const variant = art.variants.find((v) => v.name === variantName);
-        if (!variant) {
-          res.statusCode = 404;
-          res.end("Variant not found");
-          return;
-        }
-
-        const variantComponentName = toPascalCase(variant.name);
-        const moduleCode = generatePreviewModule(art, variantComponentName, variant.name, resolvedPreviewCss, resolvedPreviewSetup);
-
-        // Transform the module through Vite to resolve imports
-        try {
-          const result = await devServer.transformRequest(
-            `virtual:musea-preview:${artPath}:${variantName}`,
-          );
-          if (result) {
-            res.setHeader("Content-Type", "application/javascript");
-            res.setHeader("Cache-Control", "no-cache");
-            res.end(result.code);
+          if (!artPath || !variantName) {
+            res.statusCode = 400;
+            res.end("Missing art or variant parameter");
             return;
           }
-        } catch {
-          // Fall through to manual response
-        }
 
-        // Fallback: serve the module directly (imports won't be resolved)
-        res.setHeader("Content-Type", "application/javascript");
-        res.setHeader("Cache-Control", "no-cache");
-        res.end(moduleCode);
-      });
+          const art = artFiles.get(artPath);
+          if (!art) {
+            res.statusCode = 404;
+            res.end("Art not found");
+            return;
+          }
+
+          const variant = art.variants.find((v) => v.name === variantName);
+          if (!variant) {
+            res.statusCode = 404;
+            res.end("Variant not found");
+            return;
+          }
+
+          const variantComponentName = toPascalCase(variant.name);
+          const moduleCode = generatePreviewModule(
+            art,
+            variantComponentName,
+            variant.name,
+            resolvedPreviewCss,
+            resolvedPreviewSetup,
+          );
+
+          // Transform the module through Vite to resolve imports
+          try {
+            const result = await devServer.transformRequest(
+              `virtual:musea-preview:${artPath}:${variantName}`,
+            );
+            if (result) {
+              res.setHeader("Content-Type", "application/javascript");
+              res.setHeader("Cache-Control", "no-cache");
+              res.end(result.code);
+              return;
+            }
+          } catch {
+            // Fall through to manual response
+          }
+
+          // Fallback: serve the module directly (imports won't be resolved)
+          res.setHeader("Content-Type", "application/javascript");
+          res.setHeader("Cache-Control", "no-cache");
+          res.end(moduleCode);
+        },
+      );
 
       // VRT preview route - renders a single variant for screenshot
-      devServer.middlewares.use(`${basePath}/preview`, async (req, res, _next) => {
-        const url = new URL(req.url || "", `http://localhost`);
-        const artPath = url.searchParams.get("art");
-        const variantName = url.searchParams.get("variant");
+      devServer.middlewares.use(
+        `${basePath}/preview`,
+        async (req, res, _next) => {
+          const url = new URL(req.url || "", `http://localhost`);
+          const artPath = url.searchParams.get("art");
+          const variantName = url.searchParams.get("variant");
 
-        if (!artPath || !variantName) {
-          res.statusCode = 400;
-          res.end("Missing art or variant parameter");
-          return;
-        }
+          if (!artPath || !variantName) {
+            res.statusCode = 400;
+            res.end("Missing art or variant parameter");
+            return;
+          }
 
-        const art = artFiles.get(artPath);
-        if (!art) {
-          res.statusCode = 404;
-          res.end("Art not found");
-          return;
-        }
+          const art = artFiles.get(artPath);
+          if (!art) {
+            res.statusCode = 404;
+            res.end("Art not found");
+            return;
+          }
 
-        const variant = art.variants.find((v) => v.name === variantName);
-        if (!variant) {
-          res.statusCode = 404;
-          res.end("Variant not found");
-          return;
-        }
+          const variant = art.variants.find((v) => v.name === variantName);
+          if (!variant) {
+            res.statusCode = 404;
+            res.end("Variant not found");
+            return;
+          }
 
-        const html = generatePreviewHtml(art, variant, basePath, config.base);
-        // NOTE: Don't use transformIndexHtml here - it creates html-proxy modules
-        // for inline scripts, but the URL contains query params which causes
-        // malformed proxy URLs (double '?'). Instead, /@vite/client is injected
-        // directly in generatePreviewHtml for HMR support.
-        res.setHeader("Content-Type", "text/html");
-        res.end(html);
-      });
+          const html = generatePreviewHtml(art, variant, basePath, config.base);
+          // NOTE: Don't use transformIndexHtml here - it creates html-proxy modules
+          // for inline scripts, but the URL contains query params which causes
+          // malformed proxy URLs (double '?'). Instead, /@vite/client is injected
+          // directly in generatePreviewHtml for HMR support.
+          res.setHeader("Content-Type", "text/html");
+          res.end(html);
+        },
+      );
 
       // Art module route - serves transformed art file as ES module
       devServer.middlewares.use(`${basePath}/art`, async (req, res, next) => {
@@ -619,7 +686,10 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
             const tokenMap = buildTokenMap(categories);
             resolveReferences(categories, tokenMap);
             const resolvedTokenMap = buildTokenMap(categories);
-            const usage: TokenUsageMap = scanTokenUsage(artFiles, resolvedTokenMap);
+            const usage: TokenUsageMap = scanTokenUsage(
+              artFiles,
+              resolvedTokenMap,
+            );
             sendJson(usage);
           } catch (e) {
             console.error("[musea] Failed to scan token usage:", e);
@@ -631,7 +701,16 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
         // GET /api/tokens - Get design tokens
         if (req.url === "/tokens" && req.method === "GET") {
           if (!tokensPath) {
-            sendJson({ categories: [], tokenMap: {}, meta: { filePath: "", tokenCount: 0, primitiveCount: 0, semanticCount: 0 } });
+            sendJson({
+              categories: [],
+              tokenMap: {},
+              meta: {
+                filePath: "",
+                tokenCount: 0,
+                primitiveCount: 0,
+                semanticCount: 0,
+              },
+            });
             return;
           }
 
@@ -672,7 +751,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
             return;
           }
           let body = "";
-          req.on("data", (chunk) => { body += chunk; });
+          req.on("data", (chunk) => {
+            body += chunk;
+          });
           req.on("end", async () => {
             try {
               const { path: dotPath, token } = JSON.parse(body) as {
@@ -696,7 +777,11 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
 
               // Validate semantic reference
               if (token.$reference) {
-                const validation = validateSemanticReference(currentMap, token.$reference, dotPath);
+                const validation = validateSemanticReference(
+                  currentMap,
+                  token.$reference,
+                  dotPath,
+                );
                 if (!validation.valid) {
                   sendError(validation.error!, 400);
                   return;
@@ -728,7 +813,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
             return;
           }
           let body = "";
-          req.on("data", (chunk) => { body += chunk; });
+          req.on("data", (chunk) => {
+            body += chunk;
+          });
           req.on("end", async () => {
             try {
               const { path: dotPath, token } = JSON.parse(body) as {
@@ -745,7 +832,11 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
               if (token.$reference) {
                 const currentCategories = await parseTokens(absoluteTokensPath);
                 const currentMap = buildTokenMap(currentCategories);
-                const validation = validateSemanticReference(currentMap, token.$reference, dotPath);
+                const validation = validateSemanticReference(
+                  currentMap,
+                  token.$reference,
+                  dotPath,
+                );
                 if (!validation.valid) {
                   sendError(validation.error!, 400);
                   return;
@@ -777,7 +868,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
             return;
           }
           let body = "";
-          req.on("data", (chunk) => { body += chunk; });
+          req.on("data", (chunk) => {
+            body += chunk;
+          });
           req.on("end", async () => {
             try {
               const { path: dotPath } = JSON.parse(body) as { path: string };
@@ -804,7 +897,12 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
               const tokenMap = buildTokenMap(categories);
               resolveReferences(categories, tokenMap);
               const resolvedTokenMap = buildTokenMap(categories);
-              sendJson({ categories, tokenMap: resolvedTokenMap, dependentsWarning: dependents.length > 0 ? dependents : undefined });
+              sendJson({
+                categories,
+                tokenMap: resolvedTokenMap,
+                dependentsWarning:
+                  dependents.length > 0 ? dependents : undefined,
+              });
             } catch (e) {
               sendError(e instanceof Error ? e.message : String(e));
             }
@@ -825,7 +923,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
             }
 
             let body = "";
-            req.on("data", (chunk: string) => { body += chunk; });
+            req.on("data", (chunk: string) => {
+              body += chunk;
+            });
             req.on("end", async () => {
               try {
                 const { source } = JSON.parse(body) as { source: string };
@@ -887,9 +987,26 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
             try {
               const source = await fs.promises.readFile(artPath, "utf-8");
               const binding = loadNative();
-              let palette: { title: string; controls: Array<{ name: string; control: string; default_value?: unknown; description?: string; required: boolean; options: Array<{ label: string; value: unknown }>; range?: { min: number; max: number; step?: number }; group?: string }>; groups: string[]; json: string; typescript: string };
+              let palette: {
+                title: string;
+                controls: Array<{
+                  name: string;
+                  control: string;
+                  default_value?: unknown;
+                  description?: string;
+                  required: boolean;
+                  options: Array<{ label: string; value: unknown }>;
+                  range?: { min: number; max: number; step?: number };
+                  group?: string;
+                }>;
+                groups: string[];
+                json: string;
+                typescript: string;
+              };
               if (binding.generateArtPalette) {
-                palette = binding.generateArtPalette(source, { filename: artPath });
+                palette = binding.generateArtPalette(source, {
+                  filename: artPath,
+                });
               } else {
                 palette = {
                   title: art.metadata.title,
@@ -902,26 +1019,39 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
 
               // If the native palette returned no controls, try JS-based SFC analysis
               if (palette.controls.length === 0 && art.metadata.component) {
-                const resolvedComponentPath = path.isAbsolute(art.metadata.component)
+                const resolvedComponentPath = path.isAbsolute(
+                  art.metadata.component,
+                )
                   ? art.metadata.component
                   : path.resolve(path.dirname(artPath), art.metadata.component);
                 try {
-                  const componentSource = await fs.promises.readFile(resolvedComponentPath, "utf-8");
+                  const componentSource = await fs.promises.readFile(
+                    resolvedComponentPath,
+                    "utf-8",
+                  );
                   const analysis = binding.analyzeSfc
-                    ? binding.analyzeSfc(componentSource, { filename: resolvedComponentPath })
-                    : analyzeSfcFallback(componentSource, { filename: resolvedComponentPath });
+                    ? binding.analyzeSfc(componentSource, {
+                        filename: resolvedComponentPath,
+                      })
+                    : analyzeSfcFallback(componentSource, {
+                        filename: resolvedComponentPath,
+                      });
 
                   if (analysis.props.length > 0) {
                     palette.controls = analysis.props.map((prop) => {
                       let control = "text";
                       if (prop.type === "boolean") control = "boolean";
                       else if (prop.type === "number") control = "number";
-                      else if (prop.type.includes("|") && !prop.type.includes("=>")) {
+                      else if (
+                        prop.type.includes("|") &&
+                        !prop.type.includes("=>")
+                      ) {
                         // Union type like "button" | "submit" | "reset" -> select
                         control = "select";
                       }
 
-                      const options: Array<{ label: string; value: unknown }> = [];
+                      const options: Array<{ label: string; value: unknown }> =
+                        [];
                       if (control === "select") {
                         // Extract union type options
                         const optionMatches = prop.type.match(/"([^"]+)"/g);
@@ -936,12 +1066,17 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
                       return {
                         name: prop.name,
                         control,
-                        default_value: prop.default_value !== undefined ? (
-                          prop.default_value === "true" ? true :
-                          prop.default_value === "false" ? false :
-                          typeof prop.default_value === "string" && prop.default_value.startsWith('"') ? prop.default_value.replace(/^"|"$/g, "") :
-                          prop.default_value
-                        ) : undefined,
+                        default_value:
+                          prop.default_value !== undefined
+                            ? prop.default_value === "true"
+                              ? true
+                              : prop.default_value === "false"
+                                ? false
+                                : typeof prop.default_value === "string" &&
+                                    prop.default_value.startsWith('"')
+                                  ? prop.default_value.replace(/^"|"$/g, "")
+                                  : prop.default_value
+                            : undefined,
                         description: undefined,
                         required: prop.required,
                         options,
@@ -951,15 +1086,27 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
                     });
 
                     // Regenerate json and typescript
-                    palette.json = JSON.stringify({ title: palette.title, controls: palette.controls }, null, 2);
-                    palette.typescript = `export interface ${palette.title}Props {\n${
-                      palette.controls.map((c) => `  ${c.name}${c.required ? "" : "?"}: ${
-                        c.control === "boolean" ? "boolean" :
-                        c.control === "number" ? "number" :
-                        c.control === "select" ? c.options.map((o) => `"${String(o.value)}"`).join(" | ") :
-                        "string"
-                      };`).join("\n")
-                    }\n}\n`;
+                    palette.json = JSON.stringify(
+                      { title: palette.title, controls: palette.controls },
+                      null,
+                      2,
+                    );
+                    palette.typescript = `export interface ${palette.title}Props {\n${palette.controls
+                      .map(
+                        (c) =>
+                          `  ${c.name}${c.required ? "" : "?"}: ${
+                            c.control === "boolean"
+                              ? "boolean"
+                              : c.control === "number"
+                                ? "number"
+                                : c.control === "select"
+                                  ? c.options
+                                      .map((o) => `"${String(o.value)}"`)
+                                      .join(" | ")
+                                  : "string"
+                          };`,
+                      )
+                      .join("\n")}\n}\n`;
                   }
                 } catch {
                   // Ignore errors reading component file
@@ -990,17 +1137,27 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
                   : art.metadata.component
                     ? path.isAbsolute(art.metadata.component)
                       ? art.metadata.component
-                      : path.resolve(path.dirname(artPath), art.metadata.component)
+                      : path.resolve(
+                          path.dirname(artPath),
+                          art.metadata.component,
+                        )
                     : null;
 
               if (resolvedComponentPath) {
-                const source = await fs.promises.readFile(resolvedComponentPath, "utf-8");
+                const source = await fs.promises.readFile(
+                  resolvedComponentPath,
+                  "utf-8",
+                );
                 const binding = loadNative();
                 if (binding.analyzeSfc) {
-                  const analysis = binding.analyzeSfc(source, { filename: resolvedComponentPath });
+                  const analysis = binding.analyzeSfc(source, {
+                    filename: resolvedComponentPath,
+                  });
                   sendJson(analysis);
                 } else {
-                  const analysis = analyzeSfcFallback(source, { filename: resolvedComponentPath });
+                  const analysis = analyzeSfcFallback(source, {
+                    filename: resolvedComponentPath,
+                  });
                   sendJson(analysis);
                 }
               } else {
@@ -1025,7 +1182,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
               const source = await fs.promises.readFile(artPath, "utf-8");
               const binding = loadNative();
               if (binding.generateArtDoc) {
-                const doc = binding.generateArtDoc(source, { filename: artPath });
+                const doc = binding.generateArtDoc(source, {
+                  filename: artPath,
+                });
                 // Replace Self with component name and format indentation
                 let markdown = doc.markdown || "";
                 const componentName = art.metadata.title || "Component";
@@ -1033,21 +1192,26 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
                   .replace(/<Self(\s|>|\/)/g, `<${componentName}$1`)
                   .replace(/<\/Self>/g, `</${componentName}>`);
                 // Fix indentation in code blocks
-                markdown = markdown.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang, code) => {
-                  const lines = code.split("\n");
-                  // Find minimum indentation (excluding empty lines)
-                  let minIndent = Infinity;
-                  for (const line of lines) {
-                    if (line.trim()) {
-                      const indent = line.match(/^(\s*)/)?.[1].length || 0;
-                      minIndent = Math.min(minIndent, indent);
+                markdown = markdown.replace(
+                  /```(\w*)\n([\s\S]*?)```/g,
+                  (_match, lang, code) => {
+                    const lines = code.split("\n");
+                    // Find minimum indentation (excluding empty lines)
+                    let minIndent = Infinity;
+                    for (const line of lines) {
+                      if (line.trim()) {
+                        const indent = line.match(/^(\s*)/)?.[1].length || 0;
+                        minIndent = Math.min(minIndent, indent);
+                      }
                     }
-                  }
-                  if (minIndent === Infinity) minIndent = 0;
-                  // Remove minimum indentation from all lines
-                  const formatted = lines.map((line) => line.slice(minIndent)).join("\n");
-                  return "```" + lang + "\n" + formatted + "```";
-                });
+                    if (minIndent === Infinity) minIndent = 0;
+                    // Remove minimum indentation from all lines
+                    const formatted = lines
+                      .map((line) => line.slice(minIndent))
+                      .join("\n");
+                    return "```" + lang + "\n" + formatted + "```";
+                  },
+                );
                 sendJson({ ...doc, markdown });
               } else {
                 sendJson({
@@ -1096,7 +1260,11 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
           });
           req.on("end", () => {
             try {
-              const { artPath: reqArtPath, variantName, props: propsOverride } = JSON.parse(body);
+              const {
+                artPath: reqArtPath,
+                variantName,
+                props: propsOverride,
+              } = JSON.parse(body);
               const art = artFiles.get(reqArtPath);
               if (!art) {
                 sendError("Art not found", 404);
@@ -1136,7 +1304,10 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
           });
           req.on("end", async () => {
             try {
-              const { componentPath: reqComponentPath, options: autogenOptions } = JSON.parse(body);
+              const {
+                componentPath: reqComponentPath,
+                options: autogenOptions,
+              } = JSON.parse(body);
               const { generateArtFile: genArt } = await import("./autogen.js");
               const result = await genArt(reqComponentPath, autogenOptions);
               sendJson({
@@ -1177,7 +1348,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
               }
 
               await runner.start();
-              const results = await runner.runTests(artsToTest, baseUrl, { updateSnapshots });
+              const results = await runner.runTests(artsToTest, baseUrl, {
+                updateSnapshots,
+              });
               const summary = runner.getSummary(results);
               await runner.stop();
 
@@ -1206,7 +1379,10 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
 
       // Watch for Art file changes
       devServer.watcher.on("change", async (file) => {
-        if (file.endsWith(".art.vue") && shouldProcess(file, include, exclude, config.root)) {
+        if (
+          file.endsWith(".art.vue") &&
+          shouldProcess(file, include, exclude, config.root)
+        ) {
           await processArtFile(file);
           console.log(`[musea] Reloaded: ${path.relative(config.root, file)}`);
         }
@@ -1216,16 +1392,23 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
           const source = await fs.promises.readFile(file, "utf-8");
           if (source.includes("<art")) {
             await processArtFile(file);
-            console.log(`[musea] Reloaded inline art: ${path.relative(config.root, file)}`);
+            console.log(
+              `[musea] Reloaded inline art: ${path.relative(config.root, file)}`,
+            );
           } else if (hadArt) {
             artFiles.delete(file);
-            console.log(`[musea] Removed inline art: ${path.relative(config.root, file)}`);
+            console.log(
+              `[musea] Removed inline art: ${path.relative(config.root, file)}`,
+            );
           }
         }
       });
 
       devServer.watcher.on("add", async (file) => {
-        if (file.endsWith(".art.vue") && shouldProcess(file, include, exclude, config.root)) {
+        if (
+          file.endsWith(".art.vue") &&
+          shouldProcess(file, include, exclude, config.root)
+        ) {
           await processArtFile(file);
           console.log(`[musea] Added: ${path.relative(config.root, file)}`);
         }
@@ -1234,7 +1417,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
           const source = await fs.promises.readFile(file, "utf-8");
           if (source.includes("<art")) {
             await processArtFile(file);
-            console.log(`[musea] Added inline art: ${path.relative(config.root, file)}`);
+            console.log(
+              `[musea] Added inline art: ${path.relative(config.root, file)}`,
+            );
           }
         }
       });
@@ -1265,7 +1450,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
             const url = `${protocol}://${host}:${port}${basePath}`;
 
             console.log();
-            console.log(`  \x1b[36m➜\x1b[0m  \x1b[1mMusea Gallery:\x1b[0m \x1b[36m${url}\x1b[0m`);
+            console.log(
+              `  \x1b[36m➜\x1b[0m  \x1b[1mMusea Gallery:\x1b[0m \x1b[36m${url}\x1b[0m`,
+            );
           }
         });
       };
@@ -1273,8 +1460,15 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
 
     async buildStart() {
       // Scan for Art files
-      console.log(`[musea] config.root: ${config.root}, include: ${JSON.stringify(include)}`);
-      const files = await scanArtFiles(config.root, include, exclude, inlineArt);
+      console.log(
+        `[musea] config.root: ${config.root}, include: ${JSON.stringify(include)}`,
+      );
+      const files = await scanArtFiles(
+        config.root,
+        include,
+        exclude,
+        inlineArt,
+      );
 
       console.log(`[musea] Found ${files.length} art files`);
 
@@ -1341,20 +1535,30 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
           const art = artFiles.get(artPath);
           if (art) {
             const variantComponentName = toPascalCase(variantName);
-            return generatePreviewModule(art, variantComponentName, variantName, resolvedPreviewCss, resolvedPreviewSetup);
+            return generatePreviewModule(
+              art,
+              variantComponentName,
+              variantName,
+              resolvedPreviewCss,
+              resolvedPreviewSetup,
+            );
           }
         }
       }
       // Handle \0musea-art: prefix for preview modules
       if (id.startsWith("\0musea-art:")) {
-        const artPath = id.slice("\0musea-art:".length).replace(/\?musea-virtual$/, "");
+        const artPath = id
+          .slice("\0musea-art:".length)
+          .replace(/\?musea-virtual$/, "");
         const art = artFiles.get(artPath);
         if (art) {
           return generateArtModule(art, artPath);
         }
       }
       if (id.startsWith(VIRTUAL_MUSEA_PREFIX)) {
-        const realPath = id.slice(VIRTUAL_MUSEA_PREFIX.length).replace(/\?musea-virtual$/, "");
+        const realPath = id
+          .slice(VIRTUAL_MUSEA_PREFIX.length)
+          .replace(/\?musea-virtual$/, "");
         const art = artFiles.get(realPath);
         if (art) {
           return generateArtModule(art, realPath);
@@ -1377,7 +1581,12 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
       }
 
       // Inline art: HMR for .vue files with <art> blocks
-      if (inlineArt && file.endsWith(".vue") && !file.endsWith(".art.vue") && artFiles.has(file)) {
+      if (
+        inlineArt &&
+        file.endsWith(".vue") &&
+        !file.endsWith(".art.vue") &&
+        artFiles.has(file)
+      ) {
         await processArtFile(file);
 
         const virtualId = VIRTUAL_MUSEA_PREFIX + file;
@@ -1407,7 +1616,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
       const info: ArtFileInfo = {
         path: filePath,
         metadata: {
-          title: parsed.metadata.title || (isInline ? path.basename(filePath, ".vue") : ""),
+          title:
+            parsed.metadata.title ||
+            (isInline ? path.basename(filePath, ".vue") : ""),
           description: parsed.metadata.description,
           component: isInline ? undefined : parsed.metadata.component,
           category: parsed.metadata.category,
@@ -1422,6 +1633,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
           skipVrt: v.skip_vrt,
         })),
         hasScriptSetup: parsed.has_script_setup,
+        scriptSetupContent: parsed.has_script_setup
+          ? extractScriptSetupContent(source)
+          : undefined,
         hasScript: parsed.has_script,
         styleCount: parsed.style_count,
         isInline,
@@ -1439,7 +1653,12 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
 
 // Utility functions
 
-function shouldProcess(file: string, include: string[], exclude: string[], root: string): boolean {
+function shouldProcess(
+  file: string,
+  include: string[],
+  exclude: string[],
+  root: string,
+): boolean {
   const relative = path.relative(root, file);
 
   // Check exclude patterns
@@ -1527,7 +1746,10 @@ async function scanArtFiles(
   return files;
 }
 
-function generateGalleryHtml(basePath: string, themeConfig?: { default: string; custom?: Record<string, unknown> }): string {
+function generateGalleryHtml(
+  basePath: string,
+  themeConfig?: { default: string; custom?: Record<string, unknown> },
+): string {
   const themeScript = themeConfig
     ? `window.__MUSEA_THEME_CONFIG__=${JSON.stringify(themeConfig)};`
     : "";
@@ -2572,8 +2794,12 @@ function generatePreviewModule(
 ): string {
   const artModuleId = `virtual:musea-art:${art.path}`;
   const escapedVariantName = escapeTemplate(variantName);
-  const cssImportStatements = cssImports.map((cssPath) => `import '${cssPath}';`).join("\n");
-  const setupImport = previewSetup ? `import __museaPreviewSetup from '${previewSetup}';` : "";
+  const cssImportStatements = cssImports
+    .map((cssPath) => `import '${cssPath}';`)
+    .join("\n");
+  const setupImport = previewSetup
+    ? `import __museaPreviewSetup from '${previewSetup}';`
+    : "";
   const setupCall = previewSetup ? "await __museaPreviewSetup(app);" : "";
 
   return `
@@ -2681,6 +2907,84 @@ function generateManifestModule(artFiles: Map<string, ArtFileInfo>): string {
   return `export const arts = ${JSON.stringify(arts, null, 2)};`;
 }
 
+/**
+ * Extract the content of the first <script setup> block from a Vue SFC source.
+ */
+function extractScriptSetupContent(source: string): string | undefined {
+  const match = source.match(/<script\s+[^>]*setup[^>]*>([\s\S]*?)<\/script>/);
+  return match?.[1]?.trim();
+}
+
+/**
+ * Parse script setup content into imports and setup body.
+ * Returns the import lines, setup body lines, and all identifiers to expose.
+ */
+function parseScriptSetupForArt(content: string): {
+  imports: string[];
+  setupBody: string[];
+  returnNames: string[];
+} {
+  const lines = content.split("\n");
+  const imports: string[] = [];
+  const setupBody: string[] = [];
+  const returnNames: Set<string> = new Set();
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("//")) continue;
+
+    if (trimmed.startsWith("import ")) {
+      imports.push(line);
+      // Extract imported names for the return statement
+      const defaultMatch = trimmed.match(/^import\s+(\w+)/);
+      if (defaultMatch && defaultMatch[1] !== "type") {
+        returnNames.add(defaultMatch[1]);
+      }
+      const namedMatch = trimmed.match(/\{([^}]+)\}/);
+      if (namedMatch) {
+        for (const part of namedMatch[1].split(",")) {
+          const name = part.trim().split(/\s+as\s+/).pop()?.trim();
+          if (name && !name.startsWith("type ")) {
+            returnNames.add(name);
+          }
+        }
+      }
+    } else {
+      setupBody.push(line);
+      // Extract declared variable names
+      const constMatch = trimmed.match(/^(?:const|let|var)\s+(\w+)/);
+      if (constMatch) {
+        returnNames.add(constMatch[1]);
+      }
+      // Handle destructuring: const { a, b } = ...
+      const destructMatch = trimmed.match(/^(?:const|let|var)\s+\{([^}]+)\}/);
+      if (destructMatch) {
+        for (const part of destructMatch[1].split(",")) {
+          const name = part.trim().split(/\s*:\s*/).shift()?.trim();
+          if (name) returnNames.add(name);
+        }
+      }
+      // Handle array destructuring: const [a, b] = ...
+      const arrayMatch = trimmed.match(/^(?:const|let|var)\s+\[([^\]]+)\]/);
+      if (arrayMatch) {
+        for (const part of arrayMatch[1].split(",")) {
+          const name = part.trim();
+          if (name && name !== "...") returnNames.add(name);
+        }
+      }
+    }
+  }
+
+  // Remove 'type' keyword imports and common Vue utilities that shouldn't be returned
+  returnNames.delete("type");
+
+  return {
+    imports,
+    setupBody,
+    returnNames: [...returnNames],
+  };
+}
+
 function generateArtModule(art: ArtFileInfo, filePath: string): string {
   let componentImportPath: string | undefined;
   let componentName: string | undefined;
@@ -2692,17 +2996,34 @@ function generateArtModule(art: ArtFileInfo, filePath: string): string {
   } else if (art.metadata.component) {
     // Traditional .art.vue: resolve component from the component attribute
     const comp = art.metadata.component;
-    componentImportPath = path.isAbsolute(comp) ? comp : path.resolve(path.dirname(filePath), comp);
+    componentImportPath = path.isAbsolute(comp)
+      ? comp
+      : path.resolve(path.dirname(filePath), comp);
     componentName = path.basename(comp, ".vue");
   }
+
+  // Parse script setup if present
+  const scriptSetup = art.scriptSetupContent
+    ? parseScriptSetupForArt(art.scriptSetupContent)
+    : null;
 
   let code = `
 // Auto-generated module for: ${path.basename(filePath)}
 import { defineComponent, h } from 'vue';
 `;
 
+  // Add script setup imports at module level
+  if (scriptSetup) {
+    for (const imp of scriptSetup.imports) {
+      code += `${imp}\n`;
+    }
+  }
+
   if (componentImportPath && componentName) {
-    code += `import ${componentName} from '${componentImportPath}';\n`;
+    // Only add component import if not already imported by script setup
+    if (!scriptSetup || !scriptSetup.imports.some((imp) => imp.includes(`from '${componentImportPath}'`) || imp.includes(`from "${componentImportPath}"`))) {
+      code += `import ${componentName} from '${componentImportPath}';\n`;
+    }
     code += `export const __component__ = ${componentName};\n`;
   }
 
@@ -2733,12 +3054,25 @@ export const variants = ${JSON.stringify(art.variants)};
     // Wrap template with the variant container
     const fullTemplate = `<div class="musea-variant" data-variant="${variant.name}">${escapedTemplate}</div>`;
 
-    if (componentName) {
+    const components = componentName ? `  components: { ${componentName} },\n` : "";
+
+    if (scriptSetup && scriptSetup.setupBody.length > 0) {
+      // Generate variant with setup function from art file's <script setup>
+      code += `
+export const ${variantComponentName} = defineComponent({
+  name: '${variantComponentName}',
+${components}  setup() {
+${scriptSetup.setupBody.map((l) => `    ${l}`).join("\n")}
+    return { ${scriptSetup.returnNames.join(", ")} };
+  },
+  template: \`${fullTemplate}\`,
+});
+`;
+    } else if (componentName) {
       code += `
 export const ${variantComponentName} = {
   name: '${variantComponentName}',
-  components: { ${componentName} },
-  template: \`${fullTemplate}\`,
+${components}  template: \`${fullTemplate}\`,
 };
 `;
     } else {
@@ -2752,7 +3086,8 @@ export const ${variantComponentName} = {
   }
 
   // Default export
-  const defaultVariant = art.variants.find((v) => v.isDefault) || art.variants[0];
+  const defaultVariant =
+    art.variants.find((v) => v.isDefault) || art.variants[0];
   if (defaultVariant) {
     code += `
 export default ${toPascalCase(defaultVariant.name)};
@@ -2811,8 +3146,12 @@ function generatePreviewModuleWithProps(
   const artModuleId = `virtual:musea-art:${art.path}`;
   const escapedVariantName = escapeTemplate(variantName);
   const propsJson = JSON.stringify(propsOverride);
-  const cssImportStatements = cssImports.map((cssPath) => `import '${cssPath}';`).join("\n");
-  const setupImport = previewSetup ? `import __museaPreviewSetup from '${previewSetup}';` : "";
+  const cssImportStatements = cssImports
+    .map((cssPath) => `import '${cssPath}';`)
+    .join("\n");
+  const setupImport = previewSetup
+    ? `import __museaPreviewSetup from '${previewSetup}';`
+    : "";
   const setupCall = previewSetup ? "await __museaPreviewSetup(app);" : "";
 
   return `
@@ -2856,7 +3195,12 @@ mount();
 `;
 }
 
-function generatePreviewHtml(art: ArtFileInfo, variant: ArtVariant, _basePath: string, viteBase?: string): string {
+function generatePreviewHtml(
+  art: ArtFileInfo,
+  variant: ArtVariant,
+  _basePath: string,
+  viteBase?: string,
+): string {
   // Use preview-module HTTP endpoint instead of virtual module import.
   // Virtual module imports in inline scripts require transformIndexHtml,
   // which creates malformed html-proxy URLs when the page URL has query params.
@@ -2882,7 +3226,6 @@ function generatePreviewHtml(art: ArtFileInfo, variant: ArtVariant, _basePath: s
     }
     .musea-variant {
       padding: 1.5rem;
-      display: flex;
       align-items: center;
       justify-content: center;
       min-height: 100vh;

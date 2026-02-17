@@ -194,6 +194,8 @@ export interface ArtFileInfo {
   variants: ArtVariant[];
   /** Whether file has script setup */
   hasScriptSetup: boolean;
+  /** Raw content of the <script setup> block */
+  scriptSetupContent?: string;
   /** Whether file has regular script */
   hasScript: boolean;
   /** Number of style blocks */
