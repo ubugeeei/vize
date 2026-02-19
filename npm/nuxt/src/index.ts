@@ -48,7 +48,7 @@ export default defineNuxtModule<VizeNuxtOptions>({
     nuxt.options.vite.plugins = nuxt.options.vite.plugins || [];
 
     // Compiler
-    nuxt.options.vite.plugins.push(vize({ autoImportComponents: "#components" }));
+    nuxt.options.vite.plugins.push(vize());
 
     // Musea gallery (without nuxtMusea mock layer)
     // In Nuxt context, real composables/components are already available

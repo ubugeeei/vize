@@ -851,32 +851,6 @@ export function vize(options: VizeOptions = {}): Plugin[] {
             transformed = applyDefineReplacements(transformed, defines);
           }
 
-          // Auto-import components: replace _resolveComponent("X") with static imports
-          const autoImportModule = mergedOptions.autoImportComponents;
-          if (autoImportModule && transformed.includes("_resolveComponent(")) {
-            const componentNames = new Set<string>();
-            const resolveRe = /_resolveComponent\("([^"]+)"\)/g;
-            let m: RegExpExecArray | null;
-            while ((m = resolveRe.exec(transformed)) !== null) {
-              componentNames.add(m[1]);
-            }
-            if (componentNames.size > 0) {
-              const imports: string[] = [];
-              for (const name of componentNames) {
-                const varName = `__vize_auto_${name.replace(/[^a-zA-Z0-9_]/g, "_")}`;
-                imports.push(
-                  `import { ${name} as ${varName} } from ${JSON.stringify(autoImportModule)};`,
-                );
-                const nameEscaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                transformed = transformed.replace(
-                  new RegExp(`_resolveComponent\\("${nameEscaped}"\\)`, "g"),
-                  varName,
-                );
-              }
-              transformed = imports.join("\n") + "\n" + transformed;
-            }
-          }
-
           return { code: transformed, map: result.map as TransformResult["map"] };
         } catch (e: unknown) {
           logger.error(`transformWithOxc failed for ${realPath}:`, e);

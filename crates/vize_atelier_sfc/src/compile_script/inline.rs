@@ -262,6 +262,23 @@ pub fn compile_script_setup_inline(
             }
         }
 
+        // Detect destructure where value starts on the next line:
+        //   const { x, y } =
+        //     defineProps<...>()
+        // Braces are balanced on this line but the RHS is on the next line.
+        if (trimmed.starts_with("const {")
+            || trimmed.starts_with("let {")
+            || trimmed.starts_with("var {"))
+            && trimmed.contains('}')
+            && trimmed.ends_with('=')
+        {
+            in_destructure = true;
+            destructure_buffer = line.to_string() + "\n";
+            brace_depth = 0; // braces are balanced on this line
+            macro_angle_depth = 0;
+            continue;
+        }
+
         // Detect destructure start (without type args)
         if (trimmed.starts_with("const {")
             || trimmed.starts_with("let {")
@@ -1393,6 +1410,156 @@ const heading = computed(() => route.name)
     }
 
     #[test]
+    fn test_define_props_with_trailing_semicolon() {
+        // Semicolons at end of defineProps() should not prevent macro detection
+        let content = r#"
+import { ref } from 'vue'
+
+interface Props {
+    msg: string
+}
+
+const { msg } = defineProps<Props>();
+const count = ref(0)
+"#;
+        let output = compile_setup(content);
+        assert!(
+            output.contains("props: {"),
+            "should generate props declaration even with trailing semicolon. Got:\n{}",
+            output
+        );
+        assert!(
+            output.contains("msg:"),
+            "should include msg prop. Got:\n{}",
+            output
+        );
+        assert!(
+            output.contains("const count = ref(0)"),
+            "code after defineProps should be present. Got:\n{}",
+            output
+        );
+    }
+
+    #[test]
+    fn test_multiline_define_props_with_trailing_semicolon() {
+        // Multi-line defineProps with trailing semicolon on closing line
+        let content = r#"
+import { ref } from 'vue'
+
+const { label, disabled } = defineProps<{
+    label: string
+    disabled?: boolean
+}>();
+const x = ref(1)
+"#;
+        let output = compile_setup(content);
+        assert!(
+            output.contains("props: {"),
+            "should generate props declaration for multiline defineProps with semicolon. Got:\n{}",
+            output
+        );
+        assert!(
+            output.contains("const x = ref(1)"),
+            "code after defineProps should be present. Got:\n{}",
+            output
+        );
+    }
+
+    #[test]
+    fn test_with_defaults_trailing_semicolon() {
+        // withDefaults with trailing semicolon
+        let content = r#"
+import { ref } from 'vue'
+
+interface Props {
+    msg: string
+    count?: number
+}
+
+const { msg, count } = withDefaults(defineProps<Props>(), {
+    count: 0,
+});
+const x = ref(1)
+"#;
+        let output = compile_setup(content);
+        assert!(
+            output.contains("props: {"),
+            "should generate props declaration for withDefaults with semicolon. Got:\n{}",
+            output
+        );
+        assert!(
+            output.contains("const x = ref(1)"),
+            "code after withDefaults should be present. Got:\n{}",
+            output
+        );
+    }
+
+    /// Helper to compile with no template (empty render_body)
+    fn compile_setup_no_template(script_content: &str) -> String {
+        let empty_template = TemplateParts {
+            imports: "",
+            hoisted: "",
+            preamble: "",
+            render_body: "",
+        };
+        let result = compile_script_setup_inline(
+            script_content,
+            "TestComponent",
+            false,
+            true,
+            empty_template,
+            None,
+        )
+        .expect("compilation should succeed");
+        result.code
+    }
+
+    #[test]
+    fn test_no_template_returns_setup_bindings() {
+        // When there's no template, setup bindings should be returned as an object
+        let content = r#"
+import { ref, computed } from 'vue'
+
+const count = ref(0)
+const doubled = computed(() => count.value * 2)
+"#;
+        let output = compile_setup_no_template(content);
+        assert!(
+            output.contains("return {"),
+            "no-template case should return setup bindings. Got:\n{}",
+            output
+        );
+        assert!(
+            output.contains("count"),
+            "should return count binding. Got:\n{}",
+            output
+        );
+        assert!(
+            output.contains("doubled"),
+            "should return doubled binding. Got:\n{}",
+            output
+        );
+    }
+
+    #[test]
+    fn test_no_template_returns_imported_bindings() {
+        // Imported bindings should also be returned for runtime template compilation
+        let content = r#"
+import { onMounted } from 'vue'
+
+onMounted(() => {
+    console.log('mounted')
+})
+"#;
+        let output = compile_setup_no_template(content);
+        assert!(
+            output.contains("return {") && output.contains("onMounted"),
+            "no-template case should return imported bindings too (for runtime template access). Got:\n{}",
+            output
+        );
+    }
+
+    #[test]
     fn test_export_type_generates_props_declaration() {
         let content = r#"
 export type MenuItemProps = {
@@ -1422,6 +1589,107 @@ const { label, disabled, routeName } = defineProps<MenuItemProps>()
         assert!(
             output.contains("disabled:"),
             "should include disabled prop. Got:\n{}",
+            output
+        );
+    }
+
+    #[test]
+    fn test_define_props_destructure_value_on_next_line() {
+        // Pattern: const { ... } =\n  defineProps<...>()
+        // The destructure pattern is complete on line 1, but defineProps is on line 2.
+        let content = r#"
+import { computed } from 'vue'
+
+interface TimetableCell {
+    type: string
+    title: string
+    startTime: string
+}
+
+const { type, title, startTime } =
+  defineProps<TimetableCell>();
+const accentColor = computed(() => type === 'event' ? 'primary' : 'secondary')
+"#;
+        let output = compile_setup(content);
+        assert!(
+            output.contains("props: {"),
+            "should generate props declaration for next-line defineProps. Got:\n{}",
+            output
+        );
+        assert!(
+            output.contains("type:") && output.contains("String"),
+            "should include type prop. Got:\n{}",
+            output
+        );
+        assert!(
+            output.contains("title:") && output.contains("String"),
+            "should include title prop. Got:\n{}",
+            output
+        );
+        // Verify props destructure references are transformed correctly in setup body
+        let setup_start = output.find("setup(").expect("should have setup");
+        let setup_body = &output[setup_start..];
+        assert!(
+            setup_body.contains("__props.type"),
+            "destructured prop 'type' should be rewritten to __props.type in setup body. Got:\n{}",
+            output
+        );
+        assert!(
+            !setup_body.contains("const { __props."),
+            "destructure declaration should NOT appear in setup body. Got:\n{}",
+            output
+        );
+    }
+
+    #[test]
+    fn test_define_props_destructure_value_on_next_line_with_semicolon() {
+        // Same pattern with trailing semicolon
+        let content = r#"
+import { ref } from 'vue'
+
+interface Props {
+    msg: string
+    count: number
+}
+
+const { msg, count } =
+  defineProps<Props>();
+const doubled = ref(count * 2)
+"#;
+        let output = compile_setup(content);
+        assert!(
+            output.contains("props: {"),
+            "should generate props declaration. Got:\n{}",
+            output
+        );
+        assert!(
+            output.contains("msg:") && output.contains("String"),
+            "should include msg prop. Got:\n{}",
+            output
+        );
+    }
+
+    #[test]
+    fn test_non_props_destructure_value_on_next_line() {
+        // Ensure regular (non-defineProps) destructures with value on next line
+        // still work correctly
+        let content = r#"
+import { ref, toRefs } from 'vue'
+
+const state = ref({ x: 1, y: 2 })
+const { x, y } =
+  toRefs(state.value)
+const sum = ref(x.value + y.value)
+"#;
+        let output = compile_setup(content);
+        assert!(
+            output.contains("toRefs("),
+            "non-props destructure should be preserved in setup body. Got:\n{}",
+            output
+        );
+        assert!(
+            output.contains("const sum = ref("),
+            "code after destructure should be present. Got:\n{}",
             output
         );
     }

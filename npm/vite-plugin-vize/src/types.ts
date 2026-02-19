@@ -103,13 +103,6 @@ export interface VizeOptions {
   handleNodeModulesVue?: boolean;
 
   /**
-   * Auto-import component module specifier.
-   * When set, _resolveComponent("X") calls in compiled output are replaced
-   * with static imports from this module (e.g., "#components" for Nuxt).
-   */
-  autoImportComponents?: string;
-
-  /**
    * Enable debug logging
    * @default false
    */
