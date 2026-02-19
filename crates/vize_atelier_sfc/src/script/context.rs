@@ -222,6 +222,29 @@ impl ScriptCompileContext {
                     let type_body = source[type_start..type_end].to_string();
                     self.type_aliases.insert(name, type_body);
                 }
+                // Handle exported types: `export type X = ...` and `export interface X { ... }`
+                Statement::ExportNamedDeclaration(export_decl) => {
+                    if let Some(ref decl) = export_decl.declaration {
+                        match decl {
+                            oxc_ast::ast::Declaration::TSInterfaceDeclaration(iface) => {
+                                let name = iface.id.name.to_string();
+                                let body_start = iface.body.span.start as usize;
+                                let body_end = iface.body.span.end as usize;
+                                let body = source[body_start..body_end].to_string();
+                                self.interfaces.insert(name, body);
+                            }
+                            oxc_ast::ast::Declaration::TSTypeAliasDeclaration(type_alias) => {
+                                let name = type_alias.id.name.to_string();
+                                let type_start =
+                                    type_alias.type_annotation.span().start as usize;
+                                let type_end = type_alias.type_annotation.span().end as usize;
+                                let type_body = source[type_start..type_end].to_string();
+                                self.type_aliases.insert(name, type_body);
+                            }
+                            _ => {}
+                        }
+                    }
+                }
                 _ => {}
             }
         }
@@ -959,6 +982,69 @@ const props = defineProps<Props>()
         assert!(ctx.has_define_props_call);
         assert_eq!(ctx.bindings.bindings.get("foo"), Some(&BindingType::Props));
         assert_eq!(ctx.bindings.bindings.get("bar"), Some(&BindingType::Props));
+    }
+
+    #[test]
+    fn test_define_props_with_exported_type_alias() {
+        let content = r#"
+export type MenuItemProps = {
+    id: string
+    label: string
+    routeName: string
+    disabled?: boolean
+}
+const { label, disabled, routeName } = defineProps<MenuItemProps>()
+"#;
+        let mut ctx = ScriptCompileContext::new(content);
+        ctx.analyze();
+
+        // Check exported type alias was captured
+        assert!(
+            ctx.type_aliases.contains_key("MenuItemProps"),
+            "export type alias should be collected"
+        );
+
+        // Check props were extracted from exported type alias
+        assert!(ctx.has_define_props_call);
+        assert_eq!(
+            ctx.bindings.bindings.get("label"),
+            Some(&BindingType::Props)
+        );
+        assert_eq!(
+            ctx.bindings.bindings.get("disabled"),
+            Some(&BindingType::Props)
+        );
+        assert_eq!(
+            ctx.bindings.bindings.get("routeName"),
+            Some(&BindingType::Props)
+        );
+    }
+
+    #[test]
+    fn test_define_props_with_exported_interface() {
+        let content = r#"
+export interface Props {
+    msg: string
+    count?: number
+}
+const props = defineProps<Props>()
+"#;
+        let mut ctx = ScriptCompileContext::new(content);
+        ctx.analyze();
+
+        // Check exported interface was captured
+        assert!(
+            ctx.interfaces.contains_key("Props"),
+            "export interface should be collected"
+        );
+
+        // Check props were extracted from exported interface
+        assert!(ctx.has_define_props_call);
+        assert_eq!(ctx.bindings.bindings.get("msg"), Some(&BindingType::Props));
+        assert_eq!(
+            ctx.bindings.bindings.get("count"),
+            Some(&BindingType::Props)
+        );
     }
 
     #[test]

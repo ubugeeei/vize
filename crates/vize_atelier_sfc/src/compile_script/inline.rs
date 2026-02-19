@@ -1360,6 +1360,40 @@ const heading = computed(() => route.name)
             output
         );
     }
+
+    #[test]
+    fn test_export_type_generates_props_declaration() {
+        let content = r#"
+export type MenuItemProps = {
+    id: string
+    label: string
+    routeName: string
+    disabled?: boolean
+}
+const { label, disabled, routeName } = defineProps<MenuItemProps>()
+"#;
+        let output = compile_setup(content);
+        assert!(
+            output.contains("props: {"),
+            "should generate props declaration for export type. Got:\n{}",
+            output
+        );
+        assert!(
+            output.contains("label:") && output.contains("String"),
+            "should include label prop. Got:\n{}",
+            output
+        );
+        assert!(
+            output.contains("routeName:") && output.contains("String"),
+            "should include routeName prop. Got:\n{}",
+            output
+        );
+        assert!(
+            output.contains("disabled:"),
+            "should include disabled prop. Got:\n{}",
+            output
+        );
+    }
 }
 
 /// Resolve a single type name to its definition body.
