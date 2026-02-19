@@ -1046,6 +1046,37 @@ pub fn compile_script_setup_inline(
         }
         output.push(b'\n');
         output.extend_from_slice(b"}\n");
+    } else {
+        // No template (e.g., Musea art files) — return setup bindings as an object
+        // so they're accessible for runtime template compilation (compileToFunction).
+        use crate::types::BindingType;
+        let setup_bindings: Vec<&String> = ctx
+            .bindings
+            .bindings
+            .iter()
+            .filter(|(_, bt)| {
+                matches!(
+                    bt,
+                    BindingType::SetupLet
+                        | BindingType::SetupMaybeRef
+                        | BindingType::SetupRef
+                        | BindingType::SetupReactiveConst
+                        | BindingType::SetupConst
+                        | BindingType::LiteralConst
+                )
+            })
+            .map(|(name, _)| name)
+            .collect();
+        if !setup_bindings.is_empty() {
+            output.extend_from_slice(b"return { ");
+            for (i, name) in setup_bindings.iter().enumerate() {
+                if i > 0 {
+                    output.extend_from_slice(b", ");
+                }
+                output.extend_from_slice(name.as_bytes());
+            }
+            output.extend_from_slice(b" }\n");
+        }
     }
 
     output.extend_from_slice(b"}\n");
