@@ -200,6 +200,11 @@ export function resolveCssImports(
     );
   }
 
+  // Phase 5: Unwrap Vue scoped CSS pseudo-selectors (:deep, :slotted, :global)
+  // Vize uses native CSS nesting with scope attribute only on the root element,
+  // so :deep(X) is simply X (no scope attribute to remove from child selectors).
+  result = result.replace(/:deep\(([^()]*(?:\([^()]*\))*[^()]*)\)/g, "$1");
+
   // Clean up excessive blank lines
   result = result.replace(/\n{3,}/g, "\n\n");
 
