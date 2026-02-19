@@ -151,20 +151,20 @@ importers:
         specifier: ^4.0.0
         version: 4.3.1(magicast@0.5.2)
       '@vizejs/musea-nuxt':
-        specifier: workspace:^
+        specifier: file:../musea-nuxt
         version: link:../musea-nuxt
       '@vizejs/vite-plugin':
-        specifier: workspace:^
+        specifier: file:../vite-plugin-vize
         version: link:../vite-plugin-vize
       '@vizejs/vite-plugin-musea':
-        specifier: workspace:^
+        specifier: file:../vite-plugin-musea
         version: link:../vite-plugin-musea
       nuxt:
         specifier: ^3.0.0 || ^4.0.0
         version: 4.3.1(@azure/identity@4.13.0)(@parcel/watcher@2.5.6)(@types/node@22.19.3)(@vue/compiler-sfc@3.5.28)(cac@6.7.14)(commander@12.1.0)(db0@0.3.4)(ioredis@5.9.2)(lightningcss@1.31.1)(magicast@0.5.2)(oxlint@1.42.0(oxlint-tsgolint@0.11.4))(rolldown@1.0.0-beta.8-commit.151352b(@oxc-project/runtime@0.111.0)(typescript@5.9.3))(rollup@4.57.1)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(vite@8.0.0-beta.11(@types/node@22.19.3)(esbuild@0.27.3)(jiti@2.6.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(vue-tsc@2.2.12(typescript@5.9.3))(xml2js@0.5.0)(yaml@2.8.2)
       vize:
-        specifier: workspace:^
-        version: link:../vscode-vize
+        specifier: file:../vize
+        version: link:../vize
     devDependencies:
       tsdown:
         specifier: ^0.9.0
@@ -185,7 +185,7 @@ importers:
   npm/vite-plugin-musea:
     dependencies:
       '@vizejs/native':
-        specifier: workspace:*
+        specifier: file:../vize-native
         version: link:../vize-native
       axe-core:
         specifier: ^4.7.0
@@ -210,7 +210,7 @@ importers:
         specifier: ^6.0.4
         version: 6.0.4(vite@8.0.0-beta.11(@types/node@22.19.3)(esbuild@0.27.3)(jiti@2.6.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(vue@3.5.26(typescript@5.9.3))
       '@vizejs/vite-plugin':
-        specifier: workspace:*
+        specifier: file:../vite-plugin-vize
         version: link:../vite-plugin-vize
       highlight.js:
         specifier: ^11.11.1
@@ -243,7 +243,7 @@ importers:
   npm/vite-plugin-vize:
     dependencies:
       '@vizejs/native':
-        specifier: workspace:*
+        specifier: file:../vize-native
         version: link:../vize-native
       tinyglobby:
         specifier: ^0.2.0
