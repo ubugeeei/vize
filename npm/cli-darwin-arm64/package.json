@@ -1,6 +1,6 @@
 {
   "name": "@vizejs/cli-darwin-arm64",
-  "version": "0.0.1-alpha.111",
+  "version": "0.0.1-alpha.112",
   "description": "Vize CLI binary for darwin-arm64",
   "os": [
     "darwin"
