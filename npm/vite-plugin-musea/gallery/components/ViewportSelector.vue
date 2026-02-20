@@ -24,6 +24,7 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
 <template>
   <div ref="selectorRef" class="viewport-selector">
     <button
+      type="button"
       class="viewport-btn"
       :class="{ active: viewport.width !== '100%' }"
       @click="showDropdown = !showDropdown"
@@ -38,6 +39,7 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
 
     <button
       v-if="viewport.width !== '100%'"
+      type="button"
       class="rotate-btn"
       title="Rotate"
       :class="{ active: viewportRotated }"
@@ -53,6 +55,7 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
       <button
         v-for="preset in VIEWPORT_PRESETS"
         :key="preset.name"
+        type="button"
         class="viewport-option"
         :class="{ active: viewport.name === preset.name }"
         @click="selectPreset(preset)"

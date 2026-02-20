@@ -1137,8 +1137,28 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
                     }
                   }
                   if (minIndent === Infinity) minIndent = 0;
-                  // Remove minimum indentation from all lines
-                  const formatted = lines.map((line) => line.slice(minIndent)).join("\n");
+                  let formatted: string;
+                  if (minIndent > 0) {
+                    // Remove minimum indentation from all lines
+                    formatted = lines.map((line) => line.slice(minIndent)).join("\n");
+                  } else {
+                    // minIndent is 0: first line may have no indent while subsequent lines do.
+                    // Calculate common indent of lines 2+ and strip only from those.
+                    let restIndent = Infinity;
+                    for (let i = 1; i < lines.length; i++) {
+                      if (lines[i].trim()) {
+                        const indent = lines[i].match(/^(\s*)/)?.[1].length || 0;
+                        restIndent = Math.min(restIndent, indent);
+                      }
+                    }
+                    if (restIndent === Infinity || restIndent === 0) {
+                      formatted = lines.join("\n");
+                    } else {
+                      formatted = lines
+                        .map((line, i) => (i === 0 ? line : line.slice(restIndent)))
+                        .join("\n");
+                    }
+                  }
                   return "```" + lang + "\n" + formatted + "```";
                 });
                 sendJson({ ...doc, markdown });
@@ -1522,10 +1542,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
           isDefault: v.isDefault,
           skipVrt: v.skipVrt,
         })),
-        hasScriptSetup: parsed.hasScriptSetup,
-        scriptSetupContent: parsed.hasScriptSetup
-          ? extractScriptSetupContent(source)
-          : undefined,
+        hasScriptSetup: isInline ? false : parsed.hasScriptSetup,
+        scriptSetupContent:
+          !isInline && parsed.hasScriptSetup ? extractScriptSetupContent(source) : undefined,
         hasScript: parsed.hasScript,
         styleCount: parsed.styleCount,
         isInline,
@@ -2706,6 +2725,9 @@ window.__museaSetProps = (props) => {
 };
 
 window.__museaSetSlots = (slots) => {
+  for (const key of Object.keys(slotsOverride)) {
+    delete slotsOverride[key];
+  }
   Object.assign(slotsOverride, slots);
 };
 
@@ -2740,6 +2762,9 @@ async function mount() {
         remountWithProps(RawComponent);
       };
       window.__museaSetSlots = (slots) => {
+        for (const key of Object.keys(slotsOverride)) {
+          delete slotsOverride[key];
+        }
         Object.assign(slotsOverride, slots);
         remountWithProps(RawComponent);
       };
@@ -2764,8 +2789,8 @@ async function remountWithProps(Component) {
     setup() {
       return () => {
         const slotFns = {};
-        if (slotsOverride.default) {
-          slotFns.default = () => h('span', { innerHTML: slotsOverride.default });
+        for (const [name, content] of Object.entries(slotsOverride)) {
+          if (content) slotFns[name] = () => h('span', { innerHTML: content });
         }
         return h(Component, { ...propsOverride }, slotFns);
       };
@@ -2902,13 +2927,10 @@ import { defineComponent, h } from 'vue';
   if (scriptSetup) {
     const artDir = path.dirname(filePath);
     for (const imp of scriptSetup.imports) {
-      const resolved = imp.replace(
-        /from\s+(['"])(\.[^'"]+)\1/,
-        (_match, quote, relPath) => {
-          const absPath = path.resolve(artDir, relPath);
-          return `from ${quote}${absPath}${quote}`;
-        },
-      );
+      const resolved = imp.replace(/from\s+(['"])(\.[^'"]+)\1/, (_match, quote, relPath) => {
+        const absPath = path.resolve(artDir, relPath);
+        return `from ${quote}${absPath}${quote}`;
+      });
       code += `${resolved}\n`;
     }
   }
@@ -2917,7 +2939,11 @@ import { defineComponent, h } from 'vue';
     // Only add component import if not already imported by script setup
     const alreadyImported = scriptSetup?.imports.some((imp) => {
       // Check against the original relative path and the resolved absolute path
-      if (imp.includes(`from '${componentImportPath}'`) || imp.includes(`from "${componentImportPath}"`)) return true;
+      if (
+        imp.includes(`from '${componentImportPath}'`) ||
+        imp.includes(`from "${componentImportPath}"`)
+      )
+        return true;
       // Also check by component name as default import (handles relative vs absolute path mismatch)
       return new RegExp(`^import\\s+${componentName}[\\s,]`).test(imp.trim());
     });
@@ -2966,9 +2992,8 @@ export const variants = ${JSON.stringify(art.variants)};
         if (/^[A-Z]/.test(name)) componentNames.add(name);
       }
     }
-    const components = componentNames.size > 0
-      ? `  components: { ${[...componentNames].join(", ")} },\n`
-      : "";
+    const components =
+      componentNames.size > 0 ? `  components: { ${[...componentNames].join(", ")} },\n` : "";
 
     if (scriptSetup && scriptSetup.setupBody.length > 0) {
       // Generate variant with setup function from art file's <script setup>

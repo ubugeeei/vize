@@ -17,14 +17,14 @@ export function sendMessageToAll(iframes: Ref<HTMLIFrameElement[]>, type: string
 
 export function useMessageListener(
   type: string,
-  callback: (payload: unknown) => void,
+  callback: (payload: unknown, event: MessageEvent) => void,
 ): void {
   const handler = (event: MessageEvent) => {
     if (event.origin !== window.location.origin) return
     const data = event.data as MuseaMessage | undefined
     if (!data?.type?.startsWith('musea:')) return
     if (data.type === type) {
-      callback(data.payload)
+      callback(data.payload, event)
     }
   }
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { mdiMagnify, mdiHistory, mdiPalette, mdiDiamond } from '@mdi/js'
+import { useRouter } from 'vue-router'
+import { mdiMagnify, mdiHistory, mdiPalette, mdiDiamond, mdiHome, mdiCheckCircleOutline, mdiNavigationOutline } from '@mdi/js'
 import type { ArtFileInfo } from '../../src/types.js'
 import MdiIcon from './MdiIcon.vue'
 
@@ -13,6 +14,20 @@ const emit = defineEmits<{
   (e: 'close'): void
   (e: 'select', art: ArtFileInfo, variantName?: string): void
 }>()
+
+const router = useRouter()
+
+interface NavItem {
+  name: string
+  route: string
+  icon: string
+}
+
+const navItems: NavItem[] = [
+  { name: 'Home', route: '/', icon: mdiHome },
+  { name: 'Design Tokens', route: '/tokens', icon: mdiPalette },
+  { name: 'Test Summary', route: '/tests', icon: mdiCheckCircleOutline },
+]
 
 const searchInput = ref<HTMLInputElement | null>(null)
 const query = ref('')
@@ -41,21 +56,40 @@ const saveToHistory = (term: string) => {
 }
 
 interface SearchResult {
+  type: 'component'
   art: ArtFileInfo
   matchType: 'title' | 'category' | 'tags' | 'variant' | 'description'
   variantName?: string
   score: number
 }
 
+interface NavSearchResult {
+  type: 'nav'
+  nav: NavItem
+  score: number
+}
+
+type AnyResult = SearchResult | NavSearchResult
+
 // Fuzzy search with scoring
-const results = computed((): SearchResult[] => {
+const results = computed((): AnyResult[] => {
   const q = query.value.toLowerCase().trim()
   if (!q) {
-    // Show history suggestions
     return []
   }
 
-  const scored: SearchResult[] = []
+  const scored: AnyResult[] = []
+
+  // Search navigation items
+  for (const nav of navItems) {
+    if (nav.name.toLowerCase().includes(q)) {
+      scored.push({
+        type: 'nav',
+        nav,
+        score: nav.name.toLowerCase().startsWith(q) ? 110 : 90,
+      })
+    }
+  }
 
   for (const art of props.arts) {
     const title = art.metadata.title.toLowerCase()
@@ -66,6 +100,7 @@ const results = computed((): SearchResult[] => {
     // Title match (highest priority)
     if (title.includes(q)) {
       scored.push({
+        type: 'component',
         art,
         matchType: 'title',
         score: title.startsWith(q) ? 100 : 80,
@@ -76,6 +111,7 @@ const results = computed((): SearchResult[] => {
     // Category match
     if (category.includes(q)) {
       scored.push({
+        type: 'component',
         art,
         matchType: 'category',
         score: 60,
@@ -87,6 +123,7 @@ const results = computed((): SearchResult[] => {
     const matchedTag = tags.find(t => t.includes(q))
     if (matchedTag) {
       scored.push({
+        type: 'component',
         art,
         matchType: 'tags',
         score: 50,
@@ -98,6 +135,7 @@ const results = computed((): SearchResult[] => {
     const matchedVariant = art.variants.find(v => v.name.toLowerCase().includes(q))
     if (matchedVariant) {
       scored.push({
+        type: 'component',
         art,
         matchType: 'variant',
         variantName: matchedVariant.name,
@@ -109,6 +147,7 @@ const results = computed((): SearchResult[] => {
     // Description match (lowest priority)
     if (description.includes(q)) {
       scored.push({
+        type: 'component',
         art,
         matchType: 'description',
         score: 20,
@@ -158,10 +197,15 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 }
 
-const selectResult = (result: SearchResult) => {
+const selectResult = (result: AnyResult) => {
   saveToHistory(query.value)
-  emit('select', result.art, result.variantName)
-  emit('close')
+  if (result.type === 'nav') {
+    router.push(result.nav.route)
+    emit('close')
+  } else {
+    emit('select', result.art, result.variantName)
+    emit('close')
+  }
 }
 
 const selectFromHistory = (term: string) => {
@@ -220,29 +264,42 @@ onUnmounted(() => {
             <template v-if="results.length > 0">
               <div
                 v-for="(result, index) in results"
-                :key="`${result.art.path}-${result.variantName || ''}`"
+                :key="result.type === 'nav' ? `nav-${result.nav.route}` : `${result.art.path}-${result.variantName || ''}`"
                 :class="['search-result', { 'search-result--selected': index === selectedIndex }]"
                 @click="selectResult(result)"
                 @mouseenter="selectedIndex = index"
               >
-                <div class="result-icon">
-                  <MdiIcon v-if="result.matchType === 'variant'" :path="mdiDiamond" :size="16" />
-                  <MdiIcon v-else :path="mdiPalette" :size="16" />
-                </div>
-                <div class="result-content">
-                  <div class="result-title">
-                    {{ result.art.metadata.title }}
-                    <span v-if="result.variantName" class="result-variant">
-                      / {{ result.variantName }}
-                    </span>
+                <template v-if="result.type === 'nav'">
+                  <div class="result-icon">
+                    <MdiIcon :path="result.nav.icon" :size="16" />
                   </div>
-                  <div class="result-meta">
-                    <span v-if="result.art.metadata.category" class="result-category">
-                      {{ result.art.metadata.category }}
-                    </span>
-                    <span class="result-match-type">{{ result.matchType }}</span>
+                  <div class="result-content">
+                    <div class="result-title">{{ result.nav.name }}</div>
+                    <div class="result-meta">
+                      <span class="result-match-type">page</span>
+                    </div>
                   </div>
-                </div>
+                </template>
+                <template v-else>
+                  <div class="result-icon">
+                    <MdiIcon v-if="result.matchType === 'variant'" :path="mdiDiamond" :size="16" />
+                    <MdiIcon v-else :path="mdiPalette" :size="16" />
+                  </div>
+                  <div class="result-content">
+                    <div class="result-title">
+                      {{ result.art.metadata.title }}
+                      <span v-if="result.variantName" class="result-variant">
+                        / {{ result.variantName }}
+                      </span>
+                    </div>
+                    <div class="result-meta">
+                      <span v-if="result.art.metadata.category" class="result-category">
+                        {{ result.art.metadata.category }}
+                      </span>
+                      <span class="result-match-type">{{ result.matchType }}</span>
+                    </div>
+                  </div>
+                </template>
                 <kbd class="result-shortcut">↵</kbd>
               </div>
             </template>
@@ -251,7 +308,7 @@ onUnmounted(() => {
             <template v-else-if="!query && searchHistory.length > 0">
               <div class="search-history-header">
                 <span>Recent Searches</span>
-                <button class="history-clear" @click="clearHistory">Clear</button>
+                <button type="button" class="history-clear" @click="clearHistory">Clear</button>
               </div>
               <div
                 v-for="term in searchHistory"

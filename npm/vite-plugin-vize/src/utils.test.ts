@@ -209,10 +209,7 @@ function resolveCssTransforms(css: string): string {
 .foo { color: red; }
 @media (--mobile) { .foo { font-size: 12px; } }`;
   const result = resolveCssTransforms(css);
-  assert.ok(
-    !result.includes("@custom-media"),
-    "@custom-media definition should be removed",
-  );
+  assert.ok(!result.includes("@custom-media"), "@custom-media definition should be removed");
   assert.ok(
     result.includes("@media (max-width: 768px)"),
     "@media (--mobile) should be resolved to (max-width: 768px). Got:\n" + result,
@@ -347,21 +344,49 @@ function isBuiltinDefine(key: string): boolean {
 
 // Test 24: Built-in define detection
 assert.strictEqual(isBuiltinDefine("import.meta.env"), true, "import.meta.env is builtin");
-assert.strictEqual(isBuiltinDefine("import.meta.env.MODE"), true, "import.meta.env.MODE is builtin");
+assert.strictEqual(
+  isBuiltinDefine("import.meta.env.MODE"),
+  true,
+  "import.meta.env.MODE is builtin",
+);
 assert.strictEqual(isBuiltinDefine("import.meta.server"), true, "import.meta.server is builtin");
 assert.strictEqual(isBuiltinDefine("import.meta.client"), true, "import.meta.client is builtin");
 assert.strictEqual(isBuiltinDefine("import.meta.hot"), true, "import.meta.hot is builtin");
 // Note: __VUE_OPTIONS_API__ starts with __VUE_O, not __VUE__, so it is NOT matched
 // by the current prefix + "_" check. Only __VUE__ (double underscore) would match.
-assert.strictEqual(isBuiltinDefine("__VUE_OPTIONS_API__"), false, "__VUE_OPTIONS_API__ does not match __VUE__ prefix");
-assert.strictEqual(isBuiltinDefine("__VUE__SOMETHING"), true, "__VUE__ (double underscore) is builtin");
-assert.strictEqual(isBuiltinDefine("__NUXT__SOMETHING"), true, "__NUXT__ (double underscore) is builtin");
+assert.strictEqual(
+  isBuiltinDefine("__VUE_OPTIONS_API__"),
+  false,
+  "__VUE_OPTIONS_API__ does not match __VUE__ prefix",
+);
+assert.strictEqual(
+  isBuiltinDefine("__VUE__SOMETHING"),
+  true,
+  "__VUE__ (double underscore) is builtin",
+);
+assert.strictEqual(
+  isBuiltinDefine("__NUXT__SOMETHING"),
+  true,
+  "__NUXT__ (double underscore) is builtin",
+);
 assert.strictEqual(isBuiltinDefine("process.env"), true, "process.env is builtin");
-assert.strictEqual(isBuiltinDefine("process.env.NODE_ENV"), true, "process.env.NODE_ENV is builtin");
+assert.strictEqual(
+  isBuiltinDefine("process.env.NODE_ENV"),
+  true,
+  "process.env.NODE_ENV is builtin",
+);
 
 // Test 25: Non-builtin defines
-assert.strictEqual(isBuiltinDefine("import.meta.vfFeatures"), false, "Custom define is not builtin");
-assert.strictEqual(isBuiltinDefine("import.meta.vfFeatures.photoSection"), false, "Custom nested define is not builtin");
+assert.strictEqual(
+  isBuiltinDefine("import.meta.vfFeatures"),
+  false,
+  "Custom define is not builtin",
+);
+assert.strictEqual(
+  isBuiltinDefine("import.meta.vfFeatures.photoSection"),
+  false,
+  "Custom nested define is not builtin",
+);
 assert.strictEqual(isBuiltinDefine("MY_CUSTOM_FLAG"), false, "Custom flag is not builtin");
 
 // =============================================================================

@@ -30,7 +30,7 @@ function formatRawEvent(event: ActionEvent): string {
   <div class="actions-panel">
     <div class="actions-header">
       <span class="actions-count">{{ events.length }} event{{ events.length !== 1 ? 's' : '' }}</span>
-      <button v-if="events.length > 0" class="actions-clear-btn" @click="clear()">
+      <button v-if="events.length > 0" type="button" class="actions-clear-btn" @click="clear()">
         Clear
       </button>
     </div>

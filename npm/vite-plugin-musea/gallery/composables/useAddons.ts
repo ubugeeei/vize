@@ -34,7 +34,6 @@ export const BG_PRESETS: BackgroundPreset[] = [
   { name: 'Light', color: '#ffffff' },
   { name: 'Dark', color: '#1a1a2e' },
   { name: 'Transparent', color: 'transparent', pattern: 'checkerboard' },
-  { name: 'Twitter', color: '#00acee' },
 ]
 
 const state = reactive({
