@@ -2753,22 +2753,21 @@ async function mount() {
     __museaInitAddons(container, '${escapedVariantName}');
 
     // Override set-props to remount with raw component + props
-    if (RawComponent) {
-      window.__museaSetProps = (props) => {
-        for (const key of Object.keys(propsOverride)) {
-          delete propsOverride[key];
-        }
-        Object.assign(propsOverride, props);
-        remountWithProps(RawComponent);
-      };
-      window.__museaSetSlots = (slots) => {
-        for (const key of Object.keys(slotsOverride)) {
-          delete slotsOverride[key];
-        }
-        Object.assign(slotsOverride, slots);
-        remountWithProps(RawComponent);
-      };
-    }
+    const TargetComponent = RawComponent || VariantComponent;
+    window.__museaSetProps = (props) => {
+      for (const key of Object.keys(propsOverride)) {
+        delete propsOverride[key];
+      }
+      Object.assign(propsOverride, props);
+      remountWithProps(TargetComponent);
+    };
+    window.__museaSetSlots = (slots) => {
+      for (const key of Object.keys(slotsOverride)) {
+        delete slotsOverride[key];
+      }
+      Object.assign(slotsOverride, slots);
+      remountWithProps(TargetComponent);
+    };
   } catch (error) {
     console.error('[musea-preview] Failed to mount:', error);
     container.innerHTML = \`
