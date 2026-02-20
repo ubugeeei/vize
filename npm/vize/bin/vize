@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 import { existsSync } from "fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const binaryName = process.platform === "win32" ? "vize.exe" : "vize";
+const binaryName = process.platform === "win32" ? "vize-cli.exe" : "vize-cli";
 const binaryPath = join(__dirname, binaryName);
 
 if (!existsSync(binaryPath)) {

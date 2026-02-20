@@ -58,7 +58,7 @@ async function main() {
   }
 
   const binDir = join(__dirname, "..", "bin");
-  const binaryName = process.platform === "win32" ? "vize.exe" : "vize";
+  const binaryName = process.platform === "win32" ? "vize-cli.exe" : "vize-cli";
   const binaryPath = join(binDir, binaryName);
 
   // Skip if binary already exists (for local development)
@@ -129,9 +129,17 @@ async function extractTarGz(archivePath, destDir, binaryName) {
   }
 }
 
-async function extractZip(archivePath, destDir, _binaryName) {
+async function extractZip(archivePath, destDir, binaryName) {
   const { execSync } = await import("child_process");
   execSync(`unzip -o "${archivePath}" -d "${destDir}"`, { stdio: "inherit" });
+
+  // Rename extracted binary to match expected name
+  const extractedPath = join(destDir, "vize.exe");
+  const targetPath = join(destDir, binaryName);
+  if (extractedPath !== targetPath && existsSync(extractedPath)) {
+    const { renameSync } = await import("fs");
+    renameSync(extractedPath, targetPath);
+  }
 }
 
 void main();

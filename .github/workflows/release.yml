@@ -481,6 +481,9 @@ jobs:
       - name: Build vite-plugin-musea
         run: pnpm -C npm/vite-plugin-musea build
 
+      - name: Build musea gallery
+        run: pnpm -C npm/vite-plugin-musea build:gallery
+
       - name: Install npm with OIDC support
         run: npm install -g npm@latest
 
