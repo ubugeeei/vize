@@ -868,11 +868,7 @@ impl CompletionService {
                 "@vize:deprecated $1 ",
                 "Deprecation warning",
             ),
-            Self::vize_directive_item(
-                "@vize:dev-only",
-                "@vize:dev-only",
-                "Strip in production",
-            ),
+            Self::vize_directive_item("@vize:dev-only", "@vize:dev-only", "Strip in production"),
         ]
     }
 
@@ -1414,10 +1410,7 @@ mod tests {
         assert!(todo.is_some());
         let todo = todo.unwrap();
         assert_eq!(todo.insert_text_format, Some(InsertTextFormat::SNIPPET));
-        assert_eq!(
-            todo.insert_text,
-            Some("@vize:todo $1 ".to_string())
-        );
+        assert_eq!(todo.insert_text, Some("@vize:todo $1 ".to_string()));
 
         // Check all expected directives are present
         let labels: Vec<&str> = items.iter().map(|i| i.label.as_str()).collect();

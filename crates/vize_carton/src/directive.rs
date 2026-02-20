@@ -96,9 +96,7 @@ pub fn parse_vize_directive(content: &str, line: u32, offset: u32) -> Option<Viz
 ///
 /// The payload should be the full keyword like `level(warn)`.
 pub fn parse_level_severity(payload: &str) -> Option<DirectiveSeverity> {
-    let inner = payload
-        .strip_prefix("level(")?
-        .strip_suffix(')')?;
+    let inner = payload.strip_prefix("level(")?.strip_suffix(')')?;
 
     match inner {
         "warn" => Some(DirectiveSeverity::Warn),
@@ -159,21 +157,30 @@ mod tests {
     fn test_parse_level_warn() {
         let d = parse_vize_directive("@vize:level(warn)", 1, 0).unwrap();
         assert_eq!(d.kind, DirectiveKind::Level);
-        assert_eq!(parse_level_severity(&d.payload), Some(DirectiveSeverity::Warn));
+        assert_eq!(
+            parse_level_severity(&d.payload),
+            Some(DirectiveSeverity::Warn)
+        );
     }
 
     #[test]
     fn test_parse_level_error() {
         let d = parse_vize_directive("@vize:level(error)", 1, 0).unwrap();
         assert_eq!(d.kind, DirectiveKind::Level);
-        assert_eq!(parse_level_severity(&d.payload), Some(DirectiveSeverity::Error));
+        assert_eq!(
+            parse_level_severity(&d.payload),
+            Some(DirectiveSeverity::Error)
+        );
     }
 
     #[test]
     fn test_parse_level_off() {
         let d = parse_vize_directive("@vize:level(off)", 1, 0).unwrap();
         assert_eq!(d.kind, DirectiveKind::Level);
-        assert_eq!(parse_level_severity(&d.payload), Some(DirectiveSeverity::Off));
+        assert_eq!(
+            parse_level_severity(&d.payload),
+            Some(DirectiveSeverity::Off)
+        );
     }
 
     #[test]

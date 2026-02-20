@@ -428,7 +428,11 @@ impl<'a> LintContext<'a> {
     }
 
     /// Set a severity override for diagnostics on the next line
-    pub fn set_severity_override_next_line(&mut self, current_line: u32, severity: DirectiveSeverity) {
+    pub fn set_severity_override_next_line(
+        &mut self,
+        current_line: u32,
+        severity: DirectiveSeverity,
+    ) {
         self.severity_overrides.insert(current_line + 1, severity);
     }
 

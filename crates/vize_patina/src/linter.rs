@@ -563,7 +563,10 @@ const show = true;
             r#"<div><!-- @vize:todo fix this --><span>hello</span></div>"#,
             "test.vue",
         );
-        assert_eq!(result.warning_count, 1, "Should emit 1 warning for @vize:todo");
+        assert_eq!(
+            result.warning_count, 1,
+            "Should emit 1 warning for @vize:todo"
+        );
         assert_eq!(result.diagnostics[0].rule_name, "vize/todo");
         assert!(result.diagnostics[0].message.contains("TODO"));
     }
@@ -587,7 +590,10 @@ const show = true;
             r#"<div><!-- @vize:deprecated use NewComp --><span>hello</span></div>"#,
             "test.vue",
         );
-        assert_eq!(result.warning_count, 1, "Should emit 1 warning for @vize:deprecated");
+        assert_eq!(
+            result.warning_count, 1,
+            "Should emit 1 warning for @vize:deprecated"
+        );
         assert_eq!(result.diagnostics[0].rule_name, "vize/deprecated");
         assert!(result.diagnostics[0].message.contains("Deprecated"));
     }
@@ -608,7 +614,10 @@ const show = true;
 <li v-for="item in items">{{ item }}</li></ul>"#,
             "test.vue",
         );
-        assert_eq!(result.error_count, 0, "Error should be suppressed by @vize:expected");
+        assert_eq!(
+            result.error_count, 0,
+            "Error should be suppressed by @vize:expected"
+        );
     }
 
     #[test]
@@ -621,7 +630,10 @@ const show = true;
 <!-- @vize:ignore-end -->"#,
             "test.vue",
         );
-        assert_eq!(result.error_count, 0, "Errors in ignore region should be suppressed");
+        assert_eq!(
+            result.error_count, 0,
+            "Errors in ignore region should be suppressed"
+        );
     }
 
     #[test]
@@ -631,7 +643,13 @@ const show = true;
             r#"<div><!-- @vize:docs Component documentation --><span>hello</span></div>"#,
             "test.vue",
         );
-        assert_eq!(result.error_count, 0, "Docs directive should not produce errors");
-        assert_eq!(result.warning_count, 0, "Docs directive should not produce warnings");
+        assert_eq!(
+            result.error_count, 0,
+            "Docs directive should not produce errors"
+        );
+        assert_eq!(
+            result.warning_count, 0,
+            "Docs directive should not produce warnings"
+        );
     }
 }

@@ -558,7 +558,7 @@ impl<'a> Parser<'a> {
         let loc = self.create_loc(start - 4, end + 3); // Include <!-- and -->
 
         // Check for @vize: directive
-        let directive = parse_vize_directive(&content, loc.start.line, loc.start.offset);
+        let directive = parse_vize_directive(content, loc.start.line, loc.start.offset);
 
         // Always preserve directive comments (even when options.comments = false)
         // so they can be explicitly handled by codegen and linter
