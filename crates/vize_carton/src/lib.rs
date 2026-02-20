@@ -35,6 +35,7 @@ mod clone_in;
 mod vec;
 
 // Shared modules
+pub mod directive;
 pub mod dom_tag_config;
 pub mod flags;
 pub mod general;

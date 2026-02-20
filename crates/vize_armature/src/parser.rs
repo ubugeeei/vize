@@ -2,6 +2,7 @@
 //!
 //! This parser uses the tokenizer to convert Vue templates into an AST.
 
+use vize_carton::directive::parse_vize_directive;
 use vize_carton::{Box, Bump, String, Vec};
 use vize_relief::ast::*;
 use vize_relief::errors::{CompilerError, ErrorCode};
@@ -553,14 +554,20 @@ impl<'a> Parser<'a> {
 
     /// Process comment
     fn on_comment_impl(&mut self, start: usize, end: usize) {
-        if !self.options.comments {
-            return;
-        }
-
         let content = self.get_source(start, end);
         let loc = self.create_loc(start - 4, end + 3); // Include <!-- and -->
 
-        let comment = CommentNode::new(content, loc);
+        // Check for @vize: directive
+        let directive = parse_vize_directive(content, loc.start.line, loc.start.offset);
+
+        // Always preserve directive comments (even when options.comments = false)
+        // so they can be explicitly handled by codegen and linter
+        if directive.is_none() && !self.options.comments {
+            return;
+        }
+
+        let mut comment = CommentNode::new(content, loc);
+        comment.directive = directive.map(|d| d.kind);
         let boxed = Box::new_in(comment, self.allocator);
         self.add_child(TemplateChildNode::Comment(boxed));
     }

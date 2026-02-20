@@ -1,0 +1,74 @@
+# SFC tests: @vize: comment directives
+
+mode = "sfc"
+
+[[cases]]
+name = "docs directive stripped from output"
+input = """
+<script setup>
+const msg = 'hello'
+</script>
+
+<template>
+  <!-- @vize:docs This component displays a greeting -->
+  <div>{{ msg }}</div>
+</template>
+"""
+
+[[cases]]
+name = "todo directive stripped from output"
+input = """
+<script setup>
+const count = 0
+</script>
+
+<template>
+  <!-- @vize:todo fix this layout -->
+  <span>{{ count }}</span>
+</template>
+"""
+
+[[cases]]
+name = "multiple directive comments stripped"
+input = """
+<script setup>
+const a = 1
+const b = 2
+</script>
+
+<template>
+  <div>
+    <!-- @vize:docs Section A -->
+    <span>{{ a }}</span>
+    <!-- @vize:fixme broken alignment -->
+    <span>{{ b }}</span>
+  </div>
+</template>
+"""
+
+[[cases]]
+name = "regular comments preserved with directives"
+input = """
+<script setup>
+const msg = 'hi'
+</script>
+
+<template>
+  <!-- regular comment kept -->
+  <!-- @vize:docs this is stripped -->
+  <div>{{ msg }}</div>
+</template>
+"""
+
+[[cases]]
+name = "directive only child produces null children"
+input = """
+<script setup>
+</script>
+
+<template>
+  <div>
+    <!-- @vize:dev-only -->
+  </div>
+</template>
+"""

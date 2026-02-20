@@ -5,6 +5,7 @@
 //! and zero-copy transfer to JavaScript.
 
 use serde::{Deserialize, Serialize};
+use vize_carton::directive::DirectiveKind;
 use vize_carton::PatchFlags;
 use vize_carton::{Box, Bump, String, Vec};
 
@@ -597,6 +598,8 @@ impl TextNode {
 pub struct CommentNode {
     pub content: String,
     pub loc: SourceLocation,
+    /// Parsed `@vize:` directive, if this comment contains one.
+    pub directive: Option<DirectiveKind>,
 }
 
 impl CommentNode {
@@ -604,6 +607,7 @@ impl CommentNode {
         Self {
             content: content.into(),
             loc,
+            directive: None,
         }
     }
 

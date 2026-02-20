@@ -4,8 +4,11 @@
 
 use crate::context::{ElementContext, LintContext};
 use crate::rule::Rule;
+use vize_carton::directive::{parse_level_severity, parse_vize_directive, DirectiveKind};
 use vize_carton::CompactString;
-use vize_relief::ast::{ElementNode, ExpressionNode, PropNode, RootNode, TemplateChildNode};
+use vize_relief::ast::{
+    CommentNode, ElementNode, ExpressionNode, PropNode, RootNode, TemplateChildNode,
+};
 
 /// Visit the AST and run all rules
 pub struct LintVisitor<'a, 'ctx, 'rules> {
@@ -49,6 +52,9 @@ impl<'a, 'ctx, 'rules> LintVisitor<'a, 'ctx, 'rules> {
             TemplateChildNode::For(for_node) => self.visit_for(for_node),
             TemplateChildNode::Comment(comment) => {
                 self.process_disable_comment(&comment.content, comment.loc.start.line);
+                if let Some(kind) = comment.directive {
+                    self.process_vize_directive(comment, kind);
+                }
             }
             TemplateChildNode::Text(_) => {}
             _ => {}
@@ -80,6 +86,67 @@ impl<'a, 'ctx, 'rules> LintVisitor<'a, 'ctx, 'rules> {
                 let rules: Vec<&str> = rest.split(',').map(|s| s.trim()).collect();
                 self.ctx.disable_rules(&rules, line, None);
             }
+        }
+    }
+
+    /// Process `@vize:` directives on comment nodes.
+    fn process_vize_directive(&mut self, comment: &CommentNode, kind: DirectiveKind) {
+        let line = comment.loc.start.line;
+        let loc = &comment.loc;
+
+        match kind {
+            DirectiveKind::Todo => {
+                // Parse the payload from the comment content
+                if let Some(d) = parse_vize_directive(&comment.content, line, loc.start.offset) {
+                    let msg = if d.payload.is_empty() {
+                        CompactString::from("TODO")
+                    } else {
+                        CompactString::from(format!("TODO: {}", d.payload))
+                    };
+                    self.ctx.current_rule = "vize/todo";
+                    self.ctx.warn(msg, loc);
+                }
+            }
+            DirectiveKind::Fixme => {
+                if let Some(d) = parse_vize_directive(&comment.content, line, loc.start.offset) {
+                    let msg = if d.payload.is_empty() {
+                        CompactString::from("FIXME")
+                    } else {
+                        CompactString::from(format!("FIXME: {}", d.payload))
+                    };
+                    self.ctx.current_rule = "vize/fixme";
+                    self.ctx.error(msg, loc);
+                }
+            }
+            DirectiveKind::Expected => {
+                self.ctx.expect_error_next_line(line);
+            }
+            DirectiveKind::IgnoreStart => {
+                self.ctx.push_ignore_region(line);
+            }
+            DirectiveKind::IgnoreEnd => {
+                self.ctx.pop_ignore_region(line);
+            }
+            DirectiveKind::Level => {
+                if let Some(d) = parse_vize_directive(&comment.content, line, loc.start.offset) {
+                    if let Some(severity) = parse_level_severity(&d.payload) {
+                        self.ctx.set_severity_override_next_line(line, severity);
+                    }
+                }
+            }
+            DirectiveKind::Deprecated => {
+                if let Some(d) = parse_vize_directive(&comment.content, line, loc.start.offset) {
+                    let msg = if d.payload.is_empty() {
+                        CompactString::from("Deprecated")
+                    } else {
+                        CompactString::from(format!("Deprecated: {}", d.payload))
+                    };
+                    self.ctx.current_rule = "vize/deprecated";
+                    self.ctx.warn(msg, loc);
+                }
+            }
+            // Docs, DevOnly, Unknown: no lint action needed
+            _ => {}
         }
     }
 

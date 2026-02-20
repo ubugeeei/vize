@@ -17,19 +17,31 @@ pub fn generate_children_force_array(ctx: &mut CodegenContext, children: &[Templ
     generate_children_inner(ctx, children, true);
 }
 
+/// Check if a child node is a directive comment that should be stripped.
+#[inline]
+fn is_directive_comment(child: &TemplateChildNode<'_>) -> bool {
+    matches!(child, TemplateChildNode::Comment(c) if c.directive.is_some())
+}
+
 fn generate_children_inner(
     ctx: &mut CodegenContext,
     children: &[TemplateChildNode<'_>],
     force_array: bool,
 ) {
-    if children.is_empty() {
+    // Filter out directive comments — they are invisible to codegen
+    let effective: Vec<&TemplateChildNode<'_>> = children
+        .iter()
+        .filter(|c| !is_directive_comment(c))
+        .collect();
+
+    if effective.is_empty() {
         ctx.push("null");
         return;
     }
 
     // Check if single text/interpolation child can be inlined (unless forced to array)
-    if !force_array && children.len() == 1 {
-        match &children[0] {
+    if !force_array && effective.len() == 1 {
+        match effective[0] {
             TemplateChildNode::Text(text) => {
                 ctx.push("\"");
                 ctx.push(&escape_js_string(&text.content));
@@ -50,7 +62,7 @@ fn generate_children_inner(
     }
 
     // Check if all children are text/interpolation - if so, use string concatenation (unless forced to array)
-    let all_text_or_interp = children.iter().all(|child| {
+    let all_text_or_interp = effective.iter().all(|child| {
         matches!(
             child,
             TemplateChildNode::Text(_) | TemplateChildNode::Interpolation(_)
@@ -59,7 +71,7 @@ fn generate_children_inner(
 
     if !force_array && all_text_or_interp {
         // Generate concatenated expression: "text" + _toDisplayString(expr) + "more"
-        for (i, child) in children.iter().enumerate() {
+        for (i, child) in effective.iter().enumerate() {
             if i > 0 {
                 ctx.push(" + ");
             }
@@ -86,7 +98,7 @@ fn generate_children_inner(
     ctx.push("[");
     ctx.indent();
 
-    for (i, child) in children.iter().enumerate() {
+    for (i, child) in effective.iter().enumerate() {
         if i > 0 {
             ctx.push(",");
         }
@@ -125,7 +137,13 @@ pub fn generate_text(ctx: &mut CodegenContext, text: &TextNode) {
 }
 
 /// Generate comment node
+///
+/// Directive comments (`@vize:` prefix) are stripped from output.
 pub fn generate_comment(ctx: &mut CodegenContext, comment: &CommentNode) {
+    // Strip @vize: directive comments from build output
+    if comment.directive.is_some() {
+        return;
+    }
     let helper = ctx.helper(RuntimeHelper::CreateComment);
     ctx.use_helper(RuntimeHelper::CreateComment);
     ctx.push(helper);

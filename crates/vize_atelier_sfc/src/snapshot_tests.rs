@@ -220,3 +220,49 @@ fn test_patches_js_snapshots() {
         });
     }
 }
+
+#[test]
+fn test_directives_ts_snapshots() {
+    let snapshot_path = snapshots_path().join("sfc").join("ts");
+    std::fs::create_dir_all(&snapshot_path).ok();
+
+    let fixture_path = fixtures_path().join("sfc").join("directives.toml");
+    let fixture = load_fixture(&fixture_path).expect("Failed to load directives fixture");
+
+    for case in &fixture.cases {
+        let normalized_name = normalize_name(&case.name);
+        let ts_output = compile_sfc_ts(&case.input);
+
+        insta::with_settings!({
+            snapshot_path => &snapshot_path,
+            prepend_module_to_snapshot => false,
+            snapshot_suffix => "",
+        }, {
+            let snapshot_name = build_snapshot_name("directives__", &normalized_name);
+            insta::assert_snapshot!(snapshot_name, ts_output);
+        });
+    }
+}
+
+#[test]
+fn test_directives_js_snapshots() {
+    let snapshot_path = snapshots_path().join("sfc").join("js");
+    std::fs::create_dir_all(&snapshot_path).ok();
+
+    let fixture_path = fixtures_path().join("sfc").join("directives.toml");
+    let fixture = load_fixture(&fixture_path).expect("Failed to load directives fixture");
+
+    for case in &fixture.cases {
+        let normalized_name = normalize_name(&case.name);
+        let js_output = compile_sfc_js(&case.input);
+
+        insta::with_settings!({
+            snapshot_path => &snapshot_path,
+            prepend_module_to_snapshot => false,
+            snapshot_suffix => "",
+        }, {
+            let snapshot_name = build_snapshot_name("directives__", &normalized_name);
+            insta::assert_snapshot!(snapshot_name, js_output);
+        });
+    }
+}

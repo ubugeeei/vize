@@ -4,6 +4,7 @@
 
 use crate::diagnostic::{HelpLevel, LintDiagnostic, Severity};
 use std::borrow::Cow;
+use vize_carton::directive::DirectiveSeverity;
 use vize_carton::i18n::{t, t_fmt, Locale};
 use vize_carton::{Allocator, CompactString, FxHashMap, FxHashSet};
 use vize_croquis::Croquis;
@@ -107,6 +108,10 @@ pub struct LintContext<'a> {
     ssr_mode: SsrMode,
     /// Help display level
     help_level: HelpLevel,
+    /// Lines where `@vize:expected` expects an error on the next line
+    expected_error_lines: FxHashSet<u32>,
+    /// Severity overrides from `@vize:level(...)` keyed by next-line number
+    severity_overrides: FxHashMap<u32, DirectiveSeverity>,
 }
 
 impl<'a> LintContext<'a> {
@@ -147,6 +152,8 @@ impl<'a> LintContext<'a> {
             analysis: None,
             ssr_mode: SsrMode::default(),
             help_level: HelpLevel::default(),
+            expected_error_lines: FxHashSet::default(),
+            severity_overrides: FxHashMap::default(),
         }
     }
 
@@ -176,6 +183,8 @@ impl<'a> LintContext<'a> {
             analysis: Some(analysis),
             ssr_mode: SsrMode::default(),
             help_level: HelpLevel::default(),
+            expected_error_lines: FxHashSet::default(),
+            severity_overrides: FxHashMap::default(),
         }
     }
 
@@ -297,7 +306,7 @@ impl<'a> LintContext<'a> {
 
     /// Report a lint diagnostic
     #[inline]
-    pub fn report(&mut self, diagnostic: LintDiagnostic) {
+    pub fn report(&mut self, mut diagnostic: LintDiagnostic) {
         // Check if this rule is enabled
         if !self.is_rule_enabled(diagnostic.rule_name) {
             return;
@@ -307,6 +316,21 @@ impl<'a> LintContext<'a> {
         let line = self.offset_to_line(diagnostic.start);
         if self.is_disabled_at(diagnostic.rule_name, line) {
             return;
+        }
+
+        // Check if this line has an @vize:expected directive
+        if self.expected_error_lines.remove(&line) {
+            // Error was expected — suppress it
+            return;
+        }
+
+        // Apply @vize:level severity override
+        if let Some(override_severity) = self.severity_overrides.remove(&line) {
+            match override_severity {
+                DirectiveSeverity::Off => return,
+                DirectiveSeverity::Warn => diagnostic.severity = Severity::Warning,
+                DirectiveSeverity::Error => diagnostic.severity = Severity::Error,
+            }
         }
 
         match diagnostic.severity {
@@ -380,6 +404,36 @@ impl<'a> LintContext<'a> {
     /// Disable specific rules for the next line only
     pub fn disable_rules_next_line(&mut self, rules: &[&str], current_line: u32) {
         self.disable_rules(rules, current_line + 1, Some(current_line + 1));
+    }
+
+    /// Begin a `@vize:ignore-start` region (disables all rules from this line)
+    pub fn push_ignore_region(&mut self, line: u32) {
+        self.disable_all(line, None);
+    }
+
+    /// End a `@vize:ignore-end` region (closes the most recent open ignore region)
+    pub fn pop_ignore_region(&mut self, line: u32) {
+        // Find the last disabled_all range with end_line = None and close it
+        for range in self.disabled_all.iter_mut().rev() {
+            if range.end_line.is_none() {
+                range.end_line = Some(line);
+                return;
+            }
+        }
+    }
+
+    /// Register that `@vize:expected` expects an error on the next line
+    pub fn expect_error_next_line(&mut self, current_line: u32) {
+        self.expected_error_lines.insert(current_line + 1);
+    }
+
+    /// Set a severity override for diagnostics on the next line
+    pub fn set_severity_override_next_line(
+        &mut self,
+        current_line: u32,
+        severity: DirectiveSeverity,
+    ) {
+        self.severity_overrides.insert(current_line + 1, severity);
     }
 
     /// Report an error at a location

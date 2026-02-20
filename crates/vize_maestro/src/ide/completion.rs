@@ -72,6 +72,18 @@ impl CompletionService {
 
         let block_type = ctx.block_type?;
 
+        // If in template and cursor is inside an HTML comment, return directive completions only
+        if matches!(block_type, BlockType::Template)
+            && is_inside_html_comment(&ctx.content, ctx.offset)
+        {
+            let items = Self::vize_directive_completions();
+            return if items.is_empty() {
+                None
+            } else {
+                Some(CompletionResponse::Array(items))
+            };
+        }
+
         // Try tsgo completion first
         if let Some(bridge) = tsgo_bridge {
             let tsgo_items = match block_type {
@@ -453,6 +465,11 @@ impl CompletionService {
 
     /// Get completions for template context.
     fn complete_template(ctx: &IdeContext) -> Vec<CompletionItem> {
+        // If cursor is inside an HTML comment, offer @vize: directive completions only
+        if is_inside_html_comment(&ctx.content, ctx.offset) {
+            return Self::vize_directive_completions();
+        }
+
         let mut items = Vec::new();
 
         // Add Vue directives
@@ -802,6 +819,73 @@ impl CompletionService {
                 value: format!(
                     "**{}**\n\n{}\n\n[Vue Documentation](https://vuejs.org/api/built-in-directives.html)",
                     label, description
+                ),
+            })),
+            ..Default::default()
+        }
+    }
+
+    /// Vize directive completions for use inside HTML comments (`<!-- @vize:... -->`).
+    fn vize_directive_completions() -> Vec<CompletionItem> {
+        vec![
+            Self::vize_directive_item(
+                "@vize:todo",
+                "@vize:todo $1 ",
+                "TODO marker (warning in linter, stripped from build)",
+            ),
+            Self::vize_directive_item(
+                "@vize:fixme",
+                "@vize:fixme $1 ",
+                "FIXME marker (error in linter, stripped from build)",
+            ),
+            Self::vize_directive_item(
+                "@vize:expected",
+                "@vize:expected",
+                "Expect error on next line",
+            ),
+            Self::vize_directive_item(
+                "@vize:docs",
+                "@vize:docs $1 ",
+                "Documentation comment (stripped from build)",
+            ),
+            Self::vize_directive_item(
+                "@vize:ignore-start",
+                "@vize:ignore-start",
+                "Begin lint suppression region",
+            ),
+            Self::vize_directive_item(
+                "@vize:ignore-end",
+                "@vize:ignore-end",
+                "End lint suppression region",
+            ),
+            Self::vize_directive_item(
+                "@vize:level(warn)",
+                "@vize:level($1)",
+                "Override next-line diagnostic severity",
+            ),
+            Self::vize_directive_item(
+                "@vize:deprecated",
+                "@vize:deprecated $1 ",
+                "Deprecation warning",
+            ),
+            Self::vize_directive_item("@vize:dev-only", "@vize:dev-only", "Strip in production"),
+        ]
+    }
+
+    /// Create a @vize: directive completion item.
+    fn vize_directive_item(label: &str, snippet: &str, description: &str) -> CompletionItem {
+        CompletionItem {
+            label: label.to_string(),
+            kind: Some(CompletionItemKind::KEYWORD),
+            detail: Some(description.to_string()),
+            insert_text: Some(snippet.to_string()),
+            insert_text_format: Some(InsertTextFormat::SNIPPET),
+            sort_text: Some(format!("!{}", label)), // Sort before other completions
+            documentation: Some(Documentation::MarkupContent(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: format!(
+                    "**`{}`**\n\n{}\n\nUsage: `<!-- {} -->`",
+                    label, description, label
                 ),
             })),
             ..Default::default()
@@ -1176,8 +1260,22 @@ pub fn trigger_characters() -> Vec<String> {
 }
 
 // =============================================================================
-// Art file context detection helpers
+// HTML comment and Art file context detection helpers
 // =============================================================================
+
+/// Check if cursor offset is inside an HTML comment (`<!-- ... -->`).
+///
+/// Scans backward from offset for `<!--`; returns true if found and there is
+/// no closing `-->` between that opener and the cursor position.
+fn is_inside_html_comment(content: &str, offset: usize) -> bool {
+    let before = &content[..offset.min(content.len())];
+    if let Some(comment_start) = before.rfind("<!--") {
+        let after_start = &before[comment_start + 4..];
+        !after_start.contains("-->")
+    } else {
+        false
+    }
+}
 
 /// Check if cursor is inside <art ...> opening tag.
 fn is_inside_art_tag(before: &str) -> bool {
@@ -1295,5 +1393,57 @@ mod tests {
             CompletionService::binding_type_to_completion_info(BindingType::Props);
         assert_eq!(kind, CompletionItemKind::PROPERTY);
         assert!(detail.contains("prop"));
+    }
+
+    #[test]
+    fn test_vize_directive_completions() {
+        let items = CompletionService::vize_directive_completions();
+        assert_eq!(items.len(), 9);
+
+        // All items should be KEYWORD kind
+        for item in &items {
+            assert_eq!(item.kind, Some(CompletionItemKind::KEYWORD));
+        }
+
+        // Check @vize:todo is present with snippet format
+        let todo = items.iter().find(|i| i.label == "@vize:todo");
+        assert!(todo.is_some());
+        let todo = todo.unwrap();
+        assert_eq!(todo.insert_text_format, Some(InsertTextFormat::SNIPPET));
+        assert_eq!(todo.insert_text, Some("@vize:todo $1 ".to_string()));
+
+        // Check all expected directives are present
+        let labels: Vec<&str> = items.iter().map(|i| i.label.as_str()).collect();
+        assert!(labels.contains(&"@vize:todo"));
+        assert!(labels.contains(&"@vize:fixme"));
+        assert!(labels.contains(&"@vize:expected"));
+        assert!(labels.contains(&"@vize:docs"));
+        assert!(labels.contains(&"@vize:ignore-start"));
+        assert!(labels.contains(&"@vize:ignore-end"));
+        assert!(labels.contains(&"@vize:level(warn)"));
+        assert!(labels.contains(&"@vize:deprecated"));
+        assert!(labels.contains(&"@vize:dev-only"));
+    }
+
+    #[test]
+    fn test_is_inside_html_comment() {
+        // Inside an open comment
+        assert!(is_inside_html_comment("<!-- @vize:", 11));
+        assert!(is_inside_html_comment("<!-- ", 5));
+        assert!(is_inside_html_comment("<div><!-- hello", 15));
+
+        // Not inside a comment (before any comment)
+        assert!(!is_inside_html_comment("<div>", 5));
+        assert!(!is_inside_html_comment("", 0));
+
+        // After a closed comment
+        assert!(!is_inside_html_comment("<!-- done -->", 13));
+        assert!(!is_inside_html_comment("<!-- done --> text", 18));
+
+        // Between two comments, inside the second
+        assert!(is_inside_html_comment("<!-- a --> <!-- b", 17));
+
+        // Between two comments, after both closed
+        assert!(!is_inside_html_comment("<!-- a --> <!-- b --> after", 26));
     }
 }
