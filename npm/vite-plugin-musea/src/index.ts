@@ -134,12 +134,12 @@ interface NativeBinding {
     variants: Array<{
       name: string;
       template: string;
-      is_default: boolean;
-      skip_vrt: boolean;
+      isDefault: boolean;
+      skipVrt: boolean;
     }>;
-    has_script_setup: boolean;
-    has_script: boolean;
-    style_count: number;
+    hasScriptSetup: boolean;
+    hasScript: boolean;
+    styleCount: number;
   };
   artToCsf: (
     source: string,
@@ -1629,15 +1629,15 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
         variants: parsed.variants.map((v) => ({
           name: v.name,
           template: v.template,
-          isDefault: v.is_default,
-          skipVrt: v.skip_vrt,
+          isDefault: v.isDefault,
+          skipVrt: v.skipVrt,
         })),
-        hasScriptSetup: parsed.has_script_setup,
-        scriptSetupContent: parsed.has_script_setup
+        hasScriptSetup: parsed.hasScriptSetup,
+        scriptSetupContent: parsed.hasScriptSetup
           ? extractScriptSetupContent(source)
           : undefined,
-        hasScript: parsed.has_script,
-        styleCount: parsed.style_count,
+        hasScript: parsed.hasScript,
+        styleCount: parsed.styleCount,
         isInline,
         componentPath: isInline ? filePath : undefined,
       };
@@ -3011,15 +3011,30 @@ import { defineComponent, h } from 'vue';
 `;
 
   // Add script setup imports at module level
+  // Resolve relative paths to absolute since this code runs inside a virtual module
   if (scriptSetup) {
+    const artDir = path.dirname(filePath);
     for (const imp of scriptSetup.imports) {
-      code += `${imp}\n`;
+      const resolved = imp.replace(
+        /from\s+(['"])(\.[^'"]+)\1/,
+        (_match, quote, relPath) => {
+          const absPath = path.resolve(artDir, relPath);
+          return `from ${quote}${absPath}${quote}`;
+        },
+      );
+      code += `${resolved}\n`;
     }
   }
 
   if (componentImportPath && componentName) {
     // Only add component import if not already imported by script setup
-    if (!scriptSetup || !scriptSetup.imports.some((imp) => imp.includes(`from '${componentImportPath}'`) || imp.includes(`from "${componentImportPath}"`))) {
+    const alreadyImported = scriptSetup?.imports.some((imp) => {
+      // Check against the original relative path and the resolved absolute path
+      if (imp.includes(`from '${componentImportPath}'`) || imp.includes(`from "${componentImportPath}"`)) return true;
+      // Also check by component name as default import (handles relative vs absolute path mismatch)
+      return new RegExp(`^import\\s+${componentName}[\\s,]`).test(imp.trim());
+    });
+    if (!alreadyImported) {
       code += `import ${componentName} from '${componentImportPath}';\n`;
     }
     code += `export const __component__ = ${componentName};\n`;
@@ -3053,7 +3068,20 @@ export const variants = ${JSON.stringify(art.variants)};
     // outer mount container already carries it; duplicating causes double padding)
     const fullTemplate = `<div data-variant="${variant.name}">${escapedTemplate}</div>`;
 
-    const components = componentName ? `  components: { ${componentName} },\n` : "";
+    // Collect component names for the `components` option.
+    // Runtime-compiled templates use resolveComponent() which checks the
+    // `components` option, NOT setup return values.
+    const componentNames = new Set<string>();
+    if (componentName) componentNames.add(componentName);
+    if (scriptSetup) {
+      for (const name of scriptSetup.returnNames) {
+        // PascalCase names starting with uppercase are likely components
+        if (/^[A-Z]/.test(name)) componentNames.add(name);
+      }
+    }
+    const components = componentNames.size > 0
+      ? `  components: { ${[...componentNames].join(", ")} },\n`
+      : "";
 
     if (scriptSetup && scriptSetup.setupBody.length > 0) {
       // Generate variant with setup function from art file's <script setup>
