@@ -116,7 +116,6 @@ function selectArt(art: ArtFileInfo) {
 <style scoped>
 .sidebar {
   background: var(--musea-bg-secondary);
-  border-right: 1px solid var(--musea-border);
   overflow-y: auto;
   overflow-x: hidden;
 }

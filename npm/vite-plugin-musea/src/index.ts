@@ -1137,8 +1137,28 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
                     }
                   }
                   if (minIndent === Infinity) minIndent = 0;
-                  // Remove minimum indentation from all lines
-                  const formatted = lines.map((line) => line.slice(minIndent)).join("\n");
+                  let formatted: string;
+                  if (minIndent > 0) {
+                    // Remove minimum indentation from all lines
+                    formatted = lines.map((line) => line.slice(minIndent)).join("\n");
+                  } else {
+                    // minIndent is 0: first line may have no indent while subsequent lines do.
+                    // Calculate common indent of lines 2+ and strip only from those.
+                    let restIndent = Infinity;
+                    for (let i = 1; i < lines.length; i++) {
+                      if (lines[i].trim()) {
+                        const indent = lines[i].match(/^(\s*)/)?.[1].length || 0;
+                        restIndent = Math.min(restIndent, indent);
+                      }
+                    }
+                    if (restIndent === Infinity || restIndent === 0) {
+                      formatted = lines.join("\n");
+                    } else {
+                      formatted = lines
+                        .map((line, i) => (i === 0 ? line : line.slice(restIndent)))
+                        .join("\n");
+                    }
+                  }
                   return "```" + lang + "\n" + formatted + "```";
                 });
                 sendJson({ ...doc, markdown });
@@ -1522,8 +1542,9 @@ export function musea(options: MuseaOptions = {}): Plugin[] {
           isDefault: v.isDefault,
           skipVrt: v.skipVrt,
         })),
-        hasScriptSetup: parsed.hasScriptSetup,
-        scriptSetupContent: parsed.hasScriptSetup ? extractScriptSetupContent(source) : undefined,
+        hasScriptSetup: isInline ? false : parsed.hasScriptSetup,
+        scriptSetupContent:
+          !isInline && parsed.hasScriptSetup ? extractScriptSetupContent(source) : undefined,
         hasScript: parsed.hasScript,
         styleCount: parsed.styleCount,
         isInline,
@@ -2704,6 +2725,9 @@ window.__museaSetProps = (props) => {
 };
 
 window.__museaSetSlots = (slots) => {
+  for (const key of Object.keys(slotsOverride)) {
+    delete slotsOverride[key];
+  }
   Object.assign(slotsOverride, slots);
 };
 
@@ -2738,6 +2762,9 @@ async function mount() {
         remountWithProps(RawComponent);
       };
       window.__museaSetSlots = (slots) => {
+        for (const key of Object.keys(slotsOverride)) {
+          delete slotsOverride[key];
+        }
         Object.assign(slotsOverride, slots);
         remountWithProps(RawComponent);
       };
@@ -2762,8 +2789,8 @@ async function remountWithProps(Component) {
     setup() {
       return () => {
         const slotFns = {};
-        if (slotsOverride.default) {
-          slotFns.default = () => h('span', { innerHTML: slotsOverride.default });
+        for (const [name, content] of Object.entries(slotsOverride)) {
+          if (content) slotFns[name] = () => h('span', { innerHTML: content });
         }
         return h(Component, { ...propsOverride }, slotFns);
       };

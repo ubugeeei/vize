@@ -153,6 +153,7 @@ function openInNewTab() {
       </div>
       <div class="toolbar-actions">
         <button
+          type="button"
           class="toolbar-btn"
           :class="{ active: copied }"
           :title="copied ? 'Copied!' : 'Copy template'"
@@ -167,6 +168,7 @@ function openInNewTab() {
           </svg>
         </button>
         <button
+          type="button"
           class="toolbar-btn"
           title="Fullscreen"
           @click="openFullscreen(artPath, variant.name)"
@@ -176,6 +178,7 @@ function openInNewTab() {
           </svg>
         </button>
         <button
+          type="button"
           class="toolbar-btn"
           title="Open in new tab"
           @click="openInNewTab"

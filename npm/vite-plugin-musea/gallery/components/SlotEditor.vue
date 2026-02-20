@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, defineAsyncComponent } from 'vue'
+
+const MonacoEditor = defineAsyncComponent(() => import('./MonacoEditor.vue'))
 
 const props = defineProps<{
   slots: Record<string, string>
@@ -53,22 +55,6 @@ const clearAllSlots = () => {
   emit('update', {})
 }
 
-// Simple syntax highlighting for HTML
-const highlightedContent = computed(() => {
-  const content = currentContent.value
-  if (!content) return ''
-
-  return content
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    // Highlight tags
-    .replace(/(&lt;\/?)([\w-]+)([^&]*?)(&gt;)/g,
-      '<span class="tag-bracket">$1</span><span class="tag-name">$2</span>$3<span class="tag-bracket">$4</span>')
-    // Highlight attributes
-    .replace(/([\w-]+)(=)(&quot;[^&]*&quot;|&#39;[^&]*&#39;)/g,
-      '<span class="attr-name">$1</span><span class="attr-eq">$2</span><span class="attr-value">$3</span>')
-})
 </script>
 
 <template>
@@ -78,6 +64,7 @@ const highlightedContent = computed(() => {
         <button
           v-for="name in slotNames"
           :key="name"
+          type="button"
           :class="['slot-tab', { 'slot-tab--active': activeSlot === name }]"
           @click="selectSlot(name)"
         >
@@ -86,31 +73,21 @@ const highlightedContent = computed(() => {
         </button>
       </div>
       <div class="slot-actions">
-        <button class="slot-action" @click="clearSlot" title="Clear current slot">
+        <button type="button" class="slot-action" @click="clearSlot" title="Clear current slot">
           Clear
         </button>
-        <button class="slot-action slot-action--danger" @click="clearAllSlots" title="Clear all slots">
+        <button type="button" class="slot-action slot-action--danger" @click="clearAllSlots" title="Clear all slots">
           Clear All
         </button>
       </div>
     </div>
 
     <div class="slot-content">
-      <div class="editor-wrapper">
-        <textarea
-          v-model="currentContent"
-          class="slot-textarea"
-          :placeholder="`Enter HTML content for #${activeSlot} slot...`"
-          spellcheck="false"
-        />
-        <!-- Syntax highlighting overlay (optional, simple version) -->
-        <div v-if="false" class="syntax-overlay" v-html="highlightedContent" />
-      </div>
-
-      <div class="slot-preview">
-        <div class="preview-header">Preview</div>
-        <div class="preview-content" v-html="currentContent || '<span class=\'empty\'>Empty slot</span>'" />
-      </div>
+      <MonacoEditor
+        v-model="currentContent"
+        language="html"
+        height="150px"
+      />
     </div>
 
     <div class="slot-footer">
@@ -201,97 +178,8 @@ const highlightedContent = computed(() => {
 }
 
 .slot-content {
-  display: flex;
   flex: 1;
   overflow: hidden;
-}
-
-.editor-wrapper {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-}
-
-.slot-textarea {
-  width: 100%;
-  height: 100%;
-  padding: 0.75rem;
-  background: var(--musea-bg-primary);
-  border: none;
-  font-family: var(--musea-font-mono);
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  color: var(--musea-text);
-  resize: none;
-  outline: none;
-}
-
-.slot-textarea::placeholder {
-  color: var(--musea-text-muted);
-}
-
-.syntax-overlay {
-  position: absolute;
-  inset: 0;
-  padding: 0.75rem;
-  font-family: var(--musea-font-mono);
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  pointer-events: none;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.syntax-overlay :deep(.tag-bracket) {
-  color: var(--musea-text-muted);
-}
-
-.syntax-overlay :deep(.tag-name) {
-  color: #60a5fa;
-}
-
-.syntax-overlay :deep(.attr-name) {
-  color: #fbbf24;
-}
-
-.syntax-overlay :deep(.attr-eq) {
-  color: var(--musea-text-muted);
-}
-
-.syntax-overlay :deep(.attr-value) {
-  color: #4ade80;
-}
-
-.slot-preview {
-  width: 200px;
-  border-left: 1px solid var(--musea-border);
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-}
-
-.preview-header {
-  padding: 0.5rem 0.75rem;
-  background: var(--musea-bg-tertiary);
-  border-bottom: 1px solid var(--musea-border);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--musea-text-muted);
-}
-
-.preview-content {
-  flex: 1;
-  padding: 0.75rem;
-  overflow: auto;
-  background: #ffffff;
-  font-size: 0.875rem;
-}
-
-.preview-content :deep(.empty) {
-  color: #9ca3af;
-  font-style: italic;
 }
 
 .slot-footer {

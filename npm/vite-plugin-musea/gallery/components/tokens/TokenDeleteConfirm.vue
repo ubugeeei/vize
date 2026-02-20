@@ -50,8 +50,8 @@ watch(() => props.isOpen, (open) => {
           </div>
 
           <div class="modal-footer">
-            <button class="btn btn--secondary" @click="emit('close')">Cancel</button>
-            <button class="btn btn--danger" @click="emit('confirm')">
+            <button type="button" class="btn btn--secondary" @click="emit('close')">Cancel</button>
+            <button type="button" class="btn btn--danger" @click="emit('confirm')">
               Delete
             </button>
           </div>

@@ -10,7 +10,7 @@ const props = defineProps<{
   defaultVariantName?: string
 }>()
 
-const { isRunning, init, runA11y, getResult } = useA11y()
+const { isKeyRunning, init, runA11y, getResult } = useA11y()
 
 const iframeRef = ref<HTMLIFrameElement | null>(null)
 const iframeReady = ref(false)
@@ -81,13 +81,14 @@ const summary = computed(() => {
     <div class="a11y-header">
       <h3 class="a11y-title">Accessibility Test</h3>
       <button
+        type="button"
         class="a11y-run-btn"
-        :disabled="isRunning || !iframeReady"
+        :disabled="isKeyRunning(key) || !iframeReady"
         @click="runTest"
       >
-        <MdiIcon v-if="isRunning" class="spin" :path="mdiLoading" :size="14" />
+        <MdiIcon v-if="isKeyRunning(key)" class="spin" :path="mdiLoading" :size="14" />
         <MdiIcon v-else :path="mdiPlay" :size="14" />
-        {{ isRunning ? 'Running...' : 'Run Test' }}
+        {{ isKeyRunning(key) ? 'Running...' : 'Run Test' }}
       </button>
     </div>
 

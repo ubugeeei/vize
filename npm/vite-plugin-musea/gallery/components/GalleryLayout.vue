@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { mdiMagnify, mdiWeatherSunny, mdiWeatherNight, mdiThemeLightDark } from '@mdi/js'
+import { mdiMagnify, mdiWeatherSunny, mdiWeatherNight, mdiThemeLightDark, mdiChevronLeft, mdiChevronRight } from '@mdi/js'
 import { useArts } from '../composables/useArts'
 import { useSearch } from '../composables/useSearch'
 import { useTheme } from '../composables/useTheme'
@@ -16,6 +16,11 @@ const { query, results } = useSearch(arts)
 const { currentTheme, cycleTheme } = useTheme()
 
 const searchModalOpen = ref(false)
+const sidebarCollapsed = ref(false)
+
+function toggleSidebar() {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+}
 
 const themeIcon = computed(() => {
   switch (currentTheme.value) {
@@ -33,11 +38,15 @@ const themeLabel = computed(() => {
   }
 })
 
-// Global keyboard shortcut for Cmd+K / Ctrl+K
+// Global keyboard shortcuts
 const handleKeydown = (e: KeyboardEvent) => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
     e.preventDefault()
     searchModalOpen.value = !searchModalOpen.value
+  }
+  if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+    e.preventDefault()
+    toggleSidebar()
   }
 }
 
@@ -94,7 +103,7 @@ const handleSearchSelect = (art: { path: string }, variantName?: string) => {
       </div>
 
       <div class="header-center">
-        <button class="search-trigger" @click="searchModalOpen = true">
+        <button type="button" class="search-trigger" @click="searchModalOpen = true">
           <MdiIcon class="search-icon" :path="mdiMagnify" :size="16" />
           <span>Search components...</span>
           <kbd>⌘K</kbd>
@@ -102,15 +111,25 @@ const handleSearchSelect = (art: { path: string }, variantName?: string) => {
       </div>
 
       <div class="header-right">
-        <button class="theme-toggle" :title="`Theme: ${themeLabel}`" @click="cycleTheme">
+        <button type="button" class="theme-toggle" :title="`Theme: ${themeLabel}`" @click="cycleTheme">
           <MdiIcon :path="themeIcon" :size="18" />
         </button>
       </div>
     </header>
 
-    <main class="main">
+    <main class="main" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
       <!-- Sidebar -->
-      <Sidebar :arts="results" />
+      <aside class="sidebar-wrapper" :class="{ collapsed: sidebarCollapsed }">
+        <Sidebar v-show="!sidebarCollapsed" :arts="results" />
+        <button
+          type="button"
+          class="sidebar-toggle"
+          :title="sidebarCollapsed ? 'Expand sidebar (⌘B)' : 'Collapse sidebar (⌘B)'"
+          @click="toggleSidebar"
+        >
+          <MdiIcon :path="sidebarCollapsed ? mdiChevronRight : mdiChevronLeft" :size="16" />
+        </button>
+      </aside>
 
       <!-- Main Content -->
       <section class="content">
@@ -255,12 +274,61 @@ const handleSearchSelect = (art: { path: string }, variantName?: string) => {
   flex: 1;
   overflow: hidden;
   height: calc(100vh - var(--musea-header-height));
+  transition: grid-template-columns 0.2s ease;
 }
 
-.main > :first-child {
+.main.sidebar-collapsed {
+  grid-template-columns: 40px 1fr;
+}
+
+.sidebar-wrapper {
   height: 100%;
   max-height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--musea-bg-secondary);
+  border-right: 1px solid var(--musea-border);
+}
+
+.sidebar-wrapper.collapsed {
+  overflow: hidden;
+}
+
+.sidebar-wrapper :deep(.sidebar) {
+  border-right: none;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  bottom: 0.75rem;
+  right: 0.75rem;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--musea-bg-tertiary);
+  border: 1px solid var(--musea-border);
+  border-radius: var(--musea-radius-sm);
+  color: var(--musea-text-muted);
+  cursor: pointer;
+  transition: all var(--musea-transition);
+  z-index: 10;
+}
+
+.sidebar-wrapper.collapsed .sidebar-toggle {
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.sidebar-toggle:hover {
+  background: var(--musea-bg-elevated);
+  color: var(--musea-text);
+  border-color: var(--musea-text-muted);
 }
 
 .content {
@@ -273,7 +341,7 @@ const handleSearchSelect = (art: { path: string }, variantName?: string) => {
   .main {
     grid-template-columns: 1fr !important;
   }
-  .main > :first-child {
+  .sidebar-wrapper {
     display: none;
   }
   .header-subtitle {
