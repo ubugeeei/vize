@@ -9,7 +9,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageJson = await import("../package.json", { with: { type: "json" } });
 const version = packageJson.default.version;
 
-const REPO = "vizejs/vize";
+const REPO = "ubugeeei/vize";
 
 const PLATFORMS = {
   "darwin-x64": {

@@ -9,7 +9,7 @@ High-performance Vue.js toolchain in Rust.
 npm install -g vize
 
 # Or install from GitHub
-npm install -g github:vizejs/vize
+npm install -g github:ubugeeei/vize
 ```
 
 ## Usage

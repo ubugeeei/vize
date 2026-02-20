@@ -157,10 +157,12 @@ done
 echo "Updating READMEs..."
 find npm -name 'README.md' -exec sed -i.bak "s/$CURRENT_VERSION/$NEW_VERSION/g" {} \;
 find npm -name 'README.md.bak' -delete
+sed -i.bak "s/$CURRENT_VERSION/$NEW_VERSION/g" README.md
+rm -f README.md.bak
 
 # Commit changes
 echo "Committing changes..."
-git add Cargo.toml npm/*/package.json
+git add Cargo.toml npm/*/package.json README.md
 # Add READMEs that are tracked (some may be gitignored)
 git add npm/*/README.md 2>/dev/null || true
 git commit -m "chore: release v$NEW_VERSION"

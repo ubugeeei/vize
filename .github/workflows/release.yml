@@ -11,7 +11,7 @@ permissions:
 
 env:
   CARGO_INCREMENTAL: 0
-  NPM_TAG: ${{ contains(github.ref_name, 'alpha') && 'alpha' || contains(github.ref_name, 'beta') && 'beta' || contains(github.ref_name, 'rc') && 'rc' || 'latest' }}
+  NPM_TAG: latest
 
 jobs:
   # Build CLI binaries for all platforms
