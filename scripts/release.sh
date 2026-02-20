@@ -160,9 +160,13 @@ find npm -name 'README.md.bak' -delete
 sed -i.bak "s/$CURRENT_VERSION/$NEW_VERSION/g" README.md
 rm -f README.md.bak
 
+# Update lockfile
+echo "Updating pnpm-lock.yaml..."
+pnpm install --no-frozen-lockfile
+
 # Commit changes
 echo "Committing changes..."
-git add Cargo.toml npm/*/package.json README.md
+git add Cargo.toml npm/*/package.json README.md pnpm-lock.yaml
 # Add READMEs that are tracked (some may be gitignored)
 git add npm/*/README.md 2>/dev/null || true
 git commit -m "chore: release v$NEW_VERSION"
