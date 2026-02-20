@@ -244,6 +244,7 @@ watch(a11yResults, () => {
 
     <div class="summary-actions">
       <button
+        type="button"
         class="run-all-btn"
         :disabled="isRunningAll"
         @click="runAllTests"

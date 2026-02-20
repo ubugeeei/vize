@@ -60,7 +60,7 @@ async function handleSave() {
               <h2 class="modal-title">Edit Source</h2>
               <p class="modal-subtitle">{{ artTitle }}</p>
             </div>
-            <button class="modal-close" @click="emit('close')">
+            <button type="button" class="modal-close" @click="emit('close')">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
@@ -83,8 +83,8 @@ async function handleSave() {
           <div class="modal-footer">
             <span class="save-hint">Cmd+S / Ctrl+S to save</span>
             <div class="modal-footer-actions">
-              <button class="btn btn--secondary" @click="emit('close')">Cancel</button>
-              <button class="btn btn--primary" :disabled="saving || loading" @click="handleSave">
+              <button type="button" class="btn btn--secondary" @click="emit('close')">Cancel</button>
+              <button type="button" class="btn btn--primary" :disabled="saving || loading" @click="handleSave">
                 {{ saving ? 'Saving...' : 'Save' }}
               </button>
             </div>

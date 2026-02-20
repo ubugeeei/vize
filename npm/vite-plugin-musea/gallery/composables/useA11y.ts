@@ -24,26 +24,44 @@ export interface A11yResult {
 
 // Singleton state
 const results = shallowRef<Map<string, A11yResult>>(new Map())
-const isRunning = ref(false)
-const currentKey = ref<string>('')
+const runningKeys = ref<Set<string>>(new Set())
+const pendingIframes = new Map<HTMLIFrameElement, string>()
 
 export function useA11y() {
   function init() {
-    useMessageListener('musea:a11y-result', (payload: A11yResult) => {
-      if (currentKey.value) {
-        const newMap = new Map(results.value)
-        newMap.set(currentKey.value, payload)
-        results.value = newMap
+    useMessageListener('musea:a11y-result', (payload: unknown, event: MessageEvent) => {
+      const result = payload as A11yResult
+      // Find key by matching event.source to pending iframes
+      let matchedKey = ''
+      for (const [iframe, key] of pendingIframes) {
+        if (iframe.contentWindow === event.source) {
+          matchedKey = key
+          pendingIframes.delete(iframe)
+          break
+        }
       }
-      isRunning.value = false
+      if (matchedKey) {
+        const newMap = new Map(results.value)
+        newMap.set(matchedKey, result)
+        results.value = newMap
+        const newSet = new Set(runningKeys.value)
+        newSet.delete(matchedKey)
+        runningKeys.value = newSet
+      }
     })
   }
 
   function runA11y(iframe: HTMLIFrameElement, key: string) {
-    if (isRunning.value) return
-    isRunning.value = true
-    currentKey.value = key
+    if (runningKeys.value.has(key)) return
+    const newSet = new Set(runningKeys.value)
+    newSet.add(key)
+    runningKeys.value = newSet
+    pendingIframes.set(iframe, key)
     sendMessage(iframe, 'musea:run-a11y', {})
+  }
+
+  function isKeyRunning(key: string): boolean {
+    return runningKeys.value.has(key)
   }
 
   function getResult(key: string): A11yResult | undefined {
@@ -56,9 +74,10 @@ export function useA11y() {
 
   return {
     results,
-    isRunning,
+    runningKeys,
     init,
     runA11y,
+    isKeyRunning,
     getResult,
     clearResults,
   }

@@ -99,7 +99,7 @@ const getRawValueClass = (value: unknown): string => {
     <!-- Header -->
     <div class="event-header">
       <div class="header-left">
-        <button class="collapse-btn" @click="toggleCollapse" :title="isCollapsed ? 'Expand' : 'Collapse'">
+        <button type="button" class="collapse-btn" @click="toggleCollapse" :title="isCollapsed ? 'Expand' : 'Collapse'">
           <MdiIcon :class="['collapse-icon', { 'collapse-icon--collapsed': isCollapsed }]" :path="mdiChevronDown" :size="14" />
         </button>
         <span class="header-title">Events</span>
@@ -122,6 +122,7 @@ const getRawValueClass = (value: unknown): string => {
 
         <!-- Pause/Resume -->
         <button
+          type="button"
           :class="['control-btn', { 'control-btn--active': isPaused }]"
           @click="emit('toggle-pause')"
           :title="isPaused ? 'Resume' : 'Pause'"
@@ -131,6 +132,7 @@ const getRawValueClass = (value: unknown): string => {
 
         <!-- Clear -->
         <button
+          type="button"
           class="control-btn control-btn--danger"
           @click="emit('clear')"
           title="Clear Events"
@@ -168,16 +170,18 @@ const getRawValueClass = (value: unknown): string => {
       <div v-if="selectedEvent" class="event-detail">
         <div class="detail-header">
           <span class="detail-title">Event Details</span>
-          <button class="detail-close" @click="selectedEvent = null">×</button>
+          <button type="button" class="detail-close" @click="selectedEvent = null">×</button>
         </div>
         <div class="detail-tabs">
           <button
+            type="button"
             :class="['detail-tab', { 'detail-tab--active': detailTab === 'info' }]"
             @click="detailTab = 'info'"
           >
             Info
           </button>
           <button
+            type="button"
             :class="['detail-tab', { 'detail-tab--active': detailTab === 'raw' }]"
             @click="detailTab = 'raw'"
           >

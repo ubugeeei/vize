@@ -45,7 +45,7 @@ function viewComponent(artPath: string) {
                 <span v-if="token" class="modal-value">&mdash; {{ token.$resolvedValue ?? token.value }}</span>
               </p>
             </div>
-            <button class="modal-close" @click="emit('close')">
+            <button type="button" class="modal-close" @click="emit('close')">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
@@ -91,10 +91,10 @@ function viewComponent(artPath: string) {
                 </div>
 
                 <div class="usage-entry-actions">
-                  <button class="usage-action-btn" @click="viewComponent(entry.artPath)">
+                  <button type="button" class="usage-action-btn" @click="viewComponent(entry.artPath)">
                     View Component
                   </button>
-                  <button class="usage-action-btn usage-action-btn--edit" @click="emit('editSource', entry.artPath)">
+                  <button type="button" class="usage-action-btn usage-action-btn--edit" @click="emit('editSource', entry.artPath)">
                     Edit Source
                   </button>
                 </div>

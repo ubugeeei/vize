@@ -46,6 +46,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
     <div class="toolbar-group">
       <button
+        type="button"
         class="toolbar-toggle"
         :class="{ active: outlineEnabled }"
         title="Toggle Outline (Alt+O)"
@@ -57,6 +58,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       </button>
 
       <button
+        type="button"
         class="toolbar-toggle"
         :class="{ active: measureEnabled }"
         title="Toggle Measure (Alt+M)"

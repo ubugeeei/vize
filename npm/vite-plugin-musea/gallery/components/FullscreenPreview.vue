@@ -28,13 +28,14 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
           <span class="fullscreen-title">{{ fullscreenVariant.variantName }}</span>
           <div class="fullscreen-actions">
             <button
+              type="button"
               class="fullscreen-action-btn"
               title="Open in new tab"
               @click="window.open(previewUrl, '_blank')"
             >
               <MdiIcon :path="mdiOpenInNew" :size="16" />
             </button>
-            <button class="fullscreen-close-btn" title="Close (Esc)" @click="closeFullscreen()">
+            <button type="button" class="fullscreen-close-btn" title="Close (Esc)" @click="closeFullscreen()">
               <MdiIcon :path="mdiClose" :size="18" />
             </button>
           </div>

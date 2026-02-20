@@ -51,6 +51,7 @@ watch(() => props.variants, checkScrollButtons)
   <div class="variant-tabs-container">
     <button
       v-if="showLeftArrow"
+      type="button"
       class="scroll-btn scroll-btn--left"
       @click="scroll('left')"
       aria-label="Scroll left"
@@ -68,6 +69,7 @@ watch(() => props.variants, checkScrollButtons)
       <button
         v-for="variant in variants"
         :key="variant.name"
+        type="button"
         :class="['variant-tab', {
           'variant-tab--active': variant.name === selectedVariant,
           'variant-tab--default': variant.isDefault
@@ -81,6 +83,7 @@ watch(() => props.variants, checkScrollButtons)
 
     <button
       v-if="showRightArrow"
+      type="button"
       class="scroll-btn scroll-btn--right"
       @click="scroll('right')"
       aria-label="Scroll right"

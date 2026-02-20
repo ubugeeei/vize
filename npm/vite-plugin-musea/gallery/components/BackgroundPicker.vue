@@ -18,6 +18,7 @@ function onCustomColorInput(event: Event) {
       <button
         v-for="preset in BG_PRESETS"
         :key="preset.name"
+        type="button"
         class="bg-preset-btn"
         :class="{ active: background?.name === preset.name }"
         :title="preset.name"

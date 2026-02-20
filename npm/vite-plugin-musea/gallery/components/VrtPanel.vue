@@ -84,6 +84,7 @@ function getStatusColor(result: VrtResult): string {
           Update snapshots
         </label>
         <button
+          type="button"
           class="vrt-run-btn"
           :disabled="isRunning"
           @click="runTest"

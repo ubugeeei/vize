@@ -151,6 +151,7 @@ watch(measureEnabled, (enabled) => {
       </div>
       <div class="variant-actions">
         <button
+          type="button"
           class="variant-action-btn"
           :title="copied ? 'Copied!' : 'Copy template'"
           :class="{ active: copied }"
@@ -160,6 +161,7 @@ watch(measureEnabled, (enabled) => {
           <MdiIcon v-else :path="mdiCheck" :size="14" />
         </button>
         <button
+          type="button"
           class="variant-action-btn"
           title="View source"
           :class="{ active: showSource }"
@@ -168,6 +170,7 @@ watch(measureEnabled, (enabled) => {
           <MdiIcon :path="mdiCodeTags" :size="14" />
         </button>
         <button
+          type="button"
           class="variant-action-btn"
           title="Fullscreen"
           @click="openFullscreen(artPath, variant.name)"
@@ -175,6 +178,7 @@ watch(measureEnabled, (enabled) => {
           <MdiIcon :path="mdiFullscreen" :size="14" />
         </button>
         <button
+          type="button"
           class="variant-action-btn"
           title="Open in new tab"
           @click="window.open(previewUrl, '_blank')"
@@ -209,7 +213,7 @@ const window = globalThis.window;
 }
 
 .variant-preview {
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 16 / 7;
   background: var(--musea-bg-tertiary);
   display: flex;
   align-items: center;
@@ -221,7 +225,7 @@ const window = globalThis.window;
 .variant-preview.viewport-mode {
   aspect-ratio: unset;
   min-height: 200px;
-  max-height: 500px;
+  max-height: 350px;
   overflow: auto;
 }
 
