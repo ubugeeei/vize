@@ -29,7 +29,6 @@ const {
 } = useActions();
 const { gridDensity } = useAddons();
 const { setCurrentVariant } = useEventCapture();
-gs;
 
 const activeTab = ref<"variants" | "props" | "docs" | "a11y" | "vrt">(
   "variants",
