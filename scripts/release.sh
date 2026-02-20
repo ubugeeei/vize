@@ -139,10 +139,14 @@ for pkg in npm/*/; do
       const fs = require('fs');
       const pkg = JSON.parse(fs.readFileSync('$pkg/package.json', 'utf8'));
       pkg.version = '$NEW_VERSION';
-      // Update optionalDependencies versions for native packages
+      // Update optionalDependencies versions for native packages (NAPI bindings only)
+      // NOTE: @vizejs/cli-* are NOT bumped here because they are published by the
+      // Release workflow. Bumping them here would break the lockfile since the new
+      // version doesn't exist on npm yet. The release workflow injects the correct
+      // version at publish time.
       if (pkg.optionalDependencies) {
         for (const dep of Object.keys(pkg.optionalDependencies)) {
-          if (dep.startsWith('@vizejs/native-') || dep.startsWith('@vizejs/fresco-native-') || dep.startsWith('@vizejs/cli-')) {
+          if (dep.startsWith('@vizejs/native-') || dep.startsWith('@vizejs/fresco-native-')) {
             pkg.optionalDependencies[dep] = '$NEW_VERSION';
           }
         }
@@ -160,13 +164,9 @@ find npm -name 'README.md.bak' -delete
 sed -i.bak "s/$CURRENT_VERSION/$NEW_VERSION/g" README.md
 rm -f README.md.bak
 
-# Update lockfile
-echo "Updating pnpm-lock.yaml..."
-pnpm install --no-frozen-lockfile
-
 # Commit changes
 echo "Committing changes..."
-git add Cargo.toml npm/*/package.json README.md pnpm-lock.yaml
+git add Cargo.toml npm/*/package.json README.md
 # Add READMEs that are tracked (some may be gitignored)
 git add npm/*/README.md 2>/dev/null || true
 git commit -m "chore: release v$NEW_VERSION"

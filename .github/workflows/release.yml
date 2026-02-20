@@ -135,7 +135,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile --no-frozen-lockfile
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -194,7 +194,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -259,7 +259,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -371,7 +371,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build vite-plugin
         run: pnpm -C npm/vite-plugin-vize build
@@ -406,7 +406,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build fresco
         run: pnpm -C npm/fresco build
@@ -441,7 +441,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build musea-mcp-server
         run: pnpm -C npm/musea-mcp-server build
@@ -476,7 +476,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build vite-plugin-musea
         run: pnpm -C npm/vite-plugin-musea build
@@ -514,7 +514,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build musea-nuxt
         run: pnpm -C npm/musea-nuxt build
@@ -549,7 +549,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build @vizejs/nuxt
         run: pnpm -C npm/nuxt build
@@ -746,6 +746,24 @@ jobs:
 
       - name: Install npm with OIDC support
         run: npm install -g npm@latest
+
+      - name: Inject CLI platform package versions
+        run: |
+          VERSION=$(node -p "require('./npm/vize/package.json').version")
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('npm/vize/package.json', 'utf8'));
+            if (pkg.optionalDependencies) {
+              for (const dep of Object.keys(pkg.optionalDependencies)) {
+                if (dep.startsWith('@vizejs/cli-')) {
+                  pkg.optionalDependencies[dep] = '$VERSION';
+                }
+              }
+            }
+            fs.writeFileSync('npm/vize/package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          echo "Updated optionalDependencies to $VERSION"
+          cat npm/vize/package.json
 
       - name: Publish vize CLI package
         working-directory: npm/vize

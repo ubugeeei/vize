@@ -301,6 +301,25 @@ importers:
       oxc-transform:
         specifier: ^0.56.0
         version: 0.56.5
+    optionalDependencies:
+      '@vizejs/cli-darwin-arm64':
+        specifier: 0.0.1-alpha.108
+        version: 0.0.1-alpha.108
+      '@vizejs/cli-darwin-x64':
+        specifier: 0.0.1-alpha.108
+        version: 0.0.1-alpha.108
+      '@vizejs/cli-linux-arm64':
+        specifier: 0.0.1-alpha.108
+        version: 0.0.1-alpha.108
+      '@vizejs/cli-linux-x64':
+        specifier: 0.0.1-alpha.108
+        version: 0.0.1-alpha.108
+      '@vizejs/cli-win32-arm64':
+        specifier: 0.0.1-alpha.108
+        version: 0.0.1-alpha.108
+      '@vizejs/cli-win32-x64':
+        specifier: 0.0.1-alpha.108
+        version: 0.0.1-alpha.108
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
@@ -3346,6 +3365,36 @@ packages:
 
   '@vitest/utils@4.0.18':
     resolution: {integrity: sha512-msMRKLMVLWygpK3u2Hybgi4MNjcYJvwTb0Ru09+fOyCXIgT5raYP041DRRdiJiI3k/2U6SEbAETB3YtBrUkCFA==}
+
+  '@vizejs/cli-darwin-arm64@0.0.1-alpha.108':
+    resolution: {integrity: sha512-5STllpcl0jCqZl5lUvOGjiNF9ACXmxhNZTOXakH3c80Y+ar1JdxXYOedCxmB3OvmPn3W7D6UJKfjPsouTap7RA==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@vizejs/cli-darwin-x64@0.0.1-alpha.108':
+    resolution: {integrity: sha512-cV/ezJxGjEM8JbeLVmjgmzrJyKv7zVpzox1HxEyYZiViwNfLywSpD4zqP8bLB117oascsiVN34twdhShGiQsTg==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@vizejs/cli-linux-arm64@0.0.1-alpha.108':
+    resolution: {integrity: sha512-Y+36i+VJhqKYgbMABMM7++mBy6CiaOzGUW6ON1QmJV+YAkGrKQlmB8z1sc7U8RwIbt7CQp6YnLXcUX+KYiaJzg==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@vizejs/cli-linux-x64@0.0.1-alpha.108':
+    resolution: {integrity: sha512-tokDi9ZOi3g/6rndVfFqffzIFN42I+/D7PQRtCheX8bMf6P6gXhZzp4OLq5B4zaboa6jDLvMZHL+ZMcVFh9JRA==}
+    cpu: [x64]
+    os: [linux]
+
+  '@vizejs/cli-win32-arm64@0.0.1-alpha.108':
+    resolution: {integrity: sha512-kFV2IAXaDyL7FlSfTiqiS/jiWyBKe1DxqEEFUsowARbSM9P6mS4qwjQlRXQeej7CRvumq6OrMiQu0IWU/TOewQ==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@vizejs/cli-win32-x64@0.0.1-alpha.108':
+    resolution: {integrity: sha512-TQAgnTtHzySYGNWDF3rZrwaheALXeaL1GdLakO1Eh47X7GJ9C9ns/JGUZ3QoZLQ9CQYPxpgvxqWA/36ClR+O6Q==}
+    cpu: [x64]
+    os: [win32]
 
   '@volar/language-core@2.4.15':
     resolution: {integrity: sha512-3VHw+QZU0ZG9IuQmzT68IyN4hZNd9GchGPhbD9+pa8CVv7rnoOZwo7T8weIbrRmihqy3ATpdfXFnqRrfPVK6CA==}
@@ -9390,6 +9439,24 @@ snapshots:
     dependencies:
       '@vitest/pretty-format': 4.0.18
       tinyrainbow: 3.0.3
+
+  '@vizejs/cli-darwin-arm64@0.0.1-alpha.108':
+    optional: true
+
+  '@vizejs/cli-darwin-x64@0.0.1-alpha.108':
+    optional: true
+
+  '@vizejs/cli-linux-arm64@0.0.1-alpha.108':
+    optional: true
+
+  '@vizejs/cli-linux-x64@0.0.1-alpha.108':
+    optional: true
+
+  '@vizejs/cli-win32-arm64@0.0.1-alpha.108':
+    optional: true
+
+  '@vizejs/cli-win32-x64@0.0.1-alpha.108':
+    optional: true
 
   '@volar/language-core@2.4.15':
     dependencies:
