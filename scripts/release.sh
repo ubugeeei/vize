@@ -142,7 +142,7 @@ for pkg in npm/*/; do
       // Update optionalDependencies versions for native packages
       if (pkg.optionalDependencies) {
         for (const dep of Object.keys(pkg.optionalDependencies)) {
-          if (dep.startsWith('@vizejs/native-') || dep.startsWith('@vizejs/fresco-native-')) {
+          if (dep.startsWith('@vizejs/native-') || dep.startsWith('@vizejs/fresco-native-') || dep.startsWith('@vizejs/cli-')) {
             pkg.optionalDependencies[dep] = '$NEW_VERSION';
           }
         }

@@ -1,0 +1,10 @@
+{
+  "name": "@vizejs/cli-win32-arm64",
+  "version": "0.0.1-alpha.108",
+  "description": "Vize CLI binary for win32-arm64",
+  "os": ["win32"],
+  "cpu": ["arm64"],
+  "publishConfig": { "access": "public" },
+  "files": ["vize.exe"],
+  "license": "MIT"
+}

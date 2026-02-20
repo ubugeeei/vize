@@ -11,7 +11,11 @@ npm/vite-plugin-vize/wasm/
 # Native (NAPI) build output
 *.node
 
-# Downloaded CLI binary (via postinstall)
+# CLI platform package binaries (CI copies before publish)
+npm/cli-*/vize
+npm/cli-*/vize.exe
+
+# Legacy downloaded CLI binary
 npm/vize/bin/vize-cli
 npm/vize/bin/vize-cli.exe
 

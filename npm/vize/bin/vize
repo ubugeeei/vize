@@ -1,17 +1,36 @@
 #!/usr/bin/env node
 
 import { spawn } from "child_process";
+import { createRequire } from "module";
 import { dirname, join } from "path";
-import { fileURLToPath } from "url";
-import { existsSync } from "fs";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const binaryName = process.platform === "win32" ? "vize-cli.exe" : "vize-cli";
-const binaryPath = join(__dirname, binaryName);
+const require = createRequire(import.meta.url);
 
-if (!existsSync(binaryPath)) {
-  console.error("Vize binary not found. Please reinstall the package.");
-  console.error("npm uninstall -g vize && npm install -g vize");
+const PLATFORMS = {
+  "darwin-x64": { pkg: "@vizejs/cli-darwin-x64", bin: "vize" },
+  "darwin-arm64": { pkg: "@vizejs/cli-darwin-arm64", bin: "vize" },
+  "linux-x64": { pkg: "@vizejs/cli-linux-x64", bin: "vize" },
+  "linux-arm64": { pkg: "@vizejs/cli-linux-arm64", bin: "vize" },
+  "win32-x64": { pkg: "@vizejs/cli-win32-x64", bin: "vize.exe" },
+  "win32-arm64": { pkg: "@vizejs/cli-win32-arm64", bin: "vize.exe" },
+};
+
+const platform = `${process.platform}-${process.arch}`;
+const config = PLATFORMS[platform];
+
+if (!config) {
+  console.error(`Unsupported platform: ${platform}`);
+  console.error("You can install from source: cargo install vize");
+  process.exit(1);
+}
+
+let binaryPath;
+try {
+  const pkgDir = dirname(require.resolve(`${config.pkg}/package.json`));
+  binaryPath = join(pkgDir, config.bin);
+} catch {
+  console.error(`Vize binary package not found: ${config.pkg}`);
+  console.error("Try reinstalling: npm install vize");
   process.exit(1);
 }
 

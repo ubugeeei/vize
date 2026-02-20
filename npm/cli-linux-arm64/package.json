@@ -1,0 +1,10 @@
+{
+  "name": "@vizejs/cli-linux-arm64",
+  "version": "0.0.1-alpha.108",
+  "description": "Vize CLI binary for linux-arm64",
+  "os": ["linux"],
+  "cpu": ["arm64"],
+  "publishConfig": { "access": "public" },
+  "files": ["vize"],
+  "license": "MIT"
+}
