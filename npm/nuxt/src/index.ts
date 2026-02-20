@@ -16,6 +16,13 @@ import type { NuxtMuseaOptions } from "@vizejs/musea-nuxt";
 
 export interface VizeNuxtOptions {
   /**
+   * Enable/disable the Vize compiler (Vue SFC compilation via Vite plugin).
+   * Set to `false` to use Vue's default SFC compiler instead.
+   * @default true
+   */
+  compiler?: boolean;
+
+  /**
    * Musea gallery options.
    * Set to `false` to disable musea.
    */
@@ -48,7 +55,9 @@ export default defineNuxtModule<VizeNuxtOptions>({
     nuxt.options.vite.plugins = nuxt.options.vite.plugins || [];
 
     // Compiler
-    nuxt.options.vite.plugins.push(vize());
+    if (options.compiler !== false) {
+      nuxt.options.vite.plugins.push(vize());
+    }
 
     // Musea gallery (without nuxtMusea mock layer)
     // In Nuxt context, real composables/components are already available
