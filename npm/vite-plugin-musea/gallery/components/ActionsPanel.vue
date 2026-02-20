@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import hljs from 'highlight.js/lib/core'
+import json from 'highlight.js/lib/languages/json'
 import { mdiChevronUp, mdiChevronDown } from '@mdi/js'
 import { useActions, type ActionEvent } from '../composables/useActions'
 import MdiIcon from './MdiIcon.vue'
+
+hljs.registerLanguage('json', json)
 
 const { events, clear } = useActions()
 const expandedIndex = ref<number | null>(null)
@@ -23,6 +27,10 @@ function formatRawEvent(event: ActionEvent): string {
     return JSON.stringify({ target: event.target, value: event.value }, null, 2)
   }
   return JSON.stringify(event.rawEvent, null, 2)
+}
+
+function highlightJson(str: string): string {
+  return hljs.highlight(str, { language: 'json' }).value
 }
 </script>
 
@@ -59,7 +67,7 @@ function formatRawEvent(event: ActionEvent): string {
           />
         </div>
         <div v-if="expandedIndex === index" class="action-detail">
-          <pre class="action-raw">{{ formatRawEvent(event) }}</pre>
+          <pre class="action-raw hljs"><code v-html="highlightJson(formatRawEvent(event))"></code></pre>
         </div>
       </div>
     </div>

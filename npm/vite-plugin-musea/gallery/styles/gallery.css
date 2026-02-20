@@ -6,11 +6,15 @@
   padding: 0;
 }
 
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   font-family: var(--musea-font-sans);
   background: var(--musea-bg-primary);
   color: var(--musea-text);
-  min-height: 100vh;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }

@@ -149,7 +149,7 @@ const handleSearchSelect = (art: { path: string }, variantName?: string) => {
 
 <style scoped>
 .gallery-layout {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
 }

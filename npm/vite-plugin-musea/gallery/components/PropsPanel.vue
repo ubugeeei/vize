@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
+import hljs from 'highlight.js/lib/core'
+import xml from 'highlight.js/lib/languages/xml'
+import json from 'highlight.js/lib/languages/json'
 import { usePalette } from '../composables/usePalette'
 import { getPreviewUrl } from '../api'
 import { sendMessage } from '../composables/usePostMessage'
@@ -9,7 +12,11 @@ import BooleanControl from './controls/BooleanControl.vue'
 import RangeControl from './controls/RangeControl.vue'
 import SelectControl from './controls/SelectControl.vue'
 import ColorControl from './controls/ColorControl.vue'
+import ObjectControl from './controls/ObjectControl.vue'
 import SlotEditor from './SlotEditor.vue'
+
+hljs.registerLanguage('xml', xml)
+hljs.registerLanguage('json', json)
 
 const props = defineProps<{
   artPath: string
@@ -119,6 +126,14 @@ const usageCode = computed(() => {
   return `<${componentName}${propsStr} />`
 })
 
+const usageHighlighted = computed(() =>
+  hljs.highlight(usageCode.value, { language: 'xml' }).value
+)
+
+const valuesHighlighted = computed(() =>
+  hljs.highlight(JSON.stringify(values.value, null, 2), { language: 'json' }).value
+)
+
 async function copyUsage() {
   try {
     await navigator.clipboard.writeText(usageCode.value)
@@ -138,6 +153,8 @@ function getControlComponent(kind: string) {
     case 'select':
     case 'radio': return SelectControl
     case 'color': return ColorControl
+    case 'object':
+    case 'array': return ObjectControl
     default: return TextControl
   }
 }
@@ -185,12 +202,12 @@ function getControlComponent(kind: string) {
                 {{ copiedUsage ? 'Copied!' : 'Copy' }}
               </button>
             </div>
-            <pre class="props-usage-code">{{ usageCode }}</pre>
+            <pre class="props-usage-code hljs"><code v-html="usageHighlighted"></code></pre>
           </div>
 
           <div class="props-json">
             <div class="props-json-header">Current Values</div>
-            <pre class="props-json-code">{{ JSON.stringify(values, null, 2) }}</pre>
+            <pre class="props-json-code hljs"><code v-html="valuesHighlighted"></code></pre>
           </div>
         </div>
 
