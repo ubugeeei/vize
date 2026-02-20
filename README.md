@@ -18,7 +18,7 @@
 
 <p align="center">
   <a href="https://crates.io/crates/vize"><img src="https://img.shields.io/crates/v/vize.svg" alt="crates.io" /></a>
-  <a href="https://www.npmjs.com/package/vizejs"><img src="https://img.shields.io/npm/v/vizejs.svg?label=vizejs" alt="npm" /></a>
+  <a href="https://www.npmjs.com/package/vize"><img src="https://img.shields.io/npm/v/vize.svg?label=vize" alt="npm" /></a>
   <a href="https://www.npmjs.com/package/@vizejs/vite-plugin"><img src="https://img.shields.io/npm/v/@vizejs/vite-plugin.svg?label=@vizejs/vite-plugin" alt="npm" /></a>
   <a href="https://www.npmjs.com/package/@vizejs/wasm"><img src="https://img.shields.io/npm/v/@vizejs/wasm.svg?label=@vizejs/wasm" alt="npm" /></a>
   <a href="https://github.com/ubugeeei/vize/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" /></a>
@@ -107,7 +107,7 @@
 
 | Package | Description |
 |---------|-------------|
-| [vizejs](https://www.npmjs.com/package/vizejs) | Main package with CLI |
+| [vize](https://www.npmjs.com/package/vize) | Main package with CLI |
 | [@vizejs/native](https://www.npmjs.com/package/@vizejs/native) | Node.js native bindings (NAPI) |
 | [@vizejs/wasm](https://www.npmjs.com/package/@vizejs/wasm) | WASM bindings for browsers |
 | [@vizejs/vite-plugin](https://www.npmjs.com/package/@vizejs/vite-plugin) | Vite plugin for Vue SFC compilation |
@@ -151,17 +151,17 @@ Vize crates are named after **art and sculpture terminology**, reflecting how ea
 
 ```bash
 # via npm (recommended)
-npm install -g vizejs
+npm install -g vize
 
-# via Cargo
-cargo install vize
+# via Cargo (requires --version for pre-release)
+cargo install vize --version 0.0.1-alpha.106
 ```
 
 ### npm
 
 ```bash
 # Main package (includes CLI)
-npm install vizejs
+npm install vize
 
 # Native bindings (Node.js)
 npm install @vizejs/native
