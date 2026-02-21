@@ -18,22 +18,22 @@ const STORAGE_KEY = 'musea-theme'
 
 // Singleton state so all components share the same theme
 let initialized = false
-const currentTheme: Ref<string> = ref('dark')
+const currentTheme: Ref<string> = ref('light')
 
 const resolvedTheme: ComputedRef<string> = computed(() => {
   if (currentTheme.value === 'system') {
     return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: light)').matches
       ? 'light'
-      : 'dark'
+      : 'dark'  // system: fallback to dark when OS prefers dark
   }
   return currentTheme.value
 })
 
 /** All available theme names that the user can cycle through. */
-const availableThemes: Ref<string[]> = ref(['dark', 'light', 'system'])
+const availableThemes: Ref<string[]> = ref(['light', 'dark', 'system'])
 
 function getConfig(): ThemeConfig {
-  return (typeof window !== 'undefined' && window.__MUSEA_THEME_CONFIG__) || { default: 'dark' }
+  return (typeof window !== 'undefined' && window.__MUSEA_THEME_CONFIG__) || { default: 'light' }
 }
 
 function applyTheme(name: string): void {
@@ -85,7 +85,7 @@ export function useTheme() {
     const config = getConfig()
 
     // Build available themes list
-    const themes = ['dark', 'light', 'system']
+    const themes = ['light', 'dark', 'system']
     if (config.custom) {
       for (const name of Object.keys(config.custom)) {
         if (!themes.includes(name)) {
@@ -95,7 +95,7 @@ export function useTheme() {
     }
     availableThemes.value = themes
 
-    // Determine initial theme: localStorage > config default > 'dark'
+    // Determine initial theme: localStorage > config default > 'light'
     const stored = localStorage.getItem(STORAGE_KEY)
     const initial = stored && themes.includes(stored) ? stored : config.default
     currentTheme.value = initial

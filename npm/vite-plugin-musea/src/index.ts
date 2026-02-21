@@ -1680,35 +1680,32 @@ function generateGalleryHtml(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Musea - Component Gallery</title>
   <script>window.__MUSEA_BASE_PATH__='${basePath}';${themeScript}${"<"}/script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --musea-bg-primary: #0d0d0d;
-      --musea-bg-secondary: #1a1815;
-      --musea-bg-tertiary: #252220;
-      --musea-bg-elevated: #2d2a27;
-      --musea-accent: #a34828;
-      --musea-accent-hover: #c45a32;
-      --musea-accent-subtle: rgba(163, 72, 40, 0.15);
-      --musea-text: #e6e9f0;
-      --musea-text-secondary: #c4c9d4;
-      --musea-text-muted: #7b8494;
-      --musea-border: #3a3530;
-      --musea-border-subtle: #2a2725;
-      --musea-success: #4ade80;
-      --musea-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-      --musea-radius-sm: 6px;
-      --musea-radius-md: 8px;
-      --musea-radius-lg: 12px;
+      --musea-bg-primary: #E6E2D6;
+      --musea-bg-secondary: #ddd9cd;
+      --musea-bg-tertiary: #d4d0c4;
+      --musea-bg-elevated: #E6E2D6;
+      --musea-accent: #121212;
+      --musea-accent-hover: #2a2a2a;
+      --musea-accent-subtle: rgba(18, 18, 18, 0.08);
+      --musea-text: #121212;
+      --musea-text-secondary: #3a3a3a;
+      --musea-text-muted: #6b6b6b;
+      --musea-border: #c8c4b8;
+      --musea-border-subtle: #d4d0c4;
+      --musea-success: #16a34a;
+      --musea-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      --musea-radius-sm: 4px;
+      --musea-radius-md: 6px;
+      --musea-radius-lg: 8px;
       --musea-transition: 0.15s ease;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       background: var(--musea-bg-primary);
       color: var(--musea-text);
       min-height: 100vh;
@@ -1755,7 +1752,7 @@ function generateGalleryHtml(
     .logo-icon svg {
       width: 16px;
       height: 16px;
-      color: white;
+      color: var(--musea-text);
     }
 
     .header-subtitle {
@@ -2031,7 +2028,7 @@ function generateGalleryHtml(
     }
 
     .variant-preview-code {
-      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
       font-size: 0.75rem;
       color: var(--musea-text-muted);
       background: var(--musea-bg-primary);
@@ -2176,31 +2173,19 @@ function generateGalleryHtml(
     <div class="header-left">
       <a href="${basePath}" class="logo">
         <svg class="logo-svg" width="32" height="32" viewBox="0 0 200 200" fill="none">
-          <defs>
-            <linearGradient id="metal-grad" x1="0%" y1="0%" x2="100%" y2="20%">
-              <stop offset="0%" stop-color="#f0f2f5"/>
-              <stop offset="50%" stop-color="#9ca3b0"/>
-              <stop offset="100%" stop-color="#e07048"/>
-            </linearGradient>
-            <linearGradient id="metal-grad-dark" x1="0%" y1="0%" x2="100%" y2="30%">
-              <stop offset="0%" stop-color="#d0d4dc"/>
-              <stop offset="60%" stop-color="#6b7280"/>
-              <stop offset="100%" stop-color="#c45530"/>
-            </linearGradient>
-          </defs>
-          <g transform="translate(40, 40)">
-            <g transform="skewX(-12)">
-              <path d="M 100 0 L 60 120 L 105 30 L 100 0 Z" fill="url(#metal-grad-dark)" stroke="#4b5563" stroke-width="0.5"/>
-              <path d="M 30 0 L 60 120 L 80 20 L 30 0 Z" fill="url(#metal-grad)" stroke-width="0.5" stroke-opacity="0.4"/>
+          <g transform="translate(30, 25) scale(1.2)">
+            <g transform="translate(15, 10) skewX(-15)">
+              <path d="M 65 0 L 40 60 L 70 20 L 65 0 Z" fill="currentColor"/>
+              <path d="M 20 0 L 40 60 L 53 13 L 20 0 Z" fill="currentColor"/>
             </g>
           </g>
           <g transform="translate(110, 120)">
-            <line x1="5" y1="10" x2="5" y2="50" stroke="#e07048" stroke-width="3" stroke-linecap="round"/>
-            <line x1="60" y1="10" x2="60" y2="50" stroke="#e07048" stroke-width="3" stroke-linecap="round"/>
-            <path d="M 0 10 L 32.5 0 L 65 10" fill="none" stroke="#e07048" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <rect x="15" y="18" width="14" height="12" rx="1" fill="none" stroke="#e07048" stroke-width="1.5" opacity="0.7"/>
-            <rect x="36" y="18" width="14" height="12" rx="1" fill="none" stroke="#e07048" stroke-width="1.5" opacity="0.7"/>
-            <rect x="23" y="35" width="18" height="12" rx="1" fill="none" stroke="#e07048" stroke-width="1.5" opacity="0.6"/>
+            <line x1="5" y1="10" x2="5" y2="50" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            <line x1="60" y1="10" x2="60" y2="50" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            <path d="M 0 10 L 32.5 0 L 65 10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <rect x="15" y="18" width="14" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.7"/>
+            <rect x="36" y="18" width="14" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.7"/>
+            <rect x="23" y="35" width="18" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
           </g>
         </svg>
         Musea

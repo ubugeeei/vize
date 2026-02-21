@@ -36,35 +36,42 @@ defineEmits<{
 
 .input {
   padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid #c8c4b8;
   border-radius: 6px;
   font-size: 0.875rem;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
   width: 100%;
+  background: #e6e2d6;
+  color: #121212;
+}
+
+.input::placeholder {
+  color: #9a9890;
 }
 
 .input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  border-color: #121212;
+  box-shadow: 0 0 0 3px rgba(18, 18, 18, 0.08);
 }
 
 .input--error {
-  border-color: var(--color-error);
+  border-color: #a04040;
 }
 
 .input--error:focus {
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+  box-shadow: 0 0 0 3px rgba(160, 64, 64, 0.12);
 }
 
 .input--disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background: #f9fafb;
+  background: #ddd9cd;
 }
 
 .input-error {
-  color: var(--color-error);
+  color: #a04040;
   font-size: 0.75rem;
 }
 </style>

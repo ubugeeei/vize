@@ -39,28 +39,28 @@ defineProps<{
 }
 
 .badge--default {
-  background: #f3f4f6;
-  color: #374151;
+  background: #d4d0c4;
+  color: #3a3a3a;
 }
 
 .badge--success {
-  background: #dcfce7;
-  color: #166534;
+  background: rgba(45, 106, 53, 0.12);
+  color: #2d6a35;
 }
 
 .badge--warning {
-  background: #fef3c7;
-  color: #92400e;
+  background: rgba(139, 112, 64, 0.12);
+  color: #8b7040;
 }
 
 .badge--error {
-  background: #fee2e2;
-  color: #991b1b;
+  background: rgba(160, 64, 64, 0.1);
+  color: #a04040;
 }
 
 .badge--info {
-  background: #dbeafe;
-  color: #1e40af;
+  background: rgba(74, 107, 138, 0.12);
+  color: #4a6b8a;
 }
 </style>
 

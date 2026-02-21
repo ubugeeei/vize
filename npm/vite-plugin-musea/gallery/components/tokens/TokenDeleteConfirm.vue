@@ -69,7 +69,7 @@ watch(() => props.isOpen, (open) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.92);
+  background: var(--musea-overlay);
   backdrop-filter: blur(4px);
 }
 
@@ -80,7 +80,7 @@ watch(() => props.isOpen, (open) => {
   width: 90%;
   max-width: 420px;
   padding: 1.5rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--musea-shadow);
 }
 
 .modal-title {

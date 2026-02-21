@@ -51,7 +51,7 @@ import Badge from './components/Badge.vue'
         <Card
           title="Featured"
           description="A card with image header."
-          image="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+          image="linear-gradient(135deg, #6b5090 0%, #3a7a70 100%)"
           variant="elevated"
         >
           <Button variant="primary">View</Button>
@@ -62,21 +62,38 @@ import Badge from './components/Badge.vue'
 </template>
 
 <style>
+body {
+  background: #e6e2d6;
+  color: #121212;
+  margin: 0;
+}
+
 .app {
   max-width: 800px;
   margin: 0 auto;
   padding: 2rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 h1 {
-  color: #333;
+  color: #121212;
+  font-weight: 700;
 }
 
 h2 {
-  color: #555;
+  color: #3a3a3a;
   font-size: 1.125rem;
+  font-weight: 600;
   margin-bottom: 0.75rem;
+}
+
+a {
+  color: #121212;
+  font-weight: 500;
+}
+
+a:hover {
+  color: #6b5090;
 }
 
 .section {

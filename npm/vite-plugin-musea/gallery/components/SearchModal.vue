@@ -354,7 +354,7 @@ onUnmounted(() => {
 .search-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.92);
+  background: var(--musea-overlay);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: flex-start;
@@ -369,7 +369,7 @@ onUnmounted(() => {
   background: var(--musea-bg-secondary);
   border: 1px solid var(--musea-border);
   border-radius: 12px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--musea-shadow);
   overflow: hidden;
 }
 

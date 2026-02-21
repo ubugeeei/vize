@@ -55,7 +55,7 @@ const window = globalThis.window
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--musea-overlay);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -77,7 +77,7 @@ const window = globalThis.window
   flex-direction: column;
   border-radius: var(--musea-radius-lg);
   overflow: hidden;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--musea-shadow);
 }
 
 .fullscreen-header {

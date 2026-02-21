@@ -1,22 +1,23 @@
-/* Default (dark) — applied at :root to avoid FOUC */
+/* Default (light) — applied at :root to avoid FOUC */
 :root {
-  --musea-bg-primary: #121212;
-  --musea-bg-secondary: #1a1a1a;
-  --musea-bg-tertiary: #242424;
-  --musea-bg-elevated: #2a2a2a;
-  --musea-accent: #E6E2D6;
-  --musea-accent-hover: #d4d0c4;
-  --musea-accent-subtle: rgba(230, 226, 214, 0.1);
-  --musea-text: #E6E2D6;
-  --musea-text-secondary: #c4c1b6;
-  --musea-text-muted: #8a8880;
-  --musea-border: #2e2e2e;
-  --musea-border-subtle: #232323;
-  --musea-success: #4ade80;
-  --musea-error: #f87171;
-  --musea-info: #60a5fa;
-  --musea-warning: #fbbf24;
-  --musea-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --musea-bg-primary: #E6E2D6;
+  --musea-bg-secondary: #ddd9cd;
+  --musea-bg-tertiary: #d4d0c4;
+  --musea-bg-elevated: #E6E2D6;
+  --musea-accent: #121212;
+  --musea-accent-hover: #2a2a2a;
+  --musea-accent-subtle: rgba(18, 18, 18, 0.08);
+  --musea-text: #121212;
+  --musea-text-secondary: #3a3a3a;
+  --musea-text-muted: #6b6b6b;
+  --musea-border: #c8c4b8;
+  --musea-border-subtle: #d4d0c4;
+  --musea-success: #16a34a;
+  --musea-error: #dc2626;
+  --musea-info: #2563eb;
+  --musea-warning: #d97706;
+  --musea-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  --musea-overlay: rgba(18, 18, 18, 0.6);
   --musea-radius-sm: 4px;
   --musea-radius-md: 6px;
   --musea-radius-lg: 8px;
@@ -27,28 +28,7 @@
   --musea-header-height: 56px;
 }
 
-/* Explicit dark theme */
-[data-musea-theme="dark"] {
-  --musea-bg-primary: #121212;
-  --musea-bg-secondary: #1a1a1a;
-  --musea-bg-tertiary: #242424;
-  --musea-bg-elevated: #2a2a2a;
-  --musea-accent: #E6E2D6;
-  --musea-accent-hover: #d4d0c4;
-  --musea-accent-subtle: rgba(230, 226, 214, 0.1);
-  --musea-text: #E6E2D6;
-  --musea-text-secondary: #c4c1b6;
-  --musea-text-muted: #8a8880;
-  --musea-border: #2e2e2e;
-  --musea-border-subtle: #232323;
-  --musea-success: #4ade80;
-  --musea-error: #f87171;
-  --musea-info: #60a5fa;
-  --musea-warning: #fbbf24;
-  --musea-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-}
-
-/* Light theme */
+/* Explicit light theme */
 [data-musea-theme="light"] {
   --musea-bg-primary: #E6E2D6;
   --musea-bg-secondary: #ddd9cd;
@@ -67,27 +47,51 @@
   --musea-info: #2563eb;
   --musea-warning: #d97706;
   --musea-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  --musea-overlay: rgba(18, 18, 18, 0.6);
 }
 
-/* System preference: apply light when OS prefers light and no explicit theme is set */
-@media (prefers-color-scheme: light) {
+/* Dark theme */
+[data-musea-theme="dark"] {
+  --musea-bg-primary: #121212;
+  --musea-bg-secondary: #1a1a1a;
+  --musea-bg-tertiary: #242424;
+  --musea-bg-elevated: #2a2a2a;
+  --musea-accent: #E6E2D6;
+  --musea-accent-hover: #d4d0c4;
+  --musea-accent-subtle: rgba(230, 226, 214, 0.1);
+  --musea-text: #E6E2D6;
+  --musea-text-secondary: #c4c1b6;
+  --musea-text-muted: #8a8880;
+  --musea-border: #2e2e2e;
+  --musea-border-subtle: #232323;
+  --musea-success: #4ade80;
+  --musea-error: #f87171;
+  --musea-info: #60a5fa;
+  --musea-warning: #fbbf24;
+  --musea-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --musea-overlay: rgba(0, 0, 0, 0.85);
+}
+
+/* System preference: apply dark when OS prefers dark and no explicit theme is set */
+@media (prefers-color-scheme: dark) {
   [data-musea-theme="system"] {
-    --musea-bg-primary: #E6E2D6;
-    --musea-bg-secondary: #ddd9cd;
-    --musea-bg-tertiary: #d4d0c4;
-    --musea-bg-elevated: #E6E2D6;
-    --musea-accent: #121212;
-    --musea-accent-hover: #2a2a2a;
-    --musea-accent-subtle: rgba(18, 18, 18, 0.08);
-    --musea-text: #121212;
-    --musea-text-secondary: #3a3a3a;
-    --musea-text-muted: #6b6b6b;
-    --musea-border: #c8c4b8;
-    --musea-border-subtle: #d4d0c4;
-    --musea-success: #16a34a;
-    --musea-error: #dc2626;
-    --musea-info: #2563eb;
-    --musea-warning: #d97706;
-    --musea-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    --musea-bg-primary: #121212;
+    --musea-bg-secondary: #1a1a1a;
+    --musea-bg-tertiary: #242424;
+    --musea-bg-elevated: #2a2a2a;
+    --musea-accent: #E6E2D6;
+    --musea-accent-hover: #d4d0c4;
+    --musea-accent-subtle: rgba(230, 226, 214, 0.1);
+    --musea-text: #E6E2D6;
+    --musea-text-secondary: #c4c1b6;
+    --musea-text-muted: #8a8880;
+    --musea-border: #2e2e2e;
+    --musea-border-subtle: #232323;
+    --musea-success: #4ade80;
+    --musea-error: #f87171;
+    --musea-info: #60a5fa;
+    --musea-warning: #fbbf24;
+    --musea-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    --musea-overlay: rgba(0, 0, 0, 0.85);
   }
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import type * as Monaco from 'monaco-editor'
+import { useTheme } from '../composables/useTheme'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
@@ -20,10 +21,17 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
 }>()
 
+const { resolvedTheme } = useTheme()
+
 const containerRef = ref<HTMLDivElement | null>(null)
 let editor: Monaco.editor.IStandaloneCodeEditor | null = null
 let monaco: typeof Monaco | null = null
 let completionDisposable: Monaco.IDisposable | null = null
+
+const monacoTheme = computed(() => {
+  const resolved = resolvedTheme.value
+  return resolved === 'dark' ? 'musea-dark' : 'musea-light'
+})
 
 onMounted(async () => {
   if (!containerRef.value) return
@@ -68,6 +76,20 @@ onMounted(async () => {
     }
   })
 
+  // Define custom light theme matching musea brand
+  monaco.editor.defineTheme('musea-light', {
+    base: 'vs',
+    inherit: true,
+    rules: [],
+    colors: {
+      'editor.background': '#ddd9cd',
+      'editor.foreground': '#121212',
+      'editor.lineHighlightBackground': '#d4d0c4',
+      'editorCursor.foreground': '#121212',
+      'editor.selectionBackground': '#c8c4b8',
+    }
+  })
+
   // Register design token completion provider
   if (props.completionItems && props.completionItems.length > 0) {
     registerCompletions(monaco, props.completionItems)
@@ -76,7 +98,7 @@ onMounted(async () => {
   editor = monaco.editor.create(containerRef.value, {
     value: props.modelValue,
     language: props.language || 'html',
-    theme: props.theme || 'musea-dark',
+    theme: props.theme || monacoTheme.value,
     minimap: { enabled: false },
     fontSize: 12,
     lineNumbers: 'on',
@@ -202,6 +224,12 @@ watch(() => props.language, (newLang) => {
 watch(() => props.completionItems, (newItems) => {
   if (monaco && newItems && newItems.length > 0) {
     registerCompletions(monaco, newItems)
+  }
+})
+
+watch(monacoTheme, (newTheme) => {
+  if (monaco && !props.theme) {
+    monaco.editor.setTheme(newTheme)
   }
 })
 </script>

@@ -73,6 +73,6 @@ export function colorKeyToCssVar(key: string): string {
 }
 
 export const builtInThemes: Record<string, ThemeColors> = {
-  dark: darkTheme,
   light: lightTheme,
+  dark: darkTheme,
 }

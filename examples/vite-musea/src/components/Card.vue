@@ -26,10 +26,11 @@ defineProps<{
 
 <style scoped>
 .card {
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
   max-width: 320px;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 .card:hover {
@@ -37,23 +38,23 @@ defineProps<{
 }
 
 .card--default {
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: #ddd9cd;
+  border: 1px solid #c8c4b8;
 }
 
 .card--outlined {
   background: transparent;
-  border: 2px solid #d1d5db;
+  border: 2px solid #c8c4b8;
 }
 
 .card--elevated {
-  background: #fff;
+  background: #ddd9cd;
   border: none;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(18, 18, 18, 0.06);
 }
 
 .card--elevated:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 24px rgba(18, 18, 18, 0.1);
 }
 
 .card-image {
@@ -69,7 +70,7 @@ defineProps<{
   justify-content: center;
   font-size: 2rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(230, 226, 214, 0.8);
 }
 
 .card-body {
@@ -79,13 +80,13 @@ defineProps<{
 .card-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #1f2937;
+  color: #121212;
   margin: 0 0 0.5rem;
 }
 
 .card-description {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: #6b6b6b;
   margin: 0 0 1rem;
   line-height: 1.5;
 }
@@ -106,7 +107,7 @@ defineProps<{
     <Self
       title="Featured"
       description="A card with an image header for rich content display."
-      image="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+      image="linear-gradient(135deg, #6b5090 0%, #3a7a70 100%)"
     >
       <button class="btn btn--primary">View</button>
       <button class="btn">Share</button>

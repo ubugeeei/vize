@@ -1,8 +1,9 @@
-/* highlight.js light theme overrides (GitHub Light)
+/* highlight.js light theme — warm brand tones
    Applied when data-musea-theme="light" or system-light is active */
-[data-musea-theme="light"] .hljs {
-  color: #24292e;
-  background: #f6f8fa;
+[data-musea-theme="light"] .hljs,
+:root .hljs {
+  color: #121212;
+  background: #d4d0c4;
 }
 
 [data-musea-theme="light"] .hljs-doctag,
@@ -11,15 +12,26 @@
 [data-musea-theme="light"] .hljs-template-tag,
 [data-musea-theme="light"] .hljs-template-variable,
 [data-musea-theme="light"] .hljs-type,
-[data-musea-theme="light"] .hljs-variable.language_ {
-  color: #d73a49;
+[data-musea-theme="light"] .hljs-variable.language_,
+:root .hljs-doctag,
+:root .hljs-keyword,
+:root .hljs-meta .hljs-keyword,
+:root .hljs-template-tag,
+:root .hljs-template-variable,
+:root .hljs-type,
+:root .hljs-variable.language_ {
+  color: #73603e;
 }
 
 [data-musea-theme="light"] .hljs-title,
 [data-musea-theme="light"] .hljs-title.class_,
 [data-musea-theme="light"] .hljs-title.class_.inherited__,
-[data-musea-theme="light"] .hljs-title.function_ {
-  color: #6f42c1;
+[data-musea-theme="light"] .hljs-title.function_,
+:root .hljs-title,
+:root .hljs-title.class_,
+:root .hljs-title.class_.inherited__,
+:root .hljs-title.function_ {
+  color: #6b5090;
 }
 
 [data-musea-theme="light"] .hljs-attr,
@@ -31,72 +43,101 @@
 [data-musea-theme="light"] .hljs-variable,
 [data-musea-theme="light"] .hljs-selector-attr,
 [data-musea-theme="light"] .hljs-selector-class,
-[data-musea-theme="light"] .hljs-selector-id {
-  color: #005cc5;
+[data-musea-theme="light"] .hljs-selector-id,
+:root .hljs-attr,
+:root .hljs-attribute,
+:root .hljs-literal,
+:root .hljs-meta,
+:root .hljs-number,
+:root .hljs-operator,
+:root .hljs-variable,
+:root .hljs-selector-attr,
+:root .hljs-selector-class,
+:root .hljs-selector-id {
+  color: #4a6b8a;
 }
 
 [data-musea-theme="light"] .hljs-regexp,
 [data-musea-theme="light"] .hljs-string,
-[data-musea-theme="light"] .hljs-meta .hljs-string {
-  color: #032f62;
+[data-musea-theme="light"] .hljs-meta .hljs-string,
+:root .hljs-regexp,
+:root .hljs-string,
+:root .hljs-meta .hljs-string {
+  color: #486040;
 }
 
 [data-musea-theme="light"] .hljs-built_in,
-[data-musea-theme="light"] .hljs-symbol {
-  color: #e36209;
+[data-musea-theme="light"] .hljs-symbol,
+:root .hljs-built_in,
+:root .hljs-symbol {
+  color: #8b7040;
 }
 
 [data-musea-theme="light"] .hljs-comment,
 [data-musea-theme="light"] .hljs-code,
-[data-musea-theme="light"] .hljs-formula {
-  color: #6a737d;
+[data-musea-theme="light"] .hljs-formula,
+:root .hljs-comment,
+:root .hljs-code,
+:root .hljs-formula {
+  color: #9a9590;
 }
 
 [data-musea-theme="light"] .hljs-name,
 [data-musea-theme="light"] .hljs-quote,
 [data-musea-theme="light"] .hljs-selector-tag,
-[data-musea-theme="light"] .hljs-selector-pseudo {
-  color: #22863a;
+[data-musea-theme="light"] .hljs-selector-pseudo,
+:root .hljs-name,
+:root .hljs-quote,
+:root .hljs-selector-tag,
+:root .hljs-selector-pseudo {
+  color: #2d6a35;
 }
 
-[data-musea-theme="light"] .hljs-subst {
-  color: #24292e;
+[data-musea-theme="light"] .hljs-subst,
+:root .hljs-subst {
+  color: #121212;
 }
 
-[data-musea-theme="light"] .hljs-section {
-  color: #005cc5;
+[data-musea-theme="light"] .hljs-section,
+:root .hljs-section {
+  color: #4a6b8a;
   font-weight: bold;
 }
 
-[data-musea-theme="light"] .hljs-bullet {
-  color: #735c0f;
+[data-musea-theme="light"] .hljs-bullet,
+:root .hljs-bullet {
+  color: #6b5020;
 }
 
-[data-musea-theme="light"] .hljs-emphasis {
-  color: #24292e;
+[data-musea-theme="light"] .hljs-emphasis,
+:root .hljs-emphasis {
+  color: #121212;
   font-style: italic;
 }
 
-[data-musea-theme="light"] .hljs-strong {
-  color: #24292e;
+[data-musea-theme="light"] .hljs-strong,
+:root .hljs-strong {
+  color: #121212;
   font-weight: bold;
 }
 
-[data-musea-theme="light"] .hljs-addition {
-  color: #22863a;
-  background-color: #f0fff4;
+[data-musea-theme="light"] .hljs-addition,
+:root .hljs-addition {
+  color: #2d6a35;
+  background-color: rgba(45, 106, 53, 0.1);
 }
 
-[data-musea-theme="light"] .hljs-deletion {
-  color: #b31d28;
-  background-color: #ffeef0;
+[data-musea-theme="light"] .hljs-deletion,
+:root .hljs-deletion {
+  color: #a04040;
+  background-color: rgba(160, 64, 64, 0.1);
 }
 
 /* Same overrides for system mode when OS prefers light */
 @media (prefers-color-scheme: light) {
   [data-musea-theme="system"] .hljs {
-    color: #24292e;
-    background: #f6f8fa;
+    color: #121212;
+    background: #d4d0c4;
   }
 
   [data-musea-theme="system"] .hljs-doctag,
@@ -106,14 +147,14 @@
   [data-musea-theme="system"] .hljs-template-variable,
   [data-musea-theme="system"] .hljs-type,
   [data-musea-theme="system"] .hljs-variable.language_ {
-    color: #d73a49;
+    color: #73603e;
   }
 
   [data-musea-theme="system"] .hljs-title,
   [data-musea-theme="system"] .hljs-title.class_,
   [data-musea-theme="system"] .hljs-title.class_.inherited__,
   [data-musea-theme="system"] .hljs-title.function_ {
-    color: #6f42c1;
+    color: #6b5090;
   }
 
   [data-musea-theme="system"] .hljs-attr,
@@ -126,63 +167,63 @@
   [data-musea-theme="system"] .hljs-selector-attr,
   [data-musea-theme="system"] .hljs-selector-class,
   [data-musea-theme="system"] .hljs-selector-id {
-    color: #005cc5;
+    color: #4a6b8a;
   }
 
   [data-musea-theme="system"] .hljs-regexp,
   [data-musea-theme="system"] .hljs-string,
   [data-musea-theme="system"] .hljs-meta .hljs-string {
-    color: #032f62;
+    color: #486040;
   }
 
   [data-musea-theme="system"] .hljs-built_in,
   [data-musea-theme="system"] .hljs-symbol {
-    color: #e36209;
+    color: #8b7040;
   }
 
   [data-musea-theme="system"] .hljs-comment,
   [data-musea-theme="system"] .hljs-code,
   [data-musea-theme="system"] .hljs-formula {
-    color: #6a737d;
+    color: #9a9590;
   }
 
   [data-musea-theme="system"] .hljs-name,
   [data-musea-theme="system"] .hljs-quote,
   [data-musea-theme="system"] .hljs-selector-tag,
   [data-musea-theme="system"] .hljs-selector-pseudo {
-    color: #22863a;
+    color: #2d6a35;
   }
 
   [data-musea-theme="system"] .hljs-subst {
-    color: #24292e;
+    color: #121212;
   }
 
   [data-musea-theme="system"] .hljs-section {
-    color: #005cc5;
+    color: #4a6b8a;
     font-weight: bold;
   }
 
   [data-musea-theme="system"] .hljs-bullet {
-    color: #735c0f;
+    color: #6b5020;
   }
 
   [data-musea-theme="system"] .hljs-emphasis {
-    color: #24292e;
+    color: #121212;
     font-style: italic;
   }
 
   [data-musea-theme="system"] .hljs-strong {
-    color: #24292e;
+    color: #121212;
     font-weight: bold;
   }
 
   [data-musea-theme="system"] .hljs-addition {
-    color: #22863a;
-    background-color: #f0fff4;
+    color: #2d6a35;
+    background-color: rgba(45, 106, 53, 0.1);
   }
 
   [data-musea-theme="system"] .hljs-deletion {
-    color: #b31d28;
-    background-color: #ffeef0;
+    color: #a04040;
+    background-color: rgba(160, 64, 64, 0.1);
   }
 }

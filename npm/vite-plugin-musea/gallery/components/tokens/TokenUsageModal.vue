@@ -111,7 +111,7 @@ function viewComponent(artPath: string) {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.92);
+  background: var(--musea-overlay);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -130,7 +130,7 @@ function viewComponent(artPath: string) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--musea-shadow);
 }
 
 .modal-header {
