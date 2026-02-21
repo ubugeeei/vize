@@ -1,6 +1,6 @@
 {
   "name": "@vizejs/nuxt",
-  "version": "0.0.1-alpha.116",
+  "version": "0.0.1-alpha.117",
   "description": "Nuxt module for Vize - compiler, musea gallery, linter, and type checker",
   "type": "module",
   "main": "./dist/index.js",
