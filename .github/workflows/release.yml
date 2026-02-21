@@ -323,7 +323,7 @@ jobs:
       - name: Install wasm-bindgen-cli
         uses: taiki-e/install-action@v2
         with:
-          tool: wasm-bindgen-cli
+          tool: wasm-bindgen-cli@0.2.108
 
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
@@ -711,7 +711,7 @@ jobs:
 
       - name: Build vize CLI package
         working-directory: npm/vize
-        run: pnpm install && pnpm build
+        run: pnpm install --no-frozen-lockfile && pnpm build
 
       - name: Publish vize CLI package
         working-directory: npm/vize
