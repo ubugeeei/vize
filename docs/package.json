@@ -1,0 +1,17 @@
+{
+  "name": "vize-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite build && vite preview",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@ox-content/vite-plugin": "0.4.0",
+    "@vizejs/vite-plugin": "workspace:*",
+    "three": "^0.183.1",
+    "vite": "8.0.0-beta.15",
+    "vue": "^3.4.0"
+  }
+}

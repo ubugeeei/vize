@@ -1,4 +1,4 @@
-name: Deploy Playground to GitHub Pages
+name: Deploy docs
 
 on:
   push:
@@ -16,11 +16,36 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  build-docs:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build docs
+        working-directory: docs
+        run: pnpm build
+
+      - name: Upload docs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs
+          path: docs/dist
+
+  build-playground:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -47,7 +72,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -78,29 +103,51 @@ jobs:
         working-directory: examples/vite-musea
         run: pnpm build
 
+      - name: Upload playground artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: playground
+          path: playground/dist
+
+      - name: Upload musea-examples artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: musea-examples
+          path: examples/vite-musea/dist
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build-docs, build-playground]
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: playground/public/CNAME
+          sparse-checkout-cone-mode: false
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
       - name: Create site structure
         run: |
-          mkdir -p site/play
-          mkdir -p site/musea-examples
-          mv playground/dist/* site/play/
-          mv examples/vite-musea/dist/* site/musea-examples/
+          mkdir -p site/play site/musea-examples
+          cp -r artifacts/docs/* site/
+          cp -r artifacts/playground/* site/play/
+          cp -r artifacts/musea-examples/* site/musea-examples/
           cp playground/public/CNAME site/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload artifact
+      - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

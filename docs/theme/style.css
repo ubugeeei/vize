@@ -1,0 +1,470 @@
+/* === Vize — Editorial Flyer Theme === */
+
+/* Override header logo for dark mode */
+[data-theme="dark"] .header-title img,
+[data-theme="dark"] .hero-image img {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) sepia(0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .header-title img,
+  :root:not([data-theme="light"]) .hero-image img {
+    filter: invert(1) hue-rotate(180deg) brightness(0.92) sepia(0.08);
+  }
+}
+
+/* Canvas */
+#marble-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Reduce shader on content pages for readability */
+body:not(.entry-page) #marble-canvas {
+  opacity: 0.25;
+}
+
+/* ================================================
+   HEADER — Dissolved into the page
+   ================================================ */
+.entry-page .header {
+  position: fixed !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  z-index: 100;
+  opacity: 0;
+  transform: translateY(-100%);
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+}
+
+.entry-page .header.header-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Non-entry pages: subtle floating bar */
+body:not(.entry-page) .header {
+  background: rgba(230, 226, 214, 0.6) !important;
+  backdrop-filter: blur(32px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] body:not(.entry-page) .header,
+:root:not([data-theme="light"]) body:not(.entry-page) .header {
+  background: rgba(22, 22, 22, 0.6) !important;
+}
+
+.header-title {
+  font-weight: 600 !important;
+  letter-spacing: -0.03em !important;
+  font-size: 0.9rem !important;
+}
+
+/* ================================================
+   SIDEBAR
+   ================================================ */
+.sidebar {
+  background: rgba(230, 226, 214, 0.7) !important;
+  border-color: rgba(224, 221, 213, 0.3) !important;
+}
+
+[data-theme="dark"] .sidebar,
+:root:not([data-theme="light"]) .sidebar {
+  background: rgba(28, 28, 28, 0.7) !important;
+  border-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* ================================================
+   HERO — Editorial / Flyer layout
+   ================================================ */
+.entry-page .layout {
+  padding-top: 0 !important;
+}
+
+.entry-page .main {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+.entry-page .hero {
+  height: 100vh !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  padding: 0 !important;
+}
+
+.entry-page .hero-content {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1.5fr !important;
+  grid-template-rows: auto auto 1fr auto !important;
+  grid-template-areas:
+    "name   logo"
+    "text   logo"
+    ".      tag"
+    "action tag" !important;
+  align-items: start !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100vh !important;
+  padding: 3.5rem 4vw 2rem 4vw !important;
+  text-align: left !important;
+  gap: 0 3rem !important;
+  box-sizing: border-box !important;
+}
+
+/* Hero title — massive, left-aligned, no gradient */
+.entry-page .hero-name {
+  grid-area: name !important;
+  font-weight: 700 !important;
+  font-size: clamp(6rem, 20vw, 20rem) !important;
+  letter-spacing: -0.06em !important;
+  line-height: 0.88 !important;
+  margin: 0 0 1.5rem 0 !important;
+  color: var(--octc-color-text) !important;
+  -webkit-text-fill-color: unset !important;
+  background: none !important;
+  background-clip: unset !important;
+  -webkit-background-clip: unset !important;
+}
+
+/* Hero subtitle */
+.entry-page .hero-text {
+  grid-area: text !important;
+  font-size: clamp(1.2rem, 2.4vw, 1.75rem) !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.4 !important;
+  margin: 0 !important;
+  max-width: 420px !important;
+  color: var(--octc-color-text) !important;
+}
+
+/* Hero tagline — vertical text, bottom-right */
+.entry-page .hero-tagline {
+  grid-area: tag !important;
+  font-family: var(--octc-font-mono) !important;
+  font-size: 0.7rem !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.02em !important;
+  line-height: 1.6 !important;
+  color: var(--octc-color-text-muted) !important;
+  writing-mode: vertical-rl !important;
+  text-orientation: mixed !important;
+  max-height: 300px !important;
+  max-width: none !important;
+  margin: 0 !important;
+  opacity: 0.5;
+  align-self: end !important;
+  justify-self: end !important;
+}
+
+/* Hero logo — absolute positioned, large */
+.entry-page .hero-image {
+  position: static !important;
+  grid-area: logo !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  animation: none !important;
+}
+
+.entry-page .hero-image img {
+  position: absolute !important;
+  right: -2vw !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: auto !important;
+  height: 60vh !important;
+  max-width: none !important;
+  opacity: 0.85;
+  animation: none !important;
+  z-index: 0;
+}
+
+/* Hero actions — bottom-left */
+.entry-page .hero-action-brand {
+  background: var(--octc-color-text) !important;
+  color: var(--octc-color-bg) !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  font-weight: 500 !important;
+  font-size: 0.8125rem !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  padding: 0.75rem 2rem !important;
+  transition: all 0.15s ease !important;
+}
+
+.entry-page .hero-action-brand:hover {
+  opacity: 0.8;
+}
+
+.entry-page .hero-action-alt {
+  border: 1px solid var(--octc-color-text-muted) !important;
+  border-radius: 0 !important;
+  font-weight: 500 !important;
+  font-size: 0.8125rem !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  padding: 0.75rem 2rem !important;
+  transition: all 0.15s ease !important;
+}
+
+.entry-page .hero-action-alt:hover {
+  border-color: var(--octc-color-text) !important;
+}
+
+.entry-page .hero-actions {
+  grid-area: action !important;
+  display: flex !important;
+  gap: 0.75rem !important;
+  justify-content: flex-start !important;
+}
+
+/* ================================================
+   FEATURES — Editorial 2-col grid
+   ================================================ */
+.entry-page .features {
+  padding: 0 6vw 6rem 6vw !important;
+  max-width: 960px;
+}
+
+.entry-page .features-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 1px !important;
+  background: var(--octc-color-border) !important;
+  border: 1px solid var(--octc-color-border) !important;
+}
+
+.entry-page .feature-card {
+  background: var(--octc-color-bg) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 1.75rem 1.5rem !important;
+  transition: background 0.15s ease !important;
+}
+
+.entry-page .feature-card:hover {
+  background: var(--octc-color-bg-alt) !important;
+}
+
+[data-theme="dark"] .entry-page .feature-card,
+:root:not([data-theme="light"]) .entry-page .feature-card {
+  background: var(--octc-color-bg) !important;
+}
+
+[data-theme="dark"] .entry-page .feature-card:hover,
+:root:not([data-theme="light"]) .entry-page .feature-card:hover {
+  background: var(--octc-color-bg-alt) !important;
+}
+
+.entry-page .feature-title {
+  font-weight: 600 !important;
+  font-size: 0.9375rem !important;
+  letter-spacing: -0.02em !important;
+  margin-bottom: 0.375rem !important;
+}
+
+.entry-page .feature-details {
+  font-size: 0.8125rem !important;
+  color: var(--octc-color-text-muted) !important;
+  line-height: 1.5 !important;
+}
+
+.entry-page .feature-link {
+  color: var(--octc-color-text-muted) !important;
+}
+
+.entry-page .feature-card:hover .feature-link {
+  color: var(--octc-color-text) !important;
+}
+
+.entry-page .feature-icon {
+  color: var(--octc-color-text) !important;
+}
+
+/* ================================================
+   TYPOGRAPHY — Content pages
+   ================================================ */
+.content h1 {
+  font-weight: 700;
+  font-size: 2rem;
+  letter-spacing: -0.04em;
+}
+
+.content h2 {
+  font-weight: 600;
+  font-size: 1.375rem;
+  letter-spacing: -0.02em;
+  border-bottom-color: var(--octc-color-border);
+}
+
+.content h3 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Code blocks */
+.content pre {
+  border: 1px solid var(--octc-color-border);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .content pre,
+:root:not([data-theme="light"]) .content pre {
+  border-color: #1e1e1e;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Nav active state */
+.nav-link.active {
+  background: var(--octc-color-text) !important;
+  color: var(--octc-color-bg) !important;
+}
+
+.nav-link.active:hover {
+  background: var(--octc-color-text) !important;
+  opacity: 0.85;
+}
+
+/* Blockquote */
+.content blockquote {
+  border-left-color: var(--octc-color-border);
+  background: transparent;
+}
+
+/* ================================================
+   FOOTER
+   ================================================ */
+.footer {
+  border-top-color: var(--octc-color-border);
+  opacity: 0.6;
+  font-size: 0.8125rem;
+}
+
+/* ================================================
+   ANIMATIONS
+   ================================================ */
+.main {
+  animation: fadeIn 0.35s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ================================================
+   SCROLLBAR
+   ================================================ */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--octc-color-border);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--octc-color-text-muted);
+}
+
+/* Remove default overlay */
+body::after {
+  display: none !important;
+}
+
+/* Table */
+.content table {
+  border: 1px solid var(--octc-color-border);
+  border-radius: 4px;
+  overflow: hidden;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.content th {
+  font-weight: 500;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--octc-color-text-muted);
+}
+
+.content td {
+  border-color: var(--octc-color-border);
+}
+
+/* UI elements */
+.search-button {
+  border-radius: 2px;
+}
+.social-link {
+  border-radius: 2px;
+}
+.theme-toggle {
+  border-radius: 2px;
+}
+
+/* Mobile */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .sidebar {
+    background: rgba(28, 28, 28, 0.95) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  [data-theme="dark"] .sidebar {
+    background: rgba(28, 28, 28, 0.95) !important;
+  }
+
+  .entry-page .features-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .entry-page .hero-content {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "name"
+      "text"
+      "logo"
+      "tag"
+      "action" !important;
+    padding: 100px 1.5rem 3rem 1.5rem !important;
+    gap: 0 !important;
+  }
+
+  .entry-page .hero-name {
+    font-size: clamp(3rem, 15vw, 6rem) !important;
+  }
+
+  .entry-page .hero-image {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+}

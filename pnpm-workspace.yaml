@@ -4,3 +4,4 @@ packages:
   - 'npm/vite-plugin-vize/example'
   - 'npm/fresco/examples/*'
   - 'examples/vite-musea'
+  - 'docs'

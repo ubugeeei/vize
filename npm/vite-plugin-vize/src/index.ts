@@ -293,6 +293,7 @@ export function vize(options: VizeOptions = {}): Plugin[] {
   let scanPatterns: string[];
   let ignorePatterns: string[];
   let mergedOptions: VizeOptions;
+  let initialized = false;
   let dynamicImportAliasRules: DynamicImportAliasRule[] = [];
   let cssAliasRules: CssAliasRule[] = [];
   let extractCss = false;
@@ -494,6 +495,7 @@ export function vize(options: VizeOptions = {}): Plugin[] {
       filter = createFilter(mergedOptions.include, mergedOptions.exclude);
       scanPatterns = mergedOptions.scanPatterns ?? ["**/*.vue"];
       ignorePatterns = mergedOptions.ignorePatterns ?? ["node_modules/**", "dist/**", ".git/**"];
+      initialized = true;
     },
 
     configureServer(devServer: ViteDevServer) {
@@ -536,6 +538,11 @@ export function vize(options: VizeOptions = {}): Plugin[] {
     },
 
     async buildStart() {
+      if (!scanPatterns) {
+        // Running in standalone rolldown context (e.g., ox-content OG image)
+        // where configResolved is not called. Skip pre-compilation.
+        return;
+      }
       await compileAll();
       logger.log("Cache keys:", [...cache.keys()].slice(0, 3));
     },
@@ -668,7 +675,7 @@ export function vize(options: VizeOptions = {}): Plugin[] {
 
       // Handle .vue file imports
       if (id.endsWith(".vue")) {
-        const handleNodeModules = mergedOptions.handleNodeModulesVue ?? true;
+        const handleNodeModules = initialized ? (mergedOptions.handleNodeModulesVue ?? true) : true;
 
         if (!handleNodeModules && id.includes("node_modules")) {
           logger.log(`resolveId: skipping node_modules import ${id}`);
@@ -683,7 +690,7 @@ export function vize(options: VizeOptions = {}): Plugin[] {
           return null;
         }
 
-        if (!isNodeModulesPath && !filter(resolved)) {
+        if (filter && !isNodeModulesPath && !filter(resolved)) {
           logger.log(`resolveId: skipping filtered path ${resolved}`);
           return null;
         }
@@ -763,8 +770,8 @@ export function vize(options: VizeOptions = {}): Plugin[] {
         if (!compiled && fs.existsSync(realPath)) {
           logger.log(`load: on-demand compiling ${realPath}`);
           compiled = compileFile(realPath, cache, {
-            sourceMap: mergedOptions.sourceMap ?? !isProduction,
-            ssr: mergedOptions.ssr ?? false,
+            sourceMap: mergedOptions?.sourceMap ?? !(isProduction ?? false),
+            ssr: mergedOptions?.ssr ?? false,
           });
         }
 
@@ -876,8 +883,8 @@ export function vize(options: VizeOptions = {}): Plugin[] {
             file,
             cache,
             {
-              sourceMap: mergedOptions.sourceMap ?? !isProduction,
-              ssr: mergedOptions.ssr ?? false,
+              sourceMap: mergedOptions?.sourceMap ?? !isProduction,
+              ssr: mergedOptions?.ssr ?? false,
             },
             source,
           );
