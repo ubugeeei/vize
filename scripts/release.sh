@@ -140,10 +140,6 @@ for pkg in npm/*/; do
       const pkg = JSON.parse(fs.readFileSync('$pkg/package.json', 'utf8'));
       pkg.version = '$NEW_VERSION';
       // Update optionalDependencies versions for native packages (NAPI bindings only)
-      // NOTE: @vizejs/cli-* are NOT bumped here because they are published by the
-      // Release workflow. Bumping them here would break the lockfile since the new
-      // version doesn't exist on npm yet. The release workflow injects the correct
-      // version at publish time.
       if (pkg.optionalDependencies) {
         for (const dep of Object.keys(pkg.optionalDependencies)) {
           if (dep.startsWith('@vizejs/native-') || dep.startsWith('@vizejs/fresco-native-')) {

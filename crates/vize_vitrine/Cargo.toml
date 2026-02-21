@@ -12,7 +12,7 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = []
-napi = ["dep:napi", "dep:napi-derive", "dep:glob", "dep:rayon", "vize_atelier_sfc/native"]
+napi = ["dep:napi", "dep:napi-derive", "dep:glob", "dep:rayon", "dep:ignore", "vize_atelier_sfc/native"]
 wasm = ["dep:wasm-bindgen", "dep:serde-wasm-bindgen", "dep:js-sys", "dep:web-sys"]
 
 [dependencies]
@@ -41,6 +41,9 @@ glob = { version = "0.3", optional = true }
 
 # Multithreading (for batch compile)
 rayon = { version = "1.10", optional = true }
+
+# Directory walking with .gitignore support (for lint)
+ignore = { version = "0.4", optional = true }
 
 # WASM (optional)
 wasm-bindgen = { workspace = true, optional = true }

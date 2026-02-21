@@ -51,12 +51,14 @@
     "node": ">=18"
   },
   "optionalDependencies": {
-    "@vizejs/cli-darwin-x64": "0.0.1-alpha.108",
-    "@vizejs/cli-darwin-arm64": "0.0.1-alpha.108",
-    "@vizejs/cli-linux-x64": "0.0.1-alpha.108",
-    "@vizejs/cli-linux-arm64": "0.0.1-alpha.108",
-    "@vizejs/cli-win32-x64": "0.0.1-alpha.108",
-    "@vizejs/cli-win32-arm64": "0.0.1-alpha.108"
+    "@vizejs/native-darwin-x64": "0.0.1-alpha.114",
+    "@vizejs/native-darwin-arm64": "0.0.1-alpha.114",
+    "@vizejs/native-win32-x64-msvc": "0.0.1-alpha.114",
+    "@vizejs/native-win32-arm64-msvc": "0.0.1-alpha.114",
+    "@vizejs/native-linux-x64-gnu": "0.0.1-alpha.114",
+    "@vizejs/native-linux-x64-musl": "0.0.1-alpha.114",
+    "@vizejs/native-linux-arm64-gnu": "0.0.1-alpha.114",
+    "@vizejs/native-linux-arm64-musl": "0.0.1-alpha.114"
   },
   "dependencies": {
     "oxc-transform": "^0.56.0"

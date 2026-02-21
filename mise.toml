@@ -311,34 +311,8 @@ else
 fi
 """
 
-[tasks."publish:cli-platforms"]
-alias = "pcp"
-description = "Publish @vizejs/cli-* platform packages to npm (initial registration)"
-run = """
-set -e
-
-# Determine npm tag from version
-VERSION=$(node -p "require('./npm/cli-darwin-arm64/package.json').version")
-if [[ "$VERSION" == *-alpha* ]]; then
-  TAG="--tag alpha"
-elif [[ "$VERSION" == *-beta* ]]; then
-  TAG="--tag beta"
-elif [[ "$VERSION" == *-rc* ]]; then
-  TAG="--tag rc"
-else
-  TAG=""
-fi
-
-for dir in npm/cli-*/; do
-  pkg=$(node -p "require('./${dir}package.json').name")
-  echo "Publishing $pkg@$VERSION..."
-  cd "$dir"
-  pnpm publish --access public --no-git-checks $TAG
-  cd ../..
-done
-
-echo "All CLI platform packages published!"
-"""
+# NOTE: @vizejs/cli-* platform packages have been removed.
+# CLI now uses NAPI-RS bindings via @vizejs/native-* optionalDependencies.
 
 [tasks."publish:vite-plugin"]
 alias = "pv"
