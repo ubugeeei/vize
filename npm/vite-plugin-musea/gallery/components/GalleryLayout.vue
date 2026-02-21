@@ -70,10 +70,10 @@ const handleSearchSelect = (art: { path: string }, variantName?: string) => {
       <div class="header-left">
         <router-link to="/" class="logo">
           <svg class="logo-svg" width="32" height="32" viewBox="0 0 200 200" fill="none">
-            <g transform="translate(40, 40)">
-              <g transform="skewX(-12)">
-                <path d="M 100 0 L 60 120 L 105 30 L 100 0 Z" fill="currentColor" />
-                <path d="M 30 0 L 60 120 L 80 20 L 30 0 Z" fill="currentColor" />
+            <g transform="translate(30, 25) scale(1.2)">
+              <g transform="translate(15, 10) skewX(-15)">
+                <path d="M 65 0 L 40 60 L 70 20 L 65 0 Z" fill="currentColor" />
+                <path d="M 20 0 L 40 60 L 53 13 L 20 0 Z" fill="currentColor" />
               </g>
             </g>
             <g transform="translate(110, 120)">
