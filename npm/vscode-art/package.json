@@ -2,7 +2,7 @@
   "name": "vize-art",
   "displayName": "Vize Art",
   "description": "Syntax highlighting for Vize Art files (*.art.vue)",
-  "version": "0.1.0-alpha",
+  "version": "0.1.0",
   "publisher": "vize",
   "repository": {
     "type": "git",

@@ -152,7 +152,7 @@ Vize crates are named after **art and sculpture terminology**, reflecting how ea
 npm install -g vize
 
 # via Cargo (requires --version for pre-release)
-cargo install vize --version 0.1.0-alpha
+cargo install vize --version 0.1.0
 ```
 
 ### npm
