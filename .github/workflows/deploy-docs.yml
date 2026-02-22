@@ -21,6 +21,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v1-rust"
+          shared-key: "napi"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -31,6 +40,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Build @vizejs/vite-plugin
+        run: pnpm -r --filter '@vizejs/native' --filter '@vizejs/vite-plugin' run build
 
       - name: Build docs
         working-directory: docs
