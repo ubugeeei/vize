@@ -37,7 +37,7 @@ impl HelpLevel {
         match self {
             HelpLevel::None => None,
             HelpLevel::Short => Some(strip_markdown_first_line(help)),
-            HelpLevel::Full => Some(help.to_string()),
+            HelpLevel::Full => Some(render_markdown_to_ansi(help)),
         }
     }
 }
@@ -70,6 +70,146 @@ fn strip_markdown_first_line(text: &str) -> String {
         return stripped.to_string();
     }
     text.lines().next().unwrap_or(text).to_string()
+}
+
+// ANSI escape codes
+const ANSI_BOLD: &str = "\x1b[1m";
+const ANSI_BOLD_OFF: &str = "\x1b[22m";
+const ANSI_UNDERLINE: &str = "\x1b[4m";
+const ANSI_UNDERLINE_OFF: &str = "\x1b[24m";
+const ANSI_CYAN: &str = "\x1b[36m";
+const ANSI_CYAN_OFF: &str = "\x1b[39m";
+const ANSI_DIM: &str = "\x1b[2m";
+const ANSI_DIM_OFF: &str = "\x1b[22m";
+
+/// Convert markdown text to ANSI-formatted text for TUI display.
+///
+/// Supports:
+/// - `**bold**` / `__bold__` → ANSI bold
+/// - `` `code` `` → cyan
+/// - ```` ``` ```` code blocks → indented + dim
+/// - `# Header` → bold + underline
+fn render_markdown_to_ansi(text: &str) -> String {
+    let mut result = String::with_capacity(text.len() + 64);
+    let mut in_code_block = false;
+
+    for line in text.lines() {
+        if !result.is_empty() {
+            result.push('\n');
+        }
+
+        let trimmed = line.trim();
+
+        // Handle code fence blocks
+        if trimmed.starts_with("```") {
+            in_code_block = !in_code_block;
+            continue;
+        }
+
+        // Inside code block: indent + dim
+        if in_code_block {
+            result.push_str(ANSI_DIM);
+            result.push_str("  ");
+            result.push_str(line);
+            result.push_str(ANSI_DIM_OFF);
+            continue;
+        }
+
+        // Handle headers: # Header → bold + underline
+        if let Some(header_content) = trimmed.strip_prefix("# ") {
+            result.push_str(ANSI_BOLD);
+            result.push_str(ANSI_UNDERLINE);
+            result.push_str(header_content);
+            result.push_str(ANSI_UNDERLINE_OFF);
+            result.push_str(ANSI_BOLD_OFF);
+            continue;
+        }
+        if let Some(header_content) = trimmed.strip_prefix("## ") {
+            result.push_str(ANSI_BOLD);
+            result.push_str(ANSI_UNDERLINE);
+            result.push_str(header_content);
+            result.push_str(ANSI_UNDERLINE_OFF);
+            result.push_str(ANSI_BOLD_OFF);
+            continue;
+        }
+        if let Some(header_content) = trimmed.strip_prefix("### ") {
+            result.push_str(ANSI_BOLD);
+            result.push_str(header_content);
+            result.push_str(ANSI_BOLD_OFF);
+            continue;
+        }
+
+        // Process inline formatting
+        render_inline_markdown(&mut result, line);
+    }
+
+    result
+}
+
+/// Process inline markdown formatting: **bold**, __bold__, `code`
+fn render_inline_markdown(out: &mut String, line: &str) {
+    let bytes = line.as_bytes();
+    let len = bytes.len();
+    let mut i = 0;
+
+    while i < len {
+        // Inline code: `code`
+        if bytes[i] == b'`' {
+            if let Some(end) = find_closing_backtick(bytes, i + 1) {
+                out.push_str(ANSI_CYAN);
+                out.push_str(&line[i + 1..end]);
+                out.push_str(ANSI_CYAN_OFF);
+                i = end + 1;
+                continue;
+            }
+        }
+
+        // Bold: **text** or __text__
+        if i + 1 < len && bytes[i] == b'*' && bytes[i + 1] == b'*' {
+            if let Some(end) = find_closing_double(bytes, i + 2, b'*') {
+                out.push_str(ANSI_BOLD);
+                // Recursively process inline content within bold
+                render_inline_markdown(out, &line[i + 2..end]);
+                out.push_str(ANSI_BOLD_OFF);
+                i = end + 2;
+                continue;
+            }
+        }
+        if i + 1 < len && bytes[i] == b'_' && bytes[i + 1] == b'_' {
+            if let Some(end) = find_closing_double(bytes, i + 2, b'_') {
+                out.push_str(ANSI_BOLD);
+                render_inline_markdown(out, &line[i + 2..end]);
+                out.push_str(ANSI_BOLD_OFF);
+                i = end + 2;
+                continue;
+            }
+        }
+
+        out.push(bytes[i] as char);
+        i += 1;
+    }
+}
+
+/// Find closing backtick for inline code
+fn find_closing_backtick(bytes: &[u8], start: usize) -> Option<usize> {
+    for i in start..bytes.len() {
+        if bytes[i] == b'`' {
+            return Some(i);
+        }
+    }
+    None
+}
+
+/// Find closing double delimiter (** or __)
+fn find_closing_double(bytes: &[u8], start: usize, ch: u8) -> Option<usize> {
+    let mut i = start;
+    while i + 1 < bytes.len() {
+        if bytes[i] == ch && bytes[i + 1] == ch {
+            return Some(i);
+        }
+        i += 1;
+    }
+    None
 }
 
 /// A text edit for auto-fixing a diagnostic.
@@ -336,7 +476,11 @@ mod tests {
         let level = HelpLevel::Full;
         let help = "**Why:** Use `:key` for tracking.\n\n```vue\n<li :key=\"id\">\n```";
         let result = level.process(help);
-        assert_eq!(result, Some(help.to_string()));
+        // Full mode now renders ANSI formatting
+        let expected = format!(
+            "{ANSI_BOLD}Why:{ANSI_BOLD_OFF} Use {ANSI_CYAN}:key{ANSI_CYAN_OFF} for tracking.\n\n{ANSI_DIM}  <li :key=\"id\">{ANSI_DIM_OFF}"
+        );
+        assert_eq!(result, Some(expected));
     }
 
     #[test]
@@ -380,5 +524,50 @@ mod tests {
     fn test_strip_markdown_first_line_with_backticks() {
         let result = strip_markdown_first_line("Use `v-model` instead of `{{ }}`");
         assert_eq!(result, "Use v-model instead of {{ }}");
+    }
+
+    #[test]
+    fn test_render_markdown_bold() {
+        let result = render_markdown_to_ansi("**bold** text");
+        assert_eq!(result, format!("{ANSI_BOLD}bold{ANSI_BOLD_OFF} text"));
+    }
+
+    #[test]
+    fn test_render_markdown_inline_code() {
+        let result = render_markdown_to_ansi("Use `v-model` directive");
+        assert_eq!(
+            result,
+            format!("Use {ANSI_CYAN}v-model{ANSI_CYAN_OFF} directive")
+        );
+    }
+
+    #[test]
+    fn test_render_markdown_header() {
+        let result = render_markdown_to_ansi("# Why");
+        assert_eq!(
+            result,
+            format!("{ANSI_BOLD}{ANSI_UNDERLINE}Why{ANSI_UNDERLINE_OFF}{ANSI_BOLD_OFF}")
+        );
+    }
+
+    #[test]
+    fn test_render_markdown_code_block() {
+        let result = render_markdown_to_ansi("```vue\n<li :key=\"id\">\n```");
+        assert_eq!(
+            result,
+            format!("{ANSI_DIM}  <li :key=\"id\">{ANSI_DIM_OFF}")
+        );
+    }
+
+    #[test]
+    fn test_render_markdown_plain_text() {
+        let result = render_markdown_to_ansi("plain text");
+        assert_eq!(result, "plain text");
+    }
+
+    #[test]
+    fn test_render_markdown_underscore_bold() {
+        let result = render_markdown_to_ansi("__bold__ text");
+        assert_eq!(result, format!("{ANSI_BOLD}bold{ANSI_BOLD_OFF} text"));
     }
 }

@@ -279,9 +279,9 @@
     "vue/v-slot-style.message_shorthand": "`v-slot:name`の代わりに省略記法`#name`を使用してください",
     "vue/v-slot-style.message_longform": "`#name`の代わりに`v-slot:name`を使用してください",
     "vue/v-slot-style.help": "**省略記法:** `<template #header>` (デフォルト)\n**完全記法:** `<template v-slot:header>`\n\n一貫したスタイルを選択してください。",
-    "vue/prop-name-casing.description": "テンプレートでのprop名にcamelCaseを強制する",
-    "vue/prop-name-casing.message": "prop '{name}'は'{camel}'（camelCase）にすべきです",
-    "vue/prop-name-casing.help": "テンプレートではprop名にcamelCaseを使用してください:\n```vue\n<!-- 悪い例 -->\n<MyComponent my-prop=\"value\" />\n\n<!-- 良い例 -->\n<MyComponent myProp=\"value\" />\n```",
+    "vue/prop-name-casing.description": "テンプレートでのprop名にkebab-caseを強制する",
+    "vue/prop-name-casing.message": "prop '{name}'は'{kebab}'（kebab-case）にすべきです",
+    "vue/prop-name-casing.help": "テンプレートではprop名にkebab-caseを使用してください:\n```vue\n<!-- 悪い例 -->\n<MyComponent myProp=\"value\" />\n\n<!-- 良い例 -->\n<MyComponent my-prop=\"value\" />\n```",
     "vue/html-quotes.description": "HTML属性の引用符スタイルを強制する",
     "vue/html-quotes.message_double": "シングルクォートではなくダブルクォートを使用してください",
     "vue/html-quotes.message_single": "ダブルクォートではなくシングルクォートを使用してください",
@@ -351,5 +351,62 @@
     "ts/vue/9005.message": "無効なディレクティブ: '{name}'",
     "ts/vue/9005.help": "**ディレクティブ`{name}`エラー。**\n\n**一般的な原因:**\n- ディレクティブが登録されていない\n- ディレクティブの構文が間違っている\n\n**解決方法:**\n```ts\n// ローカルにディレクティブを登録\nimport { v{name} } from './directives';\n\n// またはグローバルに\napp.directive('{name}', {\n  mounted(el, binding) { ... }\n});\n```",
     "ts/vue/9006.message": "リアクティビティの問題が検出されました",
-    "ts/vue/9006.help": "**リアクティビティが失われる可能性があります。**\n\n値のアクセス方法や分割代入の方法により、リアクティビティが失われる可能性があります。\n\n**一般的な問題と修正:**\n```ts\n// ❌ 分割代入でリアクティビティが失われる\nconst { count } = props;\n\n// ✅ toRefsを使用\nconst { count } = toRefs(props);\n\n// ❌ refの値を代入\nlet x = ref(0).value;\n\n// ✅ refを保持\nconst x = ref(0);\n```"
+    "ts/vue/9006.help": "**リアクティビティが失われる可能性があります。**\n\n値のアクセス方法や分割代入の方法により、リアクティビティが失われる可能性があります。\n\n**一般的な問題と修正:**\n```ts\n// ❌ 分割代入でリアクティビティが失われる\nconst { count } = props;\n\n// ✅ toRefsを使用\nconst { count } = toRefs(props);\n\n// ❌ refの値を代入\nlet x = ref(0).value;\n\n// ✅ refを保持\nconst x = ref(0);\n```",
+
+    "a11y/no-i-for-icon.description": "<i>要素をアイコンとして使用することを禁止",
+    "a11y/no-i-for-icon.message": "アイコンCSSクラスが付与された<i>要素はアイコンとして使用すべきではありません。セマンティックな要素を使用してください",
+    "a11y/no-i-for-icon.help": "**理由:** `<i>`要素はHTMLでは*イタリック体テキスト*を意味します。アイコンフォントとして使用するとアクセシビリティの問題が生じます。スクリーンリーダーが意味のないコンテンツを読み上げる可能性があります。\n\n**修正:** `<span>`と`aria-hidden=\"true\"`を使用してください:\n```vue\n<span class=\"fas fa-home\" aria-hidden=\"true\"></span>\n<span class=\"sr-only\">ホーム</span>\n```\n\nまたはSVGアイコンコンポーネントを使用してください。",
+
+    "a11y/no-refer-to-non-existent-id.description": "存在しないIDへの参照を禁止",
+    "a11y/no-refer-to-non-existent-id.message": "{kind}属性が参照するid=\"{id}\"はテンプレート内に存在しません",
+    "a11y/no-refer-to-non-existent-id.help": "**理由:** `for`、`aria-labelledby`、`aria-describedby`等のID参照属性は、そのIDを持つ要素が存在する必要があります。参照が壊れると関連付けが無効になります。\n\n**修正:** 参照先のIDがテンプレート内に存在することを確認してください:\n```vue\n<label for=\"name\">名前:</label>\n<input id=\"name\" type=\"text\">\n```",
+
+    "vue/use-unique-element-ids.message_form": "フォーム要素に静的id=\"{value}\"が指定されています。ラベル/入力の関連付けが正しく機能するようuseId()を使用してください",
+    "vue/use-unique-element-ids.message_aria_ref": "ARIA参照を持つ要素に静的id=\"{value}\"が指定されています。ARIA関連付けの一意性を保つためuseId()を使用してください",
+
+    "vue/permitted-contents.description": "HTMLコンテンツモデルルールを強制",
+    "vue/permitted-contents.block_in_inline": "<{child}>（ブロック要素）は<{parent}>（フレージングコンテンツのみ許可）内に配置できません",
+    "vue/permitted-contents.interactive_nesting": "<{tag}>はインタラクティブ要素であり、他のインタラクティブ要素内にネストできません",
+    "vue/permitted-contents.invalid_child": "<{child}>は<{parent}>の直接の子要素として許可されていません",
+    "vue/permitted-contents.help": "**理由:** HTMLにはコンテンツモデルルールがあり、どの要素をどの要素内にネストできるかが定義されています。これらのルールに違反すると、ブラウザがDOMを自動修正し、予期しない表示になります。\n\n**主なルール:**\n- `<p>`、`<span>`、`<a>`にはフレージング（インライン）コンテンツのみ配置可能\n- `<a>`と`<button>`は互いにネスト不可\n- `<ul>/<ol>`の直接の子は`<li>`のみ\n- `<table>`の直接の子は`<thead>`、`<tbody>`、`<tfoot>`、`<tr>`、`<caption>`のみ",
+
+    "category.html_conformance": "HTML準拠",
+
+    "html/deprecated-element.message": "<{tag}>は非推奨のHTML要素です",
+    "html/deprecated-element.help": "この要素はHTML Living Standardで廃止されています。CSSを使用したモダンなHTML要素を代わりに使用してください。",
+
+    "html/deprecated-attr.message": "<{tag}>の\"{attr}\"属性は非推奨です",
+    "html/deprecated-attr.help": "代わりに{suggestion}を使用してください。",
+
+    "html/no-consecutive-br.message": "連続する<br>要素が検出されました",
+    "html/no-consecutive-br.help": "複数の<br>タグの代わりに、<p>要素やCSSのmargin/paddingを使用してください。",
+
+    "html/id-duplication.message": "テンプレート内にid=\"{id}\"が重複しています",
+    "html/id-duplication.help": "要素のIDはドキュメント内で一意でなければなりません。IDの重複はlabel関連付け、ARIA参照、getElementById()を壊します。",
+
+    "html/require-datetime.message": "<time>要素にはコンテンツが有効な日時文字列でない場合、datetime属性が必要です",
+    "html/require-datetime.help": "機械可読な日時値を持つdatetime属性を追加してください。例: <time datetime=\"2024-12-25\">クリスマス</time>",
+
+    "html/no-empty-palpable-content.message": "<{tag}>要素は空ですが、表示コンテンツが期待されています",
+    "html/no-empty-palpable-content.help": "テキストコンテンツ、子要素を追加するか、アクセシブルなコンテンツにはaria-labelを使用してください。",
+
+    "html/no-duplicate-dt.message": "<dl>内に重複する<dt>用語「{term}」があります",
+    "html/no-duplicate-dt.help": "定義リスト内の各用語は一意であるべきです。1つの<dt>に定義をまとめるか、異なる用語を使用してください。",
+
+    "a11y/heading-levels.message": "見出しレベルが<{from}>から<{to}>にスキップされています",
+    "a11y/heading-levels.help": "見出しレベルは1つずつ増加すべきです。スクリーンリーダーのユーザーは見出しレベルでナビゲートするため、レベルのスキップはドキュメント構造を混乱させます。",
+
+    "a11y/use-list.message": "テキストがリスト項目のように見えます。適切なリストセマンティクスには<ul>または<ol>を使用してください",
+    "a11y/use-list.help": "スクリーンリーダーは箇条書き文字をリスト項目として識別できません。代わりにセマンティックな<ul>/<ol>と<li>要素を使用してください。",
+
+    "a11y/placeholder-label-option.message": "プレースホルダー<option>にはdisabledまたはhidden属性が必要です",
+    "a11y/placeholder-label-option.help": "プレースホルダー<option>にdisabledまたはhiddenを追加して、選択されないようにしてください:\n<option value=\"\" disabled>選択してください</option>",
+
+    "a11y/landmark-roles.duplicate_main": "ページごとに<main>ランドマークは1つのみ許可されます",
+    "a11y/landmark-roles.help_duplicate_main": "ページには<main>ランドマークが1つだけ必要です。重複する<main>要素を削除するか、role=\"main\"を1つの要素にのみ使用してください。",
+    "a11y/landmark-roles.missing_label": "複数の\"{role}\"ランドマークがラベルなしで存在します",
+    "a11y/landmark-roles.help_missing_label": "同じ種類のランドマークが複数ある場合、ユーザーが区別できるようにそれぞれにaria-labelまたはaria-labelledbyを付けてください。",
+
+    "vue/no-boolean-attr-value.message": "ブール属性\"{attr}\"に値\"{value}\"を指定すべきではありません",
+    "vue/no-boolean-attr-value.help": "値を削除してください。{attr}=\"...\"ではなく{attr}のみを使用してください。"
 }

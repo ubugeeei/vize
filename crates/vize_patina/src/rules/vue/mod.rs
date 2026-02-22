@@ -70,7 +70,11 @@ mod no_unused_properties;
 
 // Accessibility rules
 mod a11y_img_alt;
+mod permitted_contents;
 mod use_unique_element_ids;
+
+// HTML conformance rules
+mod no_boolean_attr_value;
 
 // Style rules
 mod no_preprocessor_lang;
@@ -145,7 +149,11 @@ pub use no_unused_properties::NoUnusedProperties;
 
 // Accessibility rules exports
 pub use a11y_img_alt::A11yImgAlt;
+pub use permitted_contents::PermittedContents;
 pub use use_unique_element_ids::UseUniqueElementIds;
+
+// HTML conformance rules exports
+pub use no_boolean_attr_value::NoBooleanAttrValue;
 
 // Style rules exports
 pub use no_preprocessor_lang::NoPreprocessorLang;

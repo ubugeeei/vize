@@ -19,6 +19,8 @@ pub enum RuleCategory {
     Musea,
     /// Accessibility (a11y) rules
     Accessibility,
+    /// HTML conformance rules
+    HtmlConformance,
     /// Type-aware rules (require semantic analysis)
     TypeAware,
 }
@@ -236,7 +238,25 @@ impl RuleRegistry {
         registry.register(Box::new(crate::rules::a11y::RoleHasRequiredAriaProps));
         registry.register(Box::new(crate::rules::a11y::MediaHasCaption));
         registry.register(Box::new(crate::rules::a11y::NoStaticElementInteractions));
+        registry.register(Box::new(crate::rules::a11y::NoIForIcon));
+        registry.register(Box::new(crate::rules::a11y::NoReferToNonExistentId));
         registry.register(Box::new(crate::rules::vue::UseUniqueElementIds::default()));
+        registry.register(Box::new(crate::rules::vue::PermittedContents));
+        registry.register(Box::new(crate::rules::a11y::HeadingLevels));
+        registry.register(Box::new(crate::rules::a11y::LandmarkRoles));
+        registry.register(Box::new(crate::rules::a11y::PlaceholderLabelOption));
+
+        // ============================================
+        // HTML Conformance Rules (Warning/Error)
+        // ============================================
+        // Based on markuplint. Enforce HTML Living Standard conformance.
+
+        registry.register(Box::new(crate::rules::html::DeprecatedElement));
+        registry.register(Box::new(crate::rules::html::DeprecatedAttr));
+        registry.register(Box::new(crate::rules::html::NoConsecutiveBr));
+        registry.register(Box::new(crate::rules::html::IdDuplication));
+        registry.register(Box::new(crate::rules::html::NoDuplicateDt));
+        registry.register(Box::new(crate::rules::html::RequireDatetime));
 
         // ============================================
         // SSR Rules (Warning)
@@ -298,6 +318,9 @@ impl RuleRegistry {
         registry.register(Box::new(crate::rules::vue::NoVHtml));
         registry.register(Box::new(crate::rules::vue::NoUnsafeUrl));
 
+        // HTML Conformance (essential)
+        registry.register(Box::new(crate::rules::html::IdDuplication));
+
         registry
     }
 
@@ -330,6 +353,11 @@ impl RuleRegistry {
         // Warning/informational rules (opt-in)
         registry.register(Box::new(crate::rules::vue::WarnCustomBlock));
         registry.register(Box::new(crate::rules::vue::WarnCustomDirective));
+
+        // Opt-in accessibility / HTML conformance rules
+        registry.register(Box::new(crate::rules::a11y::UseList));
+        registry.register(Box::new(crate::rules::vue::NoBooleanAttrValue));
+        registry.register(Box::new(crate::rules::html::NoEmptyPalpableContent));
 
         registry
     }

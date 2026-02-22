@@ -2,6 +2,7 @@
 
 pub mod a11y;
 pub mod css;
+pub mod html;
 pub mod musea;
 pub mod script;
 pub mod ssr;
