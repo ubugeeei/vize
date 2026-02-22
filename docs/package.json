@@ -8,7 +8,7 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "@ox-content/vite-plugin": "^0.8.0",
+    "@ox-content/vite-plugin": "^0.9.0",
     "@vizejs/vite-plugin": "workspace:*",
     "playwright": "^1.52.0",
     "three": "^0.183.1",

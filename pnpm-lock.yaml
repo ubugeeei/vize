@@ -39,8 +39,8 @@ importers:
   docs:
     devDependencies:
       '@ox-content/vite-plugin':
-        specifier: ^0.8.0
-        version: 0.8.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@vue/compiler-sfc@3.6.0-beta.1)(puppeteer@23.11.1(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tsx@4.21.0)(vite@8.0.0-beta.15(@types/node@22.19.3)(esbuild@0.27.3)(jiti@1.21.7)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(vue@3.5.28(typescript@5.9.3))(yaml@2.8.2)
+        specifier: ^0.9.0
+        version: 0.9.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@vue/compiler-sfc@3.6.0-beta.1)(puppeteer@23.11.1(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tsx@4.21.0)(vite@8.0.0-beta.15(@types/node@22.19.3)(esbuild@0.27.3)(jiti@1.21.7)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(vue@3.5.28(typescript@5.9.3))(yaml@2.8.2)
       '@vizejs/vite-plugin':
         specifier: workspace:*
         version: link:../npm/vite-plugin-vize
@@ -1700,36 +1700,36 @@ packages:
   '@one-ini/wasm@0.1.1':
     resolution: {integrity: sha512-XuySG1E38YScSJoMlqovLru4KTUNSjgVTIjyh7qMX6aNN5HY5Ct5LhRJdxO79JtTzKfzV/bnWpz+zquYrISsvw==}
 
-  '@ox-content/binding-darwin-arm64@0.8.0':
-    resolution: {integrity: sha512-/JoFxlU5KIvBObdaArGkjpu0p6bM8Jeu8fecws3PcQDx2kZBMR09UsJrarGAkBpUEbawSGZWywEjDWqPTCgMWw==}
+  '@ox-content/binding-darwin-arm64@0.9.0':
+    resolution: {integrity: sha512-y1KkC2YD7nupGeJZhaQXEvmOosB3vWaiUfiBhuW68ZIqE9Y5uvieecWRRDillmoWw0pnXCXR/p68KjR7Sdc+Zg==}
     cpu: [arm64]
     os: [darwin]
 
-  '@ox-content/binding-darwin-x64@0.8.0':
-    resolution: {integrity: sha512-EGVqY9kTulRgWx2M7kpXxyWfL6p8jn9VAQmQw0dFaxl4aldU2Q2m7pMrv4YyNa5EaQiPwg1W8URo03oiblNRvA==}
+  '@ox-content/binding-darwin-x64@0.9.0':
+    resolution: {integrity: sha512-oqsEHt5SJ9JkpeH0NXEf//nXFLYcqPByx+/ish8yndWenupAAclCw5izKru1zBGB8tPElmdWHAJL65sX+baLig==}
     cpu: [x64]
     os: [darwin]
 
-  '@ox-content/binding-linux-arm64-gnu@0.8.0':
-    resolution: {integrity: sha512-gcHZGi0KE0Ql41SA0hlpyQCt0vUBT2x+z3XSwCCk3hISmAXq4a/sqUu55/Y7UZ30OQBYW6fecrc3gfLBj/RQ0g==}
+  '@ox-content/binding-linux-arm64-gnu@0.9.0':
+    resolution: {integrity: sha512-604O4BKjxI6M+NrOSn2uld/HZGq552wYV25aIDhCfpCG58gj8WeSsoCKl0RhRnzDVpZLBwB5GSDIyNfIzROJaA==}
     cpu: [arm64]
     os: [linux]
 
-  '@ox-content/binding-linux-x64-gnu@0.8.0':
-    resolution: {integrity: sha512-VrIFmaQRuqzLuqjbBw6oUdFY1tNpfG5F7AV5o7jQ1svLta5YFg+Ho/b8u5HZYZRjnXnCPTXfcSBihvdD64zp6A==}
+  '@ox-content/binding-linux-x64-gnu@0.9.0':
+    resolution: {integrity: sha512-TAQgHl77jd6pa78pEf2nIzy01anx6NTm7L1tIfIeNq+svJ9CwRqFXBY0hsSUVw9ROBW1ES3giD0r+POHgWBuyQ==}
     cpu: [x64]
     os: [linux]
 
-  '@ox-content/binding-win32-x64-msvc@0.8.0':
-    resolution: {integrity: sha512-iVNoLmtPfSshUov12qlLP9j0bZY5PNU329wSvm9y0KuOIdoxSUmdFh5+1yFP3/v7bKOlRwceyIGYof7OqrwVPQ==}
+  '@ox-content/binding-win32-x64-msvc@0.9.0':
+    resolution: {integrity: sha512-F1w27oj30RWVny/Bvux3Ehq9sbiWbsbd0UYI88phrJL1HaYj8QZKPZ1gM0aDh9Yso/DNR6C69H4hjYjwypplzg==}
     cpu: [x64]
     os: [win32]
 
-  '@ox-content/napi@0.8.0':
-    resolution: {integrity: sha512-sggbNEDdMwcVFHKYTejYt2Q83N6iUsVcRPT8bU5cFEddszdU0dJgtflcLDBqZaL4fhQrt8PJKT81yZosi0oUqg==}
+  '@ox-content/napi@0.9.0':
+    resolution: {integrity: sha512-9D5LChp8hFD8repv4wrh9ZySsfHHNdwV5nAEJLsMBnSZVogmksOOgRJSbpPCPOoroOGWVTKP4SE6om/VcZjUnQ==}
 
-  '@ox-content/vite-plugin@0.8.0':
-    resolution: {integrity: sha512-W3qUQLCMQSbWuOvHRbL52Ub367QJd6bHU5Bdt1JkOahKbwwZOxhK4MU2EtwfJqNifchm9uHbmYkquCxA+56EBA==}
+  '@ox-content/vite-plugin@0.9.0':
+    resolution: {integrity: sha512-zqu49QbWZfasdMa6pjYIVMKWebM6izNWVhkhzcaTGkI0Mc+oDcZlXgIw+qh60yNQr00V25J8NsqQydIq1Ikwrw==}
     peerDependencies:
       '@vue/compiler-sfc': ^3.4.0
       react: ^19.0.0
@@ -9035,33 +9035,33 @@ snapshots:
 
   '@one-ini/wasm@0.1.1': {}
 
-  '@ox-content/binding-darwin-arm64@0.8.0':
+  '@ox-content/binding-darwin-arm64@0.9.0':
     optional: true
 
-  '@ox-content/binding-darwin-x64@0.8.0':
+  '@ox-content/binding-darwin-x64@0.9.0':
     optional: true
 
-  '@ox-content/binding-linux-arm64-gnu@0.8.0':
+  '@ox-content/binding-linux-arm64-gnu@0.9.0':
     optional: true
 
-  '@ox-content/binding-linux-x64-gnu@0.8.0':
+  '@ox-content/binding-linux-x64-gnu@0.9.0':
     optional: true
 
-  '@ox-content/binding-win32-x64-msvc@0.8.0':
+  '@ox-content/binding-win32-x64-msvc@0.9.0':
     optional: true
 
-  '@ox-content/napi@0.8.0':
+  '@ox-content/napi@0.9.0':
     optionalDependencies:
-      '@ox-content/binding-darwin-arm64': 0.8.0
-      '@ox-content/binding-darwin-x64': 0.8.0
-      '@ox-content/binding-linux-arm64-gnu': 0.8.0
-      '@ox-content/binding-linux-x64-gnu': 0.8.0
-      '@ox-content/binding-win32-x64-msvc': 0.8.0
+      '@ox-content/binding-darwin-arm64': 0.9.0
+      '@ox-content/binding-darwin-x64': 0.9.0
+      '@ox-content/binding-linux-arm64-gnu': 0.9.0
+      '@ox-content/binding-linux-x64-gnu': 0.9.0
+      '@ox-content/binding-win32-x64-msvc': 0.9.0
 
-  '@ox-content/vite-plugin@0.8.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@vue/compiler-sfc@3.6.0-beta.1)(puppeteer@23.11.1(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tsx@4.21.0)(vite@8.0.0-beta.15(@types/node@22.19.3)(esbuild@0.27.3)(jiti@1.21.7)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(vue@3.5.28(typescript@5.9.3))(yaml@2.8.2)':
+  '@ox-content/vite-plugin@0.9.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@vue/compiler-sfc@3.6.0-beta.1)(puppeteer@23.11.1(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tsx@4.21.0)(vite@8.0.0-beta.15(@types/node@22.19.3)(esbuild@0.27.3)(jiti@1.21.7)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(vue@3.5.28(typescript@5.9.3))(yaml@2.8.2)':
     dependencies:
       '@mermaid-js/mermaid-cli': 11.12.0(@babel/core@7.29.0)(@babel/template@7.28.6)(puppeteer@23.11.1(typescript@5.9.3))(tsx@4.21.0)(yaml@2.8.2)
-      '@ox-content/napi': 0.8.0
+      '@ox-content/napi': 0.9.0
       glob: 11.1.0
       playwright: 1.57.0
       rehype-parse: 9.0.1

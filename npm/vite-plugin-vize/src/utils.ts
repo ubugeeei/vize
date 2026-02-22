@@ -75,7 +75,7 @@ export function generateOutput(compiled: CompiledModule, options: GenerateOutput
     const cssCode = JSON.stringify(compiled.css);
     const cssId = JSON.stringify(`vize-style-${compiled.scopeId}`);
     output = `
-const __vize_css__ = ${cssCode};
+export const __vize_css__ = ${cssCode};
 const __vize_css_id__ = ${cssId};
 (function() {
   if (typeof document !== 'undefined') {
