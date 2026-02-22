@@ -133,8 +133,8 @@ pub fn is_valid_datetime(s: &str) -> bool {
     }
 
     // Duration: P1D, PT1H30M, P1Y2M3DT4H5M6S
-    if s.starts_with('P') {
-        return s[1..]
+    if let Some(rest) = s.strip_prefix('P') {
+        return rest
             .chars()
             .all(|c| c.is_ascii_digit() || "YMWDTHS.".contains(c));
     }

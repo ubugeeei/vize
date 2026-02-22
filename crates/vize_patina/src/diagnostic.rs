@@ -192,12 +192,7 @@ fn render_inline_markdown(out: &mut String, line: &str) {
 
 /// Find closing backtick for inline code
 fn find_closing_backtick(bytes: &[u8], start: usize) -> Option<usize> {
-    for i in start..bytes.len() {
-        if bytes[i] == b'`' {
-            return Some(i);
-        }
-    }
-    None
+    (start..bytes.len()).find(|&i| bytes[i] == b'`')
 }
 
 /// Find closing double delimiter (** or __)

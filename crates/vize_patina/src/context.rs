@@ -611,7 +611,7 @@ impl<'a> LintContext<'a> {
         self.element_stack
             .iter()
             .take(self.element_stack.len() - 1)
-            .any(|e| predicate(e))
+            .any(predicate)
     }
 
     /// Get the error count (cached, O(1))

@@ -66,15 +66,17 @@ impl Rule for NoDuplicateDt {
                         continue;
                     }
 
-                    if seen.contains_key(&normalized) {
+                    if let std::collections::hash_map::Entry::Vacant(entry) =
+                        seen.entry(normalized.clone())
+                    {
+                        entry.insert(el.loc.start.offset);
+                    } else {
                         let message = ctx.t_fmt(
                             "html/no-duplicate-dt.message",
                             &[("term", normalized.as_str())],
                         );
                         let help = ctx.t("html/no-duplicate-dt.help");
                         ctx.warn_with_help(message, &el.loc, help);
-                    } else {
-                        seen.insert(normalized, el.loc.start.offset);
                     }
                 }
             }

@@ -160,14 +160,14 @@ impl Rule for PermittedContents {
         }
 
         // 2. Interactive nesting: check if this interactive element is inside another
-        if is_interactive_element(tag) {
-            if ctx.has_ancestor(|ancestor| is_interactive_element(ancestor.tag.as_str())) {
-                let message = ctx.t_fmt(
-                    "vue/permitted-contents.interactive_nesting",
-                    &[("tag", tag)],
-                );
-                ctx.error(message, &element.loc);
-            }
+        if is_interactive_element(tag)
+            && ctx.has_ancestor(|ancestor| is_interactive_element(ancestor.tag.as_str()))
+        {
+            let message = ctx.t_fmt(
+                "vue/permitted-contents.interactive_nesting",
+                &[("tag", tag)],
+            );
+            ctx.error(message, &element.loc);
         }
 
         // 3 & 4. Required children: check if parent constrains direct children

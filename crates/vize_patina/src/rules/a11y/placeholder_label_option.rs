@@ -71,7 +71,7 @@ impl Rule for PlaceholderLabelOption {
         let is_placeholder = option.props.iter().any(|prop| {
             if let PropNode::Attribute(attr) = prop {
                 if attr.name == "value" {
-                    return attr.value.as_ref().map_or(true, |v| v.content.is_empty());
+                    return attr.value.as_ref().is_none_or(|v| v.content.is_empty());
                 }
             }
             false

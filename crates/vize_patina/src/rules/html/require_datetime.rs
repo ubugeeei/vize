@@ -55,7 +55,7 @@ impl Rule for RequireDatetime {
             PropNode::Attribute(attr) => attr.name == "datetime",
             PropNode::Directive(dir) => {
                 dir.name == "bind"
-                    && dir.arg.as_ref().map_or(false, |arg| {
+                    && dir.arg.as_ref().is_some_and(|arg| {
                         if let vize_relief::ast::ExpressionNode::Simple(s) = arg {
                             s.content == "datetime"
                         } else {
