@@ -353,6 +353,8 @@ pub fn compile_sfc(
             render_body: &render_body,
         },
         normal_script_content.as_deref(),
+        &descriptor.css_vars,
+        &scope_id,
     )?;
 
     // The inline mode compile_script_setup_inline generates a complete output
@@ -781,6 +783,41 @@ function handlePresetChange(key: PresetKey) {}
         assert!(
             result.code.contains("handlePresetChange"),
             "Should have event handler. Got:\n{}",
+            result.code
+        );
+    }
+
+    #[test]
+    fn test_multi_statement_event_handler() {
+        let source = r#"<script setup lang="ts">
+const editDashboard = ref()
+</script>
+
+<template>
+  <div @click="
+    editDashboard = 'test';
+    console.log('done');
+  "></div>
+</template>"#;
+
+        let descriptor =
+            parse_sfc(source, SfcParseOptions::default()).expect("Failed to parse SFC");
+        let opts = SfcCompileOptions {
+            script: ScriptCompileOptions {
+                is_ts: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let result = compile_sfc(&descriptor, opts).expect("Failed to compile SFC");
+
+        eprintln!("Multi-statement event handler output:\n{}", result.code);
+
+        // Multi-statement handler should use block body { ... }, not ( ... )
+        // The concise body (editDashboard = 'test'; console.log('done');) is invalid JS
+        assert!(
+            result.code.contains("($event: any) => { "),
+            "Multi-statement handler should use block body ($event: any) => {{ ... }}. Got:\n{}",
             result.code
         );
     }

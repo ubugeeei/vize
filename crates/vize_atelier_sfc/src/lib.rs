@@ -161,4 +161,45 @@ function onClick() {
             "emit should be bound to __emit"
         );
     }
+
+    #[test]
+    fn test_compile_sfc_define_model_with_type_args_preserves_body() {
+        // Regression test: defineModel<Type>('name', { opts }); was wrongly detected
+        // as a multi-line macro call because the line ends with `;` not `)`.
+        // This caused all subsequent setup code to be swallowed by the macro tracker.
+        let source = r#"
+<template>
+  <div>{{ fx }}</div>
+</template>
+
+<script setup lang="ts">
+interface Layer { fxId: string }
+const layer = defineModel<Layer>('layer', { required: true });
+
+const fx = layer.value.fxId;
+if (fx == null) {
+  throw new Error('not found');
+}
+</script>
+"#;
+        let descriptor = parse_sfc(source, Default::default()).unwrap();
+        let result = compile_sfc(&descriptor, SfcCompileOptions::default()).unwrap();
+
+        println!("defineModel output:\n{}", result.code);
+
+        // defineModel should be transformed to _useModel
+        assert!(
+            result.code.contains("_useModel(__props,"),
+            "defineModel should become _useModel"
+        );
+        // Code after defineModel must be preserved
+        assert!(
+            result.code.contains("const fx = layer.value.fxId"),
+            "setup body after defineModel must be preserved"
+        );
+        assert!(
+            result.code.contains("throw new Error"),
+            "throw statement after defineModel must be preserved"
+        );
+    }
 }

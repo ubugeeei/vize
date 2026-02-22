@@ -1,6 +1,7 @@
 //! v-for generation functions.
 
 use crate::ast::*;
+use crate::transforms::v_memo::{get_memo_exp, has_v_memo};
 
 use super::children::generate_children;
 use super::context::CodegenContext;
@@ -264,6 +265,10 @@ fn has_other_props(el: &ElementNode<'_>) -> bool {
             if dir.name == "for" {
                 return false;
             }
+            // Skip v-memo directive (handled by withMemo wrapper)
+            if dir.name == "memo" {
+                return false;
+            }
             true
         }
     })
@@ -332,6 +337,24 @@ fn generate_for_item_props(
         return;
     }
 
+    // Check for v-bind/v-on object spreads (v-bind="obj", v-on="handlers")
+    // These require _mergeProps() to properly merge with other props.
+    let has_vbind_spread = super::props::has_vbind_object(&el.props);
+    let has_von_spread = super::props::has_von_object(&el.props);
+
+    if has_vbind_spread || has_von_spread {
+        // Use _mergeProps to properly merge object spreads with other props
+        generate_for_item_props_merged(
+            ctx,
+            el,
+            key_exp,
+            &scope_id,
+            has_vbind_spread,
+            has_von_spread,
+        );
+        return;
+    }
+
     if let Some(key) = key_exp {
         // Merge key with other props - generate as object with key first
         ctx.push("{");
@@ -392,6 +415,106 @@ fn generate_for_item_props(
     }
 }
 
+/// Generate props using _mergeProps when v-bind/v-on object spreads are present.
+fn generate_for_item_props_merged(
+    ctx: &mut CodegenContext,
+    el: &ElementNode<'_>,
+    key_exp: Option<&ExpressionNode<'_>>,
+    scope_id: &Option<vize_carton::String>,
+    has_vbind_spread: bool,
+    has_von_spread: bool,
+) {
+    ctx.use_helper(RuntimeHelper::MergeProps);
+    ctx.push(ctx.helper(RuntimeHelper::MergeProps));
+    ctx.push("(");
+
+    let mut first_merge_arg = true;
+
+    // Add v-bind object spread
+    if has_vbind_spread {
+        super::props::generate_vbind_object_exp(ctx, &el.props);
+        first_merge_arg = false;
+    }
+
+    // Add v-on object spread wrapped with _toHandlers
+    if has_von_spread {
+        if !first_merge_arg {
+            ctx.push(", ");
+        }
+        super::props::generate_von_object_exp(ctx, &el.props);
+        first_merge_arg = false;
+    }
+
+    // Add remaining props (key, regular attributes/directives, scope_id) as object
+    let has_remaining = key_exp.is_some()
+        || scope_id.is_some()
+        || el.props.iter().any(|p| {
+            if should_skip_prop(p) {
+                return false;
+            }
+            // Skip v-bind/v-on object spreads (already handled above)
+            if let PropNode::Directive(dir) = p {
+                if dir.arg.is_none() && (dir.name == "bind" || dir.name == "on") {
+                    return false;
+                }
+            }
+            true
+        });
+
+    if has_remaining {
+        if !first_merge_arg {
+            ctx.push(", ");
+        }
+        ctx.push("{");
+        ctx.indent();
+        let mut first_prop = true;
+
+        // Add key if present
+        if let Some(key) = key_exp {
+            ctx.newline();
+            ctx.push("key: ");
+            generate_expression(ctx, key);
+            first_prop = false;
+        }
+
+        // Add other regular props (skip v-bind/v-on spreads, key binding, v-for)
+        for prop in el.props.iter() {
+            if should_skip_prop(prop) {
+                continue;
+            }
+            // Skip v-bind/v-on object spreads
+            if let PropNode::Directive(dir) = prop {
+                if dir.arg.is_none() && (dir.name == "bind" || dir.name == "on") {
+                    continue;
+                }
+            }
+            if !first_prop {
+                ctx.push(",");
+            }
+            ctx.newline();
+            generate_single_prop(ctx, prop);
+            first_prop = false;
+        }
+
+        // Add scope_id for scoped CSS
+        if let Some(ref sid) = scope_id {
+            if !first_prop {
+                ctx.push(",");
+            }
+            ctx.newline();
+            ctx.push("\"");
+            ctx.push(sid);
+            ctx.push("\": \"\"");
+        }
+
+        ctx.deindent();
+        ctx.newline();
+        ctx.push("}");
+    }
+
+    ctx.push(")");
+}
+
 /// Generate a single prop (attribute or directive)
 fn generate_single_prop(ctx: &mut CodegenContext, prop: &PropNode<'_>) {
     match prop {
@@ -428,6 +551,21 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
             let is_template = el.tag_type == ElementType::Template;
             let is_component = el.tag_type == ElementType::Component;
             let prev_skip_scope_id = ctx.skip_scope_id;
+
+            // Check for v-memo directive on for item
+            let memo_exp = if has_v_memo(el) {
+                get_memo_exp(el)
+            } else {
+                None
+            };
+
+            if let Some(memo_exp) = memo_exp {
+                ctx.use_helper(RuntimeHelper::WithMemo);
+                ctx.push(ctx.helper(RuntimeHelper::WithMemo));
+                ctx.push("(");
+                generate_expression(ctx, memo_exp);
+                ctx.push(", () => ");
+            }
 
             // Check for v-show directive
             let has_vshow = has_vshow_directive(el);
@@ -675,6 +813,17 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
                 if has_vshow {
                     generate_vshow_closing(ctx, el);
                 }
+            }
+
+            // Close withMemo wrapper for v-for + v-memo
+            if memo_exp.is_some() {
+                ctx.push(", _cache, ");
+                if let Some(key) = key_exp {
+                    generate_expression(ctx, key);
+                } else {
+                    ctx.push("0");
+                }
+                ctx.push(")");
             }
 
             ctx.skip_scope_id = prev_skip_scope_id;

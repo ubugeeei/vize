@@ -66,6 +66,33 @@ fn strip_ts_comments(input: &str) -> String {
     result
 }
 
+/// Join multi-line type definitions where continuation lines start with `|` or `&`.
+/// For example:
+/// ```text
+/// type?:
+///     | 'input'
+///     | 'text';
+/// ```
+/// becomes: `type?: | 'input' | 'text';`
+fn join_union_continuation_lines(input: &str) -> String {
+    let lines: Vec<&str> = input.lines().collect();
+    let mut result = String::with_capacity(input.len());
+    for (i, line) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('|') || trimmed.starts_with('&') {
+            // Join to previous line with a space
+            result.push(' ');
+            result.push_str(trimmed);
+        } else {
+            if i > 0 {
+                result.push('\n');
+            }
+            result.push_str(line);
+        }
+    }
+    result
+}
+
 /// Extract prop types from TypeScript type definition.
 /// Returns a Vec to preserve definition order (important for matching Vue's output).
 pub fn extract_prop_types_from_type(type_args: &str) -> Vec<(String, PropTypeInfo)> {
@@ -73,7 +100,9 @@ pub fn extract_prop_types_from_type(type_args: &str) -> Vec<(String, PropTypeInf
 
     // Strip comments before parsing
     let stripped = strip_ts_comments(type_args);
-    let content = stripped.trim();
+    // Join multi-line union/intersection types (lines starting with | or &)
+    let joined = join_union_continuation_lines(&stripped);
+    let content = joined.trim();
     let content = if content.starts_with('{') && content.ends_with('}') {
         &content[1..content.len() - 1]
     } else {
@@ -110,10 +139,20 @@ pub fn extract_prop_types_from_type(type_args: &str) -> Vec<(String, PropTypeInf
                     current.push(c);
                 }
             }
-            ',' | ';' | '\n' if depth <= 0 => {
+            ',' | ';' if depth <= 0 => {
                 extract_prop_type_info(&current, &mut props);
                 current.clear();
                 depth = 0;
+            }
+            '\n' if depth <= 0 => {
+                // Don't split on newline if the current segment ends with ':' (type on next line)
+                let trimmed_current = current.trim();
+                if !trimmed_current.is_empty() && !trimmed_current.ends_with(':') {
+                    extract_prop_type_info(&current, &mut props);
+                    current.clear();
+                    depth = 0;
+                }
+                // If ends with ':', keep accumulating (type continues on next line)
             }
             _ => current.push(c),
         }

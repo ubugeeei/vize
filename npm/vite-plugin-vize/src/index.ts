@@ -189,6 +189,10 @@ function rewriteDynamicTemplateImports(code: string, aliasRules: DynamicImportAl
  * statements hoisted to the top of the module, so Vite's module resolution
  * pipeline handles alias expansion and asset hashing in both dev and build.
  */
+// File extensions that are code modules, not static assets.
+// These should never be rewritten to default imports by rewriteStaticAssetUrls.
+const SCRIPT_EXTENSIONS = /\.(js|mjs|cjs|ts|mts|cts|jsx|tsx)$/i;
+
 function rewriteStaticAssetUrls(code: string, aliasRules: DynamicImportAliasRule[]): string {
   let rewritten = code;
   const imports: string[] = [];
@@ -204,8 +208,12 @@ function rewriteStaticAssetUrls(code: string, aliasRules: DynamicImportAliasRule
     );
     rewritten = rewritten.replace(
       pattern,
-      (_match: string, prefix: string, dqPath?: string, sqPath?: string) => {
+      (match: string, prefix: string, dqPath?: string, sqPath?: string) => {
         const fullPath = dqPath || sqPath;
+        // Skip script files — they are code modules, not static assets.
+        if (fullPath && SCRIPT_EXTENSIONS.test(fullPath)) {
+          return match;
+        }
         const varName = `__vize_static_${counter++}`;
         imports.push(`import ${varName} from ${JSON.stringify(fullPath)};`);
         return `${prefix}${varName}`;
@@ -331,14 +339,24 @@ export function vize(options: VizeOptions = {}): Plugin[] {
       ssr: mergedOptions.ssr ?? false,
     });
 
-    // Collect CSS for production extraction
+    // Collect CSS for production extraction.
+    // Skip files with delegated styles (preprocessor/CSS Modules) -- those go through
+    // Vite's CSS pipeline and are extracted by Vite itself.
     if (isProduction) {
       for (const fileResult of result.results) {
         if (fileResult.css) {
-          collectedCss.set(
-            fileResult.path,
-            resolveCssImports(fileResult.css, fileResult.path, cssAliasRules, false),
+          const cached = cache.get(fileResult.path);
+          const hasDelegated = cached?.styles?.some(
+            (s) =>
+              (s.lang !== null && ["scss", "sass", "less", "stylus", "styl"].includes(s.lang)) ||
+              s.module !== false,
           );
+          if (!hasDelegated) {
+            collectedCss.set(
+              fileResult.path,
+              resolveCssImports(fileResult.css, fileResult.path, cssAliasRules, false),
+            );
+          }
         }
       }
     }
@@ -604,8 +622,20 @@ export function vize(options: VizeOptions = {}): Plugin[] {
         return normalizeFsIdForBuild(id);
       }
 
-      if (id.includes("?vue&type=style")) {
-        return id;
+      // Handle virtual style imports:
+      //   Component.vue?vue&type=style&index=0&lang=scss
+      //   Component.vue?vue&type=style&index=0&lang=scss&module
+      if (id.includes("?vue&type=style") || id.includes("?vue=&type=style")) {
+        const params = new URLSearchParams(id.split("?")[1]);
+        const lang = params.get("lang") || "css";
+        if (params.has("module")) {
+          // For CSS Modules, append .module.{lang} suffix so Vite's CSS pipeline
+          // automatically treats it as a CSS module and returns the class mapping.
+          return `\0${id}.module.${lang}`;
+        }
+        // Append .{lang} suffix so Vite's CSS pipeline recognizes the file type
+        // and applies the appropriate preprocessor (SCSS, Less, etc.).
+        return `\0${id}.${lang}`;
       }
 
       // If importer is a vize virtual module, resolve non-vue imports against the real path
@@ -625,11 +655,38 @@ export function vize(options: VizeOptions = {}): Plugin[] {
 
         // For non-vue files, resolve relative to the real importer
         if (!id.endsWith(".vue")) {
-          if (id.includes("/dist/") || id.includes("/lib/") || id.includes("/es/")) {
+          // For bare module specifiers (not relative, not absolute),
+          // resolve them from the real importer path so that Vite can find
+          // packages in the correct node_modules directory. Without this,
+          // Vite's resolver would try to resolve from the \0-prefixed virtual
+          // path and fail to locate the package.
+          //
+          // IMPORTANT: Skip this.resolve() for IDs that match a configured alias
+          // prefix, because calling this.resolve() would re-trigger the alias plugin
+          // and double-apply the alias (e.g., @pkg/src → @pkg/src/src).
+          if (!id.startsWith("./") && !id.startsWith("../") && !id.startsWith("/")) {
+            const matchesAlias = cssAliasRules.some(
+              (rule) => id === rule.find || id.startsWith(rule.find + "/"),
+            );
+            if (!matchesAlias) {
+              try {
+                const resolved = await this.resolve(id, cleanImporter, { skipSelf: true });
+                if (resolved) {
+                  logger.log(`resolveId: resolved bare ${id} to ${resolved.id} via Vite resolver`);
+                  if (isBuild && resolved.id.startsWith("/@fs/")) {
+                    return { ...resolved, id: normalizeFsIdForBuild(resolved.id) };
+                  }
+                  return resolved;
+                }
+              } catch {
+                // Fall through — let other plugins or Vite's built-in resolver handle it
+              }
+            }
             return null;
           }
 
           // Delegate to Vite's full resolver pipeline with the real importer
+          // (only for relative/absolute imports where we need the real importer path)
           try {
             const resolved = await this.resolve(id, cleanImporter, { skipSelf: true });
             if (resolved) {
@@ -738,11 +795,71 @@ export function vize(options: VizeOptions = {}): Plugin[] {
         return allCss;
       }
 
-      if (id.includes("?vue&type=style")) {
-        const [filename] = id.split("?");
+      // Strip the \0 prefix and the appended extension suffix for style virtual IDs.
+      // resolveId appends .{lang} or .module.{lang} to style IDs for Vite's CSS pipeline.
+      // Here we reverse that to get the original style query ID for content lookup.
+      //   \0...?vue=&type=style&...&module=.module.scss → ...?vue=&type=style&...&module=
+      //   \0...?vue=&type=style&...&lang=scss.scss     → ...?vue=&type=style&...&lang=scss
+      let styleId = id;
+      if (id.startsWith("\0") && id.includes("?vue")) {
+        styleId = id
+          .slice(1) // strip \0
+          .replace(/\.module\.\w+$/, "") // strip .module.{lang}
+          .replace(/\.\w+$/, ""); // strip .{lang}
+      }
+
+      if (styleId.includes("?vue&type=style") || styleId.includes("?vue=&type=style")) {
+        const [filename, queryString] = styleId.split("?");
         // Extract real path from virtual ID or use as-is
         const realPath = isVizeVirtual(filename) ? fromVirtualId(filename) : filename;
+        const params = new URLSearchParams(queryString);
+        const indexStr = params.get("index");
+        const lang = params.get("lang");
+        const hasModule = params.has("module");
+        const scoped = params.get("scoped");
+
+        // Try to get style block by index from cached module
         const compiled = cache.get(realPath);
+        const blockIndex = indexStr !== null ? parseInt(indexStr, 10) : -1;
+
+        // If we have per-block style metadata with a specific index, return raw content
+        if (compiled?.styles && blockIndex >= 0 && blockIndex < compiled.styles.length) {
+          const block = compiled.styles[blockIndex];
+          let styleContent = block.content;
+
+          // For scoped preprocessor styles, wrap content in a scope selector using
+          // CSS/SCSS nesting. SCSS @use/@forward/@import directives must remain at the
+          // top level (before any rules), so we hoist them out of the wrapper.
+          if (scoped && block.scoped && lang && lang !== "css") {
+            const lines = styleContent.split("\n");
+            const hoisted: string[] = [];
+            const body: string[] = [];
+            for (const line of lines) {
+              const trimmed = line.trimStart();
+              if (
+                trimmed.startsWith("@use ") ||
+                trimmed.startsWith("@forward ") ||
+                trimmed.startsWith("@import ")
+              ) {
+                hoisted.push(line);
+              } else {
+                body.push(line);
+              }
+            }
+            const bodyContent = body.join("\n");
+            const hoistedContent = hoisted.length > 0 ? hoisted.join("\n") + "\n\n" : "";
+            styleContent = `${hoistedContent}[${scoped}] {\n${bodyContent}\n}`;
+          }
+
+          // Return with a virtual file suffix hint so Vite's CSS pipeline
+          // recognizes the language for preprocessing.
+          return {
+            code: styleContent,
+            map: null,
+          };
+        }
+
+        // Fallback: return compiled CSS from cache (original behavior for plain CSS)
         if (compiled?.css) {
           return resolveCssImports(
             compiled.css,
@@ -776,8 +893,14 @@ export function vize(options: VizeOptions = {}): Plugin[] {
         }
 
         if (compiled) {
-          // Resolve CSS @import and @custom-media before embedding
-          if (compiled.css) {
+          // Only resolve CSS @import for inline injection (non-delegated styles).
+          // When styles are delegated to Vite's pipeline, Vite handles @import resolution.
+          const hasDelegated = compiled.styles?.some(
+            (s) =>
+              (s.lang !== null && ["scss", "sass", "less", "stylus", "styl"].includes(s.lang)) ||
+              s.module !== false,
+          );
+          if (compiled.css && !hasDelegated) {
             compiled = {
               ...compiled,
               css: resolveCssImports(
@@ -795,6 +918,7 @@ export function vize(options: VizeOptions = {}): Plugin[] {
                 isProduction,
                 isDev: server !== null,
                 extractCss,
+                filePath: realPath,
               }),
               dynamicImportAliasRules,
             ),
@@ -901,8 +1025,48 @@ export function vize(options: VizeOptions = {}): Plugin[] {
             server.moduleGraph.getModulesByFile(virtualId) ??
             server.moduleGraph.getModulesByFile(file);
 
-          // For style-only updates, send custom event
-          if (updateType === "style-only" && newCompiled.css) {
+          // Check if this component uses delegated styles (preprocessor/CSS Modules)
+          const hasDelegated = newCompiled.styles?.some(
+            (s) =>
+              (s.lang !== null && ["scss", "sass", "less", "stylus", "styl"].includes(s.lang)) ||
+              s.module !== false,
+          );
+
+          if (hasDelegated && updateType === "style-only") {
+            // For delegated styles, invalidate the virtual style modules
+            // so Vite re-processes them through its CSS pipeline
+            const affectedModules: Set<import("vite").ModuleNode> = new Set();
+            for (const block of newCompiled.styles ?? []) {
+              const params = new URLSearchParams();
+              params.set("vue", "");
+              params.set("type", "style");
+              params.set("index", String(block.index));
+              if (block.scoped) params.set("scoped", `data-v-${newCompiled.scopeId}`);
+              params.set("lang", block.lang ?? "css");
+              if (block.module !== false) {
+                params.set("module", typeof block.module === "string" ? block.module : "");
+              }
+              const styleId = `${file}?${params.toString()}`;
+              const styleMods = server.moduleGraph.getModulesByFile(styleId);
+              if (styleMods) {
+                for (const mod of styleMods) {
+                  affectedModules.add(mod);
+                }
+              }
+            }
+            // Also include the main module for a full update if style modules found
+            if (modules) {
+              for (const mod of modules) {
+                affectedModules.add(mod);
+              }
+            }
+            if (affectedModules.size > 0) {
+              return [...affectedModules];
+            }
+          }
+
+          // For style-only updates with inline CSS, send custom event
+          if (updateType === "style-only" && newCompiled.css && !hasDelegated) {
             server.ws.send({
               type: "custom",
               event: "vize:update",

@@ -3,6 +3,8 @@
 //! This module handles compilation of script setup with inline template mode,
 //! where the render function is inlined into the setup function.
 
+use std::borrow::Cow;
+
 use crate::script::{transform_destructured_props, ScriptCompileContext};
 use crate::types::SfcError;
 
@@ -16,6 +18,55 @@ use super::props::{
 use super::typescript::transform_typescript_to_js;
 use super::{ScriptCompileResult, TemplateParts};
 
+/// Strip comments from a line for bracket/paren counting.
+/// Removes `// ...` line comments and `/* ... */` block comments while preserving string content.
+fn strip_comments_for_counting(line: &str) -> String {
+    let mut result = String::with_capacity(line.len());
+    let bytes = line.as_bytes();
+    let mut i = 0;
+    let mut in_string = false;
+    let mut string_char = b'"';
+
+    while i < bytes.len() {
+        if in_string {
+            if bytes[i] == string_char && (i == 0 || bytes[i - 1] != b'\\') {
+                in_string = false;
+            }
+            result.push(bytes[i] as char);
+            i += 1;
+            continue;
+        }
+
+        match bytes[i] {
+            b'\'' | b'"' | b'`' => {
+                in_string = true;
+                string_char = bytes[i];
+                result.push(bytes[i] as char);
+                i += 1;
+            }
+            b'/' if i + 1 < bytes.len() && bytes[i + 1] == b'/' => {
+                // Line comment: skip rest of line
+                break;
+            }
+            b'/' if i + 1 < bytes.len() && bytes[i + 1] == b'*' => {
+                // Block comment: skip until */
+                i += 2;
+                while i + 1 < bytes.len() && !(bytes[i] == b'*' && bytes[i + 1] == b'/') {
+                    i += 1;
+                }
+                if i + 1 < bytes.len() {
+                    i += 2; // skip */
+                }
+            }
+            _ => {
+                result.push(bytes[i] as char);
+                i += 1;
+            }
+        }
+    }
+    result
+}
+
 /// Compile script setup with inline template (Vue's inline template mode)
 pub fn compile_script_setup_inline(
     content: &str,
@@ -24,6 +75,8 @@ pub fn compile_script_setup_inline(
     source_is_ts: bool,
     template: TemplateParts<'_>,
     normal_script_content: Option<&str>,
+    css_vars: &[Cow<'_, str>],
+    scope_id: &str,
 ) -> Result<ScriptCompileResult, SfcError> {
     let mut ctx = ScriptCompileContext::new(content);
     ctx.analyze();
@@ -59,6 +112,14 @@ pub fn compile_script_setup_inline(
     // useModel import if defineModel was used
     if has_define_model {
         output.extend_from_slice(b"import { useModel as _useModel } from 'vue'\n");
+    }
+
+    // useCssVars import if style has v-bind()
+    let has_css_vars = !css_vars.is_empty();
+    if has_css_vars {
+        output.extend_from_slice(
+            b"import { useCssVars as _useCssVars, unref as _unref } from 'vue'\n",
+        );
     }
 
     // Check if we need PropType import (type-based defineProps in TS mode)
@@ -108,7 +169,8 @@ pub fn compile_script_setup_inline(
     // Track remaining parentheses after destructure's function call: `const { x } = func(\n...\n)`
     let mut in_destructure_call = false;
     let mut destructure_call_paren_depth: i32 = 0;
-    // Track multiline object literals: const xxx = { ... }
+    let mut destructure_call_keep_lines = false; // true for regular function calls (keep args in output)
+                                                 // Track multiline object literals: const xxx = { ... }
     let mut in_object_literal = false;
     let mut object_literal_buffer = String::new();
     let mut object_literal_brace_depth: i32 = 0;
@@ -117,7 +179,8 @@ pub fn compile_script_setup_inline(
     let mut ts_interface_brace_depth: i32 = 0;
     let mut in_ts_type = false;
     let mut ts_type_depth: i32 = 0; // Track angle brackets and parens for complex types
-                                    // Track template literals (backtick strings) to skip content inside them
+    let mut ts_type_pending_end = false; // True when type may have ended on `}` but need to check next line
+                                         // Track template literals (backtick strings) to skip content inside them
     let mut in_template_literal = false;
 
     for line in content.lines() {
@@ -125,8 +188,9 @@ pub fn compile_script_setup_inline(
 
         // Handle multi-line macro calls
         if in_macro_call {
-            // Count angle brackets but ignore => (arrow functions)
-            let line_no_arrow = trimmed.replace("=>", "");
+            // Count angle brackets but ignore => (arrow functions) and comments
+            let cleaned = strip_comments_for_counting(trimmed);
+            let line_no_arrow = cleaned.replace("=>", "");
             macro_angle_depth += line_no_arrow.matches('<').count() as i32;
             macro_angle_depth -= line_no_arrow.matches('>').count() as i32;
             let trimmed_no_semi_m = trimmed.trim_end_matches(';');
@@ -141,8 +205,13 @@ pub fn compile_script_setup_inline(
         // Handle remaining parentheses from destructure's function call
         // e.g., `const { x } = someFunc(\n  arg1,\n  arg2\n)`
         if in_destructure_call {
-            destructure_call_paren_depth += trimmed.matches('(').count() as i32;
-            destructure_call_paren_depth -= trimmed.matches(')').count() as i32;
+            let cleaned = strip_comments_for_counting(trimmed);
+            destructure_call_paren_depth += cleaned.matches('(').count() as i32;
+            destructure_call_paren_depth -= cleaned.matches(')').count() as i32;
+            // For regular (non-macro) function calls, keep argument lines in setup output
+            if destructure_call_keep_lines {
+                setup_lines.push(line.to_string());
+            }
             if destructure_call_paren_depth <= 0 {
                 in_destructure_call = false;
             }
@@ -150,8 +219,9 @@ pub fn compile_script_setup_inline(
         }
 
         if in_paren_macro_call {
-            paren_macro_depth += trimmed.matches('(').count() as i32;
-            paren_macro_depth -= trimmed.matches(')').count() as i32;
+            let cleaned = strip_comments_for_counting(trimmed);
+            paren_macro_depth += cleaned.matches('(').count() as i32;
+            paren_macro_depth -= cleaned.matches(')').count() as i32;
             if paren_macro_depth <= 0 {
                 in_paren_macro_call = false;
             }
@@ -161,8 +231,9 @@ pub fn compile_script_setup_inline(
         if waiting_for_macro_close {
             destructure_buffer.push_str(line);
             destructure_buffer.push('\n');
-            // Track angle brackets for type args (ignore => arrow functions)
-            let line_no_arrow = trimmed.replace("=>", "");
+            // Track angle brackets for type args (ignore => arrow functions and comments)
+            let cleaned = strip_comments_for_counting(trimmed);
+            let line_no_arrow = cleaned.replace("=>", "");
             macro_angle_depth += line_no_arrow.matches('<').count() as i32;
             macro_angle_depth -= line_no_arrow.matches('>').count() as i32;
             let trimmed_no_semi_w = trimmed.trim_end_matches(';');
@@ -178,10 +249,11 @@ pub fn compile_script_setup_inline(
         if in_destructure {
             destructure_buffer.push_str(line);
             destructure_buffer.push('\n');
-            // Track both braces and angle brackets for type args (ignore => arrow functions)
-            let line_no_arrow = trimmed.replace("=>", "");
-            brace_depth += trimmed.matches('{').count() as i32;
-            brace_depth -= trimmed.matches('}').count() as i32;
+            // Track both braces and angle brackets for type args (ignore => arrow functions and comments)
+            let cleaned = strip_comments_for_counting(trimmed);
+            let line_no_arrow = cleaned.replace("=>", "");
+            brace_depth += cleaned.matches('{').count() as i32;
+            brace_depth -= cleaned.matches('}').count() as i32;
             macro_angle_depth += line_no_arrow.matches('<').count() as i32;
             macro_angle_depth -= line_no_arrow.matches('>').count() as i32;
             // Only consider closed when BOTH braces and angle brackets are balanced
@@ -211,6 +283,7 @@ pub fn compile_script_setup_inline(
                 if paren_balance > 0 {
                     in_destructure_call = true;
                     destructure_call_paren_depth = paren_balance;
+                    destructure_call_keep_lines = !is_props_macro;
                 }
                 destructure_buffer.clear();
             }
@@ -446,39 +519,78 @@ pub fn compile_script_setup_inline(
 
         // Handle TypeScript type declarations (collect for TS output, skip for JS)
         if in_ts_type {
-            if is_ts {
-                if let Some(last) = ts_declarations.last_mut() {
-                    last.push('\n');
-                    last.push_str(line);
+            let is_type_continuation = trimmed.starts_with('|')
+                || trimmed.starts_with('&')
+                || trimmed.starts_with('?')
+                || trimmed.starts_with(':');
+
+            // Handle pending end from previous line's closing `}`
+            if ts_type_pending_end {
+                ts_type_pending_end = false;
+                if is_type_continuation {
+                    // Continue the type - next union/intersection variant
+                    if is_ts {
+                        if let Some(last) = ts_declarations.last_mut() {
+                            last.push('\n');
+                            last.push_str(line);
+                        }
+                    }
+                    let cleaned = strip_comments_for_counting(trimmed);
+                    let line_no_arrow = cleaned.replace("=>", "__");
+                    ts_type_depth += cleaned.matches('{').count() as i32;
+                    ts_type_depth -= cleaned.matches('}').count() as i32;
+                    ts_type_depth += line_no_arrow.matches('<').count() as i32;
+                    ts_type_depth -= line_no_arrow.matches('>').count() as i32;
+                    ts_type_depth += cleaned.matches('(').count() as i32;
+                    ts_type_depth -= cleaned.matches(')').count() as i32;
+                    continue;
+                } else {
+                    // NOT a continuation - type truly ended on the previous line
+                    in_ts_type = false;
+                    // Fall through to normal line processing below
                 }
             }
-            // Track balanced brackets for complex types like: type X = { a: string } | { b: number }
-            // Strip `=>` before counting angle brackets to avoid misinterpreting arrow functions
-            let line_no_arrow = trimmed.replace("=>", "__");
-            ts_type_depth += trimmed.matches('{').count() as i32;
-            ts_type_depth -= trimmed.matches('}').count() as i32;
-            ts_type_depth += line_no_arrow.matches('<').count() as i32;
-            ts_type_depth -= line_no_arrow.matches('>').count() as i32;
-            ts_type_depth += trimmed.matches('(').count() as i32;
-            ts_type_depth -= trimmed.matches(')').count() as i32;
-            // Type declaration ends when balanced and NOT a continuation line
-            // A line that starts with | or & is a union/intersection continuation
-            let is_union_continuation = trimmed.starts_with('|') || trimmed.starts_with('&');
-            // Type declaration ends when:
-            // - brackets/parens are balanced (depth <= 0)
-            // - line is NOT a continuation (doesn't start with | or &)
-            // - line ends with semicolon, OR ends without continuation chars
-            if ts_type_depth <= 0
-                && !is_union_continuation
-                && (trimmed.ends_with(';')
-                    || (!trimmed.ends_with('|')
-                        && !trimmed.ends_with('&')
-                        && !trimmed.ends_with(',')
-                        && !trimmed.ends_with('{')))
-            {
-                in_ts_type = false;
+
+            if in_ts_type {
+                if is_ts {
+                    if let Some(last) = ts_declarations.last_mut() {
+                        last.push('\n');
+                        last.push_str(line);
+                    }
+                }
+                // Track balanced brackets for complex types like: type X = { a: string } | { b: number }
+                // Strip `=>` before counting angle brackets to avoid misinterpreting arrow functions
+                let cleaned = strip_comments_for_counting(trimmed);
+                let line_no_arrow = cleaned.replace("=>", "__");
+                ts_type_depth += cleaned.matches('{').count() as i32;
+                ts_type_depth -= cleaned.matches('}').count() as i32;
+                ts_type_depth += line_no_arrow.matches('<').count() as i32;
+                ts_type_depth -= line_no_arrow.matches('>').count() as i32;
+                ts_type_depth += cleaned.matches('(').count() as i32;
+                ts_type_depth -= cleaned.matches(')').count() as i32;
+                // Type declaration ends when balanced and NOT a continuation line
+                // A line that starts with | or & is a union/intersection continuation
+                // Type declaration ends when:
+                // - brackets/parens are balanced (depth <= 0)
+                // - line is NOT a continuation (doesn't start with | or &)
+                // - line ends with semicolon, OR ends without continuation chars
+                if ts_type_depth <= 0
+                    && (trimmed.ends_with(';')
+                        || (!is_type_continuation
+                            && !trimmed.ends_with('|')
+                            && !trimmed.ends_with('&')
+                            && !trimmed.ends_with(',')
+                            && !trimmed.ends_with('{')))
+                {
+                    // If the line ends with `}` (without `;`), the next line might be a union continuation
+                    if trimmed.ends_with('}') && !trimmed.ends_with("};") {
+                        ts_type_pending_end = true;
+                    } else {
+                        in_ts_type = false;
+                    }
+                }
+                continue;
             }
-            continue;
         }
 
         // Detect TypeScript type alias start
@@ -511,19 +623,28 @@ pub fn compile_script_setup_inline(
                 // A type is NOT complete if:
                 // - brackets/parens aren't balanced (depth > 0)
                 // - line ends with continuation characters (|, &, ,, {, =)
-                if ts_type_depth <= 0
-                    && (trimmed.ends_with(';')
-                        || (!trimmed.ends_with('|')
-                            && !trimmed.ends_with('&')
-                            && !trimmed.ends_with(',')
-                            && !trimmed.ends_with('{')
-                            && !trimmed.ends_with('=')))
-                {
-                    // Single line type - collect for TS, skip for JS
-                    if is_ts {
-                        ts_declarations.push(line.to_string());
+                if ts_type_depth <= 0 {
+                    if trimmed.ends_with(';') {
+                        // Definitely complete single-line type
+                        if is_ts {
+                            ts_declarations.push(line.to_string());
+                        }
+                        continue;
                     }
-                    continue;
+                    if !trimmed.ends_with('|')
+                        && !trimmed.ends_with('&')
+                        && !trimmed.ends_with(',')
+                        && !trimmed.ends_with('{')
+                        && !trimmed.ends_with('=')
+                    {
+                        // Possibly complete, but next line may be conditional type continuation (? / :)
+                        if is_ts {
+                            ts_declarations.push(line.to_string());
+                        }
+                        in_ts_type = true;
+                        ts_type_pending_end = true;
+                        continue;
+                    }
                 }
                 if is_ts {
                     ts_declarations.push(line.to_string());
@@ -554,7 +675,7 @@ pub fn compile_script_setup_inline(
     }
 
     // User imports (after hoisted consts) - deduplicate to avoid "already declared" errors
-    let deduped_imports = dedupe_imports(&user_imports);
+    let deduped_imports = dedupe_imports(&user_imports, is_ts);
     for import in &deduped_imports {
         output.extend_from_slice(import.as_bytes());
     }
@@ -847,9 +968,15 @@ pub fn compile_script_setup_inline(
         }
         // Check if this is a literal const that should be hoisted
         if trimmed.starts_with("const ") && !trimmed.starts_with("const {") {
-            // Check for multi-line template literal (unclosed backtick)
+            // Check for multi-line const where value is on the next line (e.g., `const x =\n  'value'`)
             if let Some(eq_pos) = trimmed.find('=') {
                 let value_part = trimmed[eq_pos + 1..].trim();
+                // If value part is empty, the value is on the next line - don't hoist
+                if value_part.is_empty() {
+                    setup_body_lines.push(line.to_string());
+                    continue;
+                }
+                // Check for multi-line template literal (unclosed backtick)
                 let backticks = value_part
                     .chars()
                     .fold((0usize, false), |(count, escaped), c| {
@@ -1024,6 +1151,25 @@ pub fn compile_script_setup_inline(
         output.extend_from_slice(b")\n");
     }
 
+    // useCssVars injection for v-bind() in <style>
+    if has_css_vars {
+        output.extend_from_slice(b"_useCssVars((_ctx) => ({\n");
+        for (i, var_expr) in css_vars.iter().enumerate() {
+            output.extend_from_slice(b"  \"");
+            output.extend_from_slice(scope_id.as_bytes());
+            output.extend_from_slice(b"-");
+            output.extend_from_slice(var_expr.as_bytes());
+            output.extend_from_slice(b"\": (_unref(");
+            output.extend_from_slice(var_expr.as_bytes());
+            output.extend_from_slice(b"))");
+            if i < css_vars.len() - 1 {
+                output.extend_from_slice(b",");
+            }
+            output.extend_from_slice(b"\n");
+        }
+        output.extend_from_slice(b"}))\n");
+    }
+
     // Inline render function as return (blank line before)
     output.push(b'\n');
     if !template.render_body.is_empty() {
@@ -1118,6 +1264,7 @@ pub fn compile_script_setup_inline(
         // Add TypeScript annotations to $event parameters in event handlers
         if is_ts {
             code = code.replace("$event => (", "($event: any) => (");
+            code = code.replace("$event => { ", "($event: any) => { ");
         }
         code
     } else {
@@ -1232,6 +1379,8 @@ mod tests {
             true,  // source_is_ts = true
             empty_template,
             None,
+            &[], // no css_vars
+            "",  // no scope_id
         )
         .expect("compilation should succeed");
         result.code
@@ -1252,6 +1401,8 @@ mod tests {
             true, // source_is_ts = true
             empty_template,
             None,
+            &[], // no css_vars
+            "",  // no scope_id
         )
         .expect("compilation should succeed");
         result.code
@@ -1344,9 +1495,10 @@ const {
 const other = ref(1)
 "#;
         let output = compile_setup(content);
+        // Function call args should be part of the destructure statement, not bare statements
         assert!(
-            !output.contains("fileInputRef,"),
-            "Function call args should not leak as bare statements. Got:\n{}",
+            output.contains("useSomething("),
+            "Function call should be present in destructure statement. Got:\n{}",
             output
         );
         assert!(
@@ -1509,6 +1661,8 @@ const x = ref(1)
             true,
             empty_template,
             None,
+            &[], // no css_vars
+            "",  // no scope_id
         )
         .expect("compilation should succeed");
         result.code
@@ -1665,6 +1819,50 @@ const doubled = ref(count * 2)
         assert!(
             output.contains("msg:") && output.contains("String"),
             "should include msg prop. Got:\n{}",
+            output
+        );
+    }
+
+    #[test]
+    fn test_multiline_conditional_type_ts() {
+        // Multi-line conditional type with ? and : continuation markers
+        let content = r#"
+import { computed } from 'vue'
+
+type KeyOfUnion<T> = T extends T ? keyof T : never;
+type DistributiveOmit<T, K extends KeyOfUnion<T>> = T extends T
+	? Omit<T, K>
+	: never;
+
+const x = computed(() => 1)
+"#;
+        let output = compile_setup_ts(content);
+        // The full conditional type should be at module level, not in setup body
+        assert!(
+            output.contains("type DistributiveOmit"),
+            "Conditional type should be in output. Got:\n{}",
+            output
+        );
+        assert!(
+            output.contains("? Omit<T, K>"),
+            "Conditional type true branch should be in type declaration. Got:\n{}",
+            output
+        );
+        assert!(
+            output.contains(": never;"),
+            "Conditional type false branch should be in type declaration. Got:\n{}",
+            output
+        );
+        let setup_start = output.find("setup(").expect("should have setup");
+        let setup_body = &output[setup_start..];
+        assert!(
+            !setup_body.contains("? Omit<T, K>"),
+            "Conditional type branches should NOT be in setup body. Got:\n{}",
+            output
+        );
+        assert!(
+            setup_body.contains("const x = computed(() => 1)"),
+            "Code after type should be in setup body. Got:\n{}",
             output
         );
     }

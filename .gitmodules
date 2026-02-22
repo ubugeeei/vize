@@ -1,0 +1,6 @@
+[submodule "e2e/elk"]
+	path = e2e/elk
+	url = https://github.com/elk-zone/elk
+[submodule "e2e/misskey"]
+	path = e2e/misskey
+	url = https://github.com/misskey-dev/misskey

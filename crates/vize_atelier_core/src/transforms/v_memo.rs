@@ -31,6 +31,21 @@ pub fn get_memo_deps(el: &ElementNode<'_>) -> Option<String> {
     None
 }
 
+/// Get v-memo expression node reference (for codegen with proper expression transformation)
+pub fn get_memo_exp<'a, 'b>(el: &'b ElementNode<'a>) -> Option<&'b ExpressionNode<'a>>
+where
+    'a: 'b,
+{
+    for prop in el.props.iter() {
+        if let PropNode::Directive(dir) = prop {
+            if dir.name == "memo" {
+                return dir.exp.as_ref();
+            }
+        }
+    }
+    None
+}
+
 /// Remove v-memo directive from element
 pub fn remove_v_memo(el: &mut ElementNode<'_>) {
     let mut i = 0;

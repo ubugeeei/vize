@@ -207,11 +207,20 @@ pub fn generate_slots(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
                             .unwrap_or(false);
 
                         if is_dynamic {
-                            // Dynamic slot name: [_ctx.slotName]
-                            ctx.push("[");
-                            ctx.push("_ctx.");
-                            ctx.push(&slot_name);
-                            ctx.push("]");
+                            let trimmed_name = slot_name.trim();
+                            if trimmed_name.starts_with('`') && trimmed_name.ends_with('`') {
+                                // Template literal slot name: `item.name` → ["item.name"]
+                                let inner = &trimmed_name[1..trimmed_name.len() - 1];
+                                ctx.push("[\"");
+                                ctx.push(&escape_js_string(inner));
+                                ctx.push("\"]");
+                            } else {
+                                // Dynamic slot name: [_ctx.slotName]
+                                ctx.push("[");
+                                ctx.push("_ctx.");
+                                ctx.push(&slot_name);
+                                ctx.push("]");
+                            }
                         } else if is_valid_js_identifier(&slot_name) {
                             ctx.push(&slot_name);
                         } else {

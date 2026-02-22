@@ -686,10 +686,18 @@ pub fn generate_event_handler(
                 return;
             }
 
-            // Compound expression (function call, etc.): wrap as $event => (expression)
-            ctx.push("$event => (");
-            ctx.push(&processed);
-            ctx.push(")");
+            // Compound expression (function call, etc.): wrap as arrow function.
+            // If expression contains semicolons (multiple statements), use block body { ... }
+            // Otherwise use concise body ( ... )
+            if processed.contains(';') {
+                ctx.push("$event => { ");
+                ctx.push(&processed);
+                ctx.push(" }");
+            } else {
+                ctx.push("$event => (");
+                ctx.push(&processed);
+                ctx.push(")");
+            }
         }
         ExpressionNode::Compound(comp) => {
             // For compound expressions, generate normally

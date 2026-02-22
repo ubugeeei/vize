@@ -1168,7 +1168,13 @@ pub fn process_inline_handler<'a>(
             } else {
                 content.to_string()
             };
-            let new_content = ["$event => (", &rewritten, ")"].concat();
+            // Use block body { ... } for multi-statement handlers (semicolons),
+            // concise body ( ... ) for single expressions
+            let new_content = if rewritten.contains(';') {
+                ["$event => { ", &rewritten, " }"].concat()
+            } else {
+                ["$event => (", &rewritten, ")"].concat()
+            };
 
             ExpressionNode::Simple(Box::new_in(
                 SimpleExpressionNode {

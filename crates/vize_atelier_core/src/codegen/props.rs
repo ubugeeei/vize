@@ -7,7 +7,7 @@ use super::expression::{generate_event_handler, generate_expression, generate_si
 use super::helpers::{camelize, capitalize_first, escape_js_string, is_valid_js_identifier};
 
 /// Check if there's a v-bind without argument (object spread)
-fn has_vbind_object(props: &[PropNode<'_>]) -> bool {
+pub(crate) fn has_vbind_object(props: &[PropNode<'_>]) -> bool {
     props.iter().any(|p| {
         if let PropNode::Directive(dir) = p {
             return dir.name == "bind" && dir.arg.is_none();
@@ -17,7 +17,7 @@ fn has_vbind_object(props: &[PropNode<'_>]) -> bool {
 }
 
 /// Check if there's a v-on without argument (event object spread)
-fn has_von_object(props: &[PropNode<'_>]) -> bool {
+pub(crate) fn has_von_object(props: &[PropNode<'_>]) -> bool {
     props.iter().any(|p| {
         if let PropNode::Directive(dir) = p {
             return dir.name == "on" && dir.arg.is_none();
@@ -45,7 +45,7 @@ fn has_other_props(props: &[PropNode<'_>]) -> bool {
 }
 
 /// Generate the v-bind object expression
-fn generate_vbind_object_exp(ctx: &mut CodegenContext, props: &[PropNode<'_>]) {
+pub(crate) fn generate_vbind_object_exp(ctx: &mut CodegenContext, props: &[PropNode<'_>]) {
     for p in props {
         if let PropNode::Directive(dir) = p {
             if dir.name == "bind" && dir.arg.is_none() {
@@ -59,7 +59,7 @@ fn generate_vbind_object_exp(ctx: &mut CodegenContext, props: &[PropNode<'_>]) {
 }
 
 /// Generate the v-on object expression wrapped with toHandlers
-fn generate_von_object_exp(ctx: &mut CodegenContext, props: &[PropNode<'_>]) {
+pub(crate) fn generate_von_object_exp(ctx: &mut CodegenContext, props: &[PropNode<'_>]) {
     ctx.use_helper(RuntimeHelper::ToHandlers);
     ctx.push(ctx.helper(RuntimeHelper::ToHandlers));
     ctx.push("(");

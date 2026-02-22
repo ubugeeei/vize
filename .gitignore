@@ -44,5 +44,9 @@ npm-debug.log*
 .env.local
 .env.*.local
 
+# Playwright test outputs
+e2e/results/
+e2e/screenshots/
+
 # Vize local data (snapshots, cache, etc.)
 .vize/

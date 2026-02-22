@@ -109,6 +109,19 @@ export interface VizeOptions {
   debug?: boolean;
 }
 
+export interface StyleBlockInfo {
+  /** Raw style content (uncompiled for preprocessor langs) */
+  content: string;
+  /** Language of the style block (e.g., "css", "scss", "less", "sass", "stylus") */
+  lang: string | null;
+  /** Whether the style block has the scoped attribute */
+  scoped: boolean;
+  /** CSS Modules: true for unnamed `module`, or the binding name for `module="name"` */
+  module: boolean | string;
+  /** Index of this style block in the SFC */
+  index: number;
+}
+
 export interface CompiledModule {
   code: string;
   css?: string;
@@ -117,6 +130,8 @@ export interface CompiledModule {
   templateHash?: string;
   styleHash?: string;
   scriptHash?: string;
+  /** Per-block style metadata extracted from the source SFC */
+  styles?: StyleBlockInfo[];
 }
 
 export interface BatchFileInput {
@@ -135,6 +150,8 @@ export interface BatchFileResult {
   templateHash?: string;
   styleHash?: string;
   scriptHash?: string;
+  /** Per-block style metadata extracted from the source SFC */
+  styles?: StyleBlockInfo[];
 }
 
 export interface BatchCompileOptionsNapi {
