@@ -212,37 +212,129 @@ fn add_scope_id_to_template(template_line: &str, scope_id: &str) -> String {
     template_line.to_string()
 }
 
-/// Count net brace depth change ({  minus }) in a line, ignoring braces inside string literals.
-fn count_braces_outside_strings(line: &str) -> i32 {
-    let mut count: i32 = 0;
-    let mut in_string = false;
-    let mut string_char = '\0';
-    let mut escape = false;
+/// State for tracking string/template literal context across multiple lines.
+/// Required because template literals (backtick strings) can span multiple lines,
+/// and `${...}` expressions within them contain code-mode braces that must be
+/// distinguished from surrounding code braces.
+#[derive(Clone)]
+struct StringTrackState {
+    /// Whether we're inside a string literal (regular or template literal text portion)
+    in_string: bool,
+    /// The quote character of the current string ('\'' | '"' | '`')
+    string_char: char,
+    /// Whether the last character was a backslash escape
+    escape: bool,
+    /// Stack for nested template literal `${...}` expressions.
+    /// Each entry tracks the brace depth within that expression.
+    /// When a `}` is encountered and the top depth is 0, the expression ends
+    /// and we return to the enclosing template literal text.
+    template_expr_brace_stack: Vec<i32>,
+}
 
-    for ch in line.chars() {
-        if escape {
-            escape = false;
-            continue;
-        }
-        if ch == '\\' && in_string {
-            escape = true;
-            continue;
-        }
-        match ch {
-            '\'' | '"' | '`' => {
-                if !in_string {
-                    in_string = true;
-                    string_char = ch;
-                } else if ch == string_char {
-                    in_string = false;
-                }
-            }
-            '{' if !in_string => count += 1,
-            '}' if !in_string => count -= 1,
-            _ => {}
+impl Default for StringTrackState {
+    fn default() -> Self {
+        Self {
+            in_string: false,
+            string_char: '\0',
+            escape: false,
+            template_expr_brace_stack: Vec::new(),
         }
     }
+}
+
+/// Count net brace depth change ({ minus }) in a line, properly tracking
+/// string literals and template literal `${...}` expressions.
+/// State is carried across lines to handle multiline template literals.
+fn count_braces_with_state(line: &str, state: &mut StringTrackState) -> i32 {
+    let mut count: i32 = 0;
+    let chars: Vec<char> = line.chars().collect();
+    let len = chars.len();
+    let mut i = 0;
+
+    while i < len {
+        let ch = chars[i];
+
+        if state.escape {
+            state.escape = false;
+            i += 1;
+            continue;
+        }
+
+        if state.in_string {
+            if ch == '\\' {
+                state.escape = true;
+                i += 1;
+                continue;
+            }
+
+            if state.string_char == '`' {
+                if ch == '`' {
+                    // Close template literal
+                    state.in_string = false;
+                } else if ch == '$' && i + 1 < len && chars[i + 1] == '{' {
+                    // Enter template expression ${...}
+                    // The ${ is template syntax, not a code brace
+                    state.in_string = false;
+                    state.template_expr_brace_stack.push(0);
+                    i += 2; // Skip both $ and {
+                    continue;
+                }
+            } else if ch == state.string_char {
+                // Close regular string (' or ")
+                state.in_string = false;
+            }
+        } else {
+            // Not in string - we're in code mode
+            match ch {
+                '\'' | '"' => {
+                    state.in_string = true;
+                    state.string_char = ch;
+                }
+                '`' => {
+                    state.in_string = true;
+                    state.string_char = '`';
+                }
+                '{' => {
+                    if let Some(depth) = state.template_expr_brace_stack.last_mut() {
+                        *depth += 1;
+                    }
+                    count += 1;
+                }
+                '}' => {
+                    if let Some(&depth) = state.template_expr_brace_stack.last() {
+                        if depth == 0 {
+                            // This } closes the ${...} expression, not a code brace
+                            state.template_expr_brace_stack.pop();
+                            state.in_string = true;
+                            state.string_char = '`';
+                            i += 1;
+                            continue;
+                        } else {
+                            // Nested brace inside ${...} expression
+                            *state.template_expr_brace_stack.last_mut().unwrap() -= 1;
+                            count -= 1;
+                        }
+                    } else {
+                        count -= 1;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        i += 1;
+    }
+
     count
+}
+
+/// Count net brace depth change ({  minus }) in a line, ignoring braces inside string literals.
+/// NOTE: This function does NOT track state across lines. For multiline template literals,
+/// use `count_braces_with_state` instead.
+#[cfg(test)]
+fn count_braces_outside_strings(line: &str) -> i32 {
+    let mut state = StringTrackState::default();
+    count_braces_with_state(line, &mut state)
 }
 
 /// Compact render body by removing unnecessary line breaks inside function calls and arrays
@@ -330,6 +422,7 @@ pub(crate) fn extract_template_parts_full(template_code: &str) -> (String, Strin
     let mut render_fn = String::new();
     let mut in_render = false;
     let mut brace_depth = 0;
+    let mut brace_state = StringTrackState::default();
 
     for line in template_code.lines() {
         let trimmed = line.trim();
@@ -345,11 +438,12 @@ pub(crate) fn extract_template_parts_full(template_code: &str) -> (String, Strin
         {
             in_render = true;
             brace_depth = 0;
-            brace_depth += count_braces_outside_strings(line);
+            brace_state = StringTrackState::default();
+            brace_depth += count_braces_with_state(line, &mut brace_state);
             render_fn.push_str(line);
             render_fn.push('\n');
         } else if in_render {
-            brace_depth += count_braces_outside_strings(line);
+            brace_depth += count_braces_with_state(line, &mut brace_state);
             render_fn.push_str(line);
             render_fn.push('\n');
 
@@ -374,6 +468,7 @@ pub(crate) fn extract_template_parts(template_code: &str) -> (String, String, St
     let mut in_render = false;
     let mut in_return = false;
     let mut brace_depth = 0;
+    let mut brace_state = StringTrackState::default();
     let mut return_paren_depth = 0;
 
     // Collect all lines for look-ahead
@@ -394,9 +489,10 @@ pub(crate) fn extract_template_parts(template_code: &str) -> (String, String, St
         {
             in_render = true;
             brace_depth = 0;
-            brace_depth += count_braces_outside_strings(line);
+            brace_state = StringTrackState::default();
+            brace_depth += count_braces_with_state(line, &mut brace_state);
         } else if in_render {
-            brace_depth += count_braces_outside_strings(line);
+            brace_depth += count_braces_with_state(line, &mut brace_state);
 
             // Extract the return statement inside the render function (may span multiple lines)
             if in_return {
@@ -554,5 +650,302 @@ export function render(_ctx, _cache) {
         assert!(imports.contains("import"));
         assert!(hoisted.contains("_hoisted_1"));
         assert!(render_body.contains("_createVNode"));
+    }
+
+    // --- Multiline template literal tests ---
+
+    #[test]
+    fn test_count_braces_multiline_template_literal() {
+        // Simulate processing lines of a multiline template literal
+        // from actual codegen output
+        let mut state = StringTrackState::default();
+
+        // Line with } closing object, then opening a template literal with ${
+        // Content: }, _toDisplayString(`${t("key")}: v${ver.major}.${
+        // Using concat! to avoid raw string delimiter issues
+        let line1 = concat!(r#"}, _toDisplayString(`${t("key")}: v${ver.major}.${"#);
+        let count1 = count_braces_with_state(line1, &mut state);
+        // The } before _toDisplayString is a code brace (-1)
+        // Template literal opens with `, then ${...} are template expression syntax
+        assert_eq!(count1, -1, "Line 1 brace count");
+        // After ${t("key")} closes and ${ver.major} closes, we enter ${ again
+        // The line ends inside ${ expression inside template literal
+        assert!(
+            !state.template_expr_brace_stack.is_empty(),
+            "Should be inside template expression after line 1"
+        );
+
+        // Line inside template expression (just expression content)
+        let line2 = "            ver.minor";
+        let count2 = count_braces_with_state(line2, &mut state);
+        assert_eq!(count2, 0, "Line 2 brace count");
+
+        // Line with } closing ${...} expression, ` closing template literal
+        let line3 = r##"          }`) + "\n      ", 1 /* TEXT */)))"##;
+        let count3 = count_braces_with_state(line3, &mut state);
+        // The } closes ${...} (not a code brace), ` closes template literal
+        assert_eq!(count3, 0, "Line 3 brace count");
+        assert!(!state.in_string, "Should be outside string after line 3");
+        assert!(
+            state.template_expr_brace_stack.is_empty(),
+            "Template expression stack should be empty"
+        );
+
+        // Total brace change should be -1 (only the } before _toDisplayString)
+        assert_eq!(count1 + count2 + count3, -1);
+    }
+
+    #[test]
+    fn test_extract_template_parts_multiline_template_literal() {
+        // This is the actual pattern that was causing the bug:
+        // a render function with a multiline template literal inside ${}
+        let template_code = r#"import { openBlock as _openBlock, createElementBlock as _createElementBlock, toDisplayString as _toDisplayString, createCommentVNode as _createCommentVNode } from "vue"
+
+export function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (show.value)
+    ? (_openBlock(), _createElementBlock("div", {
+      key: 0,
+      class: "outer"
+    }, [
+      _createElementVNode("div", { class: "inner" }, [
+        (ver.value)
+          ? (_openBlock(), _createElementBlock("span", { key: 0 }, "\n        " + _toDisplayString(`${t("key")}: v${ver.value.major}.${
+            ver.value.minor
+          }`) + "\n      ", 1 /* TEXT */))
+          : (_openBlock(), _createElementBlock("span", { key: 1 }, "no"))
+      ])
+    ]))
+    : _createCommentVNode("v-if", true)
+}"#;
+
+        let (_imports, _hoisted, _preamble, render_body) = extract_template_parts(template_code);
+
+        // The render body must contain both v-if branches and the comment node
+        assert!(
+            render_body.contains("_toDisplayString"),
+            "Should contain the template literal expression. Got:\n{}",
+            render_body
+        );
+        assert!(
+            render_body.contains("_createCommentVNode"),
+            "Should contain the v-if comment node (else branch). Got:\n{}",
+            render_body
+        );
+        assert!(
+            render_body.contains("\"no\""),
+            "Should contain the v-else branch content. Got:\n{}",
+            render_body
+        );
+    }
+
+    #[test]
+    fn test_extract_template_parts_full_multiline_template_literal() {
+        let template_code = r#"import { toDisplayString as _toDisplayString } from 'vue'
+
+export function render(_ctx, _cache) {
+  return _toDisplayString(`${t("key")}: v${ver.major}.${
+    ver.minor
+  }`)
+}"#;
+
+        let (_imports, _hoisted, render_fn) = extract_template_parts_full(template_code);
+
+        assert!(
+            render_fn.contains("_toDisplayString"),
+            "Render function should contain the expression. Got:\n{}",
+            render_fn
+        );
+        let trimmed = render_fn.trim();
+        assert!(
+            trimmed.ends_with('}'),
+            "Render function should end with closing brace. Got:\n{}",
+            render_fn
+        );
+    }
+
+    // --- Generalized template literal / string tracking tests ---
+
+    #[test]
+    fn test_count_braces_template_literal_with_nested_object() {
+        // Template literal containing ${...} with nested object literal: `${fn({a: 1})}`
+        let mut state = StringTrackState::default();
+        let line = r#"x = `result: ${fn({a: 1, b: {c: 2}})}`"#;
+        let count = count_braces_with_state(line, &mut state);
+        // No code-level braces; all { and } are inside template literal expressions
+        assert_eq!(
+            count, 0,
+            "Braces inside template expression should be balanced"
+        );
+        assert!(!state.in_string, "Template literal should be closed");
+    }
+
+    #[test]
+    fn test_count_braces_nested_template_literals() {
+        // Nested template literals: `outer ${`inner ${x}`} end`
+        let mut state = StringTrackState::default();
+        let line = r#"x = `outer ${`inner ${x}`} end`"#;
+        let count = count_braces_with_state(line, &mut state);
+        assert_eq!(
+            count, 0,
+            "Nested template literals should not affect brace count"
+        );
+        assert!(!state.in_string, "All template literals should be closed");
+    }
+
+    #[test]
+    fn test_count_braces_multiline_template_expr_with_object() {
+        // Multiline: template expression contains an object literal spanning lines
+        let mut state = StringTrackState::default();
+
+        // `value: ${fn({`  — the { after fn( is a real code brace inside the expr
+        let line1 = r#"x = `value: ${fn({"#;
+        let c1 = count_braces_with_state(line1, &mut state);
+        assert_eq!(
+            c1, 1,
+            "Line 1: object literal brace inside template expression"
+        );
+
+        let line2 = r#"  key: val"#;
+        let c2 = count_braces_with_state(line2, &mut state);
+        assert_eq!(c2, 0, "Line 2: no braces");
+
+        // })}` — the first } closes the object (-1), the second } closes ${...} (not counted)
+        let line3 = r#"})}`"#;
+        let c3 = count_braces_with_state(line3, &mut state);
+        assert_eq!(c3, -1, "Line 3: closing object brace");
+        assert!(!state.in_string, "Template literal should be closed");
+        assert_eq!(c1 + c2 + c3, 0, "Total should be balanced");
+    }
+
+    #[test]
+    fn test_count_braces_template_literal_with_arrow_function() {
+        // Template expression with arrow function: `${items.map(x => ({ name: x })).join()}`
+        let mut state = StringTrackState::default();
+        let line = r#"x = `${items.map(x => ({ name: x })).join()}`"#;
+        let count = count_braces_with_state(line, &mut state);
+        assert_eq!(count, 0);
+        assert!(!state.in_string);
+    }
+
+    #[test]
+    fn test_count_braces_state_across_many_lines() {
+        // Simulate a real render function with multiline template literal
+        let mut state = StringTrackState::default();
+
+        // function render() {
+        let c1 = count_braces_with_state("function render() {", &mut state);
+        assert_eq!(c1, 1);
+
+        //   return _toDisplayString(`${fn({
+        // The { after fn( is a code brace inside the template expression (+1)
+        let c2 = count_braces_with_state(r#"  return _toDisplayString(`${fn({"#, &mut state);
+        assert_eq!(c2, 1, "Object literal brace inside template expression");
+
+        //     key: val,
+        let c3 = count_braces_with_state("    key: val,", &mut state);
+        assert_eq!(c3, 0);
+
+        //     nested: {
+        // This { is a nested code brace inside the template expression
+        let c4 = count_braces_with_state("    nested: {", &mut state);
+        assert_eq!(c4, 1, "Nested brace inside template expression");
+
+        //       deep: true
+        let c5 = count_braces_with_state("      deep: true", &mut state);
+        assert_eq!(c5, 0);
+
+        //     }
+        // This } closes the nested object brace
+        let c6 = count_braces_with_state("    }", &mut state);
+        assert_eq!(c6, -1, "Closing nested brace inside template expression");
+
+        //   })}`)
+        // The first } closes the outer object (-1), the second } closes ${...} (not counted)
+        let c7 = count_braces_with_state(r#"  })}`)"#, &mut state);
+        assert_eq!(c7, -1, "Closing outer object brace");
+
+        // }
+        let c8 = count_braces_with_state("}", &mut state);
+        assert_eq!(c8, -1);
+
+        assert_eq!(
+            c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8,
+            0,
+            "Total: function opens and closes"
+        );
+        assert!(!state.in_string);
+        assert!(state.template_expr_brace_stack.is_empty());
+    }
+
+    #[test]
+    fn test_count_braces_regular_strings_with_braces() {
+        // Single and double quoted strings with braces should still work
+        let mut state = StringTrackState::default();
+
+        let line = r#"if (x) { var s = "}" + '{' }"#;
+        let count = count_braces_with_state(line, &mut state);
+        assert_eq!(count, 0, "Braces inside regular strings should be ignored");
+    }
+
+    #[test]
+    fn test_extract_template_parts_deeply_nested_multiline() {
+        // Multiple levels of nesting with multiline template literals
+        let template_code = r#"import { toDisplayString as _toDisplayString, createElementBlock as _createElementBlock, openBlock as _openBlock, createCommentVNode as _createCommentVNode, createElementVNode as _createElementVNode } from "vue"
+
+export function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (cond.value)
+    ? (_openBlock(), _createElementBlock("div", { key: 0 }, [
+        _createElementVNode("p", null, _toDisplayString(`${items.value.map(x => ({
+          name: x.name,
+          label: `${x.prefix}-${
+            x.suffix
+          }`
+        })).length} items`)),
+        _createElementVNode("span", null, "after")
+      ]))
+    : _createCommentVNode("v-if", true)
+}"#;
+
+        let (_imports, _hoisted, _preamble, render_body) = extract_template_parts(template_code);
+
+        assert!(
+            render_body.contains("_createCommentVNode"),
+            "Should contain comment node (else branch). Got:\n{}",
+            render_body
+        );
+        assert!(
+            render_body.contains("\"after\""),
+            "Should contain content after template literal. Got:\n{}",
+            render_body
+        );
+    }
+
+    #[test]
+    fn test_extract_template_parts_full_deeply_nested_multiline() {
+        // Same deep nesting test for extract_template_parts_full
+        let template_code = r#"import { toDisplayString as _toDisplayString } from "vue"
+
+export function render(_ctx, _cache) {
+  return _toDisplayString(`${items.map(x => ({
+    name: x.name,
+    value: `nested-${
+      x.value
+    }`
+  })).length} items`)
+}"#;
+
+        let (_imports, _hoisted, render_fn) = extract_template_parts_full(template_code);
+
+        let trimmed = render_fn.trim();
+        assert!(
+            trimmed.ends_with('}'),
+            "Render function should end with closing brace. Got:\n{}",
+            render_fn
+        );
+        assert!(
+            render_fn.contains("items"),
+            "Render function should contain the full expression. Got:\n{}",
+            render_fn
+        );
     }
 }

@@ -3,6 +3,8 @@
 //! This module handles compilation of script setup with inline template mode,
 //! where the render function is inlined into the setup function.
 
+use std::borrow::Cow;
+
 use crate::script::{transform_destructured_props, ScriptCompileContext};
 use crate::types::SfcError;
 
@@ -24,6 +26,8 @@ pub fn compile_script_setup_inline(
     source_is_ts: bool,
     template: TemplateParts<'_>,
     normal_script_content: Option<&str>,
+    css_vars: &[Cow<'_, str>],
+    scope_id: &str,
 ) -> Result<ScriptCompileResult, SfcError> {
     let mut ctx = ScriptCompileContext::new(content);
     ctx.analyze();
@@ -59,6 +63,14 @@ pub fn compile_script_setup_inline(
     // useModel import if defineModel was used
     if has_define_model {
         output.extend_from_slice(b"import { useModel as _useModel } from 'vue'\n");
+    }
+
+    // useCssVars import if style has v-bind()
+    let has_css_vars = !css_vars.is_empty();
+    if has_css_vars {
+        output.extend_from_slice(
+            b"import { useCssVars as _useCssVars, unref as _unref } from 'vue'\n",
+        );
     }
 
     // Check if we need PropType import (type-based defineProps in TS mode)
@@ -1024,6 +1036,25 @@ pub fn compile_script_setup_inline(
         output.extend_from_slice(b")\n");
     }
 
+    // useCssVars injection for v-bind() in <style>
+    if has_css_vars {
+        output.extend_from_slice(b"_useCssVars((_ctx) => ({\n");
+        for (i, var_expr) in css_vars.iter().enumerate() {
+            output.extend_from_slice(b"  \"");
+            output.extend_from_slice(scope_id.as_bytes());
+            output.extend_from_slice(b"-");
+            output.extend_from_slice(var_expr.as_bytes());
+            output.extend_from_slice(b"\": (_unref(");
+            output.extend_from_slice(var_expr.as_bytes());
+            output.extend_from_slice(b"))");
+            if i < css_vars.len() - 1 {
+                output.extend_from_slice(b",");
+            }
+            output.extend_from_slice(b"\n");
+        }
+        output.extend_from_slice(b"}))\n");
+    }
+
     // Inline render function as return (blank line before)
     output.push(b'\n');
     if !template.render_body.is_empty() {
@@ -1232,6 +1263,8 @@ mod tests {
             true,  // source_is_ts = true
             empty_template,
             None,
+            &[], // no css_vars
+            "",  // no scope_id
         )
         .expect("compilation should succeed");
         result.code
@@ -1252,6 +1285,8 @@ mod tests {
             true, // source_is_ts = true
             empty_template,
             None,
+            &[], // no css_vars
+            "",  // no scope_id
         )
         .expect("compilation should succeed");
         result.code
@@ -1509,6 +1544,8 @@ const x = ref(1)
             true,
             empty_template,
             None,
+            &[], // no css_vars
+            "",  // no scope_id
         )
         .expect("compilation should succeed");
         result.code

@@ -1,9 +1,36 @@
 import fs from "node:fs";
 import * as native from "@vizejs/native";
-import type { CompiledModule, BatchFileInput, BatchCompileResultWithFiles } from "./types.js";
+import type {
+  CompiledModule,
+  BatchFileInput,
+  BatchCompileResultWithFiles,
+  StyleBlockInfo,
+} from "./types.js";
 import { generateScopeId } from "./utils.js";
 
 const { compileSfc, compileSfcBatchWithResults } = native;
+
+/**
+ * Extract style block metadata from a Vue SFC source string.
+ * Parses `<style>` tags to determine lang, scoped, and module attributes.
+ */
+export function extractStyleBlocks(source: string): StyleBlockInfo[] {
+  const blocks: StyleBlockInfo[] = [];
+  const styleRegex = /<style([^>]*)>([\s\S]*?)<\/style>/gi;
+  let match;
+  let index = 0;
+  while ((match = styleRegex.exec(source)) !== null) {
+    const attrs = match[1];
+    const content = match[2];
+    const lang = attrs.match(/\blang=["']([^"']+)["']/)?.[1] ?? null;
+    const scoped = /\bscoped\b/.test(attrs);
+    const moduleMatch = attrs.match(/\bmodule(?:=["']([^"']+)["'])?\b/);
+    const isModule = moduleMatch ? moduleMatch[1] || true : false;
+    blocks.push({ content, lang, scoped, module: isModule, index });
+    index++;
+  }
+  return blocks;
+}
 
 export function compileFile(
   filePath: string,
@@ -33,11 +60,14 @@ export function compileFile(
     });
   }
 
+  const styles = extractStyleBlocks(content);
+
   const compiled: CompiledModule = {
     code: result.code,
     css: result.css,
     scopeId,
     hasScoped,
+    styles,
   };
 
   cache.set(filePath, compiled);
@@ -62,9 +92,17 @@ export function compileBatch(
     ssr: options.ssr,
   });
 
+  // Build a map from path -> source for style block extraction
+  const sourceMap = new Map<string, string>();
+  for (const f of files) {
+    sourceMap.set(f.path, f.source);
+  }
+
   // Update cache with results
   for (const fileResult of result.results) {
     if (fileResult.errors.length === 0) {
+      const source = sourceMap.get(fileResult.path);
+      const styles = source ? extractStyleBlocks(source) : undefined;
       cache.set(fileResult.path, {
         code: fileResult.code,
         css: fileResult.css,
@@ -73,6 +111,7 @@ export function compileBatch(
         templateHash: fileResult.templateHash,
         styleHash: fileResult.styleHash,
         scriptHash: fileResult.scriptHash,
+        styles,
       });
     }
 

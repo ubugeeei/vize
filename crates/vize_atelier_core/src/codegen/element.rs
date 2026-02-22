@@ -1,6 +1,7 @@
 //! Element generation functions.
 
 use crate::ast::*;
+use crate::transforms::v_memo::{get_memo_exp, has_v_memo};
 use crate::transforms::v_model::{get_vmodel_helper, parse_model_modifiers};
 use vize_carton::is_builtin_directive;
 
@@ -539,6 +540,24 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
         return;
     }
 
+    // Check for v-memo directive - wrap with memoization
+    let memo_cache_index = if has_v_memo(el) {
+        if let Some(memo_exp) = get_memo_exp(el) {
+            let cache_index = ctx.next_cache_index();
+            ctx.use_helper(RuntimeHelper::WithMemo);
+            ctx.push(ctx.helper(RuntimeHelper::WithMemo));
+            ctx.push("(");
+            // Generate the memo deps expression with proper _ctx. prefixing
+            generate_expression(ctx, memo_exp);
+            ctx.push(", () => ");
+            Some(cache_index)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
     // Check for custom directives
     let has_custom_dirs = has_custom_directives(el);
     if has_custom_dirs {
@@ -602,6 +621,13 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             ctx.newline();
             ctx.push("])");
         } else {
+            ctx.push(")");
+        }
+
+        // Close withMemo wrapper if v-memo was present (unlikely but safe)
+        if let Some(cache_index) = memo_cache_index {
+            ctx.push(", _cache, ");
+            ctx.push(&cache_index.to_string());
             ctx.push(")");
         }
         return;
@@ -940,10 +966,35 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             ctx.push("))");
         }
     }
+
+    // Close withMemo wrapper if v-memo was present
+    if let Some(cache_index) = memo_cache_index {
+        ctx.push(", _cache, ");
+        ctx.push(&cache_index.to_string());
+        ctx.push(")");
+    }
 }
 
 /// Generate element code
 pub fn generate_element(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
+    // Check for v-memo directive - wrap with memoization
+    let memo_cache_index = if has_v_memo(el) {
+        if let Some(memo_exp) = get_memo_exp(el) {
+            let cache_index = ctx.next_cache_index();
+            ctx.use_helper(RuntimeHelper::WithMemo);
+            ctx.push(ctx.helper(RuntimeHelper::WithMemo));
+            ctx.push("(");
+            // Generate the memo deps expression with proper _ctx. prefixing
+            generate_expression(ctx, memo_exp);
+            ctx.push(", () => ");
+            Some(cache_index)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
     match el.tag_type {
         ElementType::Element => {
             // Check for v-model directive on native elements (only if no v-show)
@@ -1221,6 +1272,13 @@ pub fn generate_element(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
                 ctx.push("]");
             }
         }
+    }
+
+    // Close withMemo wrapper if v-memo was present
+    if let Some(cache_index) = memo_cache_index {
+        ctx.push(", _cache, ");
+        ctx.push(&cache_index.to_string());
+        ctx.push(")");
     }
 }
 

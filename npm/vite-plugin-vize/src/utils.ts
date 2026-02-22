@@ -1,8 +1,30 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import type { CompiledModule } from "./types.js";
+import type { CompiledModule, StyleBlockInfo } from "./types.js";
 import { type HmrUpdateType, generateHmrCode } from "./hmr.js";
+
+/** Known CSS preprocessor languages that must be delegated to Vite */
+const PREPROCESSOR_LANGS = new Set(["scss", "sass", "less", "stylus", "styl"]);
+
+/** Check if a style block requires Vite's preprocessor pipeline */
+function needsPreprocessor(block: StyleBlockInfo): boolean {
+  return block.lang !== null && PREPROCESSOR_LANGS.has(block.lang);
+}
+
+/** Check if a style block uses CSS Modules */
+function isCssModule(block: StyleBlockInfo): boolean {
+  return block.module !== false;
+}
+
+/**
+ * Check if any style blocks in the compiled module require delegation to
+ * Vite's CSS pipeline (preprocessor or CSS Modules).
+ */
+function hasDelegatedStyles(compiled: CompiledModule): boolean {
+  if (!compiled.styles) return false;
+  return compiled.styles.some((s) => needsPreprocessor(s) || isCssModule(s));
+}
 
 export function generateScopeId(filename: string): string {
   const hash = createHash("sha256").update(filename).digest("hex");
@@ -36,10 +58,15 @@ export interface GenerateOutputOptions {
   isDev: boolean;
   hmrUpdateType?: HmrUpdateType;
   extractCss?: boolean;
+  /**
+   * Absolute path of the source .vue file.
+   * Required for generating virtual style imports for preprocessor/CSS Modules delegation.
+   */
+  filePath?: string;
 }
 
 export function generateOutput(compiled: CompiledModule, options: GenerateOutputOptions): string {
-  const { isProduction, isDev, hmrUpdateType, extractCss } = options;
+  const { isProduction, isDev, hmrUpdateType, extractCss, filePath } = options;
 
   let output = compiled.code;
 
@@ -70,8 +97,71 @@ export function generateOutput(compiled: CompiledModule, options: GenerateOutput
     }
   }
 
-  // Inject CSS (skip in production if extracting)
-  if (compiled.css && !(isProduction && extractCss)) {
+  // Determine whether to use delegated style imports or inline CSS injection
+  const useDelegatedStyles = hasDelegatedStyles(compiled) && filePath;
+
+  if (useDelegatedStyles) {
+    // --- Delegated style handling ---
+    // Some style blocks require Vite's CSS pipeline (preprocessor or CSS Modules).
+    // Emit virtual style imports for ALL blocks so Vite handles them uniformly.
+    const styleImports: string[] = [];
+    const cssModuleImports: string[] = [];
+
+    for (const block of compiled.styles!) {
+      const lang = block.lang ?? "css";
+      const params = new URLSearchParams();
+      params.set("vue", "");
+      params.set("type", "style");
+      params.set("index", String(block.index));
+      if (block.scoped) params.set("scoped", `data-v-${compiled.scopeId}`);
+      params.set("lang", lang);
+
+      if (isCssModule(block)) {
+        // CSS Modules: import as a named binding
+        const bindingName = typeof block.module === "string" ? block.module : "$style";
+        params.set("module", typeof block.module === "string" ? block.module : "");
+        const importUrl = `${filePath}?${params.toString()}`;
+        cssModuleImports.push(`import ${bindingName} from ${JSON.stringify(importUrl)};`);
+      } else {
+        // Side-effect import: Vite will inject the CSS
+        const importUrl = `${filePath}?${params.toString()}`;
+        styleImports.push(`import ${JSON.stringify(importUrl)};`);
+      }
+    }
+
+    // Prepend style imports
+    const allImports = [...styleImports, ...cssModuleImports].join("\n");
+    if (allImports) {
+      output = allImports + "\n" + output;
+    }
+
+    // Inject CSS module bindings into the component
+    if (cssModuleImports.length > 0) {
+      // Extract binding names from the CSS module imports
+      const moduleBindings: { name: string; bindingName: string }[] = [];
+      for (const block of compiled.styles!) {
+        if (isCssModule(block)) {
+          const bindingName = typeof block.module === "string" ? block.module : "$style";
+          moduleBindings.push({ name: bindingName, bindingName });
+        }
+      }
+
+      // Add computed properties to the component for CSS module bindings
+      // This makes `$style` available in templates via `useCssModule()`
+      const cssModuleSetup = moduleBindings
+        .map(
+          (m) =>
+            `_sfc_main.__cssModules = _sfc_main.__cssModules || {};\n_sfc_main.__cssModules[${JSON.stringify(m.name)}] = ${m.bindingName};`,
+        )
+        .join("\n");
+      // Insert before the final "export default _sfc_main;"
+      output = output.replace(
+        /^export default _sfc_main;/m,
+        `${cssModuleSetup}\nexport default _sfc_main;`,
+      );
+    }
+  } else if (compiled.css && !(isProduction && extractCss)) {
+    // --- Inline CSS injection (original behavior for plain CSS) ---
     const cssCode = JSON.stringify(compiled.css);
     const cssId = JSON.stringify(`vize-style-${compiled.scopeId}`);
     output = `

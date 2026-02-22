@@ -353,6 +353,8 @@ pub fn compile_sfc(
             render_body: &render_body,
         },
         normal_script_content.as_deref(),
+        &descriptor.css_vars,
+        &scope_id,
     )?;
 
     // The inline mode compile_script_setup_inline generates a complete output

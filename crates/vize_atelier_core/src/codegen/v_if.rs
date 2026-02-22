@@ -185,15 +185,17 @@ pub fn generate_if_branch_component(
     let has_dyn_class = has_dynamic_class(el);
     let has_dyn_style = has_dynamic_style(el);
 
-    // Check if component has v-bind spread
+    // Check if component has v-bind spread or v-on spread
     let has_vbind_spread = has_vbind_spread(el);
-    if has_vbind_spread {
+    let has_von_spread = has_von_spread(el);
+    if has_vbind_spread || has_von_spread {
         ctx.use_helper(RuntimeHelper::MergeProps);
         ctx.push(", ");
         ctx.push(ctx.helper(RuntimeHelper::MergeProps));
         ctx.push("(");
 
         let mut first_merge_arg = true;
+        // Add v-bind spreads
         for prop in el.props.iter() {
             if let PropNode::Directive(dir) = prop {
                 if dir.name == "bind" && dir.arg.is_none() {
@@ -202,6 +204,25 @@ pub fn generate_if_branch_component(
                             ctx.push(", ");
                         }
                         generate_expression(ctx, exp);
+                        first_merge_arg = false;
+                    }
+                }
+            }
+        }
+
+        // Add v-on spreads wrapped with _toHandlers
+        for prop in el.props.iter() {
+            if let PropNode::Directive(dir) = prop {
+                if dir.name == "on" && dir.arg.is_none() {
+                    if let Some(exp) = &dir.exp {
+                        if !first_merge_arg {
+                            ctx.push(", ");
+                        }
+                        ctx.use_helper(RuntimeHelper::ToHandlers);
+                        ctx.push(ctx.helper(RuntimeHelper::ToHandlers));
+                        ctx.push("(");
+                        generate_expression(ctx, exp);
+                        ctx.push(", true)");
                         first_merge_arg = false;
                     }
                 }
@@ -393,9 +414,10 @@ pub fn generate_if_branch_element(
     let has_dyn_class = has_dynamic_class(el);
     let has_dyn_style = has_dynamic_style(el);
 
-    // Generate props with key and all other props (handle v-bind spreads)
+    // Generate props with key and all other props (handle v-bind/v-on spreads)
     let has_vbind_spread = has_vbind_spread(el);
-    if has_vbind_spread {
+    let has_von_spread = has_von_spread(el);
+    if has_vbind_spread || has_von_spread {
         ctx.use_helper(RuntimeHelper::MergeProps);
         ctx.push(", ");
         ctx.push(ctx.helper(RuntimeHelper::MergeProps));
@@ -411,6 +433,25 @@ pub fn generate_if_branch_element(
                             ctx.push(", ");
                         }
                         generate_expression(ctx, exp);
+                        first_merge_arg = false;
+                    }
+                }
+            }
+        }
+
+        // Add all v-on spreads wrapped with _toHandlers
+        for prop in el.props.iter() {
+            if let PropNode::Directive(dir) = prop {
+                if dir.name == "on" && dir.arg.is_none() {
+                    if let Some(exp) = &dir.exp {
+                        if !first_merge_arg {
+                            ctx.push(", ");
+                        }
+                        ctx.use_helper(RuntimeHelper::ToHandlers);
+                        ctx.push(ctx.helper(RuntimeHelper::ToHandlers));
+                        ctx.push("(");
+                        generate_expression(ctx, exp);
+                        ctx.push(", true)");
                         first_merge_arg = false;
                     }
                 }
@@ -486,6 +527,7 @@ fn generate_if_branch_props_object(
         }
         !should_skip_prop_for_if(p, has_dynamic_class, has_dynamic_style)
             && !is_vbind_spread_prop(p)
+            && !is_von_spread_prop(p)
     });
     // For component elements, skip_scope_id suppresses the attribute.
     let scope_id = if ctx.skip_scope_id {
@@ -525,6 +567,9 @@ fn generate_if_branch_props_object(
         if is_vbind_spread_prop(prop) {
             continue;
         }
+        if is_von_spread_prop(prop) {
+            continue;
+        }
         if let PropNode::Directive(dir) = prop {
             if dir.name == "on" {
                 if let Some(key) = get_static_event_key(dir) {
@@ -562,6 +607,19 @@ fn has_vbind_spread(el: &ElementNode<'_>) -> bool {
 fn is_vbind_spread_prop(prop: &PropNode<'_>) -> bool {
     if let PropNode::Directive(dir) = prop {
         return dir.name == "bind" && dir.arg.is_none();
+    }
+    false
+}
+
+/// Check if element has v-on object spread (v-on="obj")
+fn has_von_spread(el: &ElementNode<'_>) -> bool {
+    el.props.iter().any(|p| is_von_spread_prop(p))
+}
+
+/// Check if prop is a v-on object spread (v-on="obj")
+fn is_von_spread_prop(prop: &PropNode<'_>) -> bool {
+    if let PropNode::Directive(dir) = prop {
+        return dir.name == "on" && dir.arg.is_none();
     }
     false
 }
