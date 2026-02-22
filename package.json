@@ -19,12 +19,19 @@
   "devDependencies": {
     "@iarna/toml": "^2.2.5",
     "@typescript/native-preview": "7.0.0-dev.20260124.1",
+    "@vitejs/plugin-vue": "^5.2.0",
     "@vue/compiler-sfc": "3.6.0-beta.1",
     "@vue/compiler-vapor": "3.6.0-beta.1",
+    "eslint": "^9.0.0",
+    "eslint-plugin-vue": "^10.0.0",
     "glob": "^13.0.0",
     "oxfmt": "^0.27.0",
     "oxlint": "^1.42.0",
     "oxlint-tsgolint": "^0.11.4",
-    "vue": "3.6.0-beta.1"
+    "prettier": "^3.8.1",
+    "vite": "^8.0.0-beta.0",
+    "vue": "3.6.0-beta.1",
+    "vue-eslint-parser": "^10.0.0",
+    "vue-tsc": "^2.0.0"
   }
 }

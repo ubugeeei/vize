@@ -128,6 +128,14 @@ Vize does not exist in isolation. It is part of a broader movement to rewrite Ja
 
 There are still many unsolved challenges in this space — cross-tool AST interop, incremental analysis across language boundaries, and editor integration consistency. Vize aims to be a proving ground for solutions to these problems within the Vue.js ecosystem, contributing to the broader oxidation movement.
 
+### 8. Collaboration with Vite+ and OXC
+
+[Vite+](https://viteplus.dev/) and [OXC](https://oxc.rs) are **framework-agnostic** toolchains — they provide general-purpose JS/TS/CSS bundling, parsing, linting, and formatting capabilities that work across any framework. Vize is **Vue-specific** and is designed to **integrate with** these ecosystem tools rather than compete against them.
+
+Vize directly depends on OXC for JavaScript/TypeScript parsing and LightningCSS for CSS processing within Vue SFCs. The Vize linter (patina) and formatter (glyph) handle Vue-specific concerns (template directives, SFC structure, component conventions) that are outside the scope of framework-agnostic tools. Deeper integration with OXC is planned — for example, delegating `<script>` block linting/formatting to OXC while Vize handles the Vue-specific `<template>` and SFC coordination layers. Vize's Vite plugin (`@vizejs/vite-plugin`) is built on top of Vite and designed to be a drop-in replacement for `@vitejs/plugin-vue`, fully embracing the Vite ecosystem.
+
+As the author of Vize, I ([@ubugeeei](https://github.com/ubugeeei)) want to be clear: **I have no adversarial intent toward any of these projects.** I am fully open to collaboration and believe that the best outcomes come from tools that complement each other. If there are changes needed on either side to enable better integration, I am ready to work together to make that happen.
+
 ## The Name
 
 **Vize** (*/viːz/*) is derived from three words:
