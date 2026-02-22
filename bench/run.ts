@@ -337,6 +337,26 @@ if (FILE_LIMIT === Infinity) {
   }
 }
 
+// Cross-mode summary: Original ST vs Native MT
+if (FILE_LIMIT === Infinity && native) {
+  const pattern = join(INPUT_DIR, "*.vue");
+  const batchResult = native.compileSfcBatch(pattern);
+  const nativeMultiMs = batchResult.timeMs;
+  const crossSpeedup = (originalSingle / nativeMultiMs).toFixed(1);
+
+  console.log();
+  console.log("-".repeat(65));
+  console.log();
+  console.log(" Summary:");
+  console.log();
+  console.log(
+    `   Original ST vs Native ST : ${(originalSingle / runNativeSingleThread(false)).toFixed(1)}x`
+  );
+  console.log(
+    `   Original ST vs Native MT : ${crossSpeedup}x  (user-facing speedup)`
+  );
+}
+
 console.log();
 console.log("-".repeat(65));
 if (FILE_LIMIT === Infinity) {

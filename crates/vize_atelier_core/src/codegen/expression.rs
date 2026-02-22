@@ -11,10 +11,10 @@ use super::helpers::escape_js_string;
 /// This is a context-aware version that uses $setup. for setup bindings in function mode
 fn prefix_identifiers_with_context(content: &str, ctx: &CodegenContext) -> String {
     use oxc_allocator::Allocator as OxcAllocator;
-    use oxc_ast::visit::walk::{
+    use oxc_ast_visit::walk::{
         walk_assignment_expression, walk_object_property, walk_update_expression,
     };
-    use oxc_ast::visit::Visit;
+    use oxc_ast_visit::Visit;
     use oxc_parser::Parser;
     use oxc_span::SourceType;
     use vize_carton::FxHashSet;
@@ -235,9 +235,7 @@ fn prefix_identifiers_with_context(content: &str, ctx: &CodegenContext) -> Strin
                     declarator: &oxc_ast::ast::VariableDeclarator<'_>,
                 ) {
                     // Add local var names to skip list
-                    if let oxc_ast::ast::BindingPatternKind::BindingIdentifier(ident) =
-                        &declarator.id.kind
-                    {
+                    if let oxc_ast::ast::BindingPattern::BindingIdentifier(ident) = &declarator.id {
                         self.local_vars.insert(ident.name.to_string());
                     }
                     // Visit init expression
@@ -252,8 +250,8 @@ fn prefix_identifiers_with_context(content: &str, ctx: &CodegenContext) -> Strin
                 ) {
                     // Add arrow function params to local vars
                     for param in &arrow.params.items {
-                        if let oxc_ast::ast::BindingPatternKind::BindingIdentifier(ident) =
-                            &param.pattern.kind
+                        if let oxc_ast::ast::BindingPattern::BindingIdentifier(ident) =
+                            &param.pattern
                         {
                             self.local_vars.insert(ident.name.to_string());
                         }

@@ -5,8 +5,8 @@
 
 use oxc_allocator::Allocator;
 use oxc_ast::ast::{Expression, Statement};
-use oxc_ast::visit::walk;
-use oxc_ast::Visit;
+use oxc_ast_visit::walk;
+use oxc_ast_visit::Visit;
 use oxc_parser::Parser;
 use oxc_span::SourceType;
 

@@ -48,7 +48,7 @@ pub fn process_call_expression(
     let span = call.span;
 
     // Extract type arguments if present
-    let type_args = call.type_parameters.as_ref().map(|tp| {
+    let type_args = call.type_arguments.as_ref().map(|tp| {
         let type_source = &source[tp.span.start as usize..tp.span.end as usize];
         CompactString::new(type_source)
     });
@@ -88,7 +88,7 @@ pub fn process_call_expression(
     match macro_kind {
         MacroKind::DefineProps => {
             // Extract props from type or runtime arguments
-            if let Some(ref type_params) = call.type_parameters {
+            if let Some(ref type_params) = call.type_arguments {
                 extract_props_from_type(result, &type_params.params, source);
             } else if let Some(first_arg) = call.arguments.first() {
                 extract_props_from_runtime(result, first_arg, source);
@@ -97,7 +97,7 @@ pub fn process_call_expression(
 
         MacroKind::DefineEmits => {
             // Extract emits from type or runtime arguments
-            if let Some(ref type_params) = call.type_parameters {
+            if let Some(ref type_params) = call.type_arguments {
                 extract_emits_from_type(result, &type_params.params, source);
             } else if let Some(first_arg) = call.arguments.first() {
                 extract_emits_from_runtime(result, first_arg, source);
@@ -243,7 +243,7 @@ pub fn extract_emits_from_type(
                 if let oxc_ast::ast::TSSignature::TSCallSignatureDeclaration(call_sig) = member {
                     // First parameter is usually the event name: (e: 'eventName', ...)
                     if let Some(first_param) = call_sig.params.items.first() {
-                        if let Some(type_ann) = &first_param.pattern.type_annotation {
+                        if let Some(type_ann) = &first_param.type_annotation {
                             if let TSType::TSLiteralType(lit_type) = &type_ann.type_annotation {
                                 if let oxc_ast::ast::TSLiteral::StringLiteral(s) = &lit_type.literal
                                 {
@@ -399,11 +399,9 @@ pub fn check_ref_value_extraction(
     id: &oxc_ast::ast::BindingPattern<'_>,
     init: &Expression<'_>,
 ) {
-    use oxc_ast::ast::BindingPatternKind;
-
     // Only check simple identifier bindings
-    let target_name = match &id.kind {
-        BindingPatternKind::BindingIdentifier(id) => id.name.as_str(),
+    let target_name = match id {
+        oxc_ast::ast::BindingPattern::BindingIdentifier(id) => id.name.as_str(),
         _ => return,
     };
 
@@ -510,15 +508,13 @@ pub fn process_type_export(result: &mut ScriptParseResult, decl: &Declaration<'_
 
 /// Process invalid export in script setup
 pub fn process_invalid_export(result: &mut ScriptParseResult, decl: &Declaration<'_>, span: Span) {
-    use oxc_ast::ast::BindingPatternKind;
-
     let (name, kind) = match decl {
         Declaration::VariableDeclaration(var_decl) => {
             let first_name = var_decl
                 .declarations
                 .first()
                 .and_then(|d| {
-                    if let BindingPatternKind::BindingIdentifier(id) = &d.id.kind {
+                    if let oxc_ast::ast::BindingPattern::BindingIdentifier(id) = &d.id {
                         Some(id.name.as_str())
                     } else {
                         None

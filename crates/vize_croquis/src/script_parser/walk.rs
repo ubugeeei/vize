@@ -7,7 +7,7 @@
 //! - Reactivity losses (destructuring, spreading, reassignment)
 
 use oxc_ast::ast::{
-    Argument, AssignmentTarget, BindingPatternKind, CallExpression, Expression, ObjectPropertyKind,
+    Argument, AssignmentTarget, BindingPattern, CallExpression, Expression, ObjectPropertyKind,
     Statement,
 };
 use oxc_span::GetSpan;
@@ -733,7 +733,7 @@ pub(super) fn extract_function_params(
     }
 
     if let Some(rest) = &params.rest {
-        extract_param_names(&rest.argument, &mut names);
+        extract_param_names(&rest.rest.argument, &mut names);
     }
 
     names
@@ -745,11 +745,11 @@ pub(super) fn extract_param_names(
     pattern: &oxc_ast::ast::BindingPattern<'_>,
     names: &mut vize_carton::SmallVec<[CompactString; 4]>,
 ) {
-    match &pattern.kind {
-        BindingPatternKind::BindingIdentifier(id) => {
+    match pattern {
+        BindingPattern::BindingIdentifier(id) => {
             names.push(CompactString::new(id.name.as_str()));
         }
-        BindingPatternKind::ObjectPattern(obj) => {
+        BindingPattern::ObjectPattern(obj) => {
             for prop in obj.properties.iter() {
                 extract_param_names(&prop.value, names);
             }
@@ -757,7 +757,7 @@ pub(super) fn extract_param_names(
                 extract_param_names(&rest.argument, names);
             }
         }
-        BindingPatternKind::ArrayPattern(arr) => {
+        BindingPattern::ArrayPattern(arr) => {
             for elem in arr.elements.iter().flatten() {
                 extract_param_names(elem, names);
             }
@@ -765,7 +765,7 @@ pub(super) fn extract_param_names(
                 extract_param_names(&rest.argument, names);
             }
         }
-        BindingPatternKind::AssignmentPattern(assign) => {
+        BindingPattern::AssignmentPattern(assign) => {
             extract_param_names(&assign.left, names);
         }
     }

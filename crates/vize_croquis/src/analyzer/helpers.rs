@@ -7,7 +7,7 @@
 //! - Inline callback parameter extraction
 
 use oxc_allocator::Allocator;
-use oxc_ast::ast::BindingPatternKind;
+use oxc_ast::ast::BindingPattern;
 use oxc_parser::Parser;
 use oxc_span::SourceType;
 use vize_carton::{smallvec, CompactString, SmallVec};
@@ -235,7 +235,7 @@ fn extract_identifiers_fast(expr: &str) -> Vec<CompactString> {
 #[inline]
 fn extract_identifiers_oxc_slow(expr: &str) -> Vec<CompactString> {
     use oxc_ast::ast::{
-        ArrayExpressionElement, BindingPatternKind, Expression, ObjectPropertyKind, PropertyKey,
+        ArrayExpressionElement, BindingPattern, Expression, ObjectPropertyKind, PropertyKey,
     };
 
     let allocator = Allocator::default();
@@ -250,29 +250,29 @@ fn extract_identifiers_oxc_slow(expr: &str) -> Vec<CompactString> {
     let mut identifiers = Vec::with_capacity(4);
 
     // Collect binding names from a pattern (for arrow function parameters)
-    fn collect_binding_names<'a>(pattern: &'a BindingPatternKind<'a>, names: &mut Vec<&'a str>) {
+    fn collect_binding_names<'a>(pattern: &'a BindingPattern<'a>, names: &mut Vec<&'a str>) {
         match pattern {
-            BindingPatternKind::BindingIdentifier(id) => {
+            BindingPattern::BindingIdentifier(id) => {
                 names.push(id.name.as_str());
             }
-            BindingPatternKind::ObjectPattern(obj) => {
+            BindingPattern::ObjectPattern(obj) => {
                 for prop in obj.properties.iter() {
-                    collect_binding_names(&prop.value.kind, names);
+                    collect_binding_names(&prop.value, names);
                 }
                 if let Some(rest) = &obj.rest {
-                    collect_binding_names(&rest.argument.kind, names);
+                    collect_binding_names(&rest.argument, names);
                 }
             }
-            BindingPatternKind::ArrayPattern(arr) => {
+            BindingPattern::ArrayPattern(arr) => {
                 for elem in arr.elements.iter().flatten() {
-                    collect_binding_names(&elem.kind, names);
+                    collect_binding_names(elem, names);
                 }
                 if let Some(rest) = &arr.rest {
-                    collect_binding_names(&rest.argument.kind, names);
+                    collect_binding_names(&rest.argument, names);
                 }
             }
-            BindingPatternKind::AssignmentPattern(assign) => {
-                collect_binding_names(&assign.left.kind, names);
+            BindingPattern::AssignmentPattern(assign) => {
+                collect_binding_names(&assign.left, names);
             }
         }
     }
@@ -398,7 +398,7 @@ fn extract_identifiers_oxc_slow(expr: &str) -> Vec<CompactString> {
                 // Collect parameter names to exclude from identifiers
                 let mut param_names: Vec<&str> = Vec::new();
                 for param in arrow.params.items.iter() {
-                    collect_binding_names(&param.pattern.kind, &mut param_names);
+                    collect_binding_names(&param.pattern, &mut param_names);
                 }
 
                 if arrow.expression {
@@ -625,11 +625,11 @@ fn extract_binding_names(
     pattern: &oxc_ast::ast::BindingPattern<'_>,
     names: &mut SmallVec<[CompactString; 3]>,
 ) {
-    match &pattern.kind {
-        BindingPatternKind::BindingIdentifier(id) => {
+    match pattern {
+        BindingPattern::BindingIdentifier(id) => {
             names.push(CompactString::new(id.name.as_str()));
         }
-        BindingPatternKind::ObjectPattern(obj) => {
+        BindingPattern::ObjectPattern(obj) => {
             for prop in obj.properties.iter() {
                 extract_binding_names(&prop.value, names);
             }
@@ -637,7 +637,7 @@ fn extract_binding_names(
                 extract_binding_names(&rest.argument, names);
             }
         }
-        BindingPatternKind::ArrayPattern(arr) => {
+        BindingPattern::ArrayPattern(arr) => {
             for elem in arr.elements.iter().flatten() {
                 extract_binding_names(elem, names);
             }
@@ -645,7 +645,7 @@ fn extract_binding_names(
                 extract_binding_names(&rest.argument, names);
             }
         }
-        BindingPatternKind::AssignmentPattern(assign) => {
+        BindingPattern::AssignmentPattern(assign) => {
             extract_binding_names(&assign.left, names);
         }
     }
@@ -737,11 +737,11 @@ fn extract_slot_binding_names(
     pattern: &oxc_ast::ast::BindingPattern<'_>,
     names: &mut SmallVec<[CompactString; 4]>,
 ) {
-    match &pattern.kind {
-        BindingPatternKind::BindingIdentifier(id) => {
+    match pattern {
+        BindingPattern::BindingIdentifier(id) => {
             names.push(CompactString::new(id.name.as_str()));
         }
-        BindingPatternKind::ObjectPattern(obj) => {
+        BindingPattern::ObjectPattern(obj) => {
             for prop in obj.properties.iter() {
                 extract_slot_binding_names(&prop.value, names);
             }
@@ -749,7 +749,7 @@ fn extract_slot_binding_names(
                 extract_slot_binding_names(&rest.argument, names);
             }
         }
-        BindingPatternKind::ArrayPattern(arr) => {
+        BindingPattern::ArrayPattern(arr) => {
             for elem in arr.elements.iter().flatten() {
                 extract_slot_binding_names(elem, names);
             }
@@ -757,7 +757,7 @@ fn extract_slot_binding_names(
                 extract_slot_binding_names(&rest.argument, names);
             }
         }
-        BindingPatternKind::AssignmentPattern(assign) => {
+        BindingPattern::AssignmentPattern(assign) => {
             extract_slot_binding_names(&assign.left, names);
         }
     }

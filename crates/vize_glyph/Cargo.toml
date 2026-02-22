@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Glyph - The beautiful letterforms for Vize code formatting"
+publish = false
 
 [dependencies]
 # Internal crates
@@ -16,7 +17,10 @@ oxc_allocator.workspace = true
 oxc_parser.workspace = true
 oxc_ast.workspace = true
 oxc_span.workspace = true
-oxc_codegen.workspace = true
+oxc_formatter.workspace = true
+
+# CSS
+lightningcss.workspace = true
 
 # Serialization
 serde = { workspace = true }

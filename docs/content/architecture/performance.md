@@ -8,14 +8,25 @@ title: Performance
 
 Vize achieves significant performance improvements over the standard JavaScript-based Vue compiler by leveraging Rust's zero-cost abstractions and native multi-threading. Speed is not a nice-to-have — it is a prerequisite for developer experience.
 
+## Benchmark Environment
+
+| | |
+|--|--|
+| **Machine** | MacBook Pro (M2 Max, 12 cores, 96 GB RAM) |
+| **OS** | macOS (Darwin 24.3.0) |
+| **Node.js** | v24.13.0 |
+| **Vite** | v8.0.0-beta.15 (Rolldown) |
+| **Vue** | v3.6.0-beta.1 |
+
 ## Benchmark: 15,000 SFC Files
 
 Compiling **15,000 Vue SFC files** (36.9 MB total):
 
 | | @vue/compiler-sfc | Vize | Speedup |
 |--|-------------------|------|---------|
-| **Single Thread** | 16.21s | 6.65s | **2.4x** |
-| **Multi Thread** | 4.13s | 498ms | **8.3x** |
+| **Single Thread** | 10.52s | 3.82s | **2.8x** |
+| **Multi Thread** | 3.71s | 380ms | **9.8x** |
+| **compiler-sfc ST vs Vize MT** | 10.52s | 380ms | **27.7x** |
 
 The single-threaded improvement comes from Rust's zero-cost abstractions (no GC, no JIT warmup, cache-friendly memory layout). The multi-threaded improvement comes from Rayon's work-stealing thread pool, which scales near-linearly with CPU core count.
 
@@ -96,17 +107,46 @@ Common strings (directive names, attribute names, HTML tag names) are interned v
 
 The Vite plugin (`@vizejs/vite-plugin`) uses file-level caching. Only modified files are recompiled during development, minimizing HMR latency. The cache key is the file content hash, ensuring that unchanged files are never recompiled.
 
-## Comparison with the Ecosystem
+## Benchmark: Linter — patina vs eslint-plugin-vue
 
-Vize is part of a broader movement to rewrite JavaScript tooling in systems languages:
+Linting **15,000 Vue SFC files**:
 
-| Tool | Language | Domain | Speedup vs. JS |
-|------|----------|--------|----------------|
-| Vize | Rust | Vue compiler | 2.4x - 8.3x |
-| OXC | Rust | JS/TS parser | ~3x |
-| SWC | Rust | JS/TS compiler | ~20x |
-| esbuild | Go | JS/TS bundler | ~100x |
-| LightningCSS | Rust | CSS parser | ~100x |
-| Biome | Rust | Linter + formatter | ~25x |
+| | eslint-plugin-vue (ST) | Vize patina (ST) | Speedup | eslint-plugin-vue (MT) | Vize patina (MT) | Speedup | **eslint ST vs Vize MT** |
+|--|------------------------|------------------|---------|------------------------|------------------|---------|--------------------------|
+| **Time** | 65.30s | 5.45s | **12.0x** | 26.82s | 5.48s | **4.9x** | **11.9x** |
 
-Vize integrates with OXC and LightningCSS directly, leveraging their performance for JavaScript/TypeScript parsing and CSS processing respectively.
+Run `mise run bench:lint` to reproduce.
+
+## Benchmark: Formatter — glyph vs Prettier
+
+Formatting **15,000 Vue SFC files**:
+
+| | Prettier (ST) | Vize glyph (ST) | Speedup | Prettier (MT) | Vize glyph (MT) | Speedup | **Prettier ST vs Vize MT** |
+|--|---------------|-----------------|---------|---------------|-----------------|---------|----------------------------|
+| **Time** | 82.69s | 36ms | **2,303x** | 19.66s | 23ms | **872x** | **3,666x** |
+
+Run `mise run bench:fmt` to reproduce.
+
+## Benchmark: Type Checker — canon vs vue-tsc
+
+Type checking **15,000 Vue SFC files**:
+
+| | vue-tsc (ST) | Vize canon (ST) | Speedup | vue-tsc (MT) | Vize canon (MT) | Speedup | **vue-tsc ST vs Vize MT** |
+|--|--------------|-----------------|---------|--------------|-----------------|---------|---------------------------|
+| **Time** | 35.69s | 369ms | **96.7x** | 26.76s | 472ms | **56.7x** | **75.5x** |
+
+> **Note:** Vize canon is still in early development and does not yet cover the full range of type checking features that vue-tsc provides. The speed difference partly reflects the difference in the amount of work each tool currently performs. These numbers will change as canon's feature set matures.
+
+Run `mise run bench:check` to reproduce.
+
+## Benchmark: Vite Plugin — @vizejs/vite-plugin vs @vitejs/plugin-vue
+
+Vite build with **15,000 Vue SFC imports** (all imported in a single entry):
+
+| | @vitejs/plugin-vue | @vizejs/vite-plugin | Speedup |
+|--|-------------------|---------------------|---------|
+| **Build Time** | 16.98s | 6.90s | **2.5x** |
+
+> Note: `@vizejs/vite-plugin` replaces only the Vue SFC compilation step — the performance difference comes entirely from that part. Dependency resolution, module graph construction, bundling (Rolldown), and all other Vite internals are identical to `@vitejs/plugin-vue`. For pure compilation performance, see the [Compiler benchmark](#benchmark-15000-sfc-files) above. `@vizejs/vite-plugin` eagerly pre-compiles `.vue` files using native multi-threaded compilation, which also enables faster HMR.
+
+Run `mise run bench:vite` to reproduce.

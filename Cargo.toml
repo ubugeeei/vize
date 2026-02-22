@@ -22,40 +22,43 @@ members = [
 ]
 
 [workspace.package]
-version = "0.3.0"
+version = "0.8.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/ubugeeei/vize"
 
 [workspace.dependencies]
 # Internal crates (path for local dev, version for crates.io)
-vize_carton = { path = "crates/vize_carton", version = "0.3.0" }
-vize_relief = { path = "crates/vize_relief", version = "0.3.0" }
-vize_armature = { path = "crates/vize_armature", version = "0.3.0" }
-vize_croquis = { path = "crates/vize_croquis", version = "0.3.0" }
-vize_atelier_core = { path = "crates/vize_atelier_core", version = "0.3.0" }
-vize_atelier_dom = { path = "crates/vize_atelier_dom", version = "0.3.0" }
-vize_atelier_vapor = { path = "crates/vize_atelier_vapor", version = "0.3.0" }
-vize_atelier_ssr = { path = "crates/vize_atelier_ssr", version = "0.3.0" }
-vize_atelier_sfc = { path = "crates/vize_atelier_sfc", version = "0.3.0", default-features = false }
-vize_vitrine = { path = "crates/vize_vitrine", version = "0.3.0", default-features = false }
-vize_musea = { path = "crates/vize_musea", version = "0.3.0" }
-vize_patina = { path = "crates/vize_patina", version = "0.3.0" }
-vize_glyph = { path = "crates/vize_glyph", version = "0.3.0" }
-vize_maestro = { path = "crates/vize_maestro", version = "0.3.0" }
-vize_canon = { path = "crates/vize_canon", version = "0.3.0", default-features = false }
-vize_fresco = { path = "crates/vize_fresco", version = "0.3.0", default-features = false }
+vize_carton = { path = "crates/vize_carton", version = "0.8.0" }
+vize_relief = { path = "crates/vize_relief", version = "0.8.0" }
+vize_armature = { path = "crates/vize_armature", version = "0.8.0" }
+vize_croquis = { path = "crates/vize_croquis", version = "0.8.0" }
+vize_atelier_core = { path = "crates/vize_atelier_core", version = "0.8.0" }
+vize_atelier_dom = { path = "crates/vize_atelier_dom", version = "0.8.0" }
+vize_atelier_vapor = { path = "crates/vize_atelier_vapor", version = "0.8.0" }
+vize_atelier_ssr = { path = "crates/vize_atelier_ssr", version = "0.8.0" }
+vize_atelier_sfc = { path = "crates/vize_atelier_sfc", version = "0.8.0", default-features = false }
+vize_vitrine = { path = "crates/vize_vitrine", version = "0.8.0", default-features = false }
+vize_musea = { path = "crates/vize_musea", version = "0.8.0" }
+vize_patina = { path = "crates/vize_patina", version = "0.8.0" }
+vize_glyph = { path = "crates/vize_glyph", version = "0.8.0" }
+vize_maestro = { path = "crates/vize_maestro", version = "0.8.0" }
+vize_canon = { path = "crates/vize_canon", version = "0.8.0", default-features = false }
+vize_fresco = { path = "crates/vize_fresco", version = "0.8.0", default-features = false }
 
-# OXC dependencies
-oxc_parser = "0.45"
-oxc_ast = "0.45"
-oxc_span = "0.45"
-oxc_allocator = "0.45"
-oxc_syntax = "0.45"
-oxc_diagnostics = "0.45"
-oxc_semantic = "0.45"
-oxc_transformer = "0.45"
-oxc_codegen = "0.45"
+# OXC dependencies (git for local dev, version for crates.io publish)
+oxc_parser = { version = "0.114.0", git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_ast = { version = "0.114.0", git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_ast_visit = { version = "0.114.0", git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_span = { version = "0.114.0", git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_allocator = { version = "0.114.0", git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_syntax = { version = "0.114.0", git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_diagnostics = { version = "0.114.0", git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_semantic = { version = "0.114.0", git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_transformer = { version = "0.114.0", git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_codegen = { version = "0.114.0", git = "https://github.com/oxc-project/oxc", branch = "main" }
+# oxc_formatter is not yet on crates.io, so vize_glyph is excluded from crates.io publish
+oxc_formatter = { git = "https://github.com/oxc-project/oxc", branch = "main" }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

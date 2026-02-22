@@ -5,6 +5,7 @@
 use crate::error::FormatError;
 use crate::options::FormatOptions;
 use crate::script;
+use crate::style;
 use crate::template;
 use vize_atelier_sfc::{parse_sfc, SfcParseOptions};
 use vize_carton::Allocator;
@@ -44,44 +45,97 @@ impl<'a> GlyphFormatter<'a> {
         let estimated_size = self.estimate_output_size(source, &descriptor);
         let mut output = Vec::with_capacity(estimated_size);
 
-        // Format script setup block (comes first by convention)
-        if let Some(script_setup) = &descriptor.script_setup {
-            self.format_script_block_fast(
-                &mut output,
-                &script_setup.content,
-                true,
-                &script_setup.lang,
-            )?;
-            output.extend_from_slice(newline);
-            output.extend_from_slice(newline);
+        // Collect all blocks with their sort keys
+        enum Block<'b> {
+            Script(&'b vize_atelier_sfc::SfcScriptBlock<'b>, bool), // (block, is_setup)
+            Template(&'b vize_atelier_sfc::SfcTemplateBlock<'b>),
+            Style(&'b vize_atelier_sfc::SfcStyleBlock<'b>),
+            Custom(&'b vize_atelier_sfc::SfcCustomBlock<'b>),
         }
 
-        // Format regular script block
+        let mut blocks: Vec<(usize, Block<'_>)> = Vec::new();
+
         if let Some(script) = &descriptor.script {
-            self.format_script_block_fast(&mut output, &script.content, false, &script.lang)?;
-            output.extend_from_slice(newline);
-            output.extend_from_slice(newline);
+            let order = if self.options.sort_blocks {
+                0
+            } else {
+                script.loc.tag_start
+            };
+            blocks.push((order, Block::Script(script, false)));
         }
-
-        // Format template block
+        if let Some(script_setup) = &descriptor.script_setup {
+            let order = if self.options.sort_blocks {
+                1
+            } else {
+                script_setup.loc.tag_start
+            };
+            blocks.push((order, Block::Script(script_setup, true)));
+        }
         if let Some(template) = &descriptor.template {
-            self.format_template_block_fast(&mut output, &template.content, &template.lang)?;
-            output.extend_from_slice(newline);
-            output.extend_from_slice(newline);
+            let order = if self.options.sort_blocks {
+                2
+            } else {
+                template.loc.tag_start
+            };
+            blocks.push((order, Block::Template(template)));
         }
-
-        // Format style blocks
         for style in &descriptor.styles {
-            self.format_style_block_fast(&mut output, &style.content, style.scoped, &style.lang)?;
-            output.extend_from_slice(newline);
-            output.extend_from_slice(newline);
+            let order = if self.options.sort_blocks {
+                if style.scoped {
+                    3
+                } else {
+                    4
+                }
+            } else {
+                style.loc.tag_start
+            };
+            blocks.push((order, Block::Style(style)));
+        }
+        for block in &descriptor.custom_blocks {
+            let order = if self.options.sort_blocks {
+                5
+            } else {
+                block.loc.tag_start
+            };
+            blocks.push((order, Block::Custom(block)));
         }
 
-        // Format custom blocks
-        for block in &descriptor.custom_blocks {
-            self.format_custom_block_fast(&mut output, &block.block_type, &block.content)?;
-            output.extend_from_slice(newline);
-            output.extend_from_slice(newline);
+        blocks.sort_by_key(|(order, _)| *order);
+
+        // Format each block in order
+        for (i, (_, block)) in blocks.iter().enumerate() {
+            if i > 0 {
+                output.extend_from_slice(newline);
+                output.extend_from_slice(newline);
+            }
+            match block {
+                Block::Script(script, is_setup) => {
+                    self.format_script_block_fast(
+                        &mut output,
+                        &script.content,
+                        *is_setup,
+                        &script.lang,
+                    )?;
+                }
+                Block::Template(template) => {
+                    self.format_template_block_fast(
+                        &mut output,
+                        &template.content,
+                        &template.lang,
+                    )?;
+                }
+                Block::Style(style) => {
+                    self.format_style_block_fast(
+                        &mut output,
+                        &style.content,
+                        style.scoped,
+                        &style.lang,
+                    )?;
+                }
+                Block::Custom(block) => {
+                    self.format_custom_block_fast(&mut output, &block.block_type, &block.content)?;
+                }
+            }
         }
 
         // Trim trailing whitespace efficiently
@@ -148,7 +202,10 @@ impl<'a> GlyphFormatter<'a> {
         // Add content with indentation if configured
         if self.options.vue_indent_script_and_style {
             let indent = self.options.indent_bytes();
-            for line in formatted_content.as_bytes().split(|&b| b == b'\n') {
+            let trimmed = formatted_content
+                .trim_end_matches('\n')
+                .trim_end_matches('\r');
+            for line in trimmed.as_bytes().split(|&b| b == b'\n') {
                 if !line.is_empty() && line != b"\r" {
                     output.extend_from_slice(indent);
                 }
@@ -189,7 +246,10 @@ impl<'a> GlyphFormatter<'a> {
 
         // Template content is always indented by one level from the template tag
         let indent = self.options.indent_bytes();
-        for line in formatted_content.as_bytes().split(|&b| b == b'\n') {
+        let trimmed = formatted_content
+            .trim_end_matches('\n')
+            .trim_end_matches('\r');
+        for line in trimmed.as_bytes().split(|&b| b == b'\n') {
             if !line.is_empty() && line != b"\r" {
                 output.extend_from_slice(indent);
             }
@@ -202,7 +262,7 @@ impl<'a> GlyphFormatter<'a> {
         Ok(())
     }
 
-    /// Format a style block using byte operations
+    /// Format a style block using lightningcss for CSS
     #[inline]
     fn format_style_block_fast(
         &self,
@@ -211,7 +271,15 @@ impl<'a> GlyphFormatter<'a> {
         scoped: bool,
         lang: &Option<std::borrow::Cow<'_, str>>,
     ) -> Result<(), FormatError> {
-        let formatted_content = content.trim();
+        // Use lightningcss for plain CSS; for preprocessor languages, just trim
+        let is_plain_css = lang.as_ref().is_none_or(|l| l.as_ref() == "css");
+        let formatted_content = if is_plain_css {
+            style::format_style_content(content, self.options)
+                .unwrap_or_else(|_| content.trim().to_string())
+        } else {
+            content.trim().to_string()
+        };
+        let formatted_content = formatted_content.as_str();
 
         // Build the opening tag
         output.extend_from_slice(b"<style");
@@ -229,7 +297,10 @@ impl<'a> GlyphFormatter<'a> {
         // Add content with indentation if configured
         if self.options.vue_indent_script_and_style {
             let indent = self.options.indent_bytes();
-            for line in formatted_content.as_bytes().split(|&b| b == b'\n') {
+            let trimmed = formatted_content
+                .trim_end_matches('\n')
+                .trim_end_matches('\r');
+            for line in trimmed.as_bytes().split(|&b| b == b'\n') {
                 if !line.is_empty() && line != b"\r" {
                     output.extend_from_slice(indent);
                 }
@@ -238,7 +309,9 @@ impl<'a> GlyphFormatter<'a> {
             }
         } else {
             output.extend_from_slice(formatted_content.as_bytes());
-            output.extend_from_slice(self.options.newline_bytes());
+            if !formatted_content.ends_with('\n') {
+                output.extend_from_slice(self.options.newline_bytes());
+            }
         }
 
         output.extend_from_slice(b"</style>");

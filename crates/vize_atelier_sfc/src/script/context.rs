@@ -5,7 +5,7 @@
 
 use oxc_allocator::Allocator;
 use oxc_ast::ast::{
-    Argument, BindingPatternKind, CallExpression, Expression, ImportDeclaration, Statement,
+    Argument, BindingPattern, CallExpression, Expression, ImportDeclaration, Statement,
     VariableDeclarationKind,
 };
 use oxc_parser::Parser;
@@ -308,8 +308,8 @@ impl ScriptCompileContext {
             Statement::VariableDeclaration(var_decl) => {
                 for decl in var_decl.declarations.iter() {
                     // Extract binding name if this is a simple identifier binding
-                    let binding_name = match &decl.id.kind {
-                        BindingPatternKind::BindingIdentifier(id) => Some(id.name.to_string()),
+                    let binding_name = match &decl.id {
+                        BindingPattern::BindingIdentifier(id) => Some(id.name.to_string()),
                         _ => None,
                     };
 
@@ -357,8 +357,8 @@ impl ScriptCompileContext {
                     }
 
                     // Extract binding name(s)
-                    match &decl.id.kind {
-                        BindingPatternKind::BindingIdentifier(id) => {
+                    match &decl.id {
+                        BindingPattern::BindingIdentifier(id) => {
                             let name = id.name.to_string();
 
                             // Determine binding type
@@ -378,7 +378,7 @@ impl ScriptCompileContext {
 
                             self.bindings.bindings.insert(name, binding_type);
                         }
-                        BindingPatternKind::ObjectPattern(obj_pat) => {
+                        BindingPattern::ObjectPattern(obj_pat) => {
                             // Handle destructuring like: const { prop1, prop2 } = defineProps()
                             let mut is_props_destructure = false;
                             if let Some(init) = &decl.init {
@@ -428,9 +428,7 @@ impl ScriptCompileContext {
                                     }
                                 };
                                 for prop in obj_pat.properties.iter() {
-                                    if let BindingPatternKind::BindingIdentifier(id) =
-                                        &prop.value.kind
-                                    {
+                                    if let BindingPattern::BindingIdentifier(id) = &prop.value {
                                         self.bindings
                                             .bindings
                                             .insert(id.name.to_string(), destructure_type);
@@ -438,7 +436,7 @@ impl ScriptCompileContext {
                                 }
                             }
                         }
-                        BindingPatternKind::ArrayPattern(arr_pat) => {
+                        BindingPattern::ArrayPattern(arr_pat) => {
                             let destructure_type = if let Some(init) = &decl.init {
                                 infer_binding_type(init, var_decl.kind)
                             } else {
@@ -448,16 +446,15 @@ impl ScriptCompileContext {
                                 }
                             };
                             for elem in arr_pat.elements.iter().flatten() {
-                                if let BindingPatternKind::BindingIdentifier(id) = &elem.kind {
+                                if let BindingPattern::BindingIdentifier(id) = &elem {
                                     self.bindings
                                         .bindings
                                         .insert(id.name.to_string(), destructure_type);
                                 }
                             }
                         }
-                        BindingPatternKind::AssignmentPattern(assign_pat) => {
-                            if let BindingPatternKind::BindingIdentifier(id) = &assign_pat.left.kind
-                            {
+                        BindingPattern::AssignmentPattern(assign_pat) => {
+                            if let BindingPattern::BindingIdentifier(id) = &assign_pat.left {
                                 self.bindings
                                     .bindings
                                     .insert(id.name.to_string(), BindingType::SetupConst);
@@ -781,7 +778,7 @@ fn is_call_of(call: &CallExpression<'_>, name: &str) -> bool {
 
 /// Extract type arguments from call expression
 fn extract_type_args_from_call(call: &CallExpression<'_>, source: &str) -> Option<String> {
-    call.type_parameters.as_ref().map(|params| {
+    call.type_arguments.as_ref().map(|params| {
         let start = params.span.start as usize;
         let end = params.span.end as usize;
         // Remove the < and > from the type args

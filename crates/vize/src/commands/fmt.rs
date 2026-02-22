@@ -8,6 +8,8 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use vize_glyph::{format_sfc_with_allocator, Allocator, FormatOptions};
 
+use crate::config;
+
 #[derive(Args)]
 pub struct FmtArgs {
     /// Glob pattern(s) to match .vue files
@@ -28,23 +30,39 @@ pub struct FmtArgs {
 
     /// Use single quotes instead of double quotes
     #[arg(long)]
-    pub single_quote: bool,
+    pub single_quote: Option<bool>,
 
     /// Print width (line length) for formatting
-    #[arg(long, default_value = "100")]
-    pub print_width: u32,
+    #[arg(long)]
+    pub print_width: Option<u32>,
 
     /// Number of spaces per indentation level
-    #[arg(long, default_value = "2")]
-    pub tab_width: u8,
+    #[arg(long)]
+    pub tab_width: Option<u8>,
 
     /// Use tabs instead of spaces for indentation
     #[arg(long)]
-    pub use_tabs: bool,
+    pub use_tabs: Option<bool>,
 
     /// Do not print semicolons at the ends of statements
     #[arg(long)]
     pub no_semi: bool,
+
+    /// Sort HTML attributes in template
+    #[arg(long)]
+    pub sort_attributes: Option<bool>,
+
+    /// Put each HTML attribute on its own line
+    #[arg(long)]
+    pub single_attribute_per_line: Option<bool>,
+
+    /// Maximum number of attributes per line before wrapping
+    #[arg(long)]
+    pub max_attributes_per_line: Option<u32>,
+
+    /// Normalize directive shorthands (v-bind: → :, v-on: → @, v-slot: → #)
+    #[arg(long)]
+    pub normalize_directive_shorthands: Option<bool>,
 }
 
 pub fn run(args: FmtArgs) {
@@ -130,16 +148,43 @@ pub fn run(args: FmtArgs) {
     }
 }
 
+/// Build format options: config file as base, CLI flags override.
 #[inline]
 fn build_format_options(args: &FmtArgs) -> FormatOptions {
-    FormatOptions {
-        print_width: args.print_width,
-        tab_width: args.tab_width,
-        use_tabs: args.use_tabs,
-        semi: !args.no_semi,
-        single_quote: args.single_quote,
-        ..Default::default()
+    // Load config file as base (zero-cost if no file exists)
+    let cfg = config::load_config(args.config.as_deref());
+    let mut opts = cfg.fmt;
+
+    // CLI flags override config values
+    if let Some(v) = args.print_width {
+        opts.print_width = v;
     }
+    if let Some(v) = args.tab_width {
+        opts.tab_width = v;
+    }
+    if let Some(v) = args.use_tabs {
+        opts.use_tabs = v;
+    }
+    if args.no_semi {
+        opts.semi = false;
+    }
+    if let Some(v) = args.single_quote {
+        opts.single_quote = v;
+    }
+    if let Some(v) = args.sort_attributes {
+        opts.sort_attributes = v;
+    }
+    if let Some(v) = args.single_attribute_per_line {
+        opts.single_attribute_per_line = v;
+    }
+    if let Some(v) = args.max_attributes_per_line {
+        opts.max_attributes_per_line = Some(v);
+    }
+    if let Some(v) = args.normalize_directive_shorthands {
+        opts.normalize_directive_shorthands = v;
+    }
+
+    opts
 }
 
 fn collect_files(patterns: &[String]) -> Vec<PathBuf> {

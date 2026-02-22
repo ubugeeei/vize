@@ -42,6 +42,7 @@ mod error;
 mod formatter;
 mod options;
 mod script;
+mod style;
 mod template;
 
 pub use error::*;
@@ -85,6 +86,12 @@ pub fn format_script(source: &str, options: &FormatOptions) -> Result<String, Fo
 #[inline]
 pub fn format_template(source: &str, options: &FormatOptions) -> Result<String, FormatError> {
     template::format_template_content(source, options)
+}
+
+/// Format only the CSS/style content
+#[inline]
+pub fn format_style(source: &str, options: &FormatOptions) -> Result<String, FormatError> {
+    style::format_style_content(source, options)
 }
 
 #[cfg(test)]

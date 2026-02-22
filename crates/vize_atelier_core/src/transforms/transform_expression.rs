@@ -5,10 +5,10 @@
 
 use oxc_allocator::Allocator as OxcAllocator;
 use oxc_ast::ast as oxc_ast_types;
-use oxc_ast::visit::walk::{
+use oxc_ast_visit::walk::{
     walk_assignment_expression, walk_object_property, walk_update_expression,
 };
-use oxc_ast::Visit;
+use oxc_ast_visit::Visit;
 use oxc_codegen::Codegen;
 use oxc_parser::Parser;
 use oxc_semantic::SemanticBuilder;
@@ -306,12 +306,12 @@ pub fn strip_typescript_from_expression(content: &str) -> std::string::String {
         return content.to_string();
     }
 
-    let (symbols, scopes) = semantic_ret.semantic.into_symbol_table_and_scope_tree();
+    let scoping = semantic_ret.semantic.into_scoping();
 
     // Transform TypeScript to JavaScript
     let transform_options = TransformOptions::default();
     let ret = Transformer::new(&allocator, std::path::Path::new(""), &transform_options)
-        .build_with_symbols_and_scopes(symbols, scopes, &mut program);
+        .build_with_scoping(scoping, &mut program);
 
     if !ret.errors.is_empty() {
         return content.to_string();
@@ -555,21 +555,21 @@ fn collect_binding_names(
     pattern: &oxc_ast::ast::BindingPattern<'_>,
     local_vars: &mut FxHashSet<StdString>,
 ) {
-    match &pattern.kind {
-        oxc_ast::ast::BindingPatternKind::BindingIdentifier(id) => {
+    match pattern {
+        oxc_ast::ast::BindingPattern::BindingIdentifier(id) => {
             local_vars.insert(id.name.to_string());
         }
-        oxc_ast::ast::BindingPatternKind::ObjectPattern(obj) => {
+        oxc_ast::ast::BindingPattern::ObjectPattern(obj) => {
             for prop in &obj.properties {
                 collect_binding_names(&prop.value, local_vars);
             }
         }
-        oxc_ast::ast::BindingPatternKind::ArrayPattern(arr) => {
+        oxc_ast::ast::BindingPattern::ArrayPattern(arr) => {
             for elem in arr.elements.iter().flatten() {
                 collect_binding_names(elem, local_vars);
             }
         }
-        oxc_ast::ast::BindingPatternKind::AssignmentPattern(assign) => {
+        oxc_ast::ast::BindingPattern::AssignmentPattern(assign) => {
             collect_binding_names(&assign.left, local_vars);
         }
     }
@@ -832,11 +832,11 @@ impl<'a, 'ctx> Visit<'_> for IdentifierCollector<'a, 'ctx> {
 
 impl<'a, 'ctx> IdentifierCollector<'a, 'ctx> {
     fn collect_binding_pattern(&mut self, pattern: &oxc_ast_types::BindingPattern<'_>) {
-        match &pattern.kind {
-            oxc_ast_types::BindingPatternKind::BindingIdentifier(id) => {
+        match pattern {
+            oxc_ast_types::BindingPattern::BindingIdentifier(id) => {
                 self.local_scope.insert(id.name.to_string());
             }
-            oxc_ast_types::BindingPatternKind::ObjectPattern(obj) => {
+            oxc_ast_types::BindingPattern::ObjectPattern(obj) => {
                 for prop in &obj.properties {
                     self.collect_binding_pattern(&prop.value);
                 }
@@ -844,7 +844,7 @@ impl<'a, 'ctx> IdentifierCollector<'a, 'ctx> {
                     self.collect_binding_pattern(&rest.argument);
                 }
             }
-            oxc_ast_types::BindingPatternKind::ArrayPattern(arr) => {
+            oxc_ast_types::BindingPattern::ArrayPattern(arr) => {
                 for elem in arr.elements.iter().flatten() {
                     self.collect_binding_pattern(elem);
                 }
@@ -852,7 +852,7 @@ impl<'a, 'ctx> IdentifierCollector<'a, 'ctx> {
                     self.collect_binding_pattern(&rest.argument);
                 }
             }
-            oxc_ast_types::BindingPatternKind::AssignmentPattern(assign) => {
+            oxc_ast_types::BindingPattern::AssignmentPattern(assign) => {
                 self.collect_binding_pattern(&assign.left);
             }
         }

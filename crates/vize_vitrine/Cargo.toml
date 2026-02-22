@@ -5,15 +5,17 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Vitrine - The display case for Vize (Node.js/WASM bindings)"
+publish = false
 
 [lib]
 name = "vize_vitrine"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = []
-napi = ["dep:napi", "dep:napi-derive", "dep:glob", "dep:rayon", "dep:ignore", "vize_atelier_sfc/native"]
-wasm = ["dep:wasm-bindgen", "dep:serde-wasm-bindgen", "dep:js-sys", "dep:web-sys"]
+default = ["glyph"]
+glyph = ["dep:vize_glyph"]
+napi = ["dep:napi", "dep:napi-derive", "dep:glob", "dep:rayon", "dep:ignore", "vize_atelier_sfc/native", "glyph"]
+wasm = ["dep:wasm-bindgen", "dep:serde-wasm-bindgen", "dep:js-sys", "dep:web-sys", "glyph"]
 
 [dependencies]
 vize_carton = { workspace = true }
@@ -25,7 +27,7 @@ vize_atelier_ssr = { workspace = true }
 vize_atelier_sfc = { workspace = true, default-features = false }
 vize_musea = { workspace = true }
 vize_patina = { workspace = true }
-vize_glyph = { workspace = true }
+vize_glyph = { workspace = true, optional = true }
 vize_croquis = { workspace = true }
 vize_canon = { workspace = true }
 

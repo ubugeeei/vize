@@ -63,6 +63,43 @@ pub struct FormatOptions {
     /// Indent script and style tags in Vue files (default: false)
     #[serde(default)]
     pub vue_indent_script_and_style: bool,
+
+    /// Sort HTML attributes in template (default: true)
+    #[serde(default = "default_true")]
+    pub sort_attributes: bool,
+
+    /// How to sort attributes within the same priority group (default: Alphabetical)
+    #[serde(default)]
+    pub attribute_sort_order: AttributeSortOrder,
+
+    /// Whether to merge bind (`:xxx`) and non-bind attributes for alphabetical sorting (default: false)
+    /// When true: `class`, `:class`, `id`, `:id` are all sorted together alphabetically.
+    /// When false: non-bind attrs first, then bind attrs, each group sorted alphabetically.
+    #[serde(default)]
+    pub merge_bind_and_non_bind_attrs: bool,
+
+    /// Maximum number of attributes per line before wrapping (default: None = use single_attribute_per_line)
+    /// When set, attributes are wrapped to new lines when the count exceeds this threshold.
+    #[serde(default)]
+    pub max_attributes_per_line: Option<u32>,
+
+    /// Custom attribute sort order. When provided, overrides the built-in Vue style guide order.
+    /// Each entry is a group of attribute patterns. Groups are sorted in the order listed.
+    /// Within each group, attributes are sorted according to `attribute_sort_order`.
+    /// Patterns: exact name (`id`), prefix glob (`v-*`, `:*`, `@*`), or the special `*` catch-all.
+    #[serde(default)]
+    pub attribute_groups: Option<Vec<Vec<String>>>,
+
+    /// Normalize directive shorthands in template (default: true)
+    /// `v-bind:xxx` → `:xxx`, `v-on:xxx` → `@xxx`, `v-slot:xxx` → `#xxx`
+    #[serde(default = "default_true")]
+    pub normalize_directive_shorthands: bool,
+
+    /// Sort SFC blocks in canonical order (default: true)
+    /// Order: script → script setup → template → style scoped → style → custom blocks
+    /// When false, blocks are preserved in their original source order.
+    #[serde(default = "default_true")]
+    pub sort_blocks: bool,
 }
 
 impl Default for FormatOptions {
@@ -82,6 +119,13 @@ impl Default for FormatOptions {
             quote_props: QuoteProps::default(),
             single_attribute_per_line: false,
             vue_indent_script_and_style: false,
+            sort_attributes: true,
+            attribute_sort_order: AttributeSortOrder::default(),
+            merge_bind_and_non_bind_attrs: false,
+            max_attributes_per_line: None,
+            attribute_groups: None,
+            normalize_directive_shorthands: true,
+            sort_blocks: true,
         }
     }
 }
@@ -137,6 +181,17 @@ pub enum EndOfLine {
     Auto,
 }
 
+/// Attribute sort order within the same priority group
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AttributeSortOrder {
+    /// Sort alphabetically (a-z)
+    #[default]
+    Alphabetical,
+    /// Keep original order (no sorting within groups)
+    AsWritten,
+}
+
 /// Quote properties options
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -156,6 +211,51 @@ impl FormatOptions {
     pub fn prettier_compat() -> Self {
         Self {
             print_width: 80,
+            ..Default::default()
+        }
+    }
+
+    /// Convert to `oxc_formatter::FormatOptions`
+    pub fn to_oxc_format_options(&self) -> oxc_formatter::FormatOptions {
+        use oxc_formatter::{
+            ArrowParentheses, BracketSameLine, BracketSpacing, IndentStyle, IndentWidth,
+            LineEnding, LineWidth, QuoteStyle, Semicolons, TrailingCommas,
+        };
+
+        oxc_formatter::FormatOptions {
+            indent_style: if self.use_tabs {
+                IndentStyle::Tab
+            } else {
+                IndentStyle::Space
+            },
+            indent_width: IndentWidth::try_from(self.tab_width).unwrap_or_default(),
+            line_width: LineWidth::try_from(self.print_width as u16).unwrap_or_default(),
+            line_ending: match self.end_of_line {
+                EndOfLine::Lf | EndOfLine::Auto => LineEnding::Lf,
+                EndOfLine::Crlf => LineEnding::Crlf,
+                EndOfLine::Cr => LineEnding::Cr,
+            },
+            quote_style: if self.single_quote {
+                QuoteStyle::Single
+            } else {
+                QuoteStyle::Double
+            },
+            semicolons: if self.semi {
+                Semicolons::Always
+            } else {
+                Semicolons::AsNeeded
+            },
+            trailing_commas: match self.trailing_comma {
+                TrailingComma::None => TrailingCommas::None,
+                TrailingComma::Es5 => TrailingCommas::Es5,
+                TrailingComma::All => TrailingCommas::All,
+            },
+            bracket_spacing: BracketSpacing::from(self.bracket_spacing),
+            bracket_same_line: BracketSameLine::from(self.bracket_same_line),
+            arrow_parentheses: match self.arrow_parens {
+                ArrowParens::Always => ArrowParentheses::Always,
+                ArrowParens::Avoid => ArrowParentheses::AsNeeded,
+            },
             ..Default::default()
         }
     }

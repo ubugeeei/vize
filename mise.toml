@@ -192,6 +192,31 @@ alias = "bg"
 description = "Generate 15,000 SFC files for benchmarking"
 run = "node bench/generate.mjs 15000"
 
+[tasks."bench:lint"]
+alias = "bl"
+description = "Lint benchmark: patina vs eslint-plugin-vue"
+run = "node --experimental-strip-types bench/lint.ts"
+
+[tasks."bench:fmt"]
+alias = "bf"
+description = "Format benchmark: glyph vs prettier"
+run = "node --experimental-strip-types bench/fmt.ts"
+
+[tasks."bench:check"]
+alias = "bck"
+description = "Type check benchmark: canon vs vue-tsc"
+run = "node --experimental-strip-types bench/check.ts"
+
+[tasks."bench:vite"]
+alias = "bvt"
+description = "Vite plugin benchmark: @vizejs/vite-plugin vs @vitejs/plugin-vue"
+run = "node --experimental-strip-types bench/vite.ts"
+
+[tasks."bench:all"]
+alias = "ba"
+description = "Run all benchmarks"
+depends = ["bench", "bench:lint", "bench:fmt", "bench:check", "bench:vite"]
+
 [tasks."bench:rust"]
 alias = "br"
 description = "Run Rust benchmarks (criterion)"

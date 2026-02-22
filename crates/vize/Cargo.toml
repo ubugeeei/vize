@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Vize - High-performance Vue.js toolchain in Rust"
+publish = false
 
 [[bin]]
 name = "vize"
@@ -13,6 +14,10 @@ path = "src/main.rs"
 [lib]
 name = "vize"
 path = "src/lib.rs"
+
+[features]
+default = ["glyph"]
+glyph = ["dep:vize_glyph", "vize_maestro/glyph"]
 
 [dependencies]
 # Vize crates (re-exported for unified documentation)
@@ -23,7 +28,7 @@ vize_atelier_core = { workspace = true }
 vize_atelier_dom = { workspace = true }
 vize_atelier_vapor = { workspace = true }
 vize_atelier_sfc = { workspace = true, features = ["native"] }
-vize_glyph = { workspace = true }
+vize_glyph = { workspace = true, optional = true }
 vize_patina = { workspace = true }
 vize_canon = { workspace = true, features = ["native"] }
 vize_croquis = { workspace = true }
@@ -63,3 +68,6 @@ regex-lite = "0.1"
 
 # Home/config directory detection
 dirs = "5.0"
+
+[dev-dependencies]
+tempfile = "3"

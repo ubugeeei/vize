@@ -57,12 +57,31 @@ See the [documentation](https://vizejs.dev) for detailed usage, Vite plugin setu
 
 ## Performance
 
-Compiling **15,000 SFC files** (36.9 MB):
+Benchmarks with **15,000 Vue SFC files** (36.9 MB). "User-facing speedup" = traditional tool (single-thread) vs Vize (multi-thread).
+
+| Tool | Traditional (ST) | Vize (MT) | User-facing Speedup |
+|------|-----------------|-----------|---------------------|
+| **Compiler** | @vue/compiler-sfc 10.52s | 380ms | **27.7x** |
+| **Linter** | eslint-plugin-vue 65.30s | patina 5.48s | **11.9x** |
+| **Formatter** | Prettier 82.69s | glyph 23ms | **3,666x** |
+| **Type Checker** | vue-tsc 35.69s | canon 472ms | **75.5x** * |
+| **Vite Plugin** | @vitejs/plugin-vue 16.98s | @vizejs/vite-plugin 6.90s | **2.5x** ** |
+
+<details>
+<summary>Detailed compiler benchmark</summary>
 
 |  | @vue/compiler-sfc | Vize | Speedup |
 |--|-------------------|------|---------|
-| **Single Thread** | 16.21s | 6.65s | **2.4x** |
-| **Multi Thread** | 4.13s | 498ms | **8.3x** |
+| **Single Thread** | 10.52s | 3.82s | **2.8x** |
+| **Multi Thread** | 3.71s | 380ms | **9.8x** |
+
+</details>
+
+\* canon is still in early development and does not yet cover the full feature set of vue-tsc. The speedup partly reflects the difference in work performed.
+
+\*\* Vite Plugin benchmark uses Vite v8.0.0-beta.15 (Rolldown). The plugin replaces only the SFC compilation step; all other Vite internals are unchanged.
+
+Run `mise run bench:all` to reproduce all benchmarks.
 
 ## Contributing
 

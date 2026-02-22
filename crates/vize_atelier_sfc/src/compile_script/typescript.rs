@@ -33,7 +33,7 @@ pub fn transform_typescript_to_js(code: &str) -> String {
         return code.to_string();
     }
 
-    let (symbols, scopes) = semantic_ret.semantic.into_symbol_table_and_scope_tree();
+    let scoping = semantic_ret.semantic.into_scoping();
 
     // Transform TypeScript to JavaScript
     // Strip all TypeScript syntax including type parameters (generics)
@@ -45,7 +45,7 @@ pub fn transform_typescript_to_js(code: &str) -> String {
         ..Default::default()
     };
     let ret = Transformer::new(&allocator, std::path::Path::new(""), &transform_options)
-        .build_with_symbols_and_scopes(symbols, scopes, &mut program);
+        .build_with_scoping(scoping, &mut program);
 
     if !ret.errors.is_empty() {
         // If transformation fails, return original code

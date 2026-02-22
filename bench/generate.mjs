@@ -364,3 +364,73 @@ console.log(`Done! Generated ${FILE_COUNT} SFC files.`);
 const files = readdirSync(benchDir).filter(f => f.endsWith('.vue'));
 const totalSize = files.reduce((sum, f) => sum + statSync(join(benchDir, f)).size, 0);
 console.log(`Total size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
+
+// Generate tsconfig.json for vue-tsc / vize check
+const tsconfig = {
+  compilerOptions: {
+    target: "ESNext",
+    module: "ESNext",
+    moduleResolution: "bundler",
+    strict: true,
+    jsx: "preserve",
+    noEmit: true,
+    skipLibCheck: true,
+    paths: {
+      "vue": ["../node_modules/vue"]
+    }
+  },
+  include: ["./*.vue"]
+};
+writeFileSync(join(benchDir, 'tsconfig.json'), JSON.stringify(tsconfig, null, 2));
+console.log('Generated tsconfig.json');
+
+// Generate eslint.config.mjs for eslint-plugin-vue
+const eslintConfig = `import pluginVue from "eslint-plugin-vue";
+
+export default [
+  ...pluginVue.configs["flat/recommended"],
+  {
+    files: ["*.vue"],
+    rules: {
+      "vue/multi-word-component-names": "off",
+    },
+  },
+];
+`;
+writeFileSync(join(benchDir, 'eslint.config.mjs'), eslintConfig);
+console.log('Generated eslint.config.mjs');
+
+// Generate vite entry file for vite-plugin benchmark
+const viteEntryImports = [];
+const viteEntryComponents = [];
+const entryCount = FILE_COUNT; // import all files for fair vite benchmark
+for (let i = 0; i < entryCount; i++) {
+  const name = `Component${String(i).padStart(4, '0')}`;
+  viteEntryImports.push(`import ${name} from './${name}.vue'`);
+  viteEntryComponents.push(name);
+}
+const viteEntry = `${viteEntryImports.join('\n')}
+import { createApp, h } from 'vue'
+
+const app = createApp({
+  render() {
+    return h('div', [${viteEntryComponents.map(c => `h(${c})`).join(', ')}])
+  }
+})
+app.mount('#app')
+`;
+writeFileSync(join(benchDir, 'main.ts'), viteEntry);
+console.log(`Generated main.ts (imports ${entryCount} components)`);
+
+// Generate index.html for vite
+const indexHtml = `<!DOCTYPE html>
+<html>
+<head><title>Bench</title></head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="./main.ts"><\/script>
+</body>
+</html>
+`;
+writeFileSync(join(benchDir, 'index.html'), indexHtml);
+console.log('Generated index.html');

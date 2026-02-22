@@ -43,6 +43,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Enable long paths (Windows)
+        if: runner.os == 'Windows'
+        run: git config --system core.longpaths true
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -124,6 +128,10 @@ jobs:
             build_fresco: pnpm -C npm/fresco-native build --target aarch64-unknown-linux-musl --cross-compile
     steps:
       - uses: actions/checkout@v4
+
+      - name: Enable long paths (Windows)
+        if: runner.os == 'Windows'
+        run: git config --system core.longpaths true
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -629,14 +637,13 @@ jobs:
           publish_crate vize_atelier_vapor
           publish_crate vize_atelier_sfc
           publish_crate vize_atelier_ssr
-          publish_crate vize_glyph
+          # vize_glyph, vize_vitrine, vize_maestro, vize are skipped:
+          # vize_glyph depends on oxc_formatter which is not yet on crates.io,
+          # and the others depend on vize_glyph (even as optional, crates.io still resolves it)
           publish_crate vize_patina
           publish_crate vize_canon
           publish_crate vize_musea
-          publish_crate vize_vitrine
           publish_crate vize_fresco
-          publish_crate vize_maestro
-          publish_crate vize
 
   # Create GitHub Release with CLI binaries
   create-github-release:
