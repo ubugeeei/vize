@@ -4,6 +4,7 @@ mod text;
 
 pub use text::*;
 
+use crate::diagnostic::{render_help, HelpRenderTarget};
 use crate::linter::LintResult;
 use serde::Serialize;
 
@@ -82,7 +83,10 @@ fn format_json(results: &[LintResult]) -> String {
                         column: d.start + 1,
                         end_line: 1,
                         end_column: d.end + 1,
-                        help: d.help.as_ref().map(|h| h.to_string()),
+                        help: d
+                            .help
+                            .as_ref()
+                            .map(|h| render_help(h, HelpRenderTarget::PlainText)),
                     }
                 })
                 .collect(),

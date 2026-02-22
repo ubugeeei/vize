@@ -279,9 +279,9 @@
     "vue/v-slot-style.message_shorthand": "使用简写`#name`代替`v-slot:name`",
     "vue/v-slot-style.message_longform": "使用`v-slot:name`代替`#name`",
     "vue/v-slot-style.help": "**简写:** `<template #header>` (默认)\n**完整形式:** `<template v-slot:header>`\n\n选择一种风格并保持一致。",
-    "vue/prop-name-casing.description": "强制模板中prop名使用camelCase",
-    "vue/prop-name-casing.message": "prop '{name}'应使用'{camel}'（camelCase）",
-    "vue/prop-name-casing.help": "在模板中使用camelCase的prop名:\n```vue\n<!-- 错误 -->\n<MyComponent my-prop=\"value\" />\n\n<!-- 正确 -->\n<MyComponent myProp=\"value\" />\n```",
+    "vue/prop-name-casing.description": "强制模板中prop名使用kebab-case",
+    "vue/prop-name-casing.message": "prop '{name}'应使用'{kebab}'（kebab-case）",
+    "vue/prop-name-casing.help": "在模板中使用kebab-case的prop名:\n```vue\n<!-- 错误 -->\n<MyComponent myProp=\"value\" />\n\n<!-- 正确 -->\n<MyComponent my-prop=\"value\" />\n```",
     "vue/html-quotes.description": "强制HTML属性引号风格",
     "vue/html-quotes.message_double": "应使用双引号而非单引号",
     "vue/html-quotes.message_single": "应使用单引号而非双引号",
@@ -351,5 +351,62 @@
     "ts/vue/9005.message": "无效的指令: '{name}'",
     "ts/vue/9005.help": "**指令`{name}`错误。**\n\n**常见原因:**\n- 指令未注册\n- 指令语法错误\n\n**解决方案:**\n```ts\n// 局部注册指令\nimport { v{name} } from './directives';\n\n// 或全局注册\napp.directive('{name}', {\n  mounted(el, binding) { ... }\n});\n```",
     "ts/vue/9006.message": "检测到响应性问题",
-    "ts/vue/9006.help": "**可能丢失响应性。**\n\n您的代码可能因值的访问或解构方式而丢失响应性。\n\n**常见问题和修复:**\n```ts\n// 错误 - 解构丢失响应性\nconst { count } = props;\n\n// 正确 - 使用toRefs\nconst { count } = toRefs(props);\n\n// 错误 - 赋值ref的value\nlet x = ref(0).value;\n\n// 正确 - 保持ref\nconst x = ref(0);\n```"
+    "ts/vue/9006.help": "**可能丢失响应性。**\n\n您的代码可能因值的访问或解构方式而丢失响应性。\n\n**常见问题和修复:**\n```ts\n// 错误 - 解构丢失响应性\nconst { count } = props;\n\n// 正确 - 使用toRefs\nconst { count } = toRefs(props);\n\n// 错误 - 赋值ref的value\nlet x = ref(0).value;\n\n// 正确 - 保持ref\nconst x = ref(0);\n```",
+
+    "a11y/no-i-for-icon.description": "禁止使用<i>元素作为图标",
+    "a11y/no-i-for-icon.message": "带有图标CSS类的<i>元素不应用作图标，请使用语义化元素代替",
+    "a11y/no-i-for-icon.help": "**原因:** `<i>`元素在HTML中语义为*斜体文本*。将其用于图标字体会导致无障碍问题——屏幕阅读器可能会朗读无意义的内容。\n\n**修复:** 使用`<span>`配合`aria-hidden=\"true\"`:\n```vue\n<span class=\"fas fa-home\" aria-hidden=\"true\"></span>\n<span class=\"sr-only\">首页</span>\n```\n\n或使用SVG图标组件以获得最佳无障碍体验。",
+
+    "a11y/no-refer-to-non-existent-id.description": "禁止引用不存在的ID",
+    "a11y/no-refer-to-non-existent-id.message": "{kind}属性引用的id=\"{id}\"在模板中不存在",
+    "a11y/no-refer-to-non-existent-id.help": "**原因:** `for`、`aria-labelledby`、`aria-describedby`等ID引用属性必须指向一个存在的带有该`id`的元素。引用失效会静默破坏关联。\n\n**修复:** 确保引用的ID存在于模板中:\n```vue\n<label for=\"name\">姓名:</label>\n<input id=\"name\" type=\"text\">\n```",
+
+    "vue/use-unique-element-ids.message_form": "表单元素使用了静态id=\"{value}\"——请使用useId()确保标签/输入关联正常工作",
+    "vue/use-unique-element-ids.message_aria_ref": "带有ARIA引用的元素使用了静态id=\"{value}\"——请使用useId()确保ARIA关联的唯一性",
+
+    "vue/permitted-contents.description": "强制执行HTML内容模型规则",
+    "vue/permitted-contents.block_in_inline": "<{child}>（块级元素）不允许出现在<{parent}>（仅允许短语内容）内",
+    "vue/permitted-contents.interactive_nesting": "<{tag}>是交互元素，不能嵌套在其他交互元素内",
+    "vue/permitted-contents.invalid_child": "<{child}>不允许作为<{parent}>的直接子元素",
+    "vue/permitted-contents.help": "**原因:** HTML有内容模型规则，定义了哪些元素可以嵌套在其他元素内。违反这些规则会导致浏览器自动修正DOM，产生意外的渲染结果。\n\n**主要规则:**\n- `<p>`、`<span>`、`<a>`只能包含短语（内联）内容\n- `<a>`和`<button>`不能相互嵌套\n- `<ul>/<ol>`的直接子元素只能是`<li>`\n- `<table>`的直接子元素只能是`<thead>`、`<tbody>`、`<tfoot>`、`<tr>`或`<caption>`",
+
+    "category.html_conformance": "HTML合规",
+
+    "html/deprecated-element.message": "<{tag}>是已弃用的HTML元素",
+    "html/deprecated-element.help": "此元素已被HTML Living Standard废弃。请使用带有CSS的现代HTML元素代替。",
+
+    "html/deprecated-attr.message": "<{tag}>上的\"{attr}\"属性已弃用",
+    "html/deprecated-attr.help": "请使用{suggestion}代替。",
+
+    "html/no-consecutive-br.message": "检测到连续的<br>元素",
+    "html/no-consecutive-br.help": "使用<p>元素或CSS margin/padding来控制间距，而不是多个<br>标签。",
+
+    "html/id-duplication.message": "模板中发现重复的id=\"{id}\"",
+    "html/id-duplication.help": "元素ID在文档中必须唯一。重复的ID会破坏label关联、ARIA引用和getElementById()。",
+
+    "html/require-datetime.message": "当内容不是有效的日期时间字符串时，<time>元素需要datetime属性",
+    "html/require-datetime.help": "添加包含机器可读日期/时间值的datetime属性，例如：<time datetime=\"2024-12-25\">圣诞节</time>",
+
+    "html/no-empty-palpable-content.message": "<{tag}>元素为空，但应包含可见内容",
+    "html/no-empty-palpable-content.help": "添加文本内容、子元素，或使用aria-label提供无障碍内容。",
+
+    "html/no-duplicate-dt.message": "<dl>中存在重复的<dt>术语\"{term}\"",
+    "html/no-duplicate-dt.help": "定义列表中的每个术语应该是唯一的。将定义合并到单个<dt>下或使用不同的术语。",
+
+    "a11y/heading-levels.message": "标题级别从<{from}>跳到了<{to}>",
+    "a11y/heading-levels.help": "标题级别应逐级递增。屏幕阅读器用户通过标题级别进行导航，跳级会使文档结构变得混乱。",
+
+    "a11y/use-list.message": "文本看起来是列表项。请使用<ul>或<ol>实现正确的列表语义",
+    "a11y/use-list.help": "屏幕阅读器无法将项目符号字符识别为列表项。请使用语义化的<ul>/<ol>和<li>元素代替。",
+
+    "a11y/placeholder-label-option.message": "占位符<option>应具有disabled或hidden属性",
+    "a11y/placeholder-label-option.help": "为占位符<option>添加disabled或hidden以防止其被选中：\n<option value=\"\" disabled>请选择</option>",
+
+    "a11y/landmark-roles.duplicate_main": "每个页面只允许一个<main>地标",
+    "a11y/landmark-roles.help_duplicate_main": "页面应该只有一个<main>地标。删除重复的<main>元素或仅在一个元素上使用role=\"main\"。",
+    "a11y/landmark-roles.missing_label": "发现多个\"{role}\"地标但缺少独特标签",
+    "a11y/landmark-roles.help_missing_label": "当存在多个相同类型的地标时，每个都应有唯一的aria-label或aria-labelledby以帮助用户区分。",
+
+    "vue/no-boolean-attr-value.message": "布尔属性\"{attr}\"不应有值\"{value}\"",
+    "vue/no-boolean-attr-value.help": "请移除值。使用{attr}而不是{attr}=\"...\"。"
 }
