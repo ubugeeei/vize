@@ -33,6 +33,7 @@ enum Commands {
     Build(commands::build::BuildArgs),
 
     /// Format Vue SFC files
+    #[cfg(feature = "glyph")]
     #[command(visible_alias = "glyph")]
     Fmt(commands::fmt::FmtArgs),
 
@@ -63,6 +64,7 @@ fn main() {
 
     match cli.command {
         Some(Commands::Build(args)) => commands::build::run(args),
+        #[cfg(feature = "glyph")]
         Some(Commands::Fmt(args)) => commands::fmt::run(args),
         Some(Commands::Lint(args)) => commands::lint::run(args),
         Some(Commands::Check(args)) => commands::check::run(args),

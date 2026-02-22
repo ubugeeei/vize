@@ -838,9 +838,14 @@ impl LanguageServer for MaestroServer {
             return Ok(None);
         };
 
-        let content = doc.text();
-        let options = self.state.get_format_options();
-        Ok(format_document(&content, &options))
+        let _content = doc.text();
+        #[cfg(feature = "glyph")]
+        {
+            let options = self.state.get_format_options();
+            return Ok(format_document(&_content, &options));
+        }
+        #[cfg(not(feature = "glyph"))]
+        Ok(None)
     }
 
     async fn range_formatting(
@@ -855,9 +860,14 @@ impl LanguageServer for MaestroServer {
             return Ok(None);
         };
 
-        let content = doc.text();
-        let options = self.state.get_format_options();
-        Ok(format_document(&content, &options))
+        let _content = doc.text();
+        #[cfg(feature = "glyph")]
+        {
+            let options = self.state.get_format_options();
+            return Ok(format_document(&_content, &options));
+        }
+        #[cfg(not(feature = "glyph"))]
+        Ok(None)
     }
 }
 
@@ -865,6 +875,7 @@ impl LanguageServer for MaestroServer {
 ///
 /// Returns `Some(vec![])` if no changes needed, `Some(vec![edit])` with the
 /// full-document replacement, or `None` on formatting error.
+#[cfg(feature = "glyph")]
 fn format_document(content: &str, options: &vize_glyph::FormatOptions) -> Option<Vec<TextEdit>> {
     let allocator = vize_glyph::Allocator::with_capacity(content.len());
 
@@ -888,7 +899,7 @@ fn format_document(content: &str, options: &vize_glyph::FormatOptions) -> Option
     }])
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "glyph"))]
 mod tests {
     use super::*;
 

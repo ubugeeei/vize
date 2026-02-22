@@ -41,6 +41,7 @@ pub use vize_atelier_vapor as atelier_vapor;
 pub use vize_atelier_sfc as atelier_sfc;
 
 /// TypeScript/JavaScript transformer.
+#[cfg(feature = "glyph")]
 pub use vize_glyph as glyph;
 
 /// CSS/style processing with scoped styles.

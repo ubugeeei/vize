@@ -82,6 +82,7 @@ pub struct ServerState {
     /// Cached virtual documents per file
     virtual_docs_cache: DashMap<Url, VirtualDocuments>,
     /// Formatting options (loaded from vize.config.json)
+    #[cfg(feature = "glyph")]
     format_options: RwLock<vize_glyph::FormatOptions>,
     /// tsgo bridge for TypeScript language features (lazy initialized)
     #[cfg(feature = "native")]
@@ -113,6 +114,7 @@ impl ServerState {
             documents: DocumentStore::new(),
             virtual_gen: RwLock::new(VirtualCodeGenerator::new()),
             virtual_docs_cache: DashMap::new(),
+            #[cfg(feature = "glyph")]
             format_options: RwLock::new(vize_glyph::FormatOptions::default()),
             #[cfg(feature = "native")]
             tsgo_bridge: OnceCell::new(),
@@ -306,12 +308,14 @@ impl ServerState {
     }
 
     /// Get a clone of the current format options.
+    #[cfg(feature = "glyph")]
     #[inline]
     pub fn get_format_options(&self) -> vize_glyph::FormatOptions {
         self.format_options.read().clone()
     }
 
     /// Load format options from `vize.config.json` in the given directory.
+    #[cfg(feature = "glyph")]
     pub fn load_format_config(&self, dir: &std::path::Path) {
         let config_path = dir.join("vize.config.json");
         if !config_path.exists() {

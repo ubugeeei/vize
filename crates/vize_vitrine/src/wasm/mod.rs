@@ -2,6 +2,7 @@
 
 mod analyze;
 mod cross_file;
+#[cfg(feature = "glyph")]
 mod format;
 mod lint;
 mod musea;
@@ -13,6 +14,7 @@ mod wasm_typecheck;
 // Re-export all WASM bindings
 pub use analyze::*;
 pub use cross_file::*;
+#[cfg(feature = "glyph")]
 pub use format::*;
 pub use lint::*;
 pub use musea::*;
@@ -27,8 +29,8 @@ use vize_atelier_core::options::CodegenMode;
 use vize_atelier_core::parser::parse;
 use vize_atelier_dom::{compile_template_with_options, DomCompilerOptions};
 use vize_atelier_sfc::{
-    compile_sfc as sfc_compile, parse_sfc, ScriptCompileOptions, SfcCompileOptions, SfcDescriptor,
-    SfcParseOptions, StyleCompileOptions, TemplateCompileOptions,
+    compile_sfc as sfc_compile, parse_sfc, CssCompileOptions, CssTargets, ScriptCompileOptions,
+    SfcCompileOptions, SfcDescriptor, SfcParseOptions, StyleCompileOptions, TemplateCompileOptions,
 };
 use vize_atelier_ssr::compile_ssr as ssr_compile;
 use vize_atelier_vapor::{compile_vapor as vapor_compile, VaporCompilerOptions};
@@ -51,6 +53,77 @@ pub(crate) fn utf8_byte_to_char_offset(content: &str, byte_offset: u32) -> u32 {
     }
     // Count characters up to the byte offset
     content[..byte_offset].chars().count() as u32
+}
+
+/// Parse CSS options from JsValue
+pub(crate) fn parse_css_options(options: JsValue) -> CssCompileOptions {
+    let scope_id = js_sys::Reflect::get(&options, &JsValue::from_str("scopeId"))
+        .ok()
+        .and_then(|v| v.as_string());
+
+    let scoped = js_sys::Reflect::get(&options, &JsValue::from_str("scoped"))
+        .ok()
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    let minify = js_sys::Reflect::get(&options, &JsValue::from_str("minify"))
+        .ok()
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    let source_map = js_sys::Reflect::get(&options, &JsValue::from_str("sourceMap"))
+        .ok()
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    let filename = js_sys::Reflect::get(&options, &JsValue::from_str("filename"))
+        .ok()
+        .and_then(|v| v.as_string());
+
+    // Parse targets
+    let targets = js_sys::Reflect::get(&options, &JsValue::from_str("targets"))
+        .ok()
+        .and_then(|v| {
+            if v.is_undefined() || v.is_null() {
+                return None;
+            }
+            Some(CssTargets {
+                chrome: js_sys::Reflect::get(&v, &JsValue::from_str("chrome"))
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                    .map(|v| v as u32),
+                firefox: js_sys::Reflect::get(&v, &JsValue::from_str("firefox"))
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                    .map(|v| v as u32),
+                safari: js_sys::Reflect::get(&v, &JsValue::from_str("safari"))
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                    .map(|v| v as u32),
+                edge: js_sys::Reflect::get(&v, &JsValue::from_str("edge"))
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                    .map(|v| v as u32),
+                ios: js_sys::Reflect::get(&v, &JsValue::from_str("ios"))
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                    .map(|v| v as u32),
+                android: js_sys::Reflect::get(&v, &JsValue::from_str("android"))
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                    .map(|v| v as u32),
+            })
+        });
+
+    CssCompileOptions {
+        scope_id,
+        scoped,
+        minify,
+        source_map,
+        targets,
+        filename,
+        custom_media: false,
+    }
 }
 
 /// SFC compile result for WASM
@@ -151,7 +224,7 @@ impl Compiler {
     #[wasm_bindgen(js_name = "compileCss")]
     pub fn compile_css_method(&self, css: &str, options: JsValue) -> Result<JsValue, JsValue> {
         use vize_atelier_sfc::compile_css;
-        let opts = format::parse_css_options(options);
+        let opts = parse_css_options(options);
         let result = compile_css(css, &opts);
         to_js_value(&result)
     }

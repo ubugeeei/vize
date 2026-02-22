@@ -5,7 +5,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use vize_glyph::FormatOptions;
 
 /// Top-level vize configuration.
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -19,8 +18,9 @@ pub struct VizeConfig {
     pub check: CheckConfig,
 
     /// Formatting configuration.
+    #[cfg(feature = "glyph")]
     #[serde(default)]
-    pub fmt: FormatOptions,
+    pub fmt: vize_glyph::FormatOptions,
 }
 
 /// Configuration for the `check` command.
@@ -132,7 +132,7 @@ pub const VIZE_CONFIG_SCHEMA: &str = r#"{
   "additionalProperties": false
 }"#;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "glyph"))]
 mod tests {
     use super::*;
 
