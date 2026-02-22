@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Glyph - The beautiful letterforms for Vize code formatting"
+publish = false
 
 [dependencies]
 # Internal crates
