@@ -15,7 +15,7 @@ The Vize CLI provides a unified interface for all Vue.js toolchain operations. A
 npm install -g vize
 
 # via Cargo
-cargo install vize --version 0.0.1-alpha.120
+cargo install vize
 ```
 
 ## Usage

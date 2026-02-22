@@ -40,8 +40,8 @@ Install the Vize CLI globally:
 # via npm (recommended)
 npm install -g vize
 
-# via Cargo (requires --version for pre-release)
-cargo install vize --version 0.0.1-alpha.120
+# via Cargo
+cargo install vize
 ```
 
 ### npm Packages
