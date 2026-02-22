@@ -43,6 +43,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Enable long paths (Windows)
+        if: runner.os == 'Windows'
+        run: git config --system core.longpaths true
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -124,6 +128,10 @@ jobs:
             build_fresco: pnpm -C npm/fresco-native build --target aarch64-unknown-linux-musl --cross-compile
     steps:
       - uses: actions/checkout@v4
+
+      - name: Enable long paths (Windows)
+        if: runner.os == 'Windows'
+        run: git config --system core.longpaths true
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
