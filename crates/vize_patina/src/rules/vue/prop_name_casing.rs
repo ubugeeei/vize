@@ -1,58 +1,39 @@
 //! vue/prop-name-casing
 //!
-//! Enforce camelCase for prop names in templates.
+//! Enforce kebab-case for prop names in templates.
 //!
-//! In Vue, props defined in camelCase in script should also be used
-//! in camelCase in templates (not kebab-case or PascalCase).
+//! In Vue templates, prop names should use kebab-case.
+//! camelCase prop names will be warned.
 //!
 //! ## Examples
 //!
 //! ### Invalid
 //! ```vue
-//! <MyComponent my-prop="value" />
+//! <MyComponent myProp="value" />
 //! ```
 //!
 //! ### Valid
 //! ```vue
-//! <MyComponent myProp="value" />
+//! <MyComponent my-prop="value" />
 //! ```
 
 use crate::context::LintContext;
 use crate::diagnostic::Severity;
 use crate::rule::{Rule, RuleCategory, RuleMeta};
+use vize_croquis::naming::{hyphenate, is_camel_case};
 use vize_relief::ast::{ElementNode, ElementType, ExpressionNode, PropNode};
 
 static META: RuleMeta = RuleMeta {
     name: "vue/prop-name-casing",
-    description: "Enforce camelCase prop names in templates",
+    description: "Enforce kebab-case prop names in templates",
     category: RuleCategory::StronglyRecommended,
     fixable: false,
     default_severity: Severity::Warning,
 };
 
-/// Enforce camelCase prop names
+/// Enforce kebab-case prop names
 #[derive(Default)]
 pub struct PropNameCasing;
-
-fn is_kebab_case(s: &str) -> bool {
-    s.contains('-')
-}
-
-fn kebab_to_camel(s: &str) -> String {
-    let mut result = String::new();
-    let mut upper_next = false;
-    for c in s.chars() {
-        if c == '-' {
-            upper_next = true;
-        } else if upper_next {
-            result.push(c.to_ascii_uppercase());
-            upper_next = false;
-        } else {
-            result.push(c);
-        }
-    }
-    result
-}
 
 impl Rule for PropNameCasing {
     fn meta(&self) -> &'static RuleMeta {
@@ -69,7 +50,7 @@ impl Rule for PropNameCasing {
             match prop {
                 PropNode::Attribute(attr) => {
                     let name = attr.name.as_str();
-                    // Skip standard HTML attributes and directives
+                    // Skip standard HTML attributes
                     if name == "class"
                         || name == "style"
                         || name == "key"
@@ -78,12 +59,12 @@ impl Rule for PropNameCasing {
                     {
                         continue;
                     }
-                    if is_kebab_case(name) {
-                        let camel = kebab_to_camel(name);
+                    if is_camel_case(name) {
+                        let kebab = hyphenate(name);
                         ctx.warn_with_help(
                             ctx.t_fmt(
                                 "vue/prop-name-casing.message",
-                                &[("name", name), ("camel", &camel)],
+                                &[("name", name), ("kebab", &kebab)],
                             ),
                             &attr.loc,
                             ctx.t("vue/prop-name-casing.help"),
@@ -103,12 +84,12 @@ impl Rule for PropNameCasing {
                             {
                                 continue;
                             }
-                            if is_kebab_case(name) {
-                                let camel = kebab_to_camel(name);
+                            if is_camel_case(name) {
+                                let kebab = hyphenate(name);
                                 ctx.warn_with_help(
                                     ctx.t_fmt(
                                         "vue/prop-name-casing.message",
-                                        &[("name", name), ("camel", &camel)],
+                                        &[("name", name), ("kebab", &kebab)],
                                     ),
                                     &dir.loc,
                                     ctx.t("vue/prop-name-casing.help"),
@@ -135,31 +116,31 @@ mod tests {
     }
 
     #[test]
-    fn test_valid_camel_case_prop() {
+    fn test_valid_kebab_case_prop() {
         let linter = create_linter();
-        let result = linter.lint_template(r#"<MyComponent myProp="value" />"#, "test.vue");
+        let result = linter.lint_template(r#"<MyComponent my-prop="value" />"#, "test.vue");
         assert_eq!(result.warning_count, 0);
     }
 
     #[test]
-    fn test_valid_native_element_kebab() {
+    fn test_valid_native_element() {
         let linter = create_linter();
-        // Native elements use kebab-case attributes - should not warn
+        // Native elements are not checked
         let result = linter.lint_template(r#"<div data-my-attr="value"></div>"#, "test.vue");
         assert_eq!(result.warning_count, 0);
     }
 
     #[test]
-    fn test_invalid_kebab_case_prop() {
+    fn test_invalid_camel_case_prop() {
         let linter = create_linter();
-        let result = linter.lint_template(r#"<MyComponent my-prop="value" />"#, "test.vue");
+        let result = linter.lint_template(r#"<MyComponent myProp="value" />"#, "test.vue");
         assert_eq!(result.warning_count, 1);
     }
 
     #[test]
-    fn test_invalid_kebab_case_binding() {
+    fn test_invalid_camel_case_binding() {
         let linter = create_linter();
-        let result = linter.lint_template(r#"<MyComponent :my-prop="value" />"#, "test.vue");
+        let result = linter.lint_template(r#"<MyComponent :myProp="value" />"#, "test.vue");
         assert_eq!(result.warning_count, 1);
     }
 
@@ -170,6 +151,22 @@ mod tests {
             r#"<MyComponent class="foo" :style="bar" key="1" />"#,
             "test.vue",
         );
+        assert_eq!(result.warning_count, 0);
+    }
+
+    #[test]
+    fn test_valid_aria_attributes() {
+        let linter = create_linter();
+        // aria-* attributes are already kebab-case, should not warn
+        let result = linter.lint_template(r#"<MyComponent aria-label="close" />"#, "test.vue");
+        assert_eq!(result.warning_count, 0);
+    }
+
+    #[test]
+    fn test_valid_single_word_prop() {
+        let linter = create_linter();
+        // Single word props like "disabled" are not camelCase, should not warn
+        let result = linter.lint_template(r#"<MyComponent disabled />"#, "test.vue");
         assert_eq!(result.warning_count, 0);
     }
 }

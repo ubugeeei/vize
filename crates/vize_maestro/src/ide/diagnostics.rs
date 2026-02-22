@@ -10,6 +10,8 @@ use tower_lsp::lsp_types::{
     CodeDescription, Diagnostic, DiagnosticSeverity, NumberOrString, Position, Range, Url,
 };
 
+use vize_patina::{render_help, HelpRenderTarget};
+
 use crate::server::ServerState;
 
 /// Diagnostic source identifiers.
@@ -577,9 +579,13 @@ impl DiagnosticService {
                 let (start_line, start_col) = offset_to_line_col(content, lint_diag.start as usize);
                 let (end_line, end_col) = offset_to_line_col(content, lint_diag.end as usize);
 
-                // Build the diagnostic message with help text
+                // Build the diagnostic message with help text (render as plain text for LSP)
                 let message = if let Some(ref help) = lint_diag.help {
-                    format!("{}\n\nHelp: {}", lint_diag.message, help)
+                    format!(
+                        "{}\n\nHelp: {}",
+                        lint_diag.message,
+                        render_help(help, HelpRenderTarget::PlainText)
+                    )
                 } else {
                     lint_diag.message.to_string()
                 };
@@ -665,7 +671,11 @@ impl DiagnosticService {
                         offset_to_line_col(content, custom.loc.tag_end.min(content.len()));
 
                     let message = if let Some(ref help) = lint_diag.help {
-                        format!("{}\n\nHelp: {}", lint_diag.message, help)
+                        format!(
+                            "{}\n\nHelp: {}",
+                            lint_diag.message,
+                            render_help(help, HelpRenderTarget::PlainText)
+                        )
                     } else {
                         lint_diag.message.to_string()
                     };
@@ -706,7 +716,11 @@ impl DiagnosticService {
                         offset_to_line_col(content, sfc_end.min(content.len()));
 
                     let message = if let Some(ref help) = lint_diag.help {
-                        format!("{}\n\nHelp: {}", lint_diag.message, help)
+                        format!(
+                            "{}\n\nHelp: {}",
+                            lint_diag.message,
+                            render_help(help, HelpRenderTarget::PlainText)
+                        )
                     } else {
                         lint_diag.message.to_string()
                     };
@@ -857,9 +871,13 @@ impl DiagnosticService {
                 let sfc_start_line = template.loc.start_line as u32 + start_line;
                 let sfc_end_line = template.loc.start_line as u32 + end_line;
 
-                // Build the diagnostic message with help text
+                // Build the diagnostic message with help text (render as plain text for LSP)
                 let message = if let Some(ref help) = lint_diag.help {
-                    format!("{}\n\nHelp: {}", lint_diag.message, help)
+                    format!(
+                        "{}\n\nHelp: {}",
+                        lint_diag.message,
+                        render_help(help, HelpRenderTarget::PlainText)
+                    )
                 } else {
                     lint_diag.message.to_string()
                 };

@@ -279,9 +279,9 @@
     "vue/v-slot-style.message_shorthand": "Use shorthand `#name` instead of `v-slot:name`",
     "vue/v-slot-style.message_longform": "Use longform `v-slot:name` instead of `#name`",
     "vue/v-slot-style.help": "**Shorthand:** `<template #header>` (default)\n**Longform:** `<template v-slot:header>`\n\nChoose one style and be consistent.",
-    "vue/prop-name-casing.description": "Enforce camelCase prop names in templates",
-    "vue/prop-name-casing.message": "Prop '{name}' should be '{camel}' (camelCase)",
-    "vue/prop-name-casing.help": "Use camelCase for prop names in templates:\n```vue\n<!-- Bad -->\n<MyComponent my-prop=\"value\" />\n\n<!-- Good -->\n<MyComponent myProp=\"value\" />\n```",
+    "vue/prop-name-casing.description": "Enforce kebab-case prop names in templates",
+    "vue/prop-name-casing.message": "Prop '{name}' should be '{kebab}' (kebab-case)",
+    "vue/prop-name-casing.help": "Use kebab-case for prop names in templates:\n```vue\n<!-- Bad -->\n<MyComponent myProp=\"value\" />\n\n<!-- Good -->\n<MyComponent my-prop=\"value\" />\n```",
     "vue/html-quotes.description": "Enforce quotes style of HTML attributes",
     "vue/html-quotes.message_double": "Expected double quotes but found single quotes",
     "vue/html-quotes.message_single": "Expected single quotes but found double quotes",
@@ -351,5 +351,62 @@
     "ts/vue/9005.message": "Invalid directive: '{name}'",
     "ts/vue/9005.help": "**Directive `{name}` error.**\n\n**Common causes:**\n- Directive is not registered\n- Wrong directive syntax\n\n**Solutions:**\n```ts\n// Register directive locally\nimport { v{name} } from './directives';\n\n// Or globally\napp.directive('{name}', {\n  mounted(el, binding) { ... }\n});\n```",
     "ts/vue/9006.message": "Reactivity issue detected",
-    "ts/vue/9006.help": "**Possible reactivity loss.**\n\nYour code may lose reactivity due to how values are accessed or destructured.\n\n**Common issues and fixes:**\n```ts\n// ❌ Destructuring loses reactivity\nconst { count } = props;\n\n// ✅ Use toRefs\nconst { count } = toRefs(props);\n\n// ❌ Assigning ref value\nlet x = ref(0).value;\n\n// ✅ Keep the ref\nconst x = ref(0);\n```"
+    "ts/vue/9006.help": "**Possible reactivity loss.**\n\nYour code may lose reactivity due to how values are accessed or destructured.\n\n**Common issues and fixes:**\n```ts\n// ❌ Destructuring loses reactivity\nconst { count } = props;\n\n// ✅ Use toRefs\nconst { count } = toRefs(props);\n\n// ❌ Assigning ref value\nlet x = ref(0).value;\n\n// ✅ Keep the ref\nconst x = ref(0);\n```",
+
+    "a11y/no-i-for-icon.description": "Disallow using <i> element for icons",
+    "a11y/no-i-for-icon.message": "<i> element with icon CSS class should not be used for icons. Use a semantic element instead",
+    "a11y/no-i-for-icon.help": "**Why:** The `<i>` element semantically represents *italic text*, not icons. Using it for icon fonts creates accessibility issues — screen readers may announce meaningless content.\n\n**Fix:** Use `<span>` with `aria-hidden=\"true\"` instead:\n```vue\n<span class=\"fas fa-home\" aria-hidden=\"true\"></span>\n<span class=\"sr-only\">Home</span>\n```\n\nOr use an SVG icon component for best accessibility.",
+
+    "a11y/no-refer-to-non-existent-id.description": "Disallow references to non-existent IDs",
+    "a11y/no-refer-to-non-existent-id.message": "The {kind} attribute references id=\"{id}\" which does not exist in the template",
+    "a11y/no-refer-to-non-existent-id.help": "**Why:** ID reference attributes like `for`, `aria-labelledby`, `aria-describedby`, etc. must point to an existing element with that `id`. A broken reference silently breaks the association.\n\n**Fix:** Ensure the referenced ID exists in the template:\n```vue\n<label for=\"name\">Name:</label>\n<input id=\"name\" type=\"text\">\n```",
+
+    "vue/use-unique-element-ids.message_form": "Form element has static id=\"{value}\" — use useId() for unique IDs to ensure label/input associations work correctly",
+    "vue/use-unique-element-ids.message_aria_ref": "Static id=\"{value}\" on element with ARIA references — use useId() to ensure ARIA associations remain unique",
+
+    "vue/permitted-contents.description": "Enforce HTML content model rules",
+    "vue/permitted-contents.block_in_inline": "<{child}> (block element) is not allowed inside <{parent}> (phrasing content only)",
+    "vue/permitted-contents.interactive_nesting": "<{tag}> is an interactive element and cannot be nested inside another interactive element",
+    "vue/permitted-contents.invalid_child": "<{child}> is not allowed as a direct child of <{parent}>",
+    "vue/permitted-contents.help": "**Why:** HTML has content model rules that define which elements can be nested inside others. Violating these rules causes browsers to auto-correct the DOM, leading to unexpected rendering.\n\n**Common rules:**\n- `<p>`, `<span>`, `<a>` can only contain phrasing (inline) content\n- `<a>` and `<button>` cannot be nested inside each other\n- `<ul>/<ol>` direct children must be `<li>`\n- `<table>` direct children must be `<thead>`, `<tbody>`, `<tfoot>`, `<tr>`, or `<caption>`",
+
+    "category.html_conformance": "HTML Conformance",
+
+    "html/deprecated-element.message": "<{tag}> is a deprecated HTML element",
+    "html/deprecated-element.help": "This element is obsolete per the HTML Living Standard. Use modern HTML elements with CSS for styling instead.",
+
+    "html/deprecated-attr.message": "The \"{attr}\" attribute on <{tag}> is deprecated",
+    "html/deprecated-attr.help": "Use {suggestion} instead.",
+
+    "html/no-consecutive-br.message": "Consecutive <br> elements detected",
+    "html/no-consecutive-br.help": "Use <p> elements or CSS margin/padding for spacing instead of multiple <br> tags.",
+
+    "html/id-duplication.message": "Duplicate id=\"{id}\" found in template",
+    "html/id-duplication.help": "Element IDs must be unique within a document. Duplicate IDs break label associations, ARIA references, and getElementById().",
+
+    "html/require-datetime.message": "<time> element needs a datetime attribute when content is not a valid datetime string",
+    "html/require-datetime.help": "Add a datetime attribute with a machine-readable date/time value, e.g. <time datetime=\"2024-12-25\">Christmas</time>",
+
+    "html/no-empty-palpable-content.message": "<{tag}> element is empty but expects visible content",
+    "html/no-empty-palpable-content.help": "Add text content, child elements, or use aria-label for accessible content.",
+
+    "html/no-duplicate-dt.message": "Duplicate <dt> term \"{term}\" in <dl>",
+    "html/no-duplicate-dt.help": "Each term in a definition list should be unique. Combine definitions under a single <dt> or use distinct terms.",
+
+    "a11y/heading-levels.message": "Heading level skipped from <{from}> to <{to}>",
+    "a11y/heading-levels.help": "Heading levels should increase by one. Screen reader users navigate by heading levels, so skipping levels makes the document structure confusing.",
+
+    "a11y/use-list.message": "Text appears to be a list item. Use <ul> or <ol> for proper list semantics",
+    "a11y/use-list.help": "Screen readers cannot identify bullet characters as list items. Use semantic <ul>/<ol> with <li> elements instead.",
+
+    "a11y/placeholder-label-option.message": "Placeholder <option> should have disabled or hidden attribute",
+    "a11y/placeholder-label-option.help": "Add disabled or hidden to the placeholder <option> to prevent it from being selected:\n<option value=\"\" disabled>Choose one</option>",
+
+    "a11y/landmark-roles.duplicate_main": "Only one <main> landmark is allowed per page",
+    "a11y/landmark-roles.help_duplicate_main": "A page should have exactly one <main> landmark. Remove duplicate <main> elements or use role=\"main\" on only one element.",
+    "a11y/landmark-roles.missing_label": "Multiple \"{role}\" landmarks found without distinct labels",
+    "a11y/landmark-roles.help_missing_label": "When multiple landmarks of the same type exist, each should have a unique aria-label or aria-labelledby to help users distinguish them.",
+
+    "vue/no-boolean-attr-value.message": "Boolean attribute \"{attr}\" should not have value \"{value}\"",
+    "vue/no-boolean-attr-value.help": "Remove the value. Use just {attr} instead of {attr}=\"...\"."
 }

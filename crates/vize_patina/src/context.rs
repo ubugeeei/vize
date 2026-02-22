@@ -599,6 +599,21 @@ impl<'a> LintContext<'a> {
         }
     }
 
+    /// Check if any ancestor element matches the given predicate
+    ///
+    /// Searches the element stack from bottom to top (excluding the current element).
+    /// Useful for detecting nested interactive elements or content model violations.
+    #[inline]
+    pub fn has_ancestor(&self, predicate: impl Fn(&ElementContext) -> bool) -> bool {
+        if self.element_stack.len() < 2 {
+            return false;
+        }
+        self.element_stack
+            .iter()
+            .take(self.element_stack.len() - 1)
+            .any(predicate)
+    }
+
     /// Get the error count (cached, O(1))
     #[inline]
     pub fn error_count(&self) -> usize {
