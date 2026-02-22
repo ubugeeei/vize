@@ -37,7 +37,7 @@ impl HelpLevel {
         match self {
             HelpLevel::None => None,
             HelpLevel::Short => Some(strip_markdown_first_line(help)),
-            HelpLevel::Full => Some(render_markdown_to_ansi(help)),
+            HelpLevel::Full => Some(help.to_string()),
         }
     }
 }
@@ -94,16 +94,16 @@ fn render_markdown_to_ansi(text: &str) -> String {
     let mut in_code_block = false;
 
     for line in text.lines() {
-        if !result.is_empty() {
-            result.push('\n');
-        }
-
         let trimmed = line.trim();
 
-        // Handle code fence blocks
+        // Handle code fence blocks (check before pushing newline to avoid extra \n)
         if trimmed.starts_with("```") {
             in_code_block = !in_code_block;
             continue;
+        }
+
+        if !result.is_empty() {
+            result.push('\n');
         }
 
         // Inside code block: indent + dim
@@ -210,6 +210,84 @@ fn find_closing_double(bytes: &[u8], start: usize, ch: u8) -> Option<usize> {
         i += 1;
     }
     None
+}
+
+/// Render target for help text conversion at output boundaries.
+///
+/// Help text is stored as raw markdown in `LintDiagnostic.help`.
+/// Use this enum with [`render_help`] to convert at the output boundary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HelpRenderTarget {
+    /// CLI/TUI: Convert markdown to ANSI escape codes
+    Ansi,
+    /// LSP, JSON: Strip markdown syntax for clean text
+    PlainText,
+    /// WASM/Playground: Pass through as-is (raw markdown)
+    Markdown,
+}
+
+/// Render help text (raw markdown) for the given target.
+///
+/// This function should be called at output boundaries, not when creating diagnostics.
+pub fn render_help(markdown: &str, target: HelpRenderTarget) -> String {
+    match target {
+        HelpRenderTarget::Ansi => render_markdown_to_ansi(markdown),
+        HelpRenderTarget::PlainText => strip_markdown(markdown),
+        HelpRenderTarget::Markdown => markdown.to_string(),
+    }
+}
+
+/// Strip all markdown formatting from text, producing clean plain text.
+fn strip_markdown(text: &str) -> String {
+    let mut result = String::with_capacity(text.len());
+    let mut in_code_block = false;
+
+    for line in text.lines() {
+        let trimmed = line.trim();
+
+        // Handle code fence blocks
+        if trimmed.starts_with("```") {
+            in_code_block = !in_code_block;
+            continue;
+        }
+
+        // Inside code block: keep content with indent
+        if in_code_block {
+            if !result.is_empty() {
+                result.push('\n');
+            }
+            result.push_str("  ");
+            result.push_str(trimmed);
+            continue;
+        }
+
+        // Skip empty lines (but preserve paragraph breaks)
+        if trimmed.is_empty() {
+            if !result.is_empty() && !result.ends_with('\n') {
+                result.push('\n');
+            }
+            continue;
+        }
+
+        if !result.is_empty() && !result.ends_with('\n') {
+            result.push('\n');
+        }
+
+        // Strip markdown headers
+        let content = trimmed
+            .strip_prefix("### ")
+            .or_else(|| trimmed.strip_prefix("## "))
+            .or_else(|| trimmed.strip_prefix("# "))
+            .unwrap_or(trimmed);
+
+        // Strip bold/italic markers and inline code backticks
+        let content = content.replace("**", "").replace("__", "").replace('`', "");
+        result.push_str(content.trim());
+    }
+
+    // Trim trailing whitespace/newlines
+    let trimmed = result.trim_end();
+    trimmed.to_string()
 }
 
 /// A text edit for auto-fixing a diagnostic.
@@ -429,9 +507,9 @@ impl LintDiagnostic {
         // Add primary label
         diag = diag.with_label(Span::new(self.start, self.end));
 
-        // Add help if present
+        // Add help if present (render as plain text for OxcDiagnostic)
         if let Some(help) = self.help {
-            diag = diag.with_help(help.to_string());
+            diag = diag.with_help(render_help(&help, HelpRenderTarget::PlainText));
         }
 
         // Add additional labels
@@ -476,11 +554,8 @@ mod tests {
         let level = HelpLevel::Full;
         let help = "**Why:** Use `:key` for tracking.\n\n```vue\n<li :key=\"id\">\n```";
         let result = level.process(help);
-        // Full mode now renders ANSI formatting
-        let expected = format!(
-            "{ANSI_BOLD}Why:{ANSI_BOLD_OFF} Use {ANSI_CYAN}:key{ANSI_CYAN_OFF} for tracking.\n\n{ANSI_DIM}  <li :key=\"id\">{ANSI_DIM_OFF}"
-        );
-        assert_eq!(result, Some(expected));
+        // Full mode preserves raw markdown
+        assert_eq!(result, Some(help.to_string()));
     }
 
     #[test]
@@ -569,5 +644,57 @@ mod tests {
     fn test_render_markdown_underscore_bold() {
         let result = render_markdown_to_ansi("__bold__ text");
         assert_eq!(result, format!("{ANSI_BOLD}bold{ANSI_BOLD_OFF} text"));
+    }
+
+    // render_help tests
+
+    #[test]
+    fn test_render_help_ansi() {
+        let md = "**bold** and `code`";
+        let result = render_help(md, HelpRenderTarget::Ansi);
+        assert_eq!(
+            result,
+            format!("{ANSI_BOLD}bold{ANSI_BOLD_OFF} and {ANSI_CYAN}code{ANSI_CYAN_OFF}")
+        );
+    }
+
+    #[test]
+    fn test_render_help_plain_text() {
+        let md = "**Why:** Use `:key` for tracking.\n\n```vue\n<li :key=\"id\">\n```";
+        let result = render_help(md, HelpRenderTarget::PlainText);
+        assert_eq!(result, "Why: Use :key for tracking.\n\n  <li :key=\"id\">");
+    }
+
+    #[test]
+    fn test_render_help_markdown_passthrough() {
+        let md = "**bold** and `code`";
+        let result = render_help(md, HelpRenderTarget::Markdown);
+        assert_eq!(result, md);
+    }
+
+    // strip_markdown tests
+
+    #[test]
+    fn test_strip_markdown_bold_and_code() {
+        let result = strip_markdown("**bold** and `code`");
+        assert_eq!(result, "bold and code");
+    }
+
+    #[test]
+    fn test_strip_markdown_headers() {
+        let result = strip_markdown("# Title\n## Subtitle\nBody text");
+        assert_eq!(result, "Title\nSubtitle\nBody text");
+    }
+
+    #[test]
+    fn test_strip_markdown_code_block() {
+        let result = strip_markdown("Before\n```vue\n<div>code</div>\n```\nAfter");
+        assert_eq!(result, "Before\n  <div>code</div>\nAfter");
+    }
+
+    #[test]
+    fn test_strip_markdown_plain_text() {
+        let result = strip_markdown("plain text");
+        assert_eq!(result, "plain text");
     }
 }

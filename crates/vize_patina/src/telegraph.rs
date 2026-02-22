@@ -21,7 +21,7 @@
 //!                              +-- OxlintBridge --> oxlint (future)
 //! ```
 
-use crate::diagnostic::Severity;
+use crate::diagnostic::{render_help, HelpRenderTarget, Severity};
 use crate::linter::LintResult;
 
 /// An emitter that can transmit lint diagnostics to a destination.
@@ -235,7 +235,11 @@ impl LspEmitter {
                     Severity::Warning => 2,
                 },
                 message: if let Some(help) = &d.help {
-                    format!("{}\n{}", d.message, help)
+                    format!(
+                        "{}\n{}",
+                        d.message,
+                        render_help(help, HelpRenderTarget::PlainText)
+                    )
                 } else {
                     d.message.to_string()
                 },
@@ -270,7 +274,11 @@ impl LspEmitter {
                         Severity::Warning => 2,
                     },
                     message: if let Some(help) = &d.help {
-                        format!("{}\n{}", d.message, help)
+                        format!(
+                            "{}\n{}",
+                            d.message,
+                            render_help(help, HelpRenderTarget::PlainText)
+                        )
                     } else {
                         d.message.to_string()
                     },
