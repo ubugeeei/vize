@@ -539,7 +539,7 @@ fn extract_normal_script_content(content: &str, source_is_ts: bool, output_is_ts
             // Run semantic analysis
             let semantic_ret = SemanticBuilder::new().build(&program2);
             if semantic_ret.errors.is_empty() {
-                let (symbols, scopes) = semantic_ret.semantic.into_symbol_table_and_scope_tree();
+                let scoping = semantic_ret.semantic.into_scoping();
 
                 // Transform TypeScript to JavaScript
                 // Use only_remove_type_imports to preserve imports that might be used in template
@@ -552,7 +552,7 @@ fn extract_normal_script_content(content: &str, source_is_ts: bool, output_is_ts
                 };
                 let transform_ret =
                     Transformer::new(&allocator2, std::path::Path::new(""), &transform_options)
-                        .build_with_symbols_and_scopes(symbols, scopes, &mut program2);
+                        .build_with_scoping(scoping, &mut program2);
 
                 if transform_ret.errors.is_empty() {
                     // Generate JavaScript code

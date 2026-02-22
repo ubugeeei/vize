@@ -176,9 +176,22 @@ export interface FormatOptions {
   useTabs?: boolean;
   semi?: boolean;
   singleQuote?: boolean;
+  jsxSingleQuote?: boolean;
+  trailingComma?: 'none' | 'es5' | 'all';
   bracketSpacing?: boolean;
   bracketSameLine?: boolean;
+  arrowParens?: 'always' | 'avoid';
+  endOfLine?: 'lf' | 'crlf' | 'cr' | 'auto';
+  quoteProps?: 'as-needed' | 'consistent' | 'preserve';
   singleAttributePerLine?: boolean;
+  vueIndentScriptAndStyle?: boolean;
+  sortAttributes?: boolean;
+  attributeSortOrder?: 'alphabetical' | 'as-written';
+  mergeBindAndNonBindAttrs?: boolean;
+  maxAttributesPerLine?: number | null;
+  attributeGroups?: string[][] | null;
+  normalizeDirectiveShorthands?: boolean;
+  sortBlocks?: boolean;
 }
 
 export interface FormatResult {

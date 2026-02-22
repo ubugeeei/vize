@@ -7,7 +7,7 @@
 //! - Type declarations
 
 use oxc_ast::ast::{
-    Argument, BindingPatternKind, Declaration, Expression, PropertyKey, Statement,
+    Argument, BindingPattern, Declaration, Expression, PropertyKey, Statement,
     VariableDeclarationKind,
 };
 use oxc_span::GetSpan;
@@ -249,8 +249,8 @@ fn process_variable_declarator(
     source: &str,
 ) {
     // Handle destructuring patterns
-    match &declarator.id.kind {
-        BindingPatternKind::BindingIdentifier(id) => {
+    match &declarator.id {
+        BindingPattern::BindingIdentifier(id) => {
             let name = id.name.as_str();
 
             // Record definition span for Go-to-Definition
@@ -413,7 +413,7 @@ fn process_variable_declarator(
             result.bindings.add(name, binding_type);
         }
 
-        BindingPatternKind::ObjectPattern(obj) => {
+        BindingPattern::ObjectPattern(obj) => {
             // Check if this is destructuring from defineProps or withDefaults(defineProps())
             let is_define_props = declarator.init.as_ref().is_some_and(|init| {
                 match init {
@@ -493,7 +493,7 @@ fn process_variable_declarator(
                 // Extract destructured property names
                 let mut destructured_props: Vec<CompactString> = Vec::new();
                 for prop in obj.properties.iter() {
-                    if let Some(name) = get_binding_pattern_name(&prop.value.kind) {
+                    if let Some(name) = get_binding_pattern_name(&prop.value) {
                         destructured_props.push(CompactString::new(&name));
                     }
                 }
@@ -521,7 +521,7 @@ fn process_variable_declarator(
                 // Indirect destructuring: const { count } = injectVar
                 let mut destructured_props: Vec<CompactString> = Vec::new();
                 for prop in obj.properties.iter() {
-                    if let Some(name) = get_binding_pattern_name(&prop.value.kind) {
+                    if let Some(name) = get_binding_pattern_name(&prop.value) {
                         destructured_props.push(CompactString::new(&name));
                     }
                 }
@@ -537,7 +537,7 @@ fn process_variable_declarator(
                 // Destructuring reactive variable: const { count } = state
                 let mut destructured_props: Vec<CompactString> = Vec::new();
                 for prop in obj.properties.iter() {
-                    if let Some(name) = get_binding_pattern_name(&prop.value.kind) {
+                    if let Some(name) = get_binding_pattern_name(&prop.value) {
                         destructured_props.push(CompactString::new(&name));
                     }
                 }
@@ -548,7 +548,7 @@ fn process_variable_declarator(
                 // Direct destructuring: const { count } = reactive({ count: 0 })
                 let mut destructured_props: Vec<CompactString> = Vec::new();
                 for prop in obj.properties.iter() {
-                    if let Some(name) = get_binding_pattern_name(&prop.value.kind) {
+                    if let Some(name) = get_binding_pattern_name(&prop.value) {
                         destructured_props.push(CompactString::new(&name));
                     }
                 }
@@ -586,7 +586,7 @@ fn process_variable_declarator(
                     _ => None,
                 };
 
-                if let Some(local_name) = get_binding_pattern_name(&prop.value.kind) {
+                if let Some(local_name) = get_binding_pattern_name(&prop.value) {
                     // If destructuring from defineProps, use Props binding type
                     let binding_type = if is_define_props {
                         BindingType::Props
@@ -604,8 +604,7 @@ fn process_variable_declarator(
                         // Extract default value if present (assignment pattern)
                         let default_value = if prop.shorthand {
                             // Check if the value is an assignment pattern with default
-                            if let BindingPatternKind::AssignmentPattern(assign) = &prop.value.kind
-                            {
+                            if let BindingPattern::AssignmentPattern(assign) = &prop.value {
                                 Some(CompactString::new(
                                     &source[assign.right.span().start as usize
                                         ..assign.right.span().end as usize],
@@ -624,7 +623,7 @@ fn process_variable_declarator(
 
             // Handle rest element
             if let Some(rest) = &obj.rest {
-                if let Some(name) = get_binding_pattern_name(&rest.argument.kind) {
+                if let Some(name) = get_binding_pattern_name(&rest.argument) {
                     let binding_type = if is_define_props {
                         BindingType::Props
                     } else {
@@ -647,23 +646,23 @@ fn process_variable_declarator(
             }
         }
 
-        BindingPatternKind::ArrayPattern(arr) => {
+        BindingPattern::ArrayPattern(arr) => {
             // Handle array destructuring
             let arr_binding_type = infer_destructure_binding_type(kind, declarator.init.as_ref());
             for elem in arr.elements.iter().flatten() {
-                if let Some(name) = get_binding_pattern_name(&elem.kind) {
+                if let Some(name) = get_binding_pattern_name(elem) {
                     result.bindings.add(&name, arr_binding_type);
                 }
             }
             if let Some(rest) = &arr.rest {
-                if let Some(name) = get_binding_pattern_name(&rest.argument.kind) {
+                if let Some(name) = get_binding_pattern_name(&rest.argument) {
                     result.bindings.add(&name, arr_binding_type);
                 }
             }
         }
 
-        BindingPatternKind::AssignmentPattern(assign) => {
-            if let Some(name) = get_binding_pattern_name(&assign.left.kind) {
+        BindingPattern::AssignmentPattern(assign) => {
+            if let Some(name) = get_binding_pattern_name(&assign.left) {
                 let binding_type = get_binding_type_from_kind(kind);
                 result.bindings.add(&name, binding_type);
             }
@@ -672,12 +671,10 @@ fn process_variable_declarator(
 }
 
 /// Get binding name from binding pattern kind
-fn get_binding_pattern_name(kind: &BindingPatternKind<'_>) -> Option<String> {
-    match kind {
-        BindingPatternKind::BindingIdentifier(id) => Some(id.name.to_string()),
-        BindingPatternKind::AssignmentPattern(assign) => {
-            get_binding_pattern_name(&assign.left.kind)
-        }
+fn get_binding_pattern_name(pattern: &BindingPattern<'_>) -> Option<String> {
+    match pattern {
+        BindingPattern::BindingIdentifier(id) => Some(id.name.to_string()),
+        BindingPattern::AssignmentPattern(assign) => get_binding_pattern_name(&assign.left),
         _ => None,
     }
 }

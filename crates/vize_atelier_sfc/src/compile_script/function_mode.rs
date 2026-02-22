@@ -7,8 +7,8 @@ use std::collections::HashSet;
 
 use oxc_allocator::Allocator;
 use oxc_ast::ast::{ImportDeclarationSpecifier, Statement};
-use oxc_ast::visit::walk::{walk_arrow_function_expression, walk_for_of_statement, walk_function};
-use oxc_ast::Visit;
+use oxc_ast_visit::walk::{walk_arrow_function_expression, walk_for_of_statement, walk_function};
+use oxc_ast_visit::Visit;
 use oxc_parser::Parser;
 use oxc_span::SourceType;
 use oxc_syntax::scope::ScopeFlags;

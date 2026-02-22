@@ -213,22 +213,29 @@ impl MaestroServer {
 #[tower_lsp::async_trait]
 impl LanguageServer for MaestroServer {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
-        // Set workspace root from root_uri or workspace_folders
+        // Resolve workspace root
+        let workspace_path = params
+            .root_uri
+            .as_ref()
+            .and_then(|u| u.to_file_path().ok())
+            .or_else(|| {
+                params
+                    .workspace_folders
+                    .as_ref()
+                    .and_then(|f| f.first())
+                    .and_then(|f| f.uri.to_file_path().ok())
+            });
+
+        // Load format config from workspace root (always, regardless of feature)
+        if let Some(ref path) = workspace_path {
+            self.state.load_format_config(path);
+        }
+
+        // Set workspace root for native features (tsgo, batch checker)
         #[cfg(feature = "native")]
-        {
-            if let Some(root_uri) = params.root_uri.as_ref() {
-                if let Ok(path) = root_uri.to_file_path() {
-                    tracing::info!("Setting workspace root: {:?}", path);
-                    self.state.set_workspace_root(path);
-                }
-            } else if let Some(folders) = params.workspace_folders.as_ref() {
-                if let Some(folder) = folders.first() {
-                    if let Ok(path) = folder.uri.to_file_path() {
-                        tracing::info!("Setting workspace root from folder: {:?}", path);
-                        self.state.set_workspace_root(path);
-                    }
-                }
-            }
+        if let Some(path) = workspace_path {
+            tracing::info!("Setting workspace root: {:?}", path);
+            self.state.set_workspace_root(path);
         }
 
         Ok(InitializeResult {
@@ -821,6 +828,176 @@ impl LanguageServer for MaestroServer {
             Ok(None)
         } else {
             Ok(Some(ranges))
+        }
+    }
+
+    async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
+        let uri = &params.text_document.uri;
+
+        let Some(doc) = self.state.documents.get(uri) else {
+            return Ok(None);
+        };
+
+        let content = doc.text();
+        let options = self.state.get_format_options();
+        Ok(format_document(&content, &options))
+    }
+
+    async fn range_formatting(
+        &self,
+        params: DocumentRangeFormattingParams,
+    ) -> Result<Option<Vec<TextEdit>>> {
+        // For range formatting, format the entire document and return only the relevant edit.
+        // This is consistent with how Prettier handles range formatting in Vue SFCs.
+        let uri = &params.text_document.uri;
+
+        let Some(doc) = self.state.documents.get(uri) else {
+            return Ok(None);
+        };
+
+        let content = doc.text();
+        let options = self.state.get_format_options();
+        Ok(format_document(&content, &options))
+    }
+}
+
+/// Format a document and return TextEdits for the LSP client.
+///
+/// Returns `Some(vec![])` if no changes needed, `Some(vec![edit])` with the
+/// full-document replacement, or `None` on formatting error.
+fn format_document(content: &str, options: &vize_glyph::FormatOptions) -> Option<Vec<TextEdit>> {
+    let allocator = vize_glyph::Allocator::with_capacity(content.len());
+
+    let formatted = match vize_glyph::format_sfc_with_allocator(content, options, &allocator) {
+        Ok(result) => result,
+        Err(_) => return None,
+    };
+
+    if !formatted.changed {
+        return Some(vec![]);
+    }
+
+    let line_count = content.lines().count() as u32;
+    let last_line_len = content.lines().last().map_or(0, |l| l.len()) as u32;
+    Some(vec![TextEdit {
+        range: Range {
+            start: Position::new(0, 0),
+            end: Position::new(line_count, last_line_len),
+        },
+        new_text: formatted.code,
+    }])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_document_is_idempotent() {
+        let source = "<template>\n<div>hello</div>\n</template>\n";
+        let options = vize_glyph::FormatOptions::default();
+
+        // First format
+        let result = format_document(source, &options);
+        assert!(result.is_some());
+        let edits = result.unwrap();
+        assert!(!edits.is_empty(), "expected edits on first format");
+
+        // Second format on the already-formatted output should produce no changes
+        let formatted = &edits[0].new_text;
+        let result2 = format_document(formatted, &options);
+        assert!(result2.is_some());
+        let edits2 = result2.unwrap();
+        assert!(
+            edits2.is_empty(),
+            "expected no edits on second format (idempotent)"
+        );
+    }
+
+    #[test]
+    fn format_document_returns_edit_for_unformatted() {
+        // Missing indentation should trigger formatting
+        let source = "<template>\n<div>hello</div>\n</template>\n";
+        let options = vize_glyph::FormatOptions::default();
+        let result = format_document(source, &options);
+        assert!(result.is_some());
+        let edits = result.unwrap();
+        if !edits.is_empty() {
+            assert_eq!(edits.len(), 1);
+            let edit = &edits[0];
+            // Range should start at beginning of document
+            assert_eq!(edit.range.start, Position::new(0, 0));
+            // new_text should contain the formatted content
+            assert!(edit.new_text.contains("<template>"));
+        }
+    }
+
+    #[test]
+    fn format_document_respects_options() {
+        let source = "<script>\nconst x = 1;\n</script>\n";
+        let mut options = vize_glyph::FormatOptions::default();
+        options.semi = false;
+        let result = format_document(source, &options);
+        assert!(result.is_some());
+        let edits = result.unwrap();
+        if !edits.is_empty() {
+            // With semi: false, semicolons should be removed
+            assert!(
+                !edits[0].new_text.contains("const x = 1;")
+                    || edits[0].new_text.contains("const x = 1\n")
+            );
+        }
+    }
+
+    #[test]
+    fn format_document_edit_covers_full_range() {
+        let source = "<template>\n<div   class=\"a\"   id=\"b\" >\nhello\n</div>\n</template>\n";
+        let options = vize_glyph::FormatOptions::default();
+        let result = format_document(source, &options);
+        assert!(result.is_some());
+        let edits = result.unwrap();
+        if !edits.is_empty() {
+            let edit = &edits[0];
+            assert_eq!(edit.range.start, Position::new(0, 0));
+            // End line should cover the full document
+            let line_count = source.lines().count() as u32;
+            assert_eq!(edit.range.end.line, line_count);
+        }
+    }
+
+    #[test]
+    fn format_document_with_single_quote() {
+        let source = "<script>\nconst x = \"hello\";\n</script>\n";
+        let mut options = vize_glyph::FormatOptions::default();
+        options.single_quote = true;
+        let result = format_document(source, &options);
+        assert!(result.is_some());
+        let edits = result.unwrap();
+        if !edits.is_empty() {
+            assert!(edits[0].new_text.contains("'hello'"));
+        }
+    }
+
+    #[test]
+    fn format_document_with_config_loaded_from_state() {
+        let state = ServerState::new();
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("vize.config.json"),
+            r#"{ "fmt": { "singleQuote": true } }"#,
+        )
+        .unwrap();
+        state.load_format_config(dir.path());
+
+        let options = state.get_format_options();
+        assert!(options.single_quote);
+
+        let source = "<script>\nconst x = \"hello\";\n</script>\n";
+        let result = format_document(source, &options);
+        assert!(result.is_some());
+        let edits = result.unwrap();
+        if !edits.is_empty() {
+            assert!(edits[0].new_text.contains("'hello'"));
         }
     }
 }

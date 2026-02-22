@@ -6,6 +6,8 @@
  * - No proper indentation
  * - Missing spaces around operators
  * - Condensed CSS rules
+ * - Non-canonical block order (template first, then script)
+ * - Long-form directives (v-bind:, v-on:) to demonstrate normalization
  *
  * Used to showcase the Glyph formatter's capabilities.
  *
@@ -17,7 +19,7 @@ export const GLYPH_PRESET = `<template>
 <div class="container">
 <h1>{{ count }}</h1>
 <p>Doubled: {{ doubled }}</p>
-<div class="buttons">
+<div v-bind:class="cls" v-on:click="handle" id="app" ref="el">
 <button @click="decrement">-1</button>
 <button @click="increment">+1</button>
 </div>

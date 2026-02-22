@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use vize_glyph::FormatOptions;
 
 /// Top-level vize configuration.
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -16,6 +17,10 @@ pub struct VizeConfig {
     /// Type checking configuration.
     #[serde(default)]
     pub check: CheckConfig,
+
+    /// Formatting configuration.
+    #[serde(default)]
+    pub fmt: FormatOptions,
 }
 
 /// Configuration for the `check` command.
@@ -95,10 +100,133 @@ pub const VIZE_CONFIG_SCHEMA: &str = r#"{
         }
       },
       "additionalProperties": false
+    },
+    "fmt": {
+      "type": "object",
+      "description": "Formatting configuration (Prettier-compatible)",
+      "properties": {
+        "printWidth": { "type": "integer", "default": 100, "description": "Maximum line width" },
+        "tabWidth": { "type": "integer", "default": 2, "description": "Number of spaces per indentation level" },
+        "useTabs": { "type": "boolean", "default": false, "description": "Use tabs instead of spaces" },
+        "semi": { "type": "boolean", "default": true, "description": "Print semicolons at the ends of statements" },
+        "singleQuote": { "type": "boolean", "default": false, "description": "Use single quotes instead of double quotes" },
+        "jsxSingleQuote": { "type": "boolean", "default": false, "description": "Use single quotes in JSX" },
+        "trailingComma": { "type": "string", "enum": ["none", "es5", "all"], "default": "all", "description": "Print trailing commas wherever possible" },
+        "bracketSpacing": { "type": "boolean", "default": true, "description": "Print spaces between brackets in object literals" },
+        "bracketSameLine": { "type": "boolean", "default": false, "description": "Put > of multi-line element at end of last line" },
+        "arrowParens": { "type": "string", "enum": ["always", "avoid"], "default": "always", "description": "Include parens around sole arrow function parameter" },
+        "endOfLine": { "type": "string", "enum": ["lf", "crlf", "cr", "auto"], "default": "lf", "description": "End of line style" },
+        "quoteProps": { "type": "string", "enum": ["as-needed", "consistent", "preserve"], "default": "as-needed" },
+        "singleAttributePerLine": { "type": "boolean", "default": false, "description": "Put each HTML attribute on its own line" },
+        "vueIndentScriptAndStyle": { "type": "boolean", "default": false, "description": "Indent script and style tags in Vue files" },
+        "sortAttributes": { "type": "boolean", "default": true, "description": "Sort HTML attributes in template" },
+        "attributeSortOrder": { "type": "string", "enum": ["alphabetical", "as-written"], "default": "alphabetical", "description": "Sort order within attribute groups" },
+        "mergeBindAndNonBindAttrs": { "type": "boolean", "default": false, "description": "Merge :xxx and xxx attributes for sorting" },
+        "maxAttributesPerLine": { "type": "integer", "minimum": 1, "description": "Max attributes per line before wrapping" },
+        "attributeGroups": { "type": "array", "items": { "type": "array", "items": { "type": "string" } }, "description": "Custom attribute sort groups (overrides Vue style guide order)" },
+        "normalizeDirectiveShorthands": { "type": "boolean", "default": true, "description": "Normalize v-bind:/v-on:/v-slot: to :/@ /#" }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false
 }"#;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn load_config_returns_defaults_when_no_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = load_config(Some(dir.path()));
+        assert_eq!(config.fmt.print_width, 100);
+        assert_eq!(config.fmt.tab_width, 2);
+        assert!(!config.fmt.use_tabs);
+        assert!(config.fmt.semi);
+        assert!(!config.fmt.single_quote);
+        assert!(config.fmt.sort_attributes);
+        assert!(config.fmt.normalize_directive_shorthands);
+    }
+
+    #[test]
+    fn load_config_parses_fmt_section() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("vize.config.json");
+        std::fs::write(
+            &config_path,
+            r#"{
+                "fmt": {
+                    "printWidth": 80,
+                    "tabWidth": 4,
+                    "useTabs": true,
+                    "semi": false,
+                    "singleQuote": true,
+                    "sortAttributes": false,
+                    "normalizeDirectiveShorthands": false
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let config = load_config(Some(dir.path()));
+        assert_eq!(config.fmt.print_width, 80);
+        assert_eq!(config.fmt.tab_width, 4);
+        assert!(config.fmt.use_tabs);
+        assert!(!config.fmt.semi);
+        assert!(config.fmt.single_quote);
+        assert!(!config.fmt.sort_attributes);
+        assert!(!config.fmt.normalize_directive_shorthands);
+    }
+
+    #[test]
+    fn load_config_partial_fmt_uses_defaults_for_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("vize.config.json");
+        std::fs::write(&config_path, r#"{ "fmt": { "printWidth": 120 } }"#).unwrap();
+
+        let config = load_config(Some(dir.path()));
+        assert_eq!(config.fmt.print_width, 120);
+        // defaults preserved
+        assert_eq!(config.fmt.tab_width, 2);
+        assert!(!config.fmt.use_tabs);
+        assert!(config.fmt.semi);
+    }
+
+    #[test]
+    fn load_config_returns_defaults_on_invalid_json() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("vize.config.json");
+        std::fs::write(&config_path, "not valid json {{{").unwrap();
+
+        let config = load_config(Some(dir.path()));
+        // should fall back to defaults
+        assert_eq!(config.fmt.print_width, 100);
+        assert_eq!(config.fmt.tab_width, 2);
+    }
+
+    #[test]
+    fn load_config_with_check_and_fmt() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("vize.config.json");
+        std::fs::write(
+            &config_path,
+            r#"{
+                "check": { "globals": ["$t", "$route"] },
+                "fmt": { "singleQuote": true, "maxAttributesPerLine": 3 }
+            }"#,
+        )
+        .unwrap();
+
+        let config = load_config(Some(dir.path()));
+        // check section
+        let globals = config.check.globals.unwrap();
+        assert_eq!(globals, vec!["$t", "$route"]);
+        // fmt section
+        assert!(config.fmt.single_quote);
+        assert_eq!(config.fmt.max_attributes_per_line, Some(3));
+    }
+}
 
 /// Write the JSON Schema to `node_modules/.vize/vize.config.schema.json`.
 pub fn write_schema(dir: Option<&Path>) {

@@ -648,6 +648,10 @@ onMounted(async () => {
           <span class="tab-name">Patina</span>
           <span class="tab-desc">linter</span>
         </button>
+        <button :class="['main-tab', { active: mainTab === 'glyph' }]" @click="mainTab = 'glyph'">
+          <span class="tab-name">Glyph</span>
+          <span class="tab-desc">formatter</span>
+        </button>
         <button :class="['main-tab', { active: mainTab === 'canon' }]" @click="mainTab = 'canon'">
           <span class="tab-name">Canon</span>
           <span class="tab-desc">typecheck</span>
@@ -670,15 +674,6 @@ onMounted(async () => {
           <span class="tab-name">Musea</span>
           <span class="tab-desc">story</span>
         </button>
-        <!-- Glyph tab hidden for now
-        <button
-          :class="['main-tab', { active: mainTab === 'glyph' }]"
-          @click="mainTab = 'glyph'"
-        >
-          <span class="tab-name">Glyph</span>
-          <span class="tab-desc">formatter</span>
-        </button>
-        -->
       </div>
 
       <div class="options">
@@ -788,11 +783,9 @@ onMounted(async () => {
         <MuseaPlayground :compiler="compiler" />
       </template>
 
-      <!-- Glyph View - hidden for now
       <template v-else-if="mainTab === 'glyph'">
         <GlyphPlayground :compiler="compiler" />
       </template>
-      -->
 
       <!-- Atelier View -->
       <template v-else>

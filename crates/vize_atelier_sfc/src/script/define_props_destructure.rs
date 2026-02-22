@@ -6,9 +6,7 @@
 //! Uses OXC for AST-based analysis and transformation.
 
 use oxc_allocator::Allocator;
-use oxc_ast::ast::{
-    BindingPattern, BindingPatternKind, Expression, ObjectPattern, Program, Statement,
-};
+use oxc_ast::ast::{BindingPattern, Expression, ObjectPattern, Program, Statement};
 use oxc_parser::Parser;
 use oxc_span::{GetSpan, SourceType};
 use vize_carton::FxHashMap;
@@ -56,10 +54,10 @@ pub fn process_props_destructure(
         let key = resolve_object_key(&prop.key, source);
 
         if let Some(key) = key {
-            match &prop.value.kind {
+            match &prop.value {
                 // Default value: { foo = 123 }
-                BindingPatternKind::AssignmentPattern(assign) => {
-                    if let BindingPatternKind::BindingIdentifier(id) = &assign.left.kind {
+                BindingPattern::AssignmentPattern(assign) => {
+                    if let BindingPattern::BindingIdentifier(id) = &assign.left {
                         let local = id.name.to_string();
                         let default_expr = &source
                             [assign.right.span().start as usize..assign.right.span().end as usize];
@@ -83,7 +81,7 @@ pub fn process_props_destructure(
                     }
                 }
                 // Simple destructure: { foo } or { foo: bar }
-                BindingPatternKind::BindingIdentifier(id) => {
+                BindingPattern::BindingIdentifier(id) => {
                     let local = id.name.to_string();
 
                     result.bindings.insert(
@@ -112,7 +110,7 @@ pub fn process_props_destructure(
 
     // Handle rest spread: { ...rest }
     if let Some(rest) = &pattern.rest {
-        if let BindingPatternKind::BindingIdentifier(id) = &rest.argument.kind {
+        if let BindingPattern::BindingIdentifier(id) = &rest.argument {
             let rest_name = id.name.to_string();
             result.rest_id = Some(rest_name.clone());
             binding_metadata.insert(rest_name, BindingType::SetupReactiveConst);
@@ -771,11 +769,11 @@ fn collect_from_expression<'a>(
 }
 
 fn register_binding_pattern(pattern: &BindingPattern<'_>, bindings: &mut FxHashMap<String, bool>) {
-    match &pattern.kind {
-        BindingPatternKind::BindingIdentifier(id) => {
+    match pattern {
+        BindingPattern::BindingIdentifier(id) => {
             bindings.insert(id.name.to_string(), true);
         }
-        BindingPatternKind::ObjectPattern(obj) => {
+        BindingPattern::ObjectPattern(obj) => {
             for prop in obj.properties.iter() {
                 register_binding_pattern(&prop.value, bindings);
             }
@@ -783,7 +781,7 @@ fn register_binding_pattern(pattern: &BindingPattern<'_>, bindings: &mut FxHashM
                 register_binding_pattern(&rest.argument, bindings);
             }
         }
-        BindingPatternKind::ArrayPattern(arr) => {
+        BindingPattern::ArrayPattern(arr) => {
             for elem in arr.elements.iter().flatten() {
                 register_binding_pattern(elem, bindings);
             }
@@ -791,7 +789,7 @@ fn register_binding_pattern(pattern: &BindingPattern<'_>, bindings: &mut FxHashM
                 register_binding_pattern(&rest.argument, bindings);
             }
         }
-        BindingPatternKind::AssignmentPattern(assign) => {
+        BindingPattern::AssignmentPattern(assign) => {
             register_binding_pattern(&assign.left, bindings);
         }
     }

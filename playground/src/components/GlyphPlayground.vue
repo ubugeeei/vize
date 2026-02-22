@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, watch, computed, inject, type ComputedRef } from "vue";
+import { ref, watch, computed, inject, toRaw, onMounted, onUnmounted, type ComputedRef } from "vue";
 import MonacoEditor from "./MonacoEditor.vue";
 import CodeHighlight from "./CodeHighlight.vue";
 import type { WasmModule, FormatOptions, FormatResult } from "../wasm/index";
+import { getWasm } from "../wasm/index";
 import { GLYPH_PRESET } from "./presets/glyph";
 import { mdiFileEdit, mdiAutoFix, mdiCheck } from "@mdi/js";
 
@@ -14,6 +15,7 @@ const theme = computed<"dark" | "light">(() => _injectedTheme?.value ?? "light")
 
 const source = ref(GLYPH_PRESET);
 const formatResult = ref<FormatResult | null>(null);
+const formatKey = ref(0);
 const error = ref<string | null>(null);
 const formatTime = ref<number | null>(null);
 const activeTab = ref<"formatted" | "diff" | "options">("formatted");
@@ -25,9 +27,21 @@ const options = ref<FormatOptions>({
   useTabs: false,
   semi: true,
   singleQuote: false,
+  jsxSingleQuote: false,
+  trailingComma: "all",
   bracketSpacing: true,
   bracketSameLine: false,
+  arrowParens: "always",
+  endOfLine: "lf",
+  quoteProps: "as-needed",
   singleAttributePerLine: false,
+  vueIndentScriptAndStyle: false,
+  sortAttributes: true,
+  attributeSortOrder: "alphabetical",
+  mergeBindAndNonBindAttrs: false,
+  maxAttributesPerLine: null,
+  normalizeDirectiveShorthands: true,
+  sortBlocks: true,
 });
 
 const diffLines = computed(() => {
@@ -68,14 +82,21 @@ const diffLines = computed(() => {
 });
 
 async function format() {
-  if (!props.compiler) return;
+  const compiler = getWasm();
+  if (!compiler) return;
 
   const startTime = performance.now();
   error.value = null;
 
   try {
-    const result = props.compiler.formatSfc(source.value, options.value);
+    const raw = toRaw(options.value);
+    const opts: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(raw)) {
+      if (v != null) opts[k] = v;
+    }
+    const result = compiler.formatSfc(source.value, opts);
     formatResult.value = result;
+    formatKey.value++;
     formatTime.value = performance.now() - startTime;
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
@@ -87,31 +108,52 @@ function copyToClipboard(text: string) {
   navigator.clipboard.writeText(text);
 }
 
-function applyFormatted() {
-  if (formatResult.value) {
-    source.value = formatResult.value.code;
-  }
-}
-
 let formatTimer: ReturnType<typeof setTimeout> | null = null;
 
 watch(
   [source, options],
   () => {
+    if (!getWasm()) return;
     if (formatTimer) clearTimeout(formatTimer);
     formatTimer = setTimeout(format, 300);
   },
-  { immediate: true, deep: true },
+  { deep: true },
 );
 
-watch(
-  () => props.compiler,
-  () => {
-    if (props.compiler) {
-      format();
+let hasInitialized = false;
+let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+function tryInitialize() {
+  const compiler = getWasm();
+  if (compiler && !hasInitialized) {
+    hasInitialized = true;
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
     }
-  },
-);
+    format();
+  }
+}
+
+onMounted(() => {
+  tryInitialize();
+  if (!hasInitialized) {
+    pollInterval = setInterval(tryInitialize, 100);
+    setTimeout(() => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    }, 10000);
+  }
+});
+
+onUnmounted(() => {
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+});
 </script>
 
 <template>
@@ -128,7 +170,7 @@ watch(
         </div>
       </div>
       <div class="editor-container">
-        <MonacoEditor v-model="source" language="vue" :theme="theme" />
+        <MonacoEditor v-model="source" language="html" :theme="theme" />
       </div>
     </div>
 
@@ -176,9 +218,6 @@ watch(
             <div class="output-header-bar">
               <span class="output-title">Formatted Code</span>
               <div class="output-actions">
-                <button v-if="formatResult?.changed" @click="applyFormatted" class="btn-apply">
-                  Apply Changes
-                </button>
                 <button @click="copyToClipboard(formatResult?.code || '')" class="btn-ghost">
                   Copy
                 </button>
@@ -186,8 +225,9 @@ watch(
             </div>
             <div class="code-container">
               <CodeHighlight
+                :key="formatKey"
                 :code="formatResult.code"
-                language="vue"
+                language="html"
                 show-line-numbers
                 :theme="theme"
               />
@@ -326,12 +366,168 @@ watch(
                     <div class="toggle-main">
                       <input
                         type="checkbox"
+                        v-model="options.jsxSingleQuote"
+                        class="toggle-checkbox"
+                      />
+                      <span class="toggle-name">JSX Single Quotes</span>
+                    </div>
+                    <span class="toggle-desc">Use single quotes in JSX</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="options-section">
+                <h4 class="section-title">Trailing / Parens</h4>
+                <div class="options-grid">
+                  <label class="option-card">
+                    <div class="option-header">
+                      <span class="option-name">Trailing Comma</span>
+                      <select v-model="options.trailingComma" class="option-select">
+                        <option value="all">All</option>
+                        <option value="es5">ES5</option>
+                        <option value="none">None</option>
+                      </select>
+                    </div>
+                    <span class="option-desc">Print trailing commas wherever possible</span>
+                  </label>
+                  <label class="option-card">
+                    <div class="option-header">
+                      <span class="option-name">Arrow Parens</span>
+                      <select v-model="options.arrowParens" class="option-select">
+                        <option value="always">Always</option>
+                        <option value="avoid">Avoid</option>
+                      </select>
+                    </div>
+                    <span class="option-desc"
+                      >Parentheses around a sole arrow function parameter</span
+                    >
+                  </label>
+                  <label class="option-card">
+                    <div class="option-header">
+                      <span class="option-name">Quote Props</span>
+                      <select v-model="options.quoteProps" class="option-select">
+                        <option value="as-needed">As Needed</option>
+                        <option value="consistent">Consistent</option>
+                        <option value="preserve">Preserve</option>
+                      </select>
+                    </div>
+                    <span class="option-desc">When to quote object properties</span>
+                  </label>
+                  <label class="option-card">
+                    <div class="option-header">
+                      <span class="option-name">End of Line</span>
+                      <select v-model="options.endOfLine" class="option-select">
+                        <option value="lf">LF</option>
+                        <option value="crlf">CRLF</option>
+                        <option value="cr">CR</option>
+                        <option value="auto">Auto</option>
+                      </select>
+                    </div>
+                    <span class="option-desc">End of line style</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="options-section">
+                <h4 class="section-title">Vue SFC</h4>
+                <div class="toggle-grid" style="margin-bottom: 0.75rem">
+                  <label class="toggle-card">
+                    <div class="toggle-main">
+                      <input type="checkbox" v-model="options.sortBlocks" class="toggle-checkbox" />
+                      <span class="toggle-name">Sort Blocks</span>
+                    </div>
+                    <span class="toggle-desc"
+                      >Reorder blocks: script → setup → template → style</span
+                    >
+                  </label>
+                </div>
+                <div class="options-grid">
+                  <label class="option-card">
+                    <div class="option-header">
+                      <span class="option-name">Attribute Sort Order</span>
+                      <select v-model="options.attributeSortOrder" class="option-select">
+                        <option value="alphabetical">Alphabetical</option>
+                        <option value="as-written">As Written</option>
+                      </select>
+                    </div>
+                    <span class="option-desc">How to sort attributes within priority groups</span>
+                  </label>
+                  <label class="option-card">
+                    <div class="option-header">
+                      <span class="option-name">Max Attrs Per Line</span>
+                      <input
+                        type="number"
+                        :value="options.maxAttributesPerLine ?? ''"
+                        @input="
+                          options.maxAttributesPerLine =
+                            ($event.target as HTMLInputElement).value === ''
+                              ? null
+                              : Number(($event.target as HTMLInputElement).value)
+                        "
+                        min="1"
+                        max="20"
+                        placeholder="auto"
+                        class="option-input"
+                      />
+                    </div>
+                    <span class="option-desc">Max attributes per line before wrapping</span>
+                  </label>
+                </div>
+                <div class="toggle-grid" style="margin-top: 0.75rem">
+                  <label class="toggle-card">
+                    <div class="toggle-main">
+                      <input
+                        type="checkbox"
+                        v-model="options.sortAttributes"
+                        class="toggle-checkbox"
+                      />
+                      <span class="toggle-name">Sort Attributes</span>
+                    </div>
+                    <span class="toggle-desc">Sort HTML attributes in template</span>
+                  </label>
+                  <label class="toggle-card">
+                    <div class="toggle-main">
+                      <input
+                        type="checkbox"
+                        v-model="options.normalizeDirectiveShorthands"
+                        class="toggle-checkbox"
+                      />
+                      <span class="toggle-name">Normalize Directives</span>
+                    </div>
+                    <span class="toggle-desc">Normalize v-bind/v-on/v-slot to shorthand</span>
+                  </label>
+                  <label class="toggle-card">
+                    <div class="toggle-main">
+                      <input
+                        type="checkbox"
                         v-model="options.singleAttributePerLine"
                         class="toggle-checkbox"
                       />
                       <span class="toggle-name">Single Attribute Per Line</span>
                     </div>
                     <span class="toggle-desc">Enforce single attribute per line in templates</span>
+                  </label>
+                  <label class="toggle-card">
+                    <div class="toggle-main">
+                      <input
+                        type="checkbox"
+                        v-model="options.vueIndentScriptAndStyle"
+                        class="toggle-checkbox"
+                      />
+                      <span class="toggle-name">Indent Script/Style</span>
+                    </div>
+                    <span class="toggle-desc">Indent code inside script and style tags</span>
+                  </label>
+                  <label class="toggle-card">
+                    <div class="toggle-main">
+                      <input
+                        type="checkbox"
+                        v-model="options.mergeBindAndNonBindAttrs"
+                        class="toggle-checkbox"
+                      />
+                      <span class="toggle-name">Merge Bind Attrs</span>
+                    </div>
+                    <span class="toggle-desc">Merge bind and non-bind attrs for sorting</span>
                   </label>
                 </div>
               </div>
@@ -400,8 +596,8 @@ watch(
 .perf-badge {
   font-size: 0.625rem;
   padding: 0.125rem 0.375rem;
-  background: rgba(74, 222, 128, 0.15);
-  color: #4ade80;
+  background: var(--color-success-bg);
+  color: var(--color-success);
   border-radius: 3px;
   font-family: "JetBrains Mono", monospace;
 }
@@ -415,13 +611,13 @@ watch(
 }
 
 .status-badge.changed {
-  background: rgba(245, 158, 11, 0.2);
-  color: #f59e0b;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .status-badge.unchanged {
-  background: rgba(74, 222, 128, 0.2);
-  color: #4ade80;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .panel-actions {
@@ -485,16 +681,16 @@ watch(
 
 /* Error State */
 .error-panel {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
   border-radius: 6px;
   overflow: hidden;
 }
 
 .error-header {
   padding: 0.5rem 0.75rem;
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
+  background: var(--color-error-bg);
+  color: var(--color-error);
   font-size: 0.75rem;
   font-weight: 600;
 }
@@ -502,7 +698,7 @@ watch(
 .error-content {
   padding: 0.75rem;
   font-size: 0.75rem;
-  color: #fca5a5;
+  color: var(--color-error);
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
@@ -514,8 +710,8 @@ watch(
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
-  background: linear-gradient(135deg, rgba(163, 72, 40, 0.15), rgba(217, 119, 6, 0.15));
-  border: 1px solid rgba(163, 72, 40, 0.3);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
   border-radius: 4px 4px 0 0;
   border-bottom: none;
 }
@@ -531,21 +727,6 @@ watch(
 .output-actions {
   display: flex;
   gap: 0.5rem;
-}
-
-.btn-apply {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.625rem;
-  background: var(--accent-rust);
-  border: none;
-  border-radius: 3px;
-  color: white;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.btn-apply:hover {
-  background: #8b3720;
 }
 
 /* Formatted Output */
@@ -583,13 +764,13 @@ watch(
 }
 
 .diff-stats .additions {
-  background: rgba(74, 222, 128, 0.15);
-  color: #4ade80;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .diff-stats .deletions {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
+  background: var(--color-error-bg);
+  color: var(--color-error);
 }
 
 .success-state {
@@ -598,7 +779,7 @@ watch(
   justify-content: center;
   gap: 0.5rem;
   padding: 2rem;
-  color: #4ade80;
+  color: var(--color-success);
   font-size: 0.875rem;
 }
 
@@ -656,13 +837,13 @@ watch(
 }
 
 .diff-removed {
-  background: rgba(239, 68, 68, 0.1);
-  color: #fca5a5;
+  background: var(--color-error-bg);
+  color: var(--color-error);
 }
 
 .diff-added {
-  background: rgba(74, 222, 128, 0.1);
-  color: #86efac;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .line-prefix {
@@ -673,11 +854,11 @@ watch(
 }
 
 .diff-removed .line-prefix {
-  color: #f87171;
+  color: var(--color-error);
 }
 
 .diff-added .line-prefix {
-  color: #4ade80;
+  color: var(--color-success);
 }
 
 .line-content {
@@ -763,6 +944,22 @@ watch(
 }
 
 .option-input:focus {
+  outline: none;
+  border-color: var(--accent-rust);
+}
+
+.option-select {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: "JetBrains Mono", monospace;
+  cursor: pointer;
+}
+
+.option-select:focus {
   outline: none;
   border-color: var(--accent-rust);
 }

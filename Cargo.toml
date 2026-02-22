@@ -46,16 +46,18 @@ vize_maestro = { path = "crates/vize_maestro", version = "0.4.0" }
 vize_canon = { path = "crates/vize_canon", version = "0.4.0", default-features = false }
 vize_fresco = { path = "crates/vize_fresco", version = "0.4.0", default-features = false }
 
-# OXC dependencies
-oxc_parser = "0.45"
-oxc_ast = "0.45"
-oxc_span = "0.45"
-oxc_allocator = "0.45"
-oxc_syntax = "0.45"
-oxc_diagnostics = "0.45"
-oxc_semantic = "0.45"
-oxc_transformer = "0.45"
-oxc_codegen = "0.45"
+# OXC dependencies (git for oxc_formatter compatibility - not yet on crates.io)
+oxc_parser = { git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_ast = { git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_ast_visit = { git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_span = { git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_allocator = { git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_syntax = { git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_diagnostics = { git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_semantic = { git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_transformer = { git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_codegen = { git = "https://github.com/oxc-project/oxc", branch = "main" }
+oxc_formatter = { git = "https://github.com/oxc-project/oxc", branch = "main" }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

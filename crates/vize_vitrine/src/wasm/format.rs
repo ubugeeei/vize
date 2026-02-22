@@ -60,62 +60,7 @@ pub fn format_script_wasm(source: &str, options: JsValue) -> Result<JsValue, JsV
 
 /// Parse format options from JsValue
 pub(crate) fn parse_format_options(options: JsValue) -> vize_glyph::FormatOptions {
-    use vize_glyph::FormatOptions;
-
-    let print_width = js_sys::Reflect::get(&options, &JsValue::from_str("printWidth"))
-        .ok()
-        .and_then(|v| v.as_f64())
-        .map(|v| v as u32)
-        .unwrap_or(100);
-
-    let tab_width = js_sys::Reflect::get(&options, &JsValue::from_str("tabWidth"))
-        .ok()
-        .and_then(|v| v.as_f64())
-        .map(|v| v as u8)
-        .unwrap_or(2);
-
-    let use_tabs = js_sys::Reflect::get(&options, &JsValue::from_str("useTabs"))
-        .ok()
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-
-    let semi = js_sys::Reflect::get(&options, &JsValue::from_str("semi"))
-        .ok()
-        .and_then(|v| v.as_bool())
-        .unwrap_or(true);
-
-    let single_quote = js_sys::Reflect::get(&options, &JsValue::from_str("singleQuote"))
-        .ok()
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-
-    let bracket_spacing = js_sys::Reflect::get(&options, &JsValue::from_str("bracketSpacing"))
-        .ok()
-        .and_then(|v| v.as_bool())
-        .unwrap_or(true);
-
-    let bracket_same_line = js_sys::Reflect::get(&options, &JsValue::from_str("bracketSameLine"))
-        .ok()
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-
-    let single_attribute_per_line =
-        js_sys::Reflect::get(&options, &JsValue::from_str("singleAttributePerLine"))
-            .ok()
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-
-    FormatOptions {
-        print_width,
-        tab_width,
-        use_tabs,
-        semi,
-        single_quote,
-        bracket_spacing,
-        bracket_same_line,
-        single_attribute_per_line,
-        ..Default::default()
-    }
+    serde_wasm_bindgen::from_value(options).unwrap_or_default()
 }
 
 /// Parse CSS options from JsValue

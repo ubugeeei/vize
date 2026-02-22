@@ -59,7 +59,7 @@ pub fn process_define_emits(
     };
 
     // Store type declaration (type parameter)
-    let type_decl = call.type_parameters.as_ref().map(|params| {
+    let type_decl = call.type_arguments.as_ref().map(|params| {
         let start = params.span.start as usize;
         let end = params.span.end as usize;
         let type_str = &source[start..end];
@@ -231,7 +231,7 @@ pub fn extract_event_names_from_ts_type(
         TSType::TSFunctionType(func_type) => {
             // Extract from first parameter's type annotation
             if let Some(first_param) = func_type.params.items.first() {
-                if let Some(type_ann) = &first_param.pattern.type_annotation {
+                if let Some(type_ann) = &first_param.type_annotation {
                     extract_literal_values_from_ts_type(&type_ann.type_annotation, emits, source);
                 }
             }
@@ -292,7 +292,7 @@ fn extract_from_ts_type_literal(
         for member in type_lit.members.iter() {
             if let TSSignature::TSCallSignatureDeclaration(call) = member {
                 if let Some(first_param) = call.params.items.first() {
-                    if let Some(type_ann) = &first_param.pattern.type_annotation {
+                    if let Some(type_ann) = &first_param.type_annotation {
                         extract_literal_values_from_ts_type(
                             &type_ann.type_annotation,
                             emits,

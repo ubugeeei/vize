@@ -81,6 +81,8 @@ pub struct ServerState {
     virtual_gen: RwLock<VirtualCodeGenerator>,
     /// Cached virtual documents per file
     virtual_docs_cache: DashMap<Url, VirtualDocuments>,
+    /// Formatting options (loaded from vize.config.json)
+    format_options: RwLock<vize_glyph::FormatOptions>,
     /// tsgo bridge for TypeScript language features (lazy initialized)
     #[cfg(feature = "native")]
     tsgo_bridge: OnceCell<Arc<TsgoBridge>>,
@@ -111,6 +113,7 @@ impl ServerState {
             documents: DocumentStore::new(),
             virtual_gen: RwLock::new(VirtualCodeGenerator::new()),
             virtual_docs_cache: DashMap::new(),
+            format_options: RwLock::new(vize_glyph::FormatOptions::default()),
             #[cfg(feature = "native")]
             tsgo_bridge: OnceCell::new(),
             #[cfg(feature = "native")]
@@ -300,5 +303,133 @@ impl ServerState {
     /// Clear all cached virtual documents.
     pub fn clear_virtual_docs(&self) {
         self.virtual_docs_cache.clear();
+    }
+
+    /// Get a clone of the current format options.
+    #[inline]
+    pub fn get_format_options(&self) -> vize_glyph::FormatOptions {
+        self.format_options.read().clone()
+    }
+
+    /// Load format options from `vize.config.json` in the given directory.
+    pub fn load_format_config(&self, dir: &std::path::Path) {
+        let config_path = dir.join("vize.config.json");
+        if !config_path.exists() {
+            return;
+        }
+        if let Ok(content) = std::fs::read_to_string(&config_path) {
+            // Parse only the "fmt" field to avoid pulling in the full VizeConfig type
+            if let Ok(value) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(fmt_value) = value.get("fmt") {
+                    if let Ok(opts) =
+                        serde_json::from_value::<vize_glyph::FormatOptions>(fmt_value.clone())
+                    {
+                        *self.format_options.write() = opts;
+                        tracing::info!("Loaded format config from {}", config_path.display());
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_format_options() {
+        let state = ServerState::new();
+        let opts = state.get_format_options();
+        assert_eq!(opts.print_width, 100);
+        assert_eq!(opts.tab_width, 2);
+        assert!(!opts.use_tabs);
+        assert!(opts.semi);
+        assert!(!opts.single_quote);
+        assert!(opts.sort_attributes);
+        assert!(opts.normalize_directive_shorthands);
+    }
+
+    #[test]
+    fn load_format_config_no_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = ServerState::new();
+        state.load_format_config(dir.path());
+        // options remain default
+        let opts = state.get_format_options();
+        assert_eq!(opts.print_width, 100);
+    }
+
+    #[test]
+    fn load_format_config_from_file() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("vize.config.json"),
+            r#"{
+                "fmt": {
+                    "printWidth": 80,
+                    "tabWidth": 4,
+                    "useTabs": true,
+                    "semi": false,
+                    "singleQuote": true
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let state = ServerState::new();
+        state.load_format_config(dir.path());
+        let opts = state.get_format_options();
+        assert_eq!(opts.print_width, 80);
+        assert_eq!(opts.tab_width, 4);
+        assert!(opts.use_tabs);
+        assert!(!opts.semi);
+        assert!(opts.single_quote);
+    }
+
+    #[test]
+    fn load_format_config_partial() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("vize.config.json"),
+            r#"{ "fmt": { "printWidth": 120 } }"#,
+        )
+        .unwrap();
+
+        let state = ServerState::new();
+        state.load_format_config(dir.path());
+        let opts = state.get_format_options();
+        assert_eq!(opts.print_width, 120);
+        // defaults preserved
+        assert_eq!(opts.tab_width, 2);
+        assert!(opts.semi);
+    }
+
+    #[test]
+    fn load_format_config_no_fmt_section() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("vize.config.json"),
+            r#"{ "check": { "globals": ["$t"] } }"#,
+        )
+        .unwrap();
+
+        let state = ServerState::new();
+        state.load_format_config(dir.path());
+        // no fmt section → options remain default
+        let opts = state.get_format_options();
+        assert_eq!(opts.print_width, 100);
+    }
+
+    #[test]
+    fn load_format_config_invalid_json() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("vize.config.json"), "not valid json").unwrap();
+
+        let state = ServerState::new();
+        state.load_format_config(dir.path());
+        // options remain default
+        let opts = state.get_format_options();
+        assert_eq!(opts.print_width, 100);
     }
 }
