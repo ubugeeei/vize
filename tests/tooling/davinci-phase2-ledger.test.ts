@@ -44,27 +44,13 @@ const text = Object.fromEntries(Object.entries(docs).map(([name, url]) => [name,
   [K in keyof typeof docs]: string;
 };
 
-const completedTasks = [
-  "P2-1",
-  "P2-2",
-  "P2-3",
-  "P2-4",
-  "P2-5a",
-  "P2-5b",
-  "P2-6",
-  "P2-7",
-  "P2-8",
-  "P2-9",
-  "P2-10",
-  "P2-12a",
-  "P2-13",
-  "P2-14",
-  "P2-15",
-  "P2-18",
-  "P2-19",
-];
-const activeTasks = ["P2-11"];
-const openDependencyTasks = ["P2-12b", "P2-16", "P2-17", "P2-20"];
+const completedTasks =
+  "P2-1 P2-2 P2-3 P2-4 P2-5a P2-5b P2-6 P2-7 P2-8 P2-9 P2-10 P2-11 P2-12a P2-13 P2-14 P2-15 P2-18 P2-19".split(
+    " ",
+  );
+const activeTasks: string[] = [];
+const readyTasks = ["P2-12b", "P2-16"];
+const openDependencyTasks = ["P2-17", "P2-20"];
 
 function taskIndex(source: string): Map<string, boolean> {
   const entries = [
@@ -76,11 +62,11 @@ function taskIndex(source: string): Map<string, boolean> {
 
 function currentGroup(source: string, label: string) {
   const match = new RegExp(
-    `^- \\*\\*${label}: (?<count>\\d+) of (?<total>\\d+) — (?<ids>P2-[\\s\\S]*?)\\.\\*\\*`,
+    `^- \\*\\*${label}: (?<count>\\d+) of (?<total>\\d+) — (?<ids>(?:none|P2-[\\s\\S]*?))\\.\\*\\*`,
     "mu",
   ).exec(source);
   assert.ok(match?.groups, `missing ${label} current-ledger group`);
-  const ids = match.groups.ids.match(/P2-\d+(?:[ab])?/gu) ?? [];
+  const ids = match.groups.ids === "none" ? [] : (match.groups.ids.match(/P2-\d+(?:[ab])?/gu) ?? []);
   assert.equal(new Set(ids).size, ids.length, `${label} contains a duplicate task`);
   const declaredCount = Number(match.groups.count);
   assert.equal(ids.length, declaredCount, `${label} count does not match its exact set`);
@@ -125,11 +111,13 @@ test("Phase 2 current classification is exact, disjoint, and exhaustive", () => 
   const tasks = taskIndex(text.phase);
   const complete = currentGroup(text.phase, "Complete");
   const active = currentGroup(text.phase, "Active and blocked");
+  const ready = currentGroup(text.phase, "Ready");
   const openDependency = currentGroup(text.phase, "Open and dependency-blocked");
-  const groups = [complete, active, openDependency];
+  const groups = [complete, active, ready, openDependency];
   assert.equal(tasks.size, 22);
   assert.deepEqual(complete.ids, completedTasks);
   assert.deepEqual(active.ids, activeTasks);
+  assert.deepEqual(ready.ids, readyTasks);
   assert.deepEqual(openDependency.ids, openDependencyTasks);
   for (const group of groups) assert.equal(group.total, tasks.size);
 
@@ -170,7 +158,7 @@ test("dependency edges explain every open dependency classification", () => {
     ["P2-17", ["P2-11", "P2-12b", "P2-13"]],
     ["P2-20", taskIds.filter((id) => id !== "P2-20")],
   ]);
-  const open = new Set([...activeTasks, ...openDependencyTasks]);
+  const open = new Set([...activeTasks, ...readyTasks, ...openDependencyTasks]);
   for (const id of openDependencyTasks) {
     const dependencies = dependencySet(sources.get(id)!, id, taskIds);
     assert.deepEqual(dependencies, expected.get(id), `${id} dependency set drifted`);
@@ -207,6 +195,7 @@ test("every completion joins a merged PR to honest current evidence", () => {
     ["P2-8", "4544"],
     ["P2-9", "5367"],
     ["P2-10", "4642"],
+    ["P2-11", "5860"],
     ["P2-12a", "4452"],
     ["P2-13", "4509"],
     ["P2-14", "4509"],
@@ -236,7 +225,7 @@ test("P2-9 records the hydrated residual completion honestly", () => {
     "P2-9 current evidence row",
   );
   for (const source of [text.roadmap, text.readme, text.phase, text.records]) {
-    assert.match(source, /17 of 22/);
+    assert.match(source, /18 of 22/);
     assert.match(source, /11\.73%/);
   }
   assert.match(text.phase, /P2-9, P2-10/);
@@ -329,8 +318,8 @@ test("validator rejects a stale task count or suite range", () => {
   const tasks = taskIndex(text.phase);
   const maximum = suiteMaximum(text.suites);
   assert.throws(
-    () => assertCurrentCount(text.readme.replace("17 of 22", "16 of 22"), 17, tasks.size),
-    /stale task count: expected 17 of 22/,
+    () => assertCurrentCount(text.readme.replace("18 of 22", "17 of 22"), 18, tasks.size),
+    /stale task count: expected 18 of 22/,
   );
   assert.throws(
     () => assertSuiteRange(text.readme.replace("TS-1..52", "TS-1..51"), maximum),

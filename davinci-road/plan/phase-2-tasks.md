@@ -212,14 +212,15 @@ VIZE_DAVINCI_DIFFERENTIAL_CORPUS=tests/_fixtures/_git \
 
 **Deliverable:** `vize_atelier_dom` lowering S2 → codegen structure directly — the first strangler target, on the surface that holds the hard byte-parity bar.
 
-**Current series evidence (2026-09-06):** 122 installments have landed through
-[#5854](https://github.com/ubugeeei-prod/vize/pull/5854). Installments 84-122 open
-the production option surface the switch needs, since through 83 the lane only
-matched `compile_template`'s _defaults_ while production compiles go through
-`compile_template_block`: `DomEmitOptions` now carries module mode,
-`prefix_identifiers`, non-inline binding metadata, `is_ts` (an opt-in
-`typescript` feature — oxc's transformer needs `std`, and an `is_ts` emit
-without it refuses rather than emitting un-erased TypeScript), the SFC's own
+**Landed 2026-09-06** — full record:
+[phase-2-records/p2-11.md](./phase-2-records/p2-11.md).
+
+**Current series evidence (2026-09-06):** 123 installments have landed through
+[#5860](https://github.com/ubugeeei-prod/vize/pull/5860). Installments 84-123
+open and close the production option surface the switch needed, since through
+83 the lane only matched `compile_template`'s _defaults_ while production
+compiles go through `compile_template_block`: `DomEmitOptions` carries module
+mode, `prefix_identifiers`, non-inline binding metadata, `is_ts`, the SFC's own
 `component_name` for self-references, `inline`, inline root prop hoists,
 transform-time `_unref` helper order, inline template refs, merged
 const-handler rules, non-simple cached prop layout, constant style and text-run
@@ -231,26 +232,23 @@ handled around S2 with a verified compatibility map, experimental in-tag
 comments, declarative custom-element patterns, bare static style merges and
 disabled static-hoist routing, HTML re-entry close casing and the explicit
 legacy selection guard, the audited DOM no-op `optimize_imports` selector,
-static custom-element predicates and parser-recovered SFC self-closing
-sections. A
-field missing from that struct is not a default the emitter assumes; it is
-surface the series has not reached. The earlier S2 DOM lane also covers the
-late directive and patch-site witnesses, residual component and hoist-order
-witnesses, and the corpus-runnable plus CI DOM lanes. Real Project Matrix run `33531193323`
-recorded canonical hydrated zero-divergence evidence over 146 gitlinks,
-142 ecosystem projects, 42,668 files and 42,279 compared templates. The task
-remains blocked on the full production-lane switch because explicit
-legacy-flag compiles still require the guarded compatibility path until flag
-deletion. See the
-[series record](./phase-2-records/p2-11.md).
+static custom-element predicates, parser-recovered SFC self-closing sections
+and the final DOM legacy lane flag deletion. The earlier S2 DOM lane also
+covers the late directive and patch-site witnesses, residual component and
+hoist-order witnesses, and the corpus-runnable plus CI DOM lanes. Real Project
+Matrix run `33531193323` recorded canonical hydrated zero-divergence evidence
+over 146 gitlinks, 142 ecosystem projects, 42,668 files and 42,279 compared
+templates, and [#5860](https://github.com/ubugeeei-prod/vize/pull/5860) added
+the live-source boundary test that keeps `VIZE_DAVINCI_DOM`, `DOM_LANE_FLAG`,
+`dom_lane_selection` and `DomLaneSelection` out of the production DOM sources.
 
 **Steps:**
 
-- [ ] `vize_atelier_dom` lowers S2 directly; the relief codegen-node universe (`NodeType` 13–20 codegen + 21–26 SSR codegen, of 27 variants total — `crates/vize_relief/src/relief/core.rs:10-42`) stops being **written** by the new path. It is still _read_ by SSR and Vapor until phase 3, so nothing is deleted here
-- [ ] In-phase flag `VIZE_DAVINCI_DOM=legacy` (charter #26), production-selectable while the phase is live, **named in the exit gate with its deletion**. P1-13's lesson governs: an undeleted old path is an unfinished deletion with an owner, not a permanent fallback
-- [ ] **Differential lane, the P1-9 shape**: dual-run old vs new DOM emission, compared byte-for-byte including helper usage, panicking on any difference; corpus command recorded in the task
-- [ ] **Waiver budget: zero.** DOM emitted output is the hard byte-parity bar (charter #23) and this is the most output-visible surface in the phase; any corpus diff is a bug in this task, exactly as P1-9 ran it
-- [ ] Patch-flag equivalence fixtures (the flags the new path computes must equal the old path's, per node, exactly)
+- [x] `vize_atelier_dom` lowers S2 directly; the relief codegen-node universe (`NodeType` 13–20 codegen + 21–26 SSR codegen, of 27 variants total — `crates/vize_relief/src/relief/core.rs:10-42`) stops being **written** by the new path. It is still _read_ by SSR and Vapor until phase 3, so nothing is deleted here
+- [x] In-phase flag `VIZE_DAVINCI_DOM=legacy` (charter #26), production-selectable while the phase is live, **named in the exit gate with its deletion**. P1-13's lesson governs: an undeleted old path is an unfinished deletion with an owner, not a permanent fallback
+- [x] **Differential lane, the P1-9 shape**: dual-run old vs new DOM emission, compared byte-for-byte including helper usage, panicking on any difference; corpus command recorded in the task
+- [x] **Waiver budget: zero.** DOM emitted output is the hard byte-parity bar (charter #23) and this is the most output-visible surface in the phase; any corpus diff is a bug in this task, exactly as P1-9 ran it
+- [x] Patch-flag equivalence fixtures (the flags the new path computes must equal the old path's, per node, exactly)
 
 **Acceptance:** `rust-script tools/commands/davinci/corpus-diff.rs --surface compiler --shards 2 --timeout-ms 600000` empty across the 144-project manifest with scope proof, run from clean fixtures (TS-11); differential lane zero divergence with its comparison count recorded as 144 DOM-output comparisons (TS-25); patch-flag equivalence fixtures exact (TS-1/TS-2); DOM bench `allocs` re-recorded in `budgets.toml` (TS-10); TS-13. **Deps:** P2-9. **Non-goals:** SSR and Vapor backends (phase 3); source maps from a structured S4 emitter (P3-9); deleting the relief codegen-node universe; the vapor run-then-discard double transform (P3-6).
 
