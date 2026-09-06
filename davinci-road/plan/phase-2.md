@@ -19,7 +19,7 @@ Each item is a scope or design change forced by something phase 1 measured or la
 8. **`SourceLocation` is 8 bytes and `Position` no longer exists**, so P2-1's `Diagnostic` keys on `vize_carton::Span` and derives line/column only at rendering time. Diagnostic message text stays **owned** — the deliberate P1-10 exception (`CompilerError::message`) — because P1-11's arena/cache contract requires anything crossing a compile boundary to be owned, enforced there by `'static` assertions on every crossing type.
 9. **Folio already exists; P2-4 extends it rather than defining it.** P0-10 landed `trait Folio { print / parse }` with `FolioMode::{Full, Display}` and mode-explicit round-trip laws (`crates/vize_davinci/src/folio.rs:81`), `CroquisFolio`, and `crates/vize_davinci/src/bin/davinci-opt.rs` whose usage is today `--roundtrip <file> [--stage croquis]` with `--roundtrip` **required**. `#[derive(Folio)]` must generate that trait's exact shape, and `--pipeline` extends that binary's argument parser (making `--roundtrip` and `--pipeline` alternatives rather than one mandatory flag).
 10. **Three provisional citations were wrong against the tree and are fixed here.** The timing observer's schema is P0-11's [`profile-export.schema.json`](./profile-export.schema.json) (TS-15), not "the P0-4 schema" — P0-4 is `budgets.toml`. The transform steps live in `crates/vize_atelier_core/src/steps/`, discovered ordinarily through the Rust module **`vize_atelier_core::steps`**, and the enter/exit sibling-mutation driver P2-9 replaces lives in `src/lane/`, discovered from `lane.rs`. Historically, before the ordinary-module-layout migration, those files lived in `src/transforms/` and `src/transform/` and were wired with `#[path]`; those are historical locations, not the current tree. `vize repro` does **not** exist — P2-13 adds a command module and a `crates/vize/src/cli.rs` variant, it does not extend one.
-11. **P2-11's flag is not a fallback, it is an unfinished deletion with an owner.** P1-13 recorded that phase 1 introduced no production fallback flag at all, and that the surviving old paths are unfinished deletions — enumerated in its gate with blockers. `VIZE_DAVINCI_DOM=legacy` is kept (charter #26 licenses it while the phase is live) but the exit gate names its deletion explicitly, and the differential lane, not the flag, is what carries the risk.
+11. **P2-11's flag is not a fallback, it is an unfinished deletion with an owner.** P1-13 recorded that phase 1 introduced no production fallback flag at all, and that the surviving old paths are unfinished deletions — enumerated in its gate with blockers. At re-cut time `VIZE_DAVINCI_DOM=legacy` was kept under charter #26 while the phase was live, but the exit gate named its deletion explicitly; P2-11's final installment deleted it, and the differential lane is what carries the remaining retirement risk.
 12. **Matrix fixtures do not exist yet.** P2-15's oracle runs "over matrix fixtures"; `tools/commands/davinci/matrix-gen.rs` defaults to `tests/fixtures/davinci-matrix/`, which **is not in the tree** (P0-12 landed the generator, not the fixtures). Committing the generated plane is now a step of P2-15 rather than an assumption.
 
 ## Carried from phase 1
@@ -61,7 +61,7 @@ Each ID links to its contract in [phase-2-tasks.md](./phase-2-tasks.md); what a 
 - [x] [P2-8](./phase-2-tasks.md#p2-8--s1s2-vue-lowering) S1→S2 Vue lowering — landed 2026-08-21; conversion crate `vize_s1_to_s2` (codename Ricalco; the MLIR conversion-library shape, so neither stage learns about the other), total over the whole S1 battery and every truncation of it with kept fragments on every failure, `v-for` split textually per P2-5b (`ForValue` assigned, never a JS parse of the whole value), hygiene scope tags and full provenance as `vize_s2` side tables, TS-20 established with two new fuzz targets and a 12,215-file corpus sweep at zero failures ([record](./phase-2-records/p2-8.md))
 - [x] [P2-9](./phase-2-tasks.md#p2-9--core-transforms-as-s2-passes) Core transforms as S2 passes — landed 2026-08-30; hydrated corpus residual re-measured at 11.73% over 41,580 compiled files, with zero differential divergence and the old expression lane left to P2-5b / exit-gate decisions ([record](./phase-2-records/p2-9.md))
 - [x] [P2-10](./phase-2-tasks.md#p2-10--style-v-bind-ops) Style `v-bind()` ops — landed 2026-08-23; `vue.css-bind` with file-absolute spans, ricalco admission, committed SFC folio pin; compile path / css-var names untouched ([record](./phase-2-records/p2-10.md))
-- [ ] [P2-11](./phase-2-tasks.md#p2-11--dom-backend-on-s2) DOM backend on S2 (series, in progress)
+- [x] [P2-11](./phase-2-tasks.md#p2-11--dom-backend-on-s2) DOM backend on S2 — landed 2026-09-06 through installment 123; final PR [#5860](https://github.com/ubugeeei-prod/vize/pull/5860) deleted the DOM legacy lane flag and left the S2 DOM selector as the production path ([record](./phase-2-records/p2-11.md))
 - [x] [P2-12a](./phase-2-tasks.md#p2-12a--phase-start-baselines-and-pinned-targets) Phase-start baselines and pinned targets — landed 2026-08-19 at rev `232870a8`; DOM/SSR/Vapor ladder pinned in `[traversal]`, `[target.phase-2]` set, `walk-baseline.md` committed. One clause carried: the corpus `--check` is not evaluable by CI or a working tree ([record](./phase-2-records/p2-12a.md))
 - [ ] [P2-12b](./phase-2-tasks.md#p2-12b--fused-build-path--walk-count-instrumentation) Fused build path + walk-count instrumentation
 - [x] [P2-13](./phase-2-tasks.md#p2-13--folio-after-change-vize-repro-timing-json) Folio-after-change / `vize repro` / timing JSON — landed 2026-08-20; the ICE policy made real — per-file panic guard writing `repro.folio` (batch continues, exact file set pinned), the new `vize repro` command replaying to the same failure by exact equality, hash-gated `--folio-dir`/`--folio-after-change` dumps real on `davinci-opt` and pinned-empty on the build path until P2-12b, timing JSON through the P0-11 export validated by the TS-15 validator ([record](./phase-2-records/p2-13.md))
@@ -79,51 +79,31 @@ This is the current snapshot. The phase re-cut above and the per-installment
 records are historical evidence and are not silently rewritten when current
 counts or fixture availability changes.
 
-- **Complete: 17 of 22 — P2-1, P2-2, P2-3, P2-4, P2-5a, P2-5b, P2-6,
-  P2-7, P2-8, P2-9, P2-10, P2-12a, P2-13, P2-14, P2-15, P2-18 and P2-19.**
+- **Complete: 18 of 22 — P2-1, P2-2, P2-3, P2-4, P2-5a, P2-5b, P2-6,
+  P2-7, P2-8, P2-9, P2-10, P2-11, P2-12a, P2-13, P2-14, P2-15,
+  P2-18 and P2-19.**
   Each completion is joined to its merged PR and current evidence in the
   [evidence index](./phase-2-records.md#current-completion-evidence-2026-09-06);
   review-only evidence is labeled there rather than presented as executable.
-- **Active and blocked: 1 of 22 — P2-11.** P2-11 has 122 landed installments
-  through
-  [#5854](https://github.com/ubugeeei-prod/vize/pull/5854), including the
-  late directive/object-spread set, event/model/slot residuals, structural
-  `v-if`/`v-for` cases, expression-edge admission, keyed slot forwarding,
-  component `v-once` wrappers, slot text fact alignment, the corpus-runnable
-  and CI DOM lanes, per-node patch-site witnesses, residual component and
-  hoist-order witnesses, the production option surface through inline setup
-  reads, `cache_handlers`, constant text/style shortcuts and printed-order
-  cache slot numbering, scoped CSS ids, runtime names, option bundles,
-  model/outlet families, the shared DOM battery, the source-map-free production
-  selector, S2 DOM section boundaries, in-tag option routing, SFC namespace
-  selection, ordinary comment output, source-map requests handled around S2
-  with a verified compatibility map, experimental in-tag comments and
-  declarative custom-element patterns, bare static style merges and disabled
-  static-hoist routing, HTML re-entry close casing and the explicit legacy
-  selection guard, the audited DOM no-op `optimize_imports` selector, static
-  custom-element predicates and parser-recovered SFC self-closing sections. The
-  comparison count remains pinned at
-  144 DOM-output comparisons.
-  Real Project Matrix run `33531193323` produced canonical hydrated
-  zero-divergence evidence over 146 gitlinks and 142 ecosystem projects:
-  42,668 files, 42,279 compared templates, zero S2 refusals and zero
-  divergences. The full production-lane switch remains open for the explicit
-  legacy flag deletion; the old DOM lane remains the guarded compatibility path
-  for that phase-live selector.
-- **Open and dependency-blocked: 4 of 22 — P2-12b, P2-16, P2-17 and
-  P2-20.** P2-12b depends on P2-12a, P2-11 and P2-3; TS-22 groundwork now
-  exposes `emit_dom_source_observed` and `emit_budget_observer` for the one
-  code-producing S2 DOM emit walk, but the fused build-path switch remains
-  blocked. P2-16 depends on P2-11; P2-17 depends on P2-11, P2-12b and P2-13;
-  P2-20 depends on all of P2-1 through P2-19.
+- **Active and blocked: 0 of 22 — none.**
+- **Ready: 2 of 22 — P2-12b and P2-16.** P2-12b now has all declared
+  dependencies closed (P2-12a, P2-11 and P2-3); TS-22 groundwork exposes
+  `emit_dom_source_observed` and `emit_budget_observer` for the one
+  code-producing S2 DOM emit walk, so the next work is the fused build-path
+  switch and exact traversal gate. P2-16 is unblocked by P2-11's completed S2
+  DOM backend and can now move JSX lowering onto S2.
+- **Open and dependency-blocked: 2 of 22 — P2-17 and P2-20.** P2-17 depends on
+  P2-11, P2-12b and P2-13; P2-11 and P2-13 are available, so P2-12b is the
+  remaining dependency gate. P2-20 depends on all of P2-1 through P2-19 and
+  waits for P2-12b, P2-16 and P2-17.
 - **Executable corpus inventory:** 146 gitlinks, including 142 ecosystem
   projects, as asserted by
   [`fixture-compatibility-ledger.test.ts`](../../tests/tooling/fixture-compatibility-ledger.test.ts).
   A worktree's initialized or uninitialized submodule count is transient and
   must not replace this inventory.
-- **P2-17/P2-20 pre-exit blocker map:** P2-17 cannot be signed off until
-  P2-11's S2 DOM lane, P2-12b's traversal-budget swap and P2-13's failure
-  provenance contract are all available to review together. Its mechanical
+- **P2-17/P2-20 pre-exit blocker map:** P2-17 now has P2-11's S2 DOM lane and
+  P2-13's failure provenance contract available to review, but it cannot be
+  signed off until P2-12b's traversal-budget swap is also available. Its mechanical
   span-resolution witness now runs in
   [`ir_contract_spans.rs`](../../crates/vize_s1_to_s2/tests/ir_contract_spans.rs),
   and its `schema_version` negotiation witness now runs in
